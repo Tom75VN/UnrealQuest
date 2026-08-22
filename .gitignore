@@ -1,0 +1,6 @@
+AGENTS.md
+CLAUDE.md
+.claude/
+docs/
+__pycache__/
+*.pyc

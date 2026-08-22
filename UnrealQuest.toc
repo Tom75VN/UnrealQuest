@@ -1,0 +1,50 @@
+﻿## Interface: 11200
+## Title: |cffffffffUnreal|cfff5ae0a Quest
+## Notes: Quest helper for the Unreal Azeroth client. Current-zone world-map pins, minimap quest pins, quest tracking and entity tooltips. The main quest + HUD waypoint layer ships disabled - see docs/HUD-WAYPOINT.md.
+## Author: unrealQuest
+## Version: 0.0.1
+## X-License: MIT. Bundled world data from pfQuest (MIT), sourced from VMaNGOS. See LICENSE.
+## SavedVariables: UnrealQuestDB
+
+Database\init.lua
+Database\zones.lua
+Database\minimap.lua
+Database\areatrigger.lua
+Database\units.lua
+Database\objects.lua
+Database\items.lua
+Database\refloot.lua
+Database\quests-itemreq.lua
+Database\quests.lua
+Database\enUS\zones.lua
+Database\enUS\units.lua
+Database\enUS\objects.lua
+Database\enUS\items.lua
+Database\enUS\quests.lua
+
+Core\Namespace.lua
+Compatibility\ClientAPI.lua
+Core\Config.lua
+Core\Driver.lua
+Core\Events.lua
+Data\Database.lua
+Data\QuestMatch.lua
+Data\QuestTarget.lua
+Quest\QuestState.lua
+Data\ObjectiveMatch.lua
+Tooltip\EntityTooltip.lua
+Quest\BagItems.lua
+Quest\QuestHistory.lua
+Quest\QuestEligibility.lua
+Quest\Tracker.lua
+Quest\MainQuest.lua
+Quest\QuestClicks.lua
+Map\MapContext.lua
+Map\WorldMapPins.lua
+Map\MinimapPins.lua
+World\WorldFrameScan.lua
+World\QuestMarks.lua
+HUD\PlayerHeading.lua
+HUD\Waypoint.lua
+Core\Commands.lua
+UnrealQuest.lua
