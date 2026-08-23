@@ -56,9 +56,10 @@ and nothing else:
 Zone, minimap and English zone-name tables are kept intact, being small
 coordinate-support tables.
 
-No pfQuest source code is used, copied, or adapted by this project. The data
-tables and the `media/QuestDot.tga` minimap marker are reused under the license
-below.
+The data tables and the `media/QuestDot.tga` minimap marker are reused under
+the license below. `Data/QuestMatch.lua` also uses pfQuest's quest-text token
+vocabulary and substitution semantics as prior art; it does not copy pfQuest's
+first-best-candidate identity policy.
 
 pfQuest license
 ---------------

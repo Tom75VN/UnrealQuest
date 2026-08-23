@@ -19,7 +19,7 @@ UnrealQuest = {}
 local UQ = UnrealQuest
 
 UQ.name = "UnrealQuest"
-UQ.version = "0.0.1"
+UQ.version = "0.0.2"
 
 -- Keep UnrealQuest visually aligned with UnrealUI without creating a runtime
 -- dependency between the two addons. These values mirror UnrealUI's shared
@@ -191,16 +191,39 @@ end
 -- Normalizes a quest/NPC/zone name into a comparison key. Quest titles are the
 -- only join between the client's quest log and the static database, so the key
 -- has to survive punctuation and spacing differences between the two sources.
+--
+-- Deliberately does not use string.lower or the %a/%d/%u pattern classes.
+-- Those are backed by the C library's locale-dependent ctype functions, and
+-- were confirmed (via a Lua runtime under a non-C locale) to reclassify and
+-- corrupt UTF-8 continuation bytes -- string.lower("Кобольдов") came back as
+-- invalid UTF-8, silently mangling the key for every Cyrillic, CJK or other
+-- non-Latin title. Walking the string one byte at a time and folding only the
+-- ASCII range (65-90) by hand is locale-independent: any byte >= 128, i.e.
+-- every byte of a multi-byte UTF-8 character, is passed through unchanged and
+-- untouched, while ASCII letters/digits keep the exact old behaviour.
 function UQ.NameKey(text)
     if type(text) ~= "string" then
         return nil
     end
-    local key = string.lower(text)
-    key = string.gsub(key, "[^%a%d]", "")
-    if key == "" then
+    local length = string.len(text)
+    local parts = {}
+    local count = 0
+    local index = 1
+    while index <= length do
+        local byte = string.byte(text, index)
+        if byte >= 65 and byte <= 90 then
+            count = count + 1
+            parts[count] = string.char(byte + 32)
+        elseif (byte >= 97 and byte <= 122) or (byte >= 48 and byte <= 57) or byte >= 128 then
+            count = count + 1
+            parts[count] = string.char(byte)
+        end
+        index = index + 1
+    end
+    if count == 0 then
         return nil
     end
-    return key
+    return table.concat(parts)
 end
 
 function UQ.Count(list)

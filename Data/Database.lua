@@ -16,13 +16,22 @@ Table shapes this adapter depends on:
   quests[id]        lvl, min, race, class, pre, event, close, and the relation
                     tables start / end / obj, each shaped
                     { U = { unitId, ... }, O = { objectId, ... }, I = { itemId, ... } }
-  quests_enUS[id]   T title, O objectives text, D description
+  quests_<locale>[id]   T title, O objectives text, D description
   units[id]         coords = { { x, y, zoneId, respawn }, ... }, lvl
   objects[id]       coords = { { x, y, zoneId, respawn }, ... }, fac
   items[id]         U = { unitId = dropRate }, O = { objectId = dropRate }
   zones[zoneId]     parentZoneOrContinent, width, height, xOffset, yOffset
-  zones_enUS[id]    localized area name
+  zones_<locale>[id]    localized area name
   minimap[zoneId]   zone width and height in yards
+  meta[key]         service entity IDs -> faction token (A, H or AH)
+  trainers[unitId]  { trainerType, trainerClass, trainerRace, trainerSpell,
+                      trainerId }; trainerType 0 is a class trainer
+
+  Every "_enUS" text table above also ships as "_ruRU", "_zhCN", "_esES", and
+  so on for every locale Database/ has a folder for. Client.GetLocale() picks
+  which suffix this file reads at OnInit; LocaleTable() falls back to enUS
+  for a locale the data has no table for, so the accessors below never touch
+  the "_enUS" suffix directly.
 
 The database is keyed by quest ID, and this client exposes no quest ID API.
 Resolving a quest log row to a database record is therefore a title match, and
@@ -43,6 +52,11 @@ Database.titleIndex = nil
 Database.indexReady = false
 Database.indexedCount = 0
 
+-- Static service locations are cached per area/class/faction after their
+-- first request. The source tables never change during a session, and doing
+-- the relation walk once keeps map refreshes allocation-light.
+Database.serviceLocationCache = {}
+
 -- giverIndex[sourceType..":"..sourceId] = { sourceType, sourceId, questIds = {...} }
 -- areaGiverIndex[areaId] = { giverKey, giverKey, ... }
 -- Built from quests[id].start the same way GetQuestLocations reads obj/end,
@@ -55,6 +69,28 @@ Database.giverIndexReady = false
 local db = nil
 local indexCursor = nil
 local giverIndexCursor = nil
+
+-- Locale-suffixed text tables --------------------------------------------
+-- The bundled data ships one text table per locale ("quests_enUS",
+-- "quests_ruRU", ...); GetLocale() picks which suffix this client should
+-- read. A locale the bundled data has no table for (or a client the wrapper
+-- could not read a token from) falls back to enUS rather than going blank.
+local locale = "enUS"
+
+-- Returns db[baseName .. "_" .. locale] if that table exists, else
+-- db[baseName .. "_enUS"]. Both are checked with type(), not existence alone,
+-- since a malformed or half-loaded locale file must degrade the same way a
+-- missing one does.
+local function LocaleTable(baseName)
+    if not db then
+        return nil
+    end
+    local localized = db[baseName .. "_" .. locale]
+    if type(localized) == "table" then
+        return localized
+    end
+    return db[baseName .. "_enUS"]
+end
 
 function Database:OnInit()
     -- The data ships with the addon and loads before this file, so an absent
@@ -72,6 +108,19 @@ function Database:OnInit()
 
     db = value
     self.available = true
+
+    local resolved = UQ.Client and UQ.Client.GetLocale and UQ.Client.GetLocale()
+    if type(resolved) == "string" and resolved ~= "" then
+        locale = resolved
+    end
+
+    if db["quests_" .. locale] then
+        UQ:DeclareCapability("questDatabaseLocale", "detected",
+            "bundled world data has a quests_" .. locale .. " table; reading localized text through it")
+    else
+        UQ:DeclareCapability("questDatabaseLocale", "missing",
+            "bundled world data has no quests_" .. locale .. " table; falling back to quests_enUS text")
+    end
 
     UQ:DeclareCapability("questDatabase", "detected",
         "bundled world data loaded; keyed by quest ID, so quest log rows reach it only through title matching")
@@ -98,10 +147,11 @@ function Database:GetQuest(questId)
 end
 
 function Database:GetQuestText(questId)
-    if not db or type(db.quests_enUS) ~= "table" then
+    local texts = LocaleTable("quests")
+    if type(texts) ~= "table" then
         return nil
     end
-    return db.quests_enUS[questId]
+    return texts[questId]
 end
 
 function Database:GetQuestTitle(questId)
@@ -202,10 +252,11 @@ function Database:GetUnit(unitId)
 end
 
 function Database:GetUnitName(unitId)
-    if not db or type(db.units_enUS) ~= "table" then
+    local names = LocaleTable("units")
+    if type(names) ~= "table" then
         return nil
     end
-    return db.units_enUS[unitId]
+    return names[unitId]
 end
 
 function Database:GetObject(objectId)
@@ -216,10 +267,11 @@ function Database:GetObject(objectId)
 end
 
 function Database:GetObjectName(objectId)
-    if not db or type(db.objects_enUS) ~= "table" then
+    local names = LocaleTable("objects")
+    if type(names) ~= "table" then
         return nil
     end
-    return db.objects_enUS[objectId]
+    return names[objectId]
 end
 
 function Database:GetItem(itemId)
@@ -230,26 +282,25 @@ function Database:GetItem(itemId)
 end
 
 function Database:GetItemName(itemId)
-    if not db or type(db.items_enUS) ~= "table" then
+    local names = LocaleTable("items")
+    if type(names) ~= "table" then
         return nil
     end
-    return db.items_enUS[itemId]
+    return names[itemId]
 end
 
 -- The whole area-name table, for callers that need to build a reverse index.
 -- Exposed here so nothing outside this file has to reach for the data global.
 function Database:GetZoneNames()
-    if not db or type(db.zones_enUS) ~= "table" then
-        return nil
-    end
-    return db.zones_enUS
+    return LocaleTable("zones")
 end
 
 function Database:GetZoneName(zoneId)
-    if not db or type(db.zones_enUS) ~= "table" then
+    local names = LocaleTable("zones")
+    if type(names) ~= "table" then
         return nil
     end
-    return db.zones_enUS[zoneId]
+    return names[zoneId]
 end
 
 -- { parentZoneOrContinent, width, height, xOffset, yOffset } for placing a
@@ -268,6 +319,150 @@ function Database:GetZoneYards(zoneId)
         return nil
     end
     return db.minimap[zoneId]
+end
+
+-- Nearby service NPCs and objects ------------------------------------------
+
+local SERVICE_META_KEYS = {
+    "auctioneer",
+    "banker",
+    "battlemaster",
+    "flight",
+    "innkeeper",
+    "mailbox",
+    "meetingstone",
+    "repair",
+    "spirithealer",
+    "stablemaster",
+    "vendor",
+}
+
+local function PlayerFactionForRace(raceId)
+    if raceId == 1 or raceId == 3 or raceId == 4 or raceId == 7 then
+        return "A"
+    end
+    if raceId == 2 or raceId == 5 or raceId == 6 or raceId == 8 then
+        return "H"
+    end
+    return nil
+end
+
+local function FactionAllows(token, playerFaction)
+    if type(token) ~= "string" or token == "" or token == "AH" then
+        return true
+    end
+    if not playerFaction then
+        -- Missing player identity must over-show rather than silently remove
+        -- every faction-tagged service from the map.
+        return true
+    end
+    return token == playerFaction
+end
+
+-- Returns every service point in one direct area. `meta.lua` supplies the 11
+-- service relations; unit/object records supply localized names and coords.
+-- Class trainers are a twelfth category sourced from `trainers.lua`, limited
+-- to trainer_type 0 and the player's measured numeric class ID. Profession,
+-- mount and pet trainers deliberately do not leak into that option.
+function Database:GetAreaServiceLocations(areaId, playerClassId, playerRaceId)
+    if not db or type(areaId) ~= "number" then
+        return {}
+    end
+
+    local playerFaction = PlayerFactionForRace(playerRaceId)
+    local cacheKey = tostring(areaId) .. ":" .. tostring(playerClassId or 0)
+        .. ":" .. tostring(playerFaction or "?")
+    local cached = self.serviceLocationCache[cacheKey]
+    if cached then
+        return cached
+    end
+
+    local locations = {}
+
+    local function Append(category, rawId, faction)
+        if type(rawId) ~= "number" or not FactionAllows(faction, playerFaction) then
+            return
+        end
+        local sourceType = "unit"
+        local sourceId = rawId
+        if rawId < 0 then
+            sourceType = "object"
+            sourceId = -rawId
+        end
+        local entity, name
+        if sourceType == "unit" then
+            entity = self:GetUnit(sourceId)
+            name = self:GetUnitName(sourceId)
+        else
+            entity = self:GetObject(sourceId)
+            name = self:GetObjectName(sourceId)
+        end
+        if type(entity) ~= "table" or type(entity.coords) ~= "table" then
+            return
+        end
+        local coordIndex = 1
+        local coordTotal = table.getn(entity.coords)
+        while coordIndex <= coordTotal do
+            local coordinate = entity.coords[coordIndex]
+            if type(coordinate) == "table" and coordinate[3] == areaId
+                and type(coordinate[1]) == "number" and type(coordinate[2]) == "number" then
+                table.insert(locations, {
+                    category = category,
+                    x = coordinate[1],
+                    y = coordinate[2],
+                    areaId = areaId,
+                    sourceType = sourceType,
+                    sourceId = sourceId,
+                    name = type(name) == "string" and name or category,
+                })
+            end
+            coordIndex = coordIndex + 1
+        end
+    end
+
+    local meta = db.meta
+    if type(meta) == "table" then
+        local categoryIndex = 1
+        local categoryTotal = table.getn(SERVICE_META_KEYS)
+        while categoryIndex <= categoryTotal do
+            local category = SERVICE_META_KEYS[categoryIndex]
+            local relation = meta[category]
+            if type(relation) == "table" then
+                local rawId, faction
+                for rawId, faction in pairs(relation) do
+                    Append(category, rawId, faction)
+                end
+            end
+            categoryIndex = categoryIndex + 1
+        end
+    end
+
+    if type(playerClassId) == "number" and type(db.trainers) == "table" then
+        local unitId, trainer
+        for unitId, trainer in pairs(db.trainers) do
+            if type(trainer) == "table" and trainer[1] == 0
+                and trainer[2] == playerClassId then
+                local unit = self:GetUnit(unitId)
+                Append("trainer", unitId, unit and unit.fac)
+            end
+        end
+    end
+
+    table.sort(locations, function(left, right)
+        if left.category ~= right.category then
+            return left.category < right.category
+        end
+        if left.name ~= right.name then
+            return left.name < right.name
+        end
+        if left.x ~= right.x then
+            return left.x < right.x
+        end
+        return left.y < right.y
+    end)
+
+    self.serviceLocationCache[cacheKey] = locations
+    return locations
 end
 
 -- Item-use objectives -------------------------------------------------------
@@ -451,6 +646,91 @@ function Database:GetQuestLocations(questId, isComplete, areaId, limit)
     return locations
 end
 
+-- Every distinct area a quest's objective or finisher relation has a recorded
+-- coordinate in, WITHOUT GetQuestLocations' current-zone filter. This cannot
+-- place a pin -- the map layer only ever draws in the player's own uniquely
+-- resolved current area -- but it answers a narrower, honestly-answerable
+-- question a pin cannot: which zone(s) does the static data say this quest's
+-- objectives or turn-in are actually in, so a caller can at least NAME the
+-- zone to travel to when nothing is renderable in the current view. Same
+-- relation-walking shape as GetQuestLocations (unit/object direct sources,
+-- plus item-use sources), traversed the same way so the two can never
+-- disagree about what "this quest's locations" means.
+function Database:GetQuestAreaIds(questId, isComplete)
+    if not db or type(questId) ~= "number" then
+        return {}
+    end
+    local relation
+    if isComplete then
+        relation = self:GetQuestFinishers(questId)
+    else
+        relation = self:GetQuestObjectiveSources(questId)
+    end
+    if type(relation) ~= "table" then
+        return {}
+    end
+
+    local seen = {}
+    local areaIds = {}
+
+    local function AppendAreasFrom(record)
+        if type(record) ~= "table" or type(record.coords) ~= "table" then
+            return
+        end
+        local index = 1
+        local total = table.getn(record.coords)
+        while index <= total do
+            local coordinate = record.coords[index]
+            if type(coordinate) == "table" and type(coordinate[3]) == "number"
+                and not seen[coordinate[3]] then
+                seen[coordinate[3]] = true
+                table.insert(areaIds, coordinate[3])
+            end
+            index = index + 1
+        end
+    end
+
+    local function AppendRelationSources(sourceType, sources)
+        if type(sources) ~= "table" then
+            return
+        end
+        local sourceId
+        for _, sourceId in pairs(sources) do
+            if sourceType == "unit" then
+                AppendAreasFrom(self:GetUnit(sourceId))
+            else
+                AppendAreasFrom(self:GetObject(sourceId))
+            end
+        end
+    end
+
+    AppendRelationSources("unit", relation.U)
+    AppendRelationSources("object", relation.O)
+
+    if type(relation.I) == "table" then
+        local itemId
+        for _, itemId in pairs(relation.I) do
+            local item = self:GetItem(itemId)
+            if type(item) == "table" then
+                if type(item.U) == "table" then
+                    local unitId
+                    for unitId in pairs(item.U) do
+                        AppendAreasFrom(self:GetUnit(unitId))
+                    end
+                end
+                if type(item.O) == "table" then
+                    local objectId
+                    for objectId in pairs(item.O) do
+                        AppendAreasFrom(self:GetObject(objectId))
+                    end
+                end
+            end
+        end
+    end
+
+    return areaIds
+end
+
 -- Coordinates for one named entity in one area, in the same row shape
 -- GetQuestLocations produces. Used by the map layer to place an item-use
 -- target once it has established the required item is carried, which is a
@@ -511,7 +791,7 @@ function Database:IndexChunk()
         self.titleIndex = {}
     end
 
-    local texts = db.quests_enUS
+    local texts = LocaleTable("quests")
     if type(texts) ~= "table" then
         self.indexReady = true
         return

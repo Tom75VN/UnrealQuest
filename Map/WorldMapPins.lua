@@ -4,13 +4,24 @@ UnrealQuest / Map/WorldMapPins.lua
 Quest areas and numbered markers on the native fullscreen map.
 
 Scope is intentionally narrow and evidence-bounded:
-  * only active quests with a non-ambiguous database match;
+  * active quests with either one resolved database match or the safe union of
+    every still-possible same-title candidate;
   * only direct coordinates in the player's uniquely resolved current area;
   * only while GetPlayerMapPosition confirms that area is the selected view;
   * no child-area transforms, continent projection, minimap or waypoint arrow.
 
 Nearby objective locations are merged into translucent blue areas; a completed
 quest uses green. Area tiles are pooled and refreshed on the shared driver.
+
+TWO PRESENTATIONS, ONE SCENE. The `mapObjectiveDots` setting decides which is
+drawn, and it DEFAULTS TO THE DOTS: one dot per raw spawn point, in the
+minimap's own style, so both map layers show the player the same shape. Turning
+it off restores the areas above -- the same quests, the same colours, the same
+hover tooltip, a region instead of positions. It is a presentation switch and nothing more: the same pooled frames
+carry both shapes (see ApplyObjectiveStyle), so hovering, the turn-in link,
+Ctrl+click flashing and /uq map's counters are identical either way, and no
+other layer -- givers, turn-ins, the minimap, the waypoint -- can tell which
+one is on screen.
 
 One class of objective is deliberately conditional. Where a quest requires an
 item to be *used* on a unit or object (Data/Database.lua, GetQuestItemUseTargets)
@@ -93,6 +104,25 @@ local COMPLETE_AREA_ALPHA = 0.5
 -- measured band rather than leaning on transparency to signal selection.
 local MAIN_AREA_ALPHA = 0.5
 
+-- The second objective presentation, chosen by the `mapObjectiveDots` setting.
+--
+-- The blue area above answers "somewhere in here". This answers "exactly
+-- here", drawing one dot per raw spawn point in the same style the minimap
+-- already uses -- Client.MINIMAP_OBJECTIVE_TEXTURE, tinted with the very same
+-- colours the tiles are tinted with, so the two modes disagree about shape and
+-- about nothing else.
+--
+-- They also share the pool. A dot is an areaPool frame with a different
+-- texture and a fixed pixel size, which is what keeps the hover tooltip, the
+-- turn-in link, /uq map's counters and Ctrl+click flashing working in both
+-- modes without a second copy of any of it.
+local DOT_SIZE = 10
+local DOT_ALPHA = 1
+-- Raw spawns are not reduced to cells. Do not crop an individual quest's
+-- cloud: Gold Dust Exchange alone has 97 distinct Elwynn positions, and a
+-- 60-dot per-quest cap made part of Fargodeep Mine disappear compared with
+-- pfQuest. The shared pool remains the map-wide safety bound.
+
 local MAX_GIVER_MARKERS = 40
 -- Offset so giver pin frame names never collide with the quest markers
 -- (1..MAX_MARKERS) or the area tiles (+500), which share the same
@@ -131,11 +161,23 @@ local TURNIN_ICON_WIDTH = TURNIN_ICON_HEIGHT * 19 / 32
 -- identical. When greyscale works, the "?" is drawn at full brightness like
 -- the "!" and this is never applied -- see the turn-in pass below.
 local TURNIN_DIM = 0.55
--- Hovering one "!" or "?" grows it and dims every other "!"/"?" to half
--- opacity, so the hovered marker reads as the one under the mouse. Area
--- tiles are untouched -- they already have their own hover presentation.
+-- Hovering one "!" or "?" grows it so the hovered marker reads as the one
+-- under the mouse. Other markers keep their own size and opacity -- area
+-- tiles are untouched too, they already have their own hover presentation.
 local GIVER_TURNIN_HOVER_SCALE = 1.5
-local GIVER_TURNIN_DIM_ALPHA = 0.5
+-- Two markers whose centres are closer together than this many pixels on the
+-- canvas cannot be separated with the mouse, so hovering either one describes
+-- both. Half the pins' own 14x14 width, deliberately: the criterion is icons
+-- that actually collide -- centres inside each other's glyph -- not merely
+-- icons that are near neighbours. A full pin width was tried first and swept
+-- in markers a player can still pick apart, which made busy corners produce
+-- tooltips carrying far more quests than the spot under the cursor holds.
+local CLUSTER_RADIUS_PIXELS = 7
+-- How many markers one tooltip will describe, the hovered one included. A busy
+-- town corner can stack more quest text than fits on screen; past this the
+-- tooltip reports how many it left out instead of running off the map.
+local MAX_CLUSTER_ENTRIES = 4
+
 -- Hovering a "?" is the mirror of hovering its area: the objective tiles for
 -- whichever quest that turn-in point carries lighten towards white and go
 -- more opaque, recomputed every Refresh tick (area colour is, unlike pin
@@ -243,17 +285,51 @@ end
 -- what the map should show without anything about the quest log or the view
 -- itself moving. The token only advances when the carried set's membership
 -- changes, so an ordinary bag shuffle does not force a rebuild.
+-- Whether objectives are drawn as dots rather than as blue areas. Read on
+-- every refresh rather than latched at load: the options page writes the
+-- setting straight to the config, and the view signature below carries the
+-- answer so flipping it repaints on the next tick with nothing to notify.
+local function ObjectiveDotsEnabled()
+    local config = UQ:GetModule("Config")
+    if not config then
+        return false
+    end
+    return config:Get("mapObjectiveDots") and true or false
+end
+
+-- Whether one hover describes every marker whose icon collides with it. Read
+-- per hover, like ObjectiveDotsEnabled above and for the same reason: the
+-- options page writes straight to the config, and a tooltip is built fresh
+-- every time, so flipping the setting takes effect on the next hover with
+-- nothing here to notify.
+local function ClusterTooltipsEnabled()
+    local config = UQ:GetModule("Config")
+    if not config then
+        return true
+    end
+    return config:Get("mapClusterTooltips") and true or false
+end
+
 local function ViewSignature(areaId, report)
     local bagItems = BagItems()
     return tostring(areaId) .. "|" .. tostring(report and report.mapFile)
         .. "|" .. tostring(report and report.continent)
         .. "|" .. tostring(report and report.zoneIndex)
         .. "|" .. tostring(bagItems and bagItems:GetToken())
+        -- The presentation is part of the view: switching between areas and
+        -- dots changes every objective frame's texture, size and placement,
+        -- and a signature that ignored it would leave the old shape on screen
+        -- until something else happened to dirty the layer.
+        .. "|" .. tostring(ObjectiveDotsEnabled())
 end
 
 local function IsResolvedQuest(quest)
     return quest and type(quest.questId) == "number"
-        and (quest.matchConfidence == "unique" or quest.matchConfidence == "levelDisambiguated")
+        and (quest.matchConfidence == "unique" or quest.matchConfidence == "levelDisambiguated"
+            or quest.matchConfidence == "eligibilityDisambiguated"
+            or quest.matchConfidence == "textDisambiguated"
+            or quest.matchConfidence == "objectiveDisambiguated"
+            or quest.matchConfidence == "textObjectiveDisambiguated")
 end
 
 -- Quests kept off the world map for every player by default: their objective
@@ -279,6 +355,85 @@ local function IsQuestMapHidden(config, questId)
         end
     end
     return DEFAULT_HIDDEN_QUEST_IDS[questId] == true
+end
+
+-- Database IDs whose locations are safe to draw for one live quest row.
+--
+-- A resolved row contributes its one ID. An honestly ambiguous row contributes
+-- every same-title candidate instead: the map is allowed to over-show the
+-- union of possible locations, but identity-sensitive consumers must keep
+-- using IsResolvedQuest and must not pretend one of these IDs was proven.
+-- This conservative fallback is specific to UnrealQuest. pfQuest's active
+-- quest-log path takes the first best-scoring candidate; it is prior art for
+-- text-token normalization, not for candidate-union map rendering.
+local function GetQuestMapIds(quest)
+    local ids = {}
+    if IsResolvedQuest(quest) then
+        table.insert(ids, quest.questId)
+        return ids
+    end
+    if not quest or quest.matchConfidence ~= "ambiguous" then
+        return ids
+    end
+
+    local candidates = quest.matchMapCandidates or quest.matchCandidates
+    if type(candidates) ~= "table" then
+        return ids
+    end
+
+    local seen = {}
+    local index = 1
+    local total = table.getn(candidates)
+    while index <= total do
+        local questId = candidates[index]
+        if type(questId) == "number" and not seen[questId] then
+            seen[questId] = true
+            table.insert(ids, questId)
+        end
+        index = index + 1
+    end
+    return ids
+end
+
+-- Union and deduplicate the locations of every drawable candidate. The hard
+-- bound remains per live quest row, not per candidate, so one ambiguous title
+-- cannot consume more map work or pooled tiles than a resolved quest.
+local function CollectQuestMapLocations(quest, areaId, complete, config)
+    local questTarget = QuestTarget()
+    if not questTarget then
+        return {}, 0, 0
+    end
+    local ids = GetQuestMapIds(quest)
+    local locations = {}
+    local seen = {}
+    local unknown = 0
+    local usedIds = 0
+    local idIndex = 1
+    local idTotal = table.getn(ids)
+    while idIndex <= idTotal and table.getn(locations) < MAX_LOCATIONS_PER_QUEST do
+        local questId = ids[idIndex]
+        if not IsQuestMapHidden(config, questId) then
+            usedIds = usedIds + 1
+            local candidate = { questId = questId }
+            local found, withheld = questTarget:CollectLocations(candidate, areaId, complete)
+            unknown = unknown + withheld
+            local locationIndex = 1
+            local locationTotal = table.getn(found)
+            while locationIndex <= locationTotal
+                and table.getn(locations) < MAX_LOCATIONS_PER_QUEST do
+                local location = found[locationIndex]
+                local key = tostring(location.sourceType) .. ":" .. tostring(location.sourceId)
+                    .. ":" .. tostring(location.x) .. ":" .. tostring(location.y)
+                if not seen[key] then
+                    seen[key] = true
+                    table.insert(locations, location)
+                end
+                locationIndex = locationIndex + 1
+            end
+        end
+        idIndex = idIndex + 1
+    end
+    return locations, unknown, usedIds
 end
 
 -- Read-only: callers must not mutate the returned table.
@@ -359,35 +514,55 @@ local function CollectTurnInPoints(database, quests, areaId, includeInProgress, 
     while questIndex <= questTotal do
         local quest = quests[questIndex]
         local complete = quest and quest.isComplete == 1
-        if IsResolvedQuest(quest) and not IsQuestMapHidden(config, quest.questId)
-            and (complete or includeInProgress) then
-            local locations = database:GetQuestLocations(
-                quest.questId, true, areaId, MAX_TURNIN_LOCATIONS_PER_QUEST)
-            local index = 1
-            local total = table.getn(locations)
-            while index <= total do
-                local location = locations[index]
-                local key = location.sourceType .. ":" .. tostring(location.sourceId)
-                    .. ":" .. tostring(location.x) .. ":" .. tostring(location.y)
-                local point = points[key]
-                if not point then
-                    point = {
-                        x = location.x,
-                        y = location.y,
-                        areaId = areaId,
-                        sourceType = location.sourceType,
-                        sourceId = location.sourceId,
-                        quests = {},
-                        complete = false,
-                    }
-                    points[key] = point
-                    table.insert(ordered, point)
+        if quest and (complete or includeInProgress) then
+            local ids = GetQuestMapIds(quest)
+            local idIndex = 1
+            local idTotal = table.getn(ids)
+            while idIndex <= idTotal do
+                local questId = ids[idIndex]
+                local locations = {}
+                if not IsQuestMapHidden(config, questId) then
+                    locations = database:GetQuestLocations(
+                        questId, true, areaId, MAX_TURNIN_LOCATIONS_PER_QUEST)
                 end
-                table.insert(point.quests, quest)
-                if complete then
-                    point.complete = true
+                local index = 1
+                local total = table.getn(locations)
+                while index <= total do
+                    local location = locations[index]
+                    local key = location.sourceType .. ":" .. tostring(location.sourceId)
+                        .. ":" .. tostring(location.x) .. ":" .. tostring(location.y)
+                    local point = points[key]
+                    if not point then
+                        point = {
+                            x = location.x,
+                            y = location.y,
+                            areaId = areaId,
+                            sourceType = location.sourceType,
+                            sourceId = location.sourceId,
+                            quests = {},
+                            complete = false,
+                        }
+                        points[key] = point
+                        table.insert(ordered, point)
+                    end
+                    local carriesQuest = false
+                    local carriedIndex = 1
+                    local carriedTotal = table.getn(point.quests)
+                    while carriedIndex <= carriedTotal do
+                        if point.quests[carriedIndex] == quest then
+                            carriesQuest = true
+                        end
+                        carriedIndex = carriedIndex + 1
+                    end
+                    if not carriesQuest then
+                        table.insert(point.quests, quest)
+                    end
+                    if complete then
+                        point.complete = true
+                    end
+                    index = index + 1
                 end
-                index = index + 1
+                idIndex = idIndex + 1
             end
         end
         questIndex = questIndex + 1
@@ -397,15 +572,18 @@ end
 
 -- True when a turn-in point carries the given quest among the (possibly
 -- several) quests that end there.
-local function PointHasQuest(point, questId)
-    if not point or not point.quests or not questId then
+local function PointHasQuest(point, wanted)
+    if not point or not point.quests or not wanted then
         return false
     end
     local index = 1
     local total = table.getn(point.quests)
     while index <= total do
         local quest = point.quests[index]
-        if quest and quest.questId == questId then
+        if type(wanted) == "table" and quest == wanted then
+            return true
+        end
+        if type(wanted) == "number" and quest and quest.questId == wanted then
             return true
         end
         index = index + 1
@@ -423,7 +601,7 @@ end
 -- way to mark a quest done by hand, and an unadvertised feature is
 -- indistinguishable from a broken one -- which is exactly how it was reported.
 -- The hint is worded as an instruction, not a promise about the client.
-local function BuildGiverTooltipLines(database, giver, availableQuestIds)
+local function BuildGiverTooltipLines(database, giver, availableQuestIds, suppressHint)
     local lines = {}
     local name = giver.sourceType == "unit" and database:GetUnitName(giver.sourceId)
         or database:GetObjectName(giver.sourceId)
@@ -475,7 +653,11 @@ local function BuildGiverTooltipLines(database, giver, availableQuestIds)
     -- another quest line. The wording tracks what the click will actually do
     -- on THIS pin -- promising a straight mark-done on a giver that is about
     -- to open a picker instead is how the gesture came to read as broken.
-    if total > 1 then
+    if suppressHint then
+        -- A neighbour's block inside a clustered tooltip. The gesture acts on
+        -- whatever the cursor is actually over, so advertising it under a
+        -- marker the player is not hovering would promise the wrong thing.
+    elseif total > 1 then
         table.insert(lines, {
             text = "Shift-click to choose which quest is already done",
             r = 0.5, g = 0.5, b = 0.5,
@@ -640,7 +822,7 @@ end
 -- session of shift-clicking markers that never disappear can be told apart
 -- from "the click never reached the addon" purely from SavedVariables --
 -- worldMapPinInteraction is unverified precisely because that has never been
--- observed (docs/CLIENT-COMPATIBILITY.md, open question 8). Shift state is
+-- observed (docs/CLIENT-COMPATIBILITY.md, open question 9). Shift state is
 -- recorded separately because a click reaching the addon without the shift
 -- flag reading true would isolate a modifier-detection problem instead.
 -- The discriminator for the open worldMapPinInteraction question. areaHovers
@@ -703,6 +885,11 @@ local function RecordSnapshot(config)
         .. "|" .. tostring(snapshot.pinShown) .. "|" .. tostring(snapshot.pinVisible)
         .. "|" .. tostring(snapshot.textureShown) .. "|" .. tostring(snapshot.textureVisible)
         .. "|" .. tostring(snapshot.canvasLeft) .. "|" .. tostring(snapshot.canvasTop)
+        -- The sampled frame's own geometry is part of the key because the two
+        -- objective presentations differ in exactly that: without it, the
+        -- persisted pinWidth/pinHeight would still describe the shape the map
+        -- was drawn in before the player switched modes.
+        .. "|" .. tostring(snapshot.pinWidth) .. "|" .. tostring(snapshot.pinHeight)
     if key == WorldMapPins.lastSnapshotKey then
         return
     end
@@ -767,6 +954,11 @@ local function RecordDiagnostic(state, areaId, report, matchedQuests, candidates
                 and "fileBackedAreasAndNumberedMarkersV1"
                 or "fileBackedAreasHoverTooltipV1")
             or "componentMarkersBaselineAreaDisabled")
+    -- Which of the two objective presentations the pool is currently painted
+    -- with. Persisted alongside renderMode so a screenshot of "no blue area"
+    -- can be told apart from "the area is drawn as dots".
+    config:SetSectionEntry("mapDiagnostics", "objectiveStyle",
+        ObjectiveDotsEnabled() and "dots" or "areas")
     config:SetSectionEntry("mapDiagnostics", "presentationTrace", "questAreaIsolationV1")
     RecordSnapshot(config)
     config:SetSectionEntry("mapDiagnostics", "recordedAt", Client.Now() or 0)
@@ -833,7 +1025,7 @@ function WorldMapPins:OnAreaEnter(area)
     self:SetMarkerSuppressed(area.unrealQuestMarkerPin, true)
     -- Growing the "?" this quest hands in at links the objective area to its
     -- turn-in point the same way hovering a pin links it to itself.
-    self:ApplyTurnInHoverForQuest(quest.questId)
+    self:ApplyTurnInHoverForQuest(quest)
     Client.ShowMapTooltip(area, BuildQuestTooltipLines(database, quest))
     RecordHover(quest)
 end
@@ -858,7 +1050,7 @@ function WorldMapPins:OnAreaLeave(area)
     -- tile seam between two of its own cells would flicker it off and on.
     local hoveredQuest = hovered and hovered.unrealQuestQuest
     local leavingQuest = area.unrealQuestQuest
-    if not hoveredQuest or not leavingQuest or hoveredQuest.questId ~= leavingQuest.questId then
+    if not hoveredQuest or not leavingQuest or hoveredQuest ~= leavingQuest then
         self:ApplyTurnInHoverForQuest(nil)
     end
     -- Guarded by the tooltip's own owner check, so this cannot pull a tooltip
@@ -866,32 +1058,125 @@ function WorldMapPins:OnAreaLeave(area)
     Client.HideMapTooltip(area)
 end
 
--- Grows the "?" turn-in pin(s) carrying the given quest and dims every other
--- "?" to half opacity, mirroring ApplyGiverTurnInHover's own-pin-hover
--- treatment but keyed off a quest instead of a specific pin -- one turn-in
--- point can carry several quests, and a quest's turn-in can in principle be
--- split across more than one pooled pin. Passing nil restores every "?" to
--- its base size and full opacity. The "!" pool is untouched: an objective
--- area only ever links forward to where the quest is handed in.
-function WorldMapPins:ApplyTurnInHoverForQuest(questId)
+-- Grows the "?" turn-in pin(s) carrying the given quest, mirroring
+-- ApplyGiverTurnInHover's own-pin-hover treatment but keyed off a quest
+-- instead of a specific pin -- one turn-in point can carry several quests,
+-- and a quest's turn-in can in principle be split across more than one
+-- pooled pin. Passing nil restores every "?" to its base size. The "!" pool
+-- is untouched: an objective area only ever links forward to where the
+-- quest is handed in.
+function WorldMapPins:ApplyTurnInHoverForQuest(quest)
     local pool = self.turnInPool
     local index = 1
     local total = table.getn(pool)
     while index <= total do
         local pin = pool[index]
         if pin and pin.unrealQuestBaseWidth and pin.unrealQuestBaseHeight then
-            if questId and PointHasQuest(pin.unrealQuestTurnIn, questId) then
+            if quest and PointHasQuest(pin.unrealQuestTurnIn, quest) then
                 Client.SetWorldMapPinSize(pin,
                     pin.unrealQuestBaseWidth * GIVER_TURNIN_HOVER_SCALE,
                     pin.unrealQuestBaseHeight * GIVER_TURNIN_HOVER_SCALE)
                 Client.SetWorldMapPinAlpha(pin, 1)
             else
                 Client.SetWorldMapPinSize(pin, pin.unrealQuestBaseWidth, pin.unrealQuestBaseHeight)
-                Client.SetWorldMapPinAlpha(pin, questId and GIVER_TURNIN_DIM_ALPHA or 1)
+                Client.SetWorldMapPinAlpha(pin, 1)
             end
         end
         index = index + 1
     end
+end
+
+-- Ctrl+click on a tracker row (Quest/TrackerFrame.lua) calls this to make a
+-- quest's own map presence easy to spot among however many other pins are on
+-- screen. Both pools that can carry the quest are collected -- the area tile
+-- (where the objective is) and the "?" (where it hands in) -- because the
+-- click does not know which one the player actually needs, and a quest ready
+-- to turn in may have no area tile left at all.
+--
+-- This never opens the map itself (Client.OpenWorldMap is a separate,
+-- best-effort call from the tracker) and never invents a pin: if nothing
+-- carrying questId is currently rendered -- wrong zone, hidden, no unambiguous
+-- match, or the map's current-zone-only join simply does not cover it -- there
+-- is nothing to collect and this reports that honestly rather than guessing
+-- at a location.
+local FLASH_DURATION = 2.2
+local FLASH_HZ = 2.5
+local FLASH_MIN_ALPHA = 0.3
+local FLASH_MAX_ALPHA = 1.0
+
+local function CollectFlashTargets(questId)
+    local targets = {}
+    local pool = WorldMapPins.areaPool
+    local index = 1
+    local total = table.getn(pool)
+    while index <= total do
+        local area = pool[index]
+        if area and area.unrealQuestQuest and area.unrealQuestQuest.questId == questId
+            and Client.IsObjectShown(area) then
+            table.insert(targets, area)
+        end
+        index = index + 1
+    end
+    pool = WorldMapPins.turnInPool
+    index = 1
+    total = table.getn(pool)
+    while index <= total do
+        local pin = pool[index]
+        if pin and PointHasQuest(pin.unrealQuestTurnIn, questId) and Client.IsObjectShown(pin) then
+            table.insert(targets, pin)
+        end
+        index = index + 1
+    end
+    return targets
+end
+
+-- Pulses every target's whole-frame alpha (Client.SetWorldMapPinAlpha, the
+-- same stock SetAlpha already relied on for the waypoint marker and the
+-- turn-in hover dim) for FLASH_DURATION seconds, then hands every target back
+-- to WorldMapPins' OWN redraw by marking the layer dirty rather than trying to
+-- remember or recompute whatever alpha each one should settle back to -- the
+-- next scheduled refresh already knows that.
+function WorldMapPins:FlashQuest(questId)
+    if type(questId) ~= "number" then
+        return false
+    end
+    local targets = CollectFlashTargets(questId)
+    if table.getn(targets) == 0 then
+        return false
+    end
+    local driver = UQ:GetModule("Driver")
+    local start = Client.Now()
+    if not driver or not start then
+        return false
+    end
+    driver:Schedule("map.questflash", 0.05, function()
+        local now = Client.Now()
+        local elapsed = now and (now - start) or FLASH_DURATION
+        if elapsed < 0 or elapsed >= FLASH_DURATION then
+            local index = 1
+            local total = table.getn(targets)
+            while index <= total do
+                Client.SetWorldMapPinAlpha(targets[index], 1)
+                index = index + 1
+            end
+            WorldMapPins.dirty = true
+            local d = UQ:GetModule("Driver")
+            if d then
+                d:Unschedule("map.questflash")
+            end
+            return
+        end
+        local phase = elapsed * FLASH_HZ * 2 * math.pi
+        local alpha = FLASH_MIN_ALPHA
+            + (FLASH_MAX_ALPHA - FLASH_MIN_ALPHA) * (0.5 + 0.5 * math.sin(phase))
+        local index = 1
+        local total = table.getn(targets)
+        while index <= total do
+            Client.SetWorldMapPinAlpha(targets[index], alpha)
+            index = index + 1
+        end
+    end)
+    return true
 end
 
 -- Mouse scripts are attached once per pooled pin, at creation, never inside
@@ -930,6 +1215,111 @@ function WorldMapPins:GetGiverPin(index)
     return pin
 end
 
+-- Which builder a pooled pin's own content calls for. The two pin pools never
+-- swap roles, so the field that is present is the marker's kind.
+local function BuildPinTooltipLines(database, pin, isNeighbour)
+    if not pin then
+        return nil
+    end
+    if pin.unrealQuestGiver then
+        return BuildGiverTooltipLines(database, pin.unrealQuestGiver,
+            pin.unrealQuestAvailableQuestIds or {}, isNeighbour)
+    end
+    if pin.unrealQuestTurnIn then
+        return BuildTurnInTooltipLines(database, pin.unrealQuestTurnIn)
+    end
+    return nil
+end
+
+-- Markers a few pixels apart cannot be hovered apart -- two NPCs standing
+-- beside each other in a town land within one pin's width of each other, and
+-- whichever pin the pool placed last simply takes every OnEnter. Rather than
+-- fight for pixel precision, hovering anywhere in such a cluster describes
+-- every marker in it, so the player never has to hit the right one.
+--
+-- Only visible pins are considered: a pooled pin that fell out of range on
+-- the last rebuild keeps its stale map fractions, and the visible counts are
+-- the only thing that separates a placed marker from a hidden one.
+function WorldMapPins:AppendNearbyPins(cluster, hovered, pool, visibleCount, width, height)
+    local omitted = 0
+    local index = 1
+    local total = visibleCount or 0
+    while index <= total do
+        local other = pool[index]
+        if other and other ~= hovered
+            and type(other.unrealQuestMapX) == "number"
+            and type(other.unrealQuestMapY) == "number" then
+            local dx = (other.unrealQuestMapX - hovered.unrealQuestMapX) * width
+            local dy = (other.unrealQuestMapY - hovered.unrealQuestMapY) * height
+            if dx * dx + dy * dy <= CLUSTER_RADIUS_PIXELS * CLUSTER_RADIUS_PIXELS then
+                if table.getn(cluster) < MAX_CLUSTER_ENTRIES then
+                    table.insert(cluster, other)
+                else
+                    omitted = omitted + 1
+                end
+            end
+        end
+        index = index + 1
+    end
+    return omitted
+end
+
+-- The hovered marker always comes first, so the tooltip still reads as being
+-- about the thing under the cursor and its title line is still the one the
+-- client turns into the tooltip's heading.
+function WorldMapPins:CollectClusterPins(pin)
+    local cluster = { pin }
+    if not ClusterTooltipsEnabled() then
+        return cluster, 0
+    end
+    if type(pin.unrealQuestMapX) ~= "number" or type(pin.unrealQuestMapY) ~= "number" then
+        return cluster, 0
+    end
+    local width, height = Client.GetWorldMapCanvasSize()
+    if not width or not height then
+        return cluster, 0
+    end
+    local omitted = self:AppendNearbyPins(
+        cluster, pin, self.giverPool, self.giverVisibleCount, width, height)
+    omitted = omitted + self:AppendNearbyPins(
+        cluster, pin, self.turnInPool, self.turnInVisibleCount, width, height)
+    return cluster, omitted
+end
+
+-- One tooltip, one block per marker in the cluster, separated the same way
+-- several quests on a single giver already are -- so a cluster reads as more
+-- of the same list rather than as a different kind of tooltip.
+function WorldMapPins:BuildClusterTooltipLines(database, pin)
+    local cluster, omitted = self:CollectClusterPins(pin)
+    local lines = BuildPinTooltipLines(database, pin, false)
+    if not lines then
+        return nil
+    end
+    local index = 2
+    local total = table.getn(cluster)
+    while index <= total do
+        local block = BuildPinTooltipLines(database, cluster[index], true)
+        if block then
+            table.insert(lines, { separator = true })
+            local lineIndex = 1
+            local lineTotal = table.getn(block)
+            while lineIndex <= lineTotal do
+                table.insert(lines, block[lineIndex])
+                lineIndex = lineIndex + 1
+            end
+        end
+        index = index + 1
+    end
+    if omitted > 0 then
+        table.insert(lines, { separator = true })
+        table.insert(lines, {
+            text = "+ " .. tostring(omitted) .. " more marker(s) here",
+            r = 0.5, g = 0.5, b = 0.5,
+        })
+    end
+    return lines
+end
+
 function WorldMapPins:OnGiverEnter(pin)
     RecordGiverHover()
     self:ApplyGiverTurnInHover(pin)
@@ -943,8 +1333,7 @@ function WorldMapPins:OnGiverEnter(pin)
     if not database or not pin.unrealQuestGiver then
         return
     end
-    local lines = BuildGiverTooltipLines(database, pin.unrealQuestGiver, pin.unrealQuestAvailableQuestIds or {})
-    Client.ShowMapTooltip(pin, lines)
+    Client.ShowMapTooltip(pin, self:BuildClusterTooltipLines(database, pin))
 end
 
 function WorldMapPins:OnGiverLeave(pin)
@@ -1113,7 +1502,7 @@ function WorldMapPins:OnTurnInEnter(pin)
     if not database or not pin.unrealQuestTurnIn then
         return
     end
-    Client.ShowMapTooltip(pin, BuildTurnInTooltipLines(database, pin.unrealQuestTurnIn),
+    Client.ShowMapTooltip(pin, self:BuildClusterTooltipLines(database, pin),
         self:ChooseTurnInTooltipAnchor(pin))
 end
 
@@ -1133,7 +1522,7 @@ function WorldMapPins:ChooseTurnInTooltipAnchor(pin)
     while index <= total do
         local area = pool[index]
         if area and area.unrealQuestQuest and type(area.unrealQuestMapX) == "number"
-            and PointHasQuest(point, area.unrealQuestQuest.questId) then
+            and PointHasQuest(point, area.unrealQuestQuest) then
             if area.unrealQuestMapX >= pin.unrealQuestMapX then
                 linkedRight = true
             else
@@ -1179,12 +1568,12 @@ function WorldMapPins:WakeMapDriver()
     end
 end
 
--- Grows the hovered "!"/"?" and dims every other one to half opacity, so the
--- one under the mouse reads as distinct from the rest of the layer. Passing
--- nil restores every pin in both pools to its base size and full opacity.
--- Reapplied over the whole pool on every enter/leave rather than tracked
--- incrementally, matching the once-per-hover cost of the area tooltip path
--- above and staying correct across pool rebuilds without extra bookkeeping.
+-- Grows the hovered "!"/"?" so the one under the mouse reads as distinct
+-- from the rest of the layer. Passing nil restores every pin in both pools
+-- to its base size. Reapplied over the whole pool on every enter/leave
+-- rather than tracked incrementally, matching the once-per-hover cost of the
+-- area tooltip path above and staying correct across pool rebuilds without
+-- extra bookkeeping.
 function WorldMapPins:ApplyGiverTurnInHover(hoveredPin)
     local pools = { self.giverPool, self.turnInPool }
     local poolIndex = 1
@@ -1202,12 +1591,62 @@ function WorldMapPins:ApplyGiverTurnInHover(hoveredPin)
                     Client.SetWorldMapPinAlpha(pin, 1)
                 else
                     Client.SetWorldMapPinSize(pin, pin.unrealQuestBaseWidth, pin.unrealQuestBaseHeight)
-                    Client.SetWorldMapPinAlpha(pin, hoveredPin and GIVER_TURNIN_DIM_ALPHA or 1)
+                    Client.SetWorldMapPinAlpha(pin, 1)
                 end
             end
             index = index + 1
         end
         poolIndex = poolIndex + 1
+    end
+end
+
+-- The colour one quest's objectives are drawn in, shared by both
+-- presentations so a dot and a tile can never disagree about what state a
+-- quest is in. The alpha it returns belongs to the tiles; a dot is opaque and
+-- carries the same hover highlight through the colour alone.
+local function ObjectiveColor(quest, complete, isMain)
+    local r, g, b, a
+    if complete and isMain then
+        r, g, b, a = 0.55, 1, 0.55, MAIN_AREA_ALPHA
+    elseif complete then
+        r, g, b, a = 0.2, 1, 0.2, COMPLETE_AREA_ALPHA
+    elseif isMain then
+        -- Alpha alone would not separate this from the other blue tiles, so
+        -- the main quest shifts towards a paler blue as well. Alpha stays at
+        -- the 0.5 probe 1.29.0 confirmed visible: the first 0.2 run was
+        -- confirmed INVISIBLE on this client, so nothing here may go below it.
+        r, g, b, a = 0.45, 0.82, 1, MAIN_AREA_ALPHA
+    else
+        r, g, b, a = 0.12, 0.55, 1, AREA_ALPHA
+    end
+    -- Hovering the "?" this quest hands in highlights its own objectives.
+    -- Recomputed here, every tick, rather than set once on hover: this colour
+    -- assignment already runs every Refresh, so a one-shot highlight would be
+    -- overwritten within one REFRESH_INTERVAL exactly like the marker
+    -- suppression case above.
+    local hoverPoint = WorldMapPins.hoverTurnInPin and WorldMapPins.hoverTurnInPin.unrealQuestTurnIn
+    if hoverPoint and PointHasQuest(hoverPoint, quest) then
+        r = r + (1 - r) * AREA_HIGHLIGHT_LIGHTEN
+        g = g + (1 - g) * AREA_HIGHLIGHT_LIGHTEN
+        b = b + (1 - b) * AREA_HIGHLIGHT_LIGHTEN
+        a = AREA_HIGHLIGHT_ALPHA
+    end
+    return r, g, b, a
+end
+
+-- Swaps one pooled objective frame between the two presentations. Guarded on
+-- the flag it stores: SetTexture is the only call in this path that is not a
+-- field write, and a pool that never changes mode must not pay for one on
+-- every rebuild.
+local function ApplyObjectiveStyle(area, dots)
+    if not area or area.unrealQuestDotStyle == dots then
+        return
+    end
+    area.unrealQuestDotStyle = dots
+    if dots then
+        Client.SetWorldMapPinTexture(area, Client.MINIMAP_OBJECTIVE_TEXTURE)
+    else
+        Client.SetWorldMapPinTexture(area, Client.WORLD_MAP_PIN_TEXTURE)
     end
 end
 
@@ -1303,6 +1742,10 @@ function WorldMapPins:Refresh()
     -- with a quest that has one means the container API, not the data, is what
     -- is keeping the target off the map.
     local itemUseUnknown = 0
+    -- Resolved once per rebuild, not once per quest: the setting cannot change
+    -- half way through a pass, and the signature above already forced this
+    -- rebuild if it changed since the last one.
+    local dotsMode = ObjectiveDotsEnabled()
     local quests = questState:GetOrderedQuests()
     local questIndex = 1
     local questTotal = table.getn(quests)
@@ -1312,8 +1755,12 @@ function WorldMapPins:Refresh()
     local activeQuestIds = {}
     while questIndex <= questTotal do
         local activeQuest = quests[questIndex]
-        if IsResolvedQuest(activeQuest) then
-            activeQuestIds[activeQuest.questId] = true
+        local activeIds = GetQuestMapIds(activeQuest)
+        local activeIdIndex = 1
+        local activeIdTotal = table.getn(activeIds)
+        while activeIdIndex <= activeIdTotal do
+            activeQuestIds[activeIds[activeIdIndex]] = true
+            activeIdIndex = activeIdIndex + 1
         end
         questIndex = questIndex + 1
     end
@@ -1324,11 +1771,11 @@ function WorldMapPins:Refresh()
     -- tiles and turn-in marker are withheld below.
     while questIndex <= questTotal and markerIndex <= MAX_MARKERS do
         local quest = quests[questIndex]
-        if IsResolvedQuest(quest) and not IsQuestMapHidden(rebuildConfig, quest.questId) then
+        local locations, unknown, usedIds = CollectQuestMapLocations(
+            quest, areaId, quest and quest.isComplete == 1, rebuildConfig)
+        if usedIds > 0 then
             matchedQuests = matchedQuests + 1
             local complete = quest.isComplete == 1
-            local locations, unknown = questTarget:CollectLocations(
-                quest, areaId, complete)
             itemUseUnknown = itemUseUnknown + unknown
             candidateLocations = candidateLocations + table.getn(locations)
             local components = questTarget:BuildComponents(locations)
@@ -1342,67 +1789,77 @@ function WorldMapPins:Refresh()
             -- slots, which is what lets the marker be handed back to them once
             -- it is known to have been placed.
             local questAreaFirst = areaIndex
-            local componentIndex = 1
-            local componentTotal = table.getn(components)
-            while componentIndex <= componentTotal do
-                local component = components[componentIndex]
-                local cellIndex = 1
-                local cellTotal = table.getn(component.cells)
-                while AREA_RENDER_ENABLED and cellIndex <= cellTotal and areaIndex <= MAX_AREA_TILES do
-                    local cell = component.cells[cellIndex]
-                    local areaX, areaY = mapContext:DatabaseToCurrentMap(
-                        areaId, cell.x, cell.y, report)
-                    if areaX and areaY then
-                        local area = self:GetArea(areaIndex)
-                        if area then
-                            local r, g, b, a
-                            if complete and isMain then
-                                r, g, b, a = 0.55, 1, 0.55, MAIN_AREA_ALPHA
-                            elseif complete then
-                                r, g, b, a = 0.2, 1, 0.2, COMPLETE_AREA_ALPHA
-                            elseif isMain then
-                                -- Alpha alone would not separate this from the
-                                -- other blue tiles, so the main quest shifts
-                                -- towards a paler blue as well. Alpha stays at
-                                -- the 0.5 probe 1.29.0 confirmed visible: the
-                                -- first 0.2 run was confirmed INVISIBLE on this
-                                -- client, so nothing here may go below it.
-                                r, g, b, a = 0.45, 0.82, 1, MAIN_AREA_ALPHA
-                            else
-                                r, g, b, a = 0.12, 0.55, 1, AREA_ALPHA
-                            end
-                            -- Hovering the "?" this quest hands in highlights
-                            -- its own objective tiles. Recomputed here, every
-                            -- tick, rather than set once on hover: this colour
-                            -- assignment already runs every Refresh, so a
-                            -- one-shot highlight would be overwritten within
-                            -- one REFRESH_INTERVAL exactly like the marker
-                            -- suppression case above.
-                            local hoverPoint = self.hoverTurnInPin and self.hoverTurnInPin.unrealQuestTurnIn
-                            if hoverPoint and PointHasQuest(hoverPoint, quest.questId) then
-                                r = r + (1 - r) * AREA_HIGHLIGHT_LIGHTEN
-                                g = g + (1 - g) * AREA_HIGHLIGHT_LIGHTEN
-                                b = b + (1 - b) * AREA_HIGHLIGHT_LIGHTEN
-                                a = AREA_HIGHLIGHT_ALPHA
-                            end
-                            Client.SetWorldMapAreaColor(area, r, g, b, a)
-                            if Client.PositionWorldMapArea(
-                                area, areaX, areaY,
-                                questTarget.CELL_PERCENT, questTarget.CELL_PERCENT) then
-                                area.unrealQuestQuest = quest
-                                area.unrealQuestMarkerPin = nil
-                                areaIndex = areaIndex + 1
+            if dotsMode then
+                -- One dot per raw spawn point, deduplicated by coordinate.
+                -- These are the very points BuildComponents reduces to cells
+                -- above; drawing them unreduced is the whole difference
+                -- between the two presentations.
+                local dotSeen = {}
+                local locationIndex = 1
+                local locationTotal = table.getn(locations)
+                while AREA_RENDER_ENABLED and locationIndex <= locationTotal
+                    and areaIndex <= MAX_AREA_TILES do
+                    local location = locations[locationIndex]
+                    local dotKey = tostring(location.x) .. ":" .. tostring(location.y)
+                    if not dotSeen[dotKey] then
+                        dotSeen[dotKey] = true
+                        local dotX, dotY = mapContext:DatabaseToCurrentMap(
+                            areaId, location.x, location.y, report)
+                        if dotX and dotY then
+                            local area = self:GetArea(areaIndex)
+                            if area then
+                                local r, g, b = ObjectiveColor(quest, complete, isMain)
+                                ApplyObjectiveStyle(area, true)
+                                Client.SetWorldMapAreaColor(area, r, g, b, DOT_ALPHA)
+                                if Client.PositionWorldMapDot(area, dotX, dotY, DOT_SIZE) then
+                                    area.unrealQuestQuest = quest
+                                    area.unrealQuestMarkerPin = nil
+                                    areaIndex = areaIndex + 1
+                                else
+                                    pinFailures = pinFailures + 1
+                                end
                             else
                                 pinFailures = pinFailures + 1
                             end
-                        else
-                            pinFailures = pinFailures + 1
                         end
                     end
-                    cellIndex = cellIndex + 1
+                    locationIndex = locationIndex + 1
                 end
+            else
+                local componentIndex = 1
+                local componentTotal = table.getn(components)
+                while componentIndex <= componentTotal do
+                    local component = components[componentIndex]
+                    local cellIndex = 1
+                    local cellTotal = table.getn(component.cells)
+                    while AREA_RENDER_ENABLED and cellIndex <= cellTotal and areaIndex <= MAX_AREA_TILES do
+                        local cell = component.cells[cellIndex]
+                        local areaX, areaY = mapContext:DatabaseToCurrentMap(
+                            areaId, cell.x, cell.y, report)
+                        if areaX and areaY then
+                            local area = self:GetArea(areaIndex)
+                            if area then
+                                local r, g, b, a = ObjectiveColor(quest, complete, isMain)
+                                ApplyObjectiveStyle(area, false)
+                                Client.SetWorldMapAreaColor(area, r, g, b, a)
+                                if Client.PositionWorldMapArea(
+                                    area, areaX, areaY,
+                                    questTarget.CELL_PERCENT, questTarget.CELL_PERCENT) then
+                                    area.unrealQuestQuest = quest
+                                    area.unrealQuestMarkerPin = nil
+                                    areaIndex = areaIndex + 1
+                                else
+                                    pinFailures = pinFailures + 1
+                                end
+                            else
+                                pinFailures = pinFailures + 1
+                            end
+                        end
+                        cellIndex = cellIndex + 1
+                    end
 
-                componentIndex = componentIndex + 1
+                    componentIndex = componentIndex + 1
+                end
             end
 
             local markerPin = nil
@@ -1482,9 +1939,9 @@ function WorldMapPins:Refresh()
     end
 
     -- Turn-in "?" markers. This pass needs no readiness gate of its own: it
-    -- walks the quest log, not the database, and every quest it reads has
-    -- already been resolved to an ID by the matcher, which is only possible
-    -- once the title index is ready -- a condition Refresh checked above.
+    -- walks the quest log, not the database, and every resolved or ambiguous
+    -- candidate set it reads exists only after the title index is ready -- a
+    -- condition Refresh checked above.
     local turnInMarkerIndex = 1
     local turnInPoints = CollectTurnInPoints(
         database, quests, areaId, ShowInProgressTurnIns(), rebuildConfig)
@@ -1578,8 +2035,9 @@ end
 -- These are thin wrappers over the locals above and hold no state of their
 -- own; calling them does not disturb this layer's own refresh cycle.
 
--- Whether a quest has a database match confident enough to draw. A hypothesis
--- with a confidence, never an identity -- see the addon's matching rules.
+-- Whether a quest has one resolved database identity. Ambiguous candidates
+-- are intentionally false here even though CollectQuestLocations can draw
+-- their union; identity-sensitive consumers must never confuse the two.
 function WorldMapPins:IsResolvedQuest(quest)
     return IsResolvedQuest(quest)
 end
@@ -1592,12 +2050,22 @@ function WorldMapPins:BuildActiveQuestIds(quests)
     local total = table.getn(quests or {})
     while index <= total do
         local quest = quests[index]
-        if IsResolvedQuest(quest) then
-            active[quest.questId] = true
+        local ids = GetQuestMapIds(quest)
+        local idIndex = 1
+        local idTotal = table.getn(ids)
+        while idIndex <= idTotal do
+            active[ids[idIndex]] = true
+            idIndex = idIndex + 1
         end
         index = index + 1
     end
     return active
+end
+
+-- Safe location set for map-like consumers. Ambiguous identity remains
+-- unresolved everywhere else; only spatial renderers consume this union.
+function WorldMapPins:CollectQuestLocations(quest, areaId, complete, config)
+    return CollectQuestMapLocations(quest, areaId, complete, config)
 end
 
 -- Givers in one area with at least one quest this character could take now.
@@ -1647,6 +2115,7 @@ function WorldMapPins:GetStatus()
         turnInPooled = table.getn(self.turnInPool),
         inProgressTurnIns = ShowInProgressTurnIns(),
         areasEnabled = AREA_RENDER_ENABLED,
+        objectiveDots = ObjectiveDotsEnabled(),
         markersEnabled = MARKER_RENDER_ENABLED,
         renderEnabled = self.renderEnabled,
         areaHovers = self.hoverCount or 0,

@@ -124,10 +124,12 @@ local function ResolveIdentity(quest)
     if not matcher then
         return
     end
-    local questId, confidence, candidates = matcher:Resolve(quest.title, quest.level)
+    local questId, confidence, candidates, mapCandidates = matcher:Resolve(
+        quest.title, quest.level, quest.index, quest.rawTitle)
     quest.questId = questId
     quest.matchConfidence = confidence
     quest.matchCandidates = candidates
+    quest.matchMapCandidates = mapCandidates
 end
 
 function QuestState:Scan()
@@ -143,11 +145,23 @@ function QuestState:Scan()
     -- quest ID; anything keyed on quest IDs has to be told when that changes.
     local resolvedIdentities = 0
 
+    -- The zone a quest belongs to is not a property of the quest row: it is
+    -- whichever header row was passed last on the way down the log. Captured
+    -- here because it is free at this point and impossible to recover later --
+    -- the model keys quests by title and never revisits the raw index order.
+    local currentZone = nil
+
     local index = 1
     while index <= total do
-        local title, level, questTag, isHeader, isCollapsed, isComplete = Client.GetQuestLogEntry(index)
+        -- rawTitle is non-nil only when the client (or an addon hooking it)
+        -- decorated the title and Client.CleanQuestTitle took the decoration
+        -- back off. It is carried on the quest so the matcher can try the
+        -- client's own spelling against the database before the cleaned one.
+        local title, level, questTag, isHeader, isCollapsed, isComplete, rawTitle =
+            Client.GetQuestLogEntry(index)
         if title then
             if isHeader then
+                currentZone = title
                 if isCollapsed then
                     collapsed = collapsed + 1
                 end
@@ -163,12 +177,23 @@ function QuestState:Scan()
                     end
 
                     local previousComplete = quest.isComplete
+                    local previousLevel = quest.level
+                    local previousSeenAt = quest.seenAt
                     quest.index = index
                     quest.title = title
+                    quest.rawTitle = rawTitle
                     quest.level = level
                     quest.questTag = questTag
+                    quest.zone = currentZone
                     quest.isComplete = isComplete
                     quest.seenAt = self.scanCount
+
+                    local identityMayHaveChanged = not isNew and (
+                        previousLevel ~= level
+                        or (previousComplete == 1 and isComplete ~= 1)
+                        or (type(previousSeenAt) == "number"
+                            and previousSeenAt < self.scanCount - 1)
+                    )
 
                     if isNew then
                         ResolveIdentity(quest)
@@ -179,6 +204,18 @@ function QuestState:Scan()
                         -- appeared; retry now that it may be.
                         ResolveIdentity(quest)
                         if quest.matchConfidence ~= "indexing" then
+                            resolvedIdentities = resolvedIdentities + 1
+                        end
+                    elseif identityMayHaveChanged then
+                        -- A completed same-title chain step can be replaced by
+                        -- its follow-up between two polls, leaving no absent
+                        -- snapshot. Level changes and reappearance after a
+                        -- collapsed-header gap carry the same stale-ID risk.
+                        local previousQuestId = quest.questId
+                        local previousConfidence = quest.matchConfidence
+                        ResolveIdentity(quest)
+                        if quest.questId ~= previousQuestId
+                            or quest.matchConfidence ~= previousConfidence then
                             resolvedIdentities = resolvedIdentities + 1
                         end
                     end

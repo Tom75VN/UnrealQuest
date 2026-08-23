@@ -19,6 +19,10 @@ local MapContext = UQ:NewModule("MapContext")
 
 MapContext.zoneNameIndex = nil
 
+-- Set true after the first attempt (successful or not) to prime the client's
+-- map subsystem out of its post-login/reload cold state. See GetCurrentZoneView.
+MapContext.primeAttempted = false
+
 local function Database()
     return UQ:GetModule("Database")
 end
@@ -121,8 +125,28 @@ end
 -- specifically when no individual zone is selected, i.e. a continent or world
 -- view, so that is checked first and independently of the player-projection
 -- guard below.
+--
+-- zoneIndex == 0 is ambiguous on its own: immediately after login/reload,
+-- before this client's map subsystem has been touched this session, it reads
+-- the identical 0/nil signature as a genuine continent view (confirmed
+-- 2026-08-20, "Current-zone identification"). Left alone, the whole pin layer
+-- (world map, minimap, HUD waypoint) stays hidden on the very first map open
+-- until something coincidentally primes it. Probe mapcoldstart (2026-08-23)
+-- confirmed one Client.SetMapToCurrentZone() call resolves that exact cold
+-- signature -- zoneIndex 0, mapFile nil, player 0,0 -- into a real view, even
+-- called before WorldMapFrame was ever shown. Priming is attempted at most
+-- once per session (primeAttempted), so it can never fight a player who later
+-- deliberately zooms out to browse a continent -- that zoneIndex 0 is left
+-- alone and correctly hides the layer.
 function MapContext:GetCurrentZoneView()
     local report = self:Inspect()
+    if (not report.zoneIndex or report.zoneIndex == 0) and not report.mapFile
+        and not self.primeAttempted then
+        self.primeAttempted = true
+        if Client.SetMapToCurrentZone() then
+            report = self:Inspect()
+        end
+    end
     if not report.zoneIndex or report.zoneIndex == 0 then
         return nil, report, "continentView"
     end
@@ -188,4 +212,6 @@ function MapContext:OnInit()
         "probe 1.38.0 confirmed in game: children of Minimap render with the world-map contract, the mask does not clip them, and the zoom-0 span is 466.6 yards across a 140px minimap; IsIndoors is absent so the indoor scale cannot be selected; NO pin layer is implemented yet")
     UQ:DeclareCapability("mapZoomLevel", "documented",
         "GetCurrentMapZone is documented to return 0 when no individual zone is selected (continent or world view); used to hide the pin layer on zoom-out since GetPlayerMapPosition alone does not detect it -- the client also projects the player onto a same-continent view")
+    UQ:DeclareCapability("mapColdStartPriming", "verified",
+        "probe mapcoldstart 2026-08-23: zoneIndex 0/GetMapInfo nil/player 0,0 immediately after /reload, before the world map was ever shown, is the same signature as a genuine continent view; one Client.SetMapToCurrentZone() call resolved it into zoneIndex 14/mapFile Elwynn/a real player position, so GetCurrentZoneView primes it at most once per session on that exact signature")
 end

@@ -13,7 +13,9 @@ What it draws, and what it deliberately does not:
   * creature spawns outside the current minimap view are absent, matching the
     raw-position presentation instead of piling distant mobs onto the edge;
   * giver and turn-in points beyond the minimap remain CLAMPED to the boundary
-    and drawn at reduced alpha, so "that way, further than this" stays visible.
+    and drawn at reduced alpha by default, so "that way, further than this"
+    stays visible -- `minimapPinsClampEdge = false` hides them instead, like
+    an out-of-view objective dot, for a less crowded minimap.
 
 Content is not decided here. Which giver still has a quest worth taking and
 where a quest is handed in are policy questions the world-map layer already
@@ -139,10 +141,6 @@ local function QuestState()
     return UQ:GetModule("QuestState")
 end
 
-local function QuestTarget()
-    return UQ:GetModule("QuestTarget")
-end
-
 local function WorldMapPins()
     return UQ:GetModule("WorldMapPins")
 end
@@ -257,6 +255,12 @@ local function SpanForZoom(zoom)
     return span, "vanillaConstant"
 end
 
+-- Shared with Map/NpcPins.lua. Both minimap layers must use the same measured
+-- zoom span rather than maintaining two tables that can drift apart.
+function MinimapPins:GetSpanForZoom(zoom)
+    return SpanForZoom(zoom)
+end
+
 -- Targets -------------------------------------------------------------------
 
 -- The scene, in database percentages, rebuilt only when something that can
@@ -266,9 +270,8 @@ function MinimapPins:BuildTargets(areaId, config)
     local targets = {}
     local database = Database()
     local questState = QuestState()
-    local questTarget = QuestTarget()
     local worldMap = WorldMapPins()
-    if not database or not questState or not questTarget or not worldMap then
+    if not database or not questState or not worldMap then
         return targets
     end
 
@@ -284,29 +287,27 @@ function MinimapPins:BuildTargets(areaId, config)
     local objectiveSeen = {}
     while questIndex <= questTotal do
         local quest = quests[questIndex]
-        if worldMap:IsResolvedQuest(quest)
-            and not worldMap:IsQuestHidden(quest.questId, config) then
-            if quest.isComplete ~= 1 then
-                local locations = questTarget:CollectLocations(quest, areaId, false)
-                local locationIndex = 1
-                local locationTotal = table.getn(locations)
-                while locationIndex <= locationTotal do
-                    local location = locations[locationIndex]
-                    if location.sourceType == "unit"
-                        and type(location.x) == "number" and type(location.y) == "number" then
-                        local locationKey = tostring(location.x) .. ":" .. tostring(location.y)
-                        if not objectiveSeen[locationKey] then
-                            objectiveSeen[locationKey] = true
-                            table.insert(targets, {
-                                kind = "objective",
-                                x = location.x,
-                                y = location.y,
-                                complete = false,
-                            })
-                        end
+        if quest.isComplete ~= 1 then
+            local locations = worldMap:CollectQuestLocations(
+                quest, areaId, false, config)
+            local locationIndex = 1
+            local locationTotal = table.getn(locations)
+            while locationIndex <= locationTotal do
+                local location = locations[locationIndex]
+                if location.sourceType == "unit"
+                    and type(location.x) == "number" and type(location.y) == "number" then
+                    local locationKey = tostring(location.x) .. ":" .. tostring(location.y)
+                    if not objectiveSeen[locationKey] then
+                        objectiveSeen[locationKey] = true
+                        table.insert(targets, {
+                            kind = "objective",
+                            x = location.x,
+                            y = location.y,
+                            complete = false,
+                        })
                     end
-                    locationIndex = locationIndex + 1
                 end
+                locationIndex = locationIndex + 1
             end
         end
         questIndex = questIndex + 1
@@ -351,7 +352,7 @@ end
 -- Map UVs run east with x and SOUTH with y; the minimap runs east with x and
 -- NORTH with y, so the vertical term is negated. This is the arithmetic the
 -- probe's `track` variant confirmed glued to the terrain, unchanged.
-function MinimapPins:Project(playerX, playerY, widthYards, heightYards, span, width, height)
+function MinimapPins:Project(playerX, playerY, widthYards, heightYards, span, width, height, clampEdge)
     local yardsPerPixel = span / width
     local shortest = width
     if height < shortest then
@@ -417,25 +418,33 @@ function MinimapPins:Project(playerX, playerY, widthYards, heightYards, span, wi
                 limit = 0
             end
             local onEdge = false
-            if target.kind ~= "objective" and distance > limit and distance > 0 then
+            local beyondEdge = target.kind ~= "objective" and distance > limit and distance > 0
+            if beyondEdge and not clampEdge then
+                -- Same treatment as an out-of-view objective: hidden rather
+                -- than clamped, so the minimap stays uncrowded when the
+                -- player has turned edge-clamping off.
+                pin = nil
+            elseif beyondEdge then
                 local scale = limit / distance
                 offsetX = offsetX * scale
                 offsetY = offsetY * scale
                 onEdge = true
                 clamped = clamped + 1
             end
-            Client.SetMinimapPinAlpha(pin, onEdge and EDGE_ALPHA or INSIDE_ALPHA)
-            if Client.PositionMinimapPin(pin, offsetX, offsetY) then
-                if target.kind == "objective" then
-                    objectiveIndex = objectiveIndex + 1
-                elseif target.kind == "giver" then
-                    giverIndex = giverIndex + 1
+            if pin then
+                Client.SetMinimapPinAlpha(pin, onEdge and EDGE_ALPHA or INSIDE_ALPHA)
+                if Client.PositionMinimapPin(pin, offsetX, offsetY) then
+                    if target.kind == "objective" then
+                        objectiveIndex = objectiveIndex + 1
+                    elseif target.kind == "giver" then
+                        giverIndex = giverIndex + 1
+                    else
+                        turnInIndex = turnInIndex + 1
+                    end
                 else
-                    turnInIndex = turnInIndex + 1
+                    Client.HideObject(pin)
+                    failures = failures + 1
                 end
-            else
-                Client.HideObject(pin)
-                failures = failures + 1
             end
         end
         index = index + 1
@@ -519,7 +528,8 @@ function MinimapPins:Refresh()
         self.dirty = false
     end
 
-    self:Project(report.playerX, report.playerY, yards[1], yards[2], span, width, height)
+    local clampEdge = not config or config:Get("minimapPinsClampEdge") ~= false
+    self:Project(report.playerX, report.playerY, yards[1], yards[2], span, width, height, clampEdge)
 
     if self.objectiveVisible > 0 or self.giverVisible > 0 or self.turnInVisible > 0 then
         self:Record("rendered", { zoom = tostring(zoom), span = span, spanEvidence = spanEvidence })

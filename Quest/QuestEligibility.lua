@@ -85,6 +85,29 @@ function QuestEligibility:RefreshPlayer()
     return self.resolved
 end
 
+-- Race/class exclusion only, without the level/event checks IsOfferable also
+-- applies. Data/QuestMatch.lua uses this to split same-title quest records
+-- (the Alliance/Horde or class-specific variant of one quest line): a quest
+-- already sitting in the log was, by definition, offerable when accepted, so
+-- any candidate record whose race or class mask excludes this character
+-- cannot be the one actually in the log.
+function QuestEligibility:MatchesRaceClass(record)
+    if type(record) ~= "table" then
+        return true
+    end
+    if type(record.race) == "number" and record.race > 0 and self.raceBit then
+        if not HasBit(record.race, self.raceBit) then
+            return false
+        end
+    end
+    if type(record.class) == "number" and record.class > 0 and self.classBit then
+        if not HasBit(record.class, self.classBit) then
+            return false
+        end
+    end
+    return true
+end
+
 function QuestEligibility:ShowEventQuests()
     local config = UQ:GetModule("Config")
     if not config then

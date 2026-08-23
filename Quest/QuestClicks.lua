@@ -78,6 +78,10 @@ local function MainQuest()
     return UQ:GetModule("MainQuest")
 end
 
+local function Database()
+    return UQ:GetModule("Database")
+end
+
 -- Modifier gate --------------------------------------------------------------
 
 -- Plain left-click is the default, which is what was asked for, but it does
@@ -193,6 +197,87 @@ function QuestClicks:Select(quest, origin)
     end
     UQ:Debug("main quest click from " .. tostring(origin))
     return true
+end
+
+-- Reveal on map ---------------------------------------------------------------
+--
+-- Shared "take me there" gesture: the tracker window's Ctrl+click
+-- (Quest/TrackerFrame.lua) and the quest log's Show button
+-- (Quest/QuestLogButtons.lua) both call this rather than each having their
+-- own copy, so they cannot silently drift apart.
+--
+-- Best-effort. Opens the map (never a guaranteed success -- see
+-- Client.OpenWorldMap) and flashes the quest's own pin(s) through
+-- Map/WorldMapPins.lua, which only ever flashes a pin that is ALREADY
+-- rendered. A quest with no unambiguous database match, in the wrong zone, or
+-- hidden from the map by the player has nothing to flash, and that is
+-- reported rather than silently doing nothing -- the same honesty rule every
+-- other capability in this addon follows.
+
+-- Names every zone the static data records a location in for this quest's
+-- CURRENT relation (finisher if complete, objective otherwise), regardless of
+-- which zone the player is standing in or the map is currently viewing.
+-- Database:GetQuestAreaIds carries none of GetQuestLocations' current-zone
+-- filter, so this can answer "which zone" even when nothing can be drawn.
+-- Returns nil when the data names none (an unmatched quest, or one whose
+-- bundled record simply has no coordinate for this relation at all -- 174 of
+-- 4433 quests have no `end` relation, see Database:GetQuestLocations).
+local function DescribeQuestZones(quest)
+    local database = Database()
+    if not database or type(quest.questId) ~= "number" then
+        return nil
+    end
+    local areaIds = database:GetQuestAreaIds(quest.questId, quest.isComplete == 1)
+    local total = table.getn(areaIds)
+    if total == 0 then
+        return nil
+    end
+    local names = {}
+    local index = 1
+    while index <= total do
+        local name = database:GetZoneName(areaIds[index])
+        if type(name) == "string" and name ~= "" then
+            table.insert(names, name)
+        end
+        index = index + 1
+    end
+    if table.getn(names) == 0 then
+        return nil
+    end
+    return table.concat(names, ", ")
+end
+
+function QuestClicks:RevealOnMap(quest)
+    if not quest then
+        return
+    end
+    if type(quest.questId) ~= "number" then
+        UQ:Print("'" .. tostring(quest.title) .. "' has no resolved quest id, so it cannot be "
+            .. "shown on the map")
+        return
+    end
+    Client.OpenWorldMap()
+    local pins = UQ:GetModule("WorldMapPins")
+    if pins and pins:FlashQuest(quest.questId) then
+        return
+    end
+    -- Nothing is currently rendered for it -- most often because its
+    -- objective or turn-in is not in the zone the map is presently viewing,
+    -- the addon's map layer only ever draws in the player's own uniquely
+    -- resolved current area (docs/CLIENT-COMPATIBILITY.md, "Area-ID join
+    -- scope"). A pin cannot be faked into that other zone, but the static
+    -- data can still be asked WHICH zone, so the player is told where to go
+    -- even though nothing was drawn.
+    local verb = quest.isComplete == 1 and "hand it in" or "its objectives are"
+    local zones = DescribeQuestZones(quest)
+    if zones then
+        UQ:Print("'" .. tostring(quest.title) .. "': " .. verb .. " in " .. zones
+            .. " -- not the zone currently shown on the map, so nothing could be flashed there")
+    else
+        UQ:Print("no map marker for '" .. tostring(quest.title) .. "' is currently rendered, "
+            .. "and the bundled data records no location for it either "
+            .. "(hidden from the map, or simply not one this addon's data covers)")
+    end
 end
 
 -- Quest log ------------------------------------------------------------------

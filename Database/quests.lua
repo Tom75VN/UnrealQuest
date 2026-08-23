@@ -1,6 +1,6 @@
 -- UnrealQuest bundled world data.
 -- Content originates from the VMaNGOS world database and was packaged by
--- pfQuest (MIT, Eric Mauser / Shagu). Reduced here to quest-relevant records.
+-- pfQuest (MIT, Eric Mauser / Shagu). Full Vanilla dataset; TBC data excluded.
 -- See Database/CREDITS.md and LICENSE in the addon root.
 UnrealQuestData["quests"] = {
   [1] = {
@@ -1060,6 +1060,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 1015, 2665 },
     },
+    ["skill"] = 185,
     ["start"] = {
       ["U"] = { 272 },
     },
@@ -4599,6 +4600,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 2886, 2894 },
     },
+    ["skill"] = 185,
     ["start"] = {
       ["U"] = { 1267 },
     },
@@ -8668,6 +8670,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 929, 3823 },
     },
     ["pre"] = { 714 },
+    ["skill"] = 171,
     ["start"] = {
       ["U"] = { 2920 },
     },
@@ -9323,6 +9326,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 2318 },
     },
+    ["skill"] = 393,
     ["start"] = {
       ["U"] = { 3050 },
     },
@@ -9336,6 +9340,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 2318, 2320 },
     },
+    ["skill"] = 165,
     ["start"] = {
       ["U"] = { 3050 },
     },
@@ -10346,6 +10351,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 5051 },
     },
+    ["skill"] = 185,
     ["start"] = {
       ["U"] = { 3443 },
     },
@@ -10394,6 +10400,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 5056 },
     },
+    ["skill"] = 182,
     ["start"] = {
       ["U"] = { 3446 },
     },
@@ -16958,6 +16965,7 @@ UnrealQuestData["quests"] = {
     ["lvl"] = 37,
     ["min"] = 30,
     ["pre"] = { 705 },
+    ["skill"] = 202,
     ["start"] = {
       ["U"] = { 2817 },
     },
@@ -16981,6 +16989,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 2845, 2851 },
     },
+    ["skill"] = 164,
     ["start"] = {
       ["U"] = { 6031 },
     },
@@ -16994,6 +17003,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 6717 },
     },
+    ["skill"] = 356,
     ["start"] = {
       ["U"] = { 3666 },
     },
@@ -17008,6 +17018,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 6718 },
     },
     ["pre"] = { 1579 },
+    ["skill"] = 356,
     ["start"] = {
       ["U"] = { 3666 },
     },
@@ -17021,6 +17032,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 2454, 5997 },
     },
+    ["skill"] = 171,
     ["start"] = {
       ["U"] = { 2083 },
     },
@@ -17034,6 +17046,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 2309, 2310, 4239 },
     },
+    ["skill"] = 165,
     ["start"] = {
       ["U"] = { 6034 },
     },
@@ -17077,6 +17090,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 2857, 6214 },
     },
+    ["skill"] = 164,
     ["start"] = {
       ["U"] = { 6031 },
     },
@@ -19422,6 +19436,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 5469 },
     },
+    ["skill"] = 185,
     ["start"] = {
       ["U"] = { 3702 },
     },
@@ -19506,6 +19521,7 @@ UnrealQuestData["quests"] = {
     },
     ["pre"] = { 2202 },
     ["race"] = 178,
+    ["skill"] = 171,
     ["start"] = {
       ["U"] = { 6868 },
     },
@@ -20190,6 +20206,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 7867 },
     },
     ["pre"] = { 2500 },
+    ["skill"] = 171,
     ["start"] = {
       ["U"] = { 1470 },
     },
@@ -20752,6 +20769,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 2868, 5635, 7957 },
     },
+    ["skill"] = 164,
     ["start"] = {
       ["U"] = { 7790 },
     },
@@ -20766,6 +20784,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 7956, 7958 },
     },
     ["pre"] = { 2751 },
+    ["skill"] = 164,
     ["start"] = {
       ["U"] = { 7790 },
     },
@@ -20780,6 +20799,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 3835, 3836, 3842 },
     },
     ["pre"] = { 2752 },
+    ["skill"] = 164,
     ["start"] = {
       ["U"] = { 7790 },
     },
@@ -20794,6 +20814,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 3482, 3483, 3851 },
     },
     ["pre"] = { 2753 },
+    ["skill"] = 164,
     ["start"] = {
       ["U"] = { 7790 },
     },
@@ -20805,6 +20826,7 @@ UnrealQuestData["quests"] = {
     ["lvl"] = 36,
     ["min"] = 32,
     ["pre"] = { 2754 },
+    ["skill"] = 164,
     ["start"] = {
       ["U"] = { 7790 },
     },
@@ -20818,6 +20840,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 7922, 7963 },
     },
+    ["skill"] = 164,
     ["start"] = {
       ["U"] = { 7792 },
     },
@@ -20829,6 +20852,7 @@ UnrealQuestData["quests"] = {
     ["lvl"] = 40,
     ["min"] = 40,
     ["pre"] = { 2756 },
+    ["skill"] = 164,
     ["start"] = {
       ["U"] = { 7793 },
     },
@@ -20842,6 +20866,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 6040 },
     },
+    ["skill"] = 164,
     ["start"] = {
       ["U"] = { 7798 },
     },
@@ -20853,6 +20878,7 @@ UnrealQuestData["quests"] = {
     ["lvl"] = 40,
     ["min"] = 40,
     ["pre"] = { 2758 },
+    ["skill"] = 164,
     ["start"] = {
       ["U"] = { 7798 },
     },
@@ -20864,6 +20890,7 @@ UnrealQuestData["quests"] = {
     ["lvl"] = 40,
     ["min"] = 40,
     ["pre"] = { 2757, 2759 },
+    ["skill"] = 164,
     ["start"] = {
       ["U"] = { 7794 },
     },
@@ -20878,6 +20905,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 3575, 3860 },
     },
     ["pre"] = { 2760 },
+    ["skill"] = 164,
     ["start"] = {
       ["U"] = { 7802 },
     },
@@ -20892,6 +20920,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 3860, 6037 },
     },
     ["pre"] = { 2760 },
+    ["skill"] = 164,
     ["start"] = {
       ["U"] = { 7802 },
     },
@@ -20906,6 +20935,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 3860, 3864 },
     },
     ["pre"] = { 2760 },
+    ["skill"] = 164,
     ["start"] = {
       ["U"] = { 7802 },
     },
@@ -20917,6 +20947,7 @@ UnrealQuestData["quests"] = {
     ["lvl"] = 45,
     ["min"] = 40,
     ["pre"] = { 2761 },
+    ["skill"] = 164,
     ["start"] = {
       ["U"] = { 7802 },
     },
@@ -20928,6 +20959,7 @@ UnrealQuestData["quests"] = {
     ["lvl"] = 45,
     ["min"] = 40,
     ["pre"] = { 2761, 2762, 2763 },
+    ["skill"] = 164,
     ["start"] = {
       ["U"] = { 7802 },
     },
@@ -21000,6 +21032,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 7928, 7931 },
     },
     ["pre"] = { 2760 },
+    ["skill"] = 164,
     ["start"] = {
       ["U"] = { 7804 },
     },
@@ -21014,6 +21047,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 7926, 7933 },
     },
     ["pre"] = { 2760 },
+    ["skill"] = 164,
     ["start"] = {
       ["U"] = { 7804 },
     },
@@ -21028,6 +21062,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 7927, 7930 },
     },
     ["pre"] = { 2760 },
+    ["skill"] = 164,
     ["start"] = {
       ["U"] = { 7804 },
     },
@@ -21198,6 +21233,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 4304 },
     },
+    ["skill"] = 165,
     ["start"] = {
       ["U"] = { 7852 },
     },
@@ -21212,6 +21248,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 8153, 8173 },
     },
     ["pre"] = { 2847 },
+    ["skill"] = 165,
     ["start"] = {
       ["U"] = { 7852 },
     },
@@ -21226,6 +21263,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 8153, 8187, 8189 },
     },
     ["pre"] = { 2847 },
+    ["skill"] = 165,
     ["start"] = {
       ["U"] = { 7852 },
     },
@@ -21240,6 +21278,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 8153, 8175, 8176 },
     },
     ["pre"] = { 2847 },
+    ["skill"] = 165,
     ["start"] = {
       ["U"] = { 7852 },
     },
@@ -21253,6 +21292,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 8153, 8193, 8197 },
     },
+    ["skill"] = 165,
     ["start"] = {
       ["U"] = { 7852 },
     },
@@ -21266,6 +21306,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 8153, 8191, 8198 },
     },
+    ["skill"] = 165,
     ["start"] = {
       ["U"] = { 7852 },
     },
@@ -21277,6 +21318,7 @@ UnrealQuestData["quests"] = {
     ["lvl"] = 45,
     ["min"] = 30,
     ["pre"] = { 2848, 2849, 2850, 2851, 2852 },
+    ["skill"] = 165,
     ["start"] = {
       ["U"] = { 7852 },
     },
@@ -21290,6 +21332,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 4304 },
     },
+    ["skill"] = 165,
     ["start"] = {
       ["U"] = { 7854 },
     },
@@ -21304,6 +21347,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 8153, 8173 },
     },
     ["pre"] = { 2854 },
+    ["skill"] = 165,
     ["start"] = {
       ["U"] = { 7854 },
     },
@@ -21318,6 +21362,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 8153, 8187, 8189 },
     },
     ["pre"] = { 2854 },
+    ["skill"] = 165,
     ["start"] = {
       ["U"] = { 7854 },
     },
@@ -21332,6 +21377,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 8153, 8175, 8176 },
     },
     ["pre"] = { 2854 },
+    ["skill"] = 165,
     ["start"] = {
       ["U"] = { 7854 },
     },
@@ -21345,6 +21391,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 8153, 8193, 8197 },
     },
+    ["skill"] = 165,
     ["start"] = {
       ["U"] = { 7854 },
     },
@@ -21358,6 +21405,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 8153, 8191, 8198 },
     },
+    ["skill"] = 165,
     ["start"] = {
       ["U"] = { 7854 },
     },
@@ -21369,6 +21417,7 @@ UnrealQuestData["quests"] = {
     ["lvl"] = 45,
     ["min"] = 30,
     ["pre"] = { 2855, 2856, 2857, 2858, 2859 },
+    ["skill"] = 165,
     ["start"] = {
       ["U"] = { 7854 },
     },
@@ -23390,6 +23439,7 @@ UnrealQuestData["quests"] = {
     ["lvl"] = 50,
     ["min"] = 40,
     ["pre"] = { 2771, 2772, 2773 },
+    ["skill"] = 164,
     ["start"] = {
       ["U"] = { 7804 },
     },
@@ -23630,6 +23680,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["U"] = { 8442 },
     },
+    ["skill"] = 197,
     ["start"] = {
       ["U"] = { 8439 },
     },
@@ -23692,6 +23743,7 @@ UnrealQuestData["quests"] = {
       ["U"] = { 8444, 8447 },
     },
     ["pre"] = { 3379 },
+    ["skill"] = 197,
     ["start"] = {
       ["U"] = { 8439 },
     },
@@ -23707,6 +23759,7 @@ UnrealQuestData["quests"] = {
     ["lvl"] = 50,
     ["min"] = 40,
     ["pre"] = { 3385 },
+    ["skill"] = 197,
     ["start"] = {
       ["U"] = { 8439 },
     },
@@ -24278,6 +24331,7 @@ UnrealQuestData["quests"] = {
     },
     ["lvl"] = 47,
     ["min"] = 30,
+    ["skill"] = 202,
     ["start"] = {
       ["U"] = { 4586 },
     },
@@ -24556,6 +24610,7 @@ UnrealQuestData["quests"] = {
     },
     ["lvl"] = 47,
     ["min"] = 30,
+    ["skill"] = 202,
     ["start"] = {
       ["U"] = { 5174 },
     },
@@ -24567,6 +24622,7 @@ UnrealQuestData["quests"] = {
     },
     ["lvl"] = 47,
     ["min"] = 30,
+    ["skill"] = 202,
     ["start"] = {
       ["U"] = { 5518 },
     },
@@ -24590,6 +24646,7 @@ UnrealQuestData["quests"] = {
     },
     ["lvl"] = 47,
     ["min"] = 30,
+    ["skill"] = 202,
     ["start"] = {
       ["U"] = { 5174 },
     },
@@ -24601,6 +24658,7 @@ UnrealQuestData["quests"] = {
     },
     ["lvl"] = 47,
     ["min"] = 30,
+    ["skill"] = 202,
     ["start"] = {
       ["U"] = { 3494 },
     },
@@ -24613,6 +24671,7 @@ UnrealQuestData["quests"] = {
     ["lvl"] = 47,
     ["min"] = 30,
     ["race"] = 77,
+    ["skill"] = 202,
     ["start"] = {
       ["U"] = { 3494 },
     },
@@ -24624,6 +24683,7 @@ UnrealQuestData["quests"] = {
     },
     ["lvl"] = 47,
     ["min"] = 30,
+    ["skill"] = 202,
     ["start"] = {
       ["U"] = { 4586 },
     },
@@ -24649,6 +24709,7 @@ UnrealQuestData["quests"] = {
     ["lvl"] = 47,
     ["min"] = 30,
     ["race"] = 178,
+    ["skill"] = 202,
     ["start"] = {
       ["U"] = { 3494 },
     },
@@ -24663,6 +24724,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 11270 },
     },
+    ["skill"] = 202,
     ["start"] = {
       ["U"] = { 8126 },
     },
@@ -24677,6 +24739,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 4384, 4394, 10507 },
     },
     ["pre"] = { 3638 },
+    ["skill"] = 202,
     ["start"] = {
       ["U"] = { 8126 },
     },
@@ -24691,6 +24754,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 11283 },
     },
+    ["skill"] = 202,
     ["start"] = {
       ["U"] = { 7944 },
     },
@@ -24705,6 +24769,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 4392, 4407, 10559 },
     },
     ["pre"] = { 3640 },
+    ["skill"] = 202,
     ["start"] = {
       ["U"] = { 7944 },
     },
@@ -24719,6 +24784,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 11282 },
     },
+    ["skill"] = 202,
     ["start"] = {
       ["U"] = { 7406 },
     },
@@ -24733,6 +24799,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 4392, 4407, 10559 },
     },
     ["pre"] = { 3642 },
+    ["skill"] = 202,
     ["start"] = {
       ["U"] = { 7406 },
     },
@@ -24744,6 +24811,7 @@ UnrealQuestData["quests"] = {
     ["lvl"] = 47,
     ["min"] = 30,
     ["pre"] = { 3639 },
+    ["skill"] = 202,
     ["start"] = {
       ["U"] = { 8126 },
     },
@@ -24755,6 +24823,7 @@ UnrealQuestData["quests"] = {
     ["lvl"] = 47,
     ["min"] = 30,
     ["pre"] = { 3641 },
+    ["skill"] = 202,
     ["start"] = {
       ["U"] = { 7944 },
     },
@@ -24766,6 +24835,7 @@ UnrealQuestData["quests"] = {
     ["lvl"] = 47,
     ["min"] = 30,
     ["pre"] = { 3639 },
+    ["skill"] = 202,
     ["start"] = {
       ["U"] = { 8738 },
     },
@@ -24777,6 +24847,7 @@ UnrealQuestData["quests"] = {
     ["lvl"] = 47,
     ["min"] = 30,
     ["pre"] = { 3643 },
+    ["skill"] = 202,
     ["start"] = {
       ["U"] = { 7406 },
     },
@@ -25869,6 +25940,7 @@ UnrealQuestData["quests"] = {
     },
     ["pre"] = { 5883 },
     ["race"] = 77,
+    ["skill"] = 186,
     ["start"] = {
       ["U"] = { 9528 },
     },
@@ -25884,6 +25956,7 @@ UnrealQuestData["quests"] = {
     },
     ["pre"] = { 5884 },
     ["race"] = 77,
+    ["skill"] = 182,
     ["start"] = {
       ["U"] = { 9528 },
     },
@@ -25899,6 +25972,7 @@ UnrealQuestData["quests"] = {
     },
     ["pre"] = { 5885 },
     ["race"] = 77,
+    ["skill"] = 393,
     ["start"] = {
       ["U"] = { 9528 },
     },
@@ -25914,6 +25988,7 @@ UnrealQuestData["quests"] = {
     },
     ["pre"] = { 5886 },
     ["race"] = 77,
+    ["skill"] = 333,
     ["start"] = {
       ["U"] = { 9528 },
     },
@@ -25944,6 +26019,7 @@ UnrealQuestData["quests"] = {
     },
     ["pre"] = { 5888 },
     ["race"] = 178,
+    ["skill"] = 186,
     ["start"] = {
       ["U"] = { 9529 },
     },
@@ -25959,6 +26035,7 @@ UnrealQuestData["quests"] = {
     },
     ["pre"] = { 5889 },
     ["race"] = 178,
+    ["skill"] = 182,
     ["start"] = {
       ["U"] = { 9529 },
     },
@@ -25974,6 +26051,7 @@ UnrealQuestData["quests"] = {
     },
     ["pre"] = { 5890 },
     ["race"] = 178,
+    ["skill"] = 393,
     ["start"] = {
       ["U"] = { 9529 },
     },
@@ -25989,6 +26067,7 @@ UnrealQuestData["quests"] = {
     },
     ["pre"] = { 5891 },
     ["race"] = 178,
+    ["skill"] = 333,
     ["start"] = {
       ["U"] = { 9529 },
     },
@@ -26404,6 +26483,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 5465 },
     },
+    ["skill"] = 185,
     ["start"] = {
       ["U"] = { 6286 },
     },
@@ -26415,6 +26495,7 @@ UnrealQuestData["quests"] = {
     },
     ["lvl"] = 47,
     ["min"] = 30,
+    ["skill"] = 202,
     ["start"] = {
       ["U"] = { 5518 },
     },
@@ -29919,6 +30000,7 @@ UnrealQuestData["quests"] = {
     },
     ["lvl"] = 60,
     ["min"] = 55,
+    ["skill"] = 164,
     ["start"] = {
       ["O"] = { 176090 },
     },
@@ -29991,6 +30073,7 @@ UnrealQuestData["quests"] = {
     },
     ["lvl"] = 60,
     ["min"] = 55,
+    ["skill"] = 164,
     ["start"] = {
       ["U"] = { 10918 },
     },
@@ -30006,6 +30089,7 @@ UnrealQuestData["quests"] = {
       ["IR"] = { 12848 },
     },
     ["pre"] = { 5126 },
+    ["skill"] = 164,
     ["start"] = {
       ["U"] = { 10918 },
     },
@@ -30031,6 +30115,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 8165, 8203, 8204 },
     },
+    ["skill"] = 165,
     ["start"] = {
       ["U"] = { 7866 },
     },
@@ -30057,6 +30142,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 8211, 8214 },
     },
     ["pre"] = { 2853 },
+    ["skill"] = 165,
     ["start"] = {
       ["U"] = { 7870 },
     },
@@ -30071,6 +30157,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 7075, 7077, 7079, 7081 },
     },
+    ["skill"] = 165,
     ["start"] = {
       ["U"] = { 7868 },
     },
@@ -30085,6 +30172,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 8165, 8203, 8204 },
     },
+    ["skill"] = 165,
     ["start"] = {
       ["U"] = { 7867 },
     },
@@ -30099,6 +30187,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 7075, 7077, 7079, 7081 },
     },
+    ["skill"] = 165,
     ["start"] = {
       ["U"] = { 7869 },
     },
@@ -30128,6 +30217,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 8211, 8214 },
     },
     ["pre"] = { 2860 },
+    ["skill"] = 165,
     ["start"] = {
       ["U"] = { 7871 },
     },
@@ -31102,6 +31192,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 7935, 7936, 7937 },
     },
+    ["skill"] = 164,
     ["start"] = {
       ["U"] = { 5164 },
     },
@@ -31116,6 +31207,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 3853, 3855, 7941, 7945 },
     },
+    ["skill"] = 164,
     ["start"] = {
       ["U"] = { 11146 },
     },
@@ -31130,6 +31222,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 7935, 7936, 7937 },
     },
+    ["skill"] = 164,
     ["start"] = {
       ["U"] = { 11177 },
     },
@@ -31144,6 +31237,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 3853, 3855, 7941, 7945 },
     },
+    ["skill"] = 164,
     ["start"] = {
       ["U"] = { 11178 },
     },
@@ -31157,6 +31251,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 13351 },
     },
+    ["skill"] = 164,
     ["start"] = {
       ["U"] = { 11191 },
     },
@@ -31170,6 +31265,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 13352 },
     },
+    ["skill"] = 164,
     ["start"] = {
       ["U"] = { 11192 },
     },
@@ -31183,6 +31279,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 13350 },
     },
+    ["skill"] = 164,
     ["start"] = {
       ["U"] = { 11193 },
     },
@@ -33214,6 +33311,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 11513 },
     },
     ["pre"] = { 4101 },
+    ["skill"] = 186,
     ["start"] = {
       ["U"] = { 9528 },
     },
@@ -33228,6 +33326,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 11514 },
     },
     ["pre"] = { 4101 },
+    ["skill"] = 182,
     ["start"] = {
       ["U"] = { 9528 },
     },
@@ -33242,6 +33341,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 11512 },
     },
     ["pre"] = { 4101 },
+    ["skill"] = 393,
     ["start"] = {
       ["U"] = { 9528 },
     },
@@ -33256,6 +33356,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 11174 },
     },
     ["pre"] = { 4101 },
+    ["skill"] = 333,
     ["start"] = {
       ["U"] = { 9528 },
     },
@@ -33284,6 +33385,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 11513 },
     },
     ["pre"] = { 4102 },
+    ["skill"] = 186,
     ["start"] = {
       ["U"] = { 9529 },
     },
@@ -33298,6 +33400,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 11514 },
     },
     ["pre"] = { 4102 },
+    ["skill"] = 182,
     ["start"] = {
       ["U"] = { 9529 },
     },
@@ -33312,6 +33415,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 11512 },
     },
     ["pre"] = { 4102 },
+    ["skill"] = 393,
     ["start"] = {
       ["U"] = { 9529 },
     },
@@ -33326,6 +33430,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 11174 },
     },
     ["pre"] = { 4102 },
+    ["skill"] = 333,
     ["start"] = {
       ["U"] = { 9529 },
     },
@@ -33820,6 +33925,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 14342 },
     },
+    ["skill"] = 197,
     ["start"] = {
       ["U"] = { 11557 },
     },
@@ -35747,6 +35853,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 16967, 16968, 16969, 16970 },
     },
     ["pre"] = { 6608, 6609 },
+    ["skill"] = 356,
     ["start"] = {
       ["U"] = { 12919 },
     },
@@ -35757,6 +35864,7 @@ UnrealQuestData["quests"] = {
     },
     ["lvl"] = 45,
     ["min"] = 35,
+    ["skill"] = 356,
     ["start"] = {
       ["U"] = { 3332 },
     },
@@ -35767,6 +35875,7 @@ UnrealQuestData["quests"] = {
     },
     ["lvl"] = 45,
     ["min"] = 35,
+    ["skill"] = 356,
     ["start"] = {
       ["U"] = { 5161 },
     },
@@ -35781,6 +35890,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 7974, 8932, 12207 },
     },
     ["pre"] = { 6611, 6612 },
+    ["skill"] = 185,
     ["start"] = {
       ["U"] = { 8125 },
     },
@@ -35791,6 +35901,7 @@ UnrealQuestData["quests"] = {
     },
     ["lvl"] = 45,
     ["min"] = 35,
+    ["skill"] = 185,
     ["start"] = {
       ["U"] = { 3399 },
     },
@@ -35801,6 +35912,7 @@ UnrealQuestData["quests"] = {
     },
     ["lvl"] = 45,
     ["min"] = 35,
+    ["skill"] = 185,
     ["start"] = {
       ["U"] = { 5159 },
     },
@@ -35827,6 +35939,7 @@ UnrealQuestData["quests"] = {
     ["lvl"] = 45,
     ["min"] = 40,
     ["pre"] = { 6623 },
+    ["skill"] = 129,
     ["start"] = {
       ["U"] = { 12920 },
     },
@@ -35837,6 +35950,7 @@ UnrealQuestData["quests"] = {
     },
     ["lvl"] = 45,
     ["min"] = 40,
+    ["skill"] = 129,
     ["start"] = {
       ["U"] = { 3373 },
     },
@@ -35848,6 +35962,7 @@ UnrealQuestData["quests"] = {
     ["lvl"] = 45,
     ["min"] = 40,
     ["pre"] = { 6625 },
+    ["skill"] = 129,
     ["start"] = {
       ["U"] = { 12939 },
     },
@@ -35858,6 +35973,7 @@ UnrealQuestData["quests"] = {
     },
     ["lvl"] = 45,
     ["min"] = 40,
+    ["skill"] = 129,
     ["start"] = {
       ["U"] = { 5150 },
     },
@@ -37336,6 +37452,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 3712, 3713 },
     },
+    ["skill"] = 185,
     ["start"] = {
       ["U"] = { 2393 },
     },
@@ -37957,6 +38074,7 @@ UnrealQuestData["quests"] = {
     ["lvl"] = 60,
     ["min"] = 60,
     ["pre"] = { 7491 },
+    ["skill"] = 165,
     ["start"] = {
       ["U"] = { 14392 },
     },
@@ -37999,6 +38117,7 @@ UnrealQuestData["quests"] = {
     ["lvl"] = 60,
     ["min"] = 60,
     ["pre"] = { 7496 },
+    ["skill"] = 165,
     ["start"] = {
       ["U"] = { 14394 },
     },
@@ -38674,6 +38793,7 @@ UnrealQuestData["quests"] = {
     },
     ["lvl"] = 60,
     ["min"] = 50,
+    ["skill"] = 164,
     ["start"] = {
       ["I"] = { 18769 },
     },
@@ -38684,6 +38804,7 @@ UnrealQuestData["quests"] = {
     },
     ["lvl"] = 60,
     ["min"] = 50,
+    ["skill"] = 164,
     ["start"] = {
       ["I"] = { 18770 },
     },
@@ -38694,6 +38815,7 @@ UnrealQuestData["quests"] = {
     },
     ["lvl"] = 60,
     ["min"] = 50,
+    ["skill"] = 164,
     ["start"] = {
       ["I"] = { 18771 },
     },
@@ -38704,6 +38826,7 @@ UnrealQuestData["quests"] = {
     },
     ["lvl"] = 60,
     ["min"] = 50,
+    ["skill"] = 164,
     ["start"] = {
       ["U"] = { 14567 },
     },
@@ -38718,6 +38841,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 12359 },
     },
     ["pre"] = { 7652 },
+    ["skill"] = 164,
     ["start"] = {
       ["U"] = { 14567 },
     },
@@ -38732,6 +38856,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 12359 },
     },
     ["pre"] = { 7652 },
+    ["skill"] = 164,
     ["start"] = {
       ["U"] = { 14567 },
     },
@@ -38746,6 +38871,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 12359 },
     },
     ["pre"] = { 7652 },
+    ["skill"] = 164,
     ["start"] = {
       ["U"] = { 14567 },
     },
@@ -38760,6 +38886,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 12359 },
     },
     ["pre"] = { 7652 },
+    ["skill"] = 164,
     ["start"] = {
       ["U"] = { 14567 },
     },
@@ -38774,6 +38901,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 12359 },
     },
     ["pre"] = { 7652 },
+    ["skill"] = 164,
     ["start"] = {
       ["U"] = { 14567 },
     },
@@ -38788,6 +38916,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 12359 },
     },
     ["pre"] = { 7652 },
+    ["skill"] = 164,
     ["start"] = {
       ["U"] = { 14567 },
     },
@@ -38802,6 +38931,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 12359 },
     },
     ["pre"] = { 7652 },
+    ["skill"] = 164,
     ["start"] = {
       ["U"] = { 14567 },
     },
@@ -42748,6 +42878,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 19807 },
     },
+    ["skill"] = 356,
     ["start"] = {
       ["U"] = { 15077 },
     },
@@ -42762,6 +42893,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 19807 },
     },
+    ["skill"] = 356,
     ["start"] = {
       ["U"] = { 15078 },
     },
@@ -42815,6 +42947,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 19805 },
     },
+    ["skill"] = 356,
     ["start"] = {
       ["U"] = { 15079 },
     },
@@ -42858,6 +42991,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 19806 },
     },
+    ["skill"] = 356,
     ["start"] = {
       ["U"] = { 15079 },
     },
@@ -42872,6 +43006,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 19803 },
     },
+    ["skill"] = 356,
     ["start"] = {
       ["U"] = { 15079 },
     },
@@ -42894,6 +43029,7 @@ UnrealQuestData["quests"] = {
     ["event"] = 14,
     ["lvl"] = 60,
     ["min"] = 35,
+    ["skill"] = 356,
     ["start"] = {
       ["U"] = { 15119 },
     },
@@ -42905,6 +43041,7 @@ UnrealQuestData["quests"] = {
     ["event"] = 14,
     ["lvl"] = 60,
     ["min"] = 35,
+    ["skill"] = 356,
     ["start"] = {
       ["U"] = { 15116 },
     },
@@ -43827,6 +43964,7 @@ UnrealQuestData["quests"] = {
     },
     ["lvl"] = 57,
     ["min"] = 54,
+    ["skill"] = 185,
     ["start"] = {
       ["U"] = { 15174 },
     },
@@ -43904,6 +44042,7 @@ UnrealQuestData["quests"] = {
     ["lvl"] = 57,
     ["min"] = 54,
     ["pre"] = { 8307 },
+    ["skill"] = 185,
     ["start"] = {
       ["O"] = { 180503 },
     },
@@ -43957,6 +44096,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 20452 },
     },
     ["pre"] = { 8313 },
+    ["skill"] = 185,
     ["start"] = {
       ["U"] = { 15174 },
     },
@@ -49199,6 +49339,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 8150 },
     },
     ["pre"] = { 8762 },
+    ["skill"] = 185,
     ["start"] = {
       ["U"] = { 13433 },
     },
@@ -49619,6 +49760,7 @@ UnrealQuestData["quests"] = {
     ["lvl"] = 60,
     ["min"] = 55,
     ["pre"] = { 5163 },
+    ["skill"] = 202,
     ["start"] = {
       ["U"] = { 10305 },
     },
@@ -49634,6 +49776,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 8150 },
     },
     ["pre"] = { 8746 },
+    ["skill"] = 185,
     ["start"] = {
       ["U"] = { 13418 },
     },
@@ -50584,6 +50727,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 13351 },
     },
+    ["skill"] = 164,
   },
   [8870] = {
     ["close"] = { 8870, 8871, 8872, 8873, 8874, 8875 },

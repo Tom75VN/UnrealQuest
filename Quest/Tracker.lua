@@ -28,6 +28,16 @@ local Client = UQ.Client
 local Tracker = UQ:NewModule("Tracker")
 
 local SECTION = "trackedQuests"
+-- Same config section Quest/TrackerFrame.lua's BuildLines filters the window
+-- by (HIDDEN_QUESTS there). By explicit request, untracking a quest through
+-- any surface -- the quest log's Untrack button, shift-click on the tracker
+-- window, or /uq untrack -- also removes it from the tracker window, and
+-- tracking it again brings it back; they are no longer two separate
+-- gestures. Both this section's name and the fold-membership scheme
+-- ("key present" means hidden) are duplicated rather than shared as a
+-- cross-module call, since the two modules otherwise stay independent
+-- (Quest/TrackerFrame.lua owns the window, this module owns the watch list).
+local HIDDEN_SECTION = "trackerHiddenQuests"
 local RESTORE_INTERVAL = 1.0
 local RESTORE_ATTEMPTS = 20
 
@@ -79,6 +89,37 @@ function Tracker:IsRemembered(title)
     return section[title] ~= nil
 end
 
+-- Redraws the client's native tracked-objectives panel after a watch-list
+-- change, then puts it straight back where the player's setting says it
+-- belongs.
+--
+-- Both halves are load-bearing, and both rest on the same measured record
+-- (knowledge.json / questwatch.public_refresh_after_watch_change,
+-- BEHAVIOR_VERIFIED, USER_CONFIRMED_INGAME):
+--
+--   * AddQuestWatch alone changes the watch state but leaves QuestWatchFrame
+--     stale, so the public QuestWatch_Update helper has to be called for the
+--     native panel to be correct at all.
+--   * That same call "immediately shows the native tracked-objectives panel"
+--     -- which is the bug this function exists to close. A player who asked
+--     for the native panel to stay hidden (trackerHideNativeWatch) got it
+--     flashed back on screen by every single track/untrack, and it stayed
+--     until the 2-second re-hide job came round.
+--
+-- The re-hide is a plain frame Hide through Client.SetNativeQuestWatchShown.
+-- It is emphatically NOT a call into QuestWatchFrame's own OnEvent handler:
+-- that is a recorded failed approach on this client, "confirmed separately to
+-- crash the client uncatchably" in the same record, and a standing rule of
+-- this project.
+-- Nothing here touches a native handler, only the frame's own Show/Hide.
+local function RefreshNativeWatch()
+    Client.RefreshQuestWatch()
+    local trackerFrame = UQ:GetModule("TrackerFrame")
+    if trackerFrame then
+        trackerFrame:ApplyNativeWatchVisibility()
+    end
+end
+
 -- Live watch state ----------------------------------------------------------
 
 function Tracker:IsTracked(quest)
@@ -104,7 +145,11 @@ function Tracker:Track(quest)
         return false
     end
     self:Remember(quest.title)
-    Client.RefreshQuestWatch()
+    local config = Config()
+    if config and quest.title then
+        config:SetSectionEntry(HIDDEN_SECTION, quest.title, nil)
+    end
+    RefreshNativeWatch()
     return true
 end
 
@@ -116,7 +161,11 @@ function Tracker:Untrack(quest)
         return false
     end
     self:Forget(quest.title)
-    Client.RefreshQuestWatch()
+    local config = Config()
+    if config and quest.title then
+        config:SetSectionEntry(HIDDEN_SECTION, quest.title, 1)
+    end
+    RefreshNativeWatch()
     return true
 end
 
@@ -185,7 +234,7 @@ function Tracker:Restore()
 
     self.restored = true
     if applied > 0 then
-        Client.RefreshQuestWatch()
+        RefreshNativeWatch()
         UQ:Debug("restored tracking on " .. applied .. " quest(s)")
     end
     return true

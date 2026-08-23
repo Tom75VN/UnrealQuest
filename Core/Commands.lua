@@ -42,14 +42,28 @@ end
 
 local function ShowHelp()
     Line("v" .. UQ.version .. " commands:")
+    Line("  /uq config    open the options window")
+    Line("  /uq config button on|off      the settings button beside the minimap")
     Line("  /uq status    what this build established about the client")
     Line("  /uq quests    the current quest log model")
     Line("  /uq events    which quest events this client accepted and fired")
     Line("  /uq map       current map identity and world-map pin status")
+    Line("  /uq map dots|areas  draw quest objectives as dots or as shaded areas")
     Line("  /uq minimap   quest pins around the player on the minimap")
     Line("  /uq minimap on|off            draw them, or stop")
     Line("  /uq db        static quest database state")
     Line("  /uq tooltip   entity-tooltip objective diagnostics")
+    Line("  /uq tracker   the movable quest tracker window")
+    Line("  /uq tracker on|off|toggle     show or hide it")
+    Line("  /uq tracker reset             move it back to its default position")
+    Line("  /uq tracker objectives all|tracked|none")
+    Line("  /uq tracker zones             group by zone, or do not")
+    Line("  /uq tracker width <110-600>   how wide the window is")
+    Line("  /uq tracker height <60-900>   max height in pixels, 0 for no limit")
+    Line("  /uq tracker lines <3-60>      how many rows before it scrolls")
+    Line("  /uq tracker unfold            reopen every folded quest and zone")
+    Line("  /uq tracker unhideall         bring back every quest untracked out of the tracker")
+    Line("  /uq tracker native            hide or restore the client's own watch panel")
     if UQ:IsFeatureEnabled("mainQuestWaypoint") then
         Line("  /uq main <index or title>     follow a quest with the HUD waypoint")
         Line("  /uq main                      report the followed quest")
@@ -66,6 +80,9 @@ local function ShowHelp()
     Line("  /uq hidden                    list quests hidden from the map")
     Line("  /uq resetmarked               undo every shift/Ctrl-click 'mark done' on the map")
     Line("  /uq resetmarked all           also undo marks made before that tracking existed")
+    Line("  /uq pfquest                   report what pfQuest's saved history holds")
+    Line("  /uq pfquest import            import it -- enables pfQuest for one reload if needed")
+    Line("  /uq pfquest undo              take back everything a previous import added")
     Line("  /uq marks                 quest marks over creatures in the world")
     Line("  /uq marks on|off          mark quest creatures with a raid target icon")
     Line("  /uq marks icon <1-8>      which mark: 1 star .. 8 skull")
@@ -129,6 +146,14 @@ local function ShowQuests()
     if not state:IsComplete() then
         Line("|cffffff55snapshot is incomplete: " .. state.collapsedHeaders
             .. " collapsed header(s) hide their quests from the client|r")
+    end
+    -- Non-zero means something between the client and this addon is prefixing
+    -- levels onto quest titles. The titles below are the stripped ones, so the
+    -- count is the only place that shows it happened at all.
+    local decorated = Client.GetQuestTitleDecorationCount and Client.GetQuestTitleDecorationCount()
+    if decorated and decorated > 0 then
+        Line("|cff888888" .. decorated .. " title read(s) arrived carrying a level prefix; "
+            .. "stripped before matching|r")
     end
 
     local index = 1
@@ -206,10 +231,25 @@ local function ShowEvents()
     Line("|cff888888counts persist across sessions; report them to close the quest-event gap|r")
 end
 
-local function ShowMap()
+local function ShowMap(target)
     local map = UQ:GetModule("MapContext")
     if not map then
         Line("map module is not loaded")
+        return
+    end
+
+    -- The same switch as the options page's "Show quest objectives as dots".
+    -- Writing the setting is all this has to do: WorldMapPins carries it in
+    -- its view signature and repaints on the next refresh.
+    target = string.lower(UQ.Trim(target) or "")
+    if target == "dots" or target == "areas" then
+        local config = UQ:GetModule("Config")
+        if not config then
+            Line("config module is not loaded")
+            return
+        end
+        config:Set("mapObjectiveDots", target == "dots")
+        Line("world-map quest objectives drawn as " .. target)
         return
     end
     local report = map:Inspect()
@@ -249,10 +289,12 @@ local function ShowMap()
             end
         end
         if status.renderEnabled and status.areasEnabled then
-            Line("  quest-area tiles:    " .. tostring(status.areaVisible)
+            Line("  objective style:     " .. (status.objectiveDots and "dots" or "areas")
+                .. " (/uq map dots|areas)")
+            Line("  objective frames:    " .. tostring(status.areaVisible)
                 .. " visible / " .. tostring(status.areaPooled) .. " pooled"
                 .. (status.capped and " (capped)" or ""))
-            Line("  map colours:          blue objective areas / green turn-ins"
+            Line("  map colours:          blue objectives / green turn-ins"
                 .. (status.markersEnabled and " + yellow numbered markers" or ""))
             -- Marker counts, read together with the hover counters below: a
             -- non-zero count with nothing on screen means the client's gossip
@@ -782,6 +824,236 @@ local function ResetMarkedQuests(target)
     MarkMapDirty()
 end
 
+-- pfQuest history import ---------------------------------------------------------
+--
+-- The same three actions the options page offers, for a player who would
+-- rather not open a window -- and the only place the per-quest detail of an
+-- import is ever printed. Quest/PfQuestImport.lua does the work; this only
+-- reports it.
+
+local function ImportPfQuestHistory(argument)
+    local importer = UQ:GetModule("PfQuestImport")
+    if not importer then
+        Line("the pfQuest import module is not loaded")
+        return
+    end
+
+    local action = string.lower(UQ.Trim(argument) or "")
+
+    if action == "undo" then
+        local total = importer:Undo()
+        if total == 0 then
+            Line("no quests were imported from pfQuest, so there is nothing to take back")
+        else
+            Line("took back " .. total .. " quest(s) imported from pfQuest")
+            Line("  quests marked done by this addon itself, or by hand, were left alone")
+        end
+        return
+    end
+
+    if action ~= "" and action ~= "import" then
+        Line("unknown option: " .. action .. " -- use /uq pfquest, /uq pfquest import or /uq pfquest undo")
+        return
+    end
+
+    if action == "" then
+        Line(importer:Describe())
+        local state = importer:GetState().state
+        if state == "ready" then
+            Line("  /uq pfquest import marks those quests done here")
+        elseif state == "disabled" or state == "unavailable" then
+            Line("  /uq pfquest import switches pfQuest on for one reload, imports, and")
+            Line("  switches it back off -- this client will not let an addon reload for you")
+        elseif state == "pending" then
+            Line("  type /reload -- the import is waiting for it")
+        end
+        return
+    end
+
+    -- Exactly what the options-page button does, including the enable-and-ask
+    -- path when pfQuest is installed but switched off. PfQuestImport:Press
+    -- prints the headline; the detail below is what the command adds over the
+    -- button.
+    local before = importer:GetState().state
+    importer:Press()
+    if before ~= "ready" then
+        return
+    end
+
+    local report = importer:Scan()
+    if report.alreadyDone > 0 then
+        Line("  " .. report.alreadyDone .. " were already recorded here and were left as they were")
+    end
+    local skipped = report.unknown + report.unmatched + report.ambiguous
+    if skipped > 0 then
+        Line("  " .. skipped .. " skipped: not in this client's quest data, or a title matching"
+            .. " more than one quest")
+    end
+    if report.waiting > 0 then
+        Line("  " .. report.waiting .. " could not be resolved yet -- the quest title index is"
+            .. " still building; run this again in a moment")
+    end
+    Line("  /uq pfquest undo takes back everything an import added")
+end
+
+-- Quest tracker window -----------------------------------------------------------
+
+local function ShowTracker(argument)
+    local tracker = UQ:GetModule("TrackerFrame")
+    local config = UQ:GetModule("Config")
+    if not tracker or not config then
+        Line("the tracker module is not loaded")
+        return
+    end
+
+    local command = ""
+    local value = ""
+    for foundCommand, foundValue in string.gfind(argument or "", "(%S+)%s*(.*)") do
+        command = string.lower(foundCommand)
+        value = UQ.Trim(foundValue) or ""
+    end
+
+    if command == "on" or command == "show" then
+        tracker:SetShown(true)
+        Line("quest tracker shown")
+        return
+    elseif command == "off" or command == "hide" then
+        tracker:SetShown(false)
+        Line("quest tracker hidden")
+        return
+    elseif command == "toggle" then
+        tracker:SetShown(not tracker:IsShown())
+        Line("quest tracker " .. (tracker:IsShown() and "shown" or "hidden"))
+        return
+    elseif command == "reset" then
+        tracker:ResetPosition()
+        tracker.dirty = true
+        tracker:Refresh()
+        Line("quest tracker moved back to its default position")
+        return
+    elseif command == "objectives" then
+        local mode = string.lower(value)
+        if mode ~= "all" and mode ~= "tracked" and mode ~= "none" then
+            Line("usage: /uq tracker objectives all|tracked|none")
+            return
+        end
+        config:Set("trackerShowObjectives", mode)
+        tracker.dirty = true
+        tracker:Refresh()
+        Line("tracker objectives: " .. mode)
+        return
+    elseif command == "zones" then
+        local grouped = not (config:Get("trackerGroupByZone") and true or false)
+        config:Set("trackerGroupByZone", grouped)
+        tracker.dirty = true
+        tracker:Refresh()
+        Line("tracker zone headers " .. (grouped and "on" or "off"))
+        return
+    elseif command == "native" then
+        local hide = not (config:Get("trackerHideNativeWatch") and true or false)
+        config:Set("trackerHideNativeWatch", hide)
+        tracker:ApplyNativeWatchVisibility()
+        Line("native quest watch panel " .. (hide and "hidden" or "shown"))
+        if hide then
+            Line("  |cff888888the client re-shows it on its own, so it is hidden again on a timer|r")
+        end
+        return
+    elseif command == "width" then
+        local width = tonumber(value)
+        if not width or width < 110 or width > 600 then
+            Line("usage: /uq tracker width <110-600>")
+            return
+        end
+        config:Set("trackerWidth", width)
+        tracker.dirty = true
+        tracker:Refresh()
+        Line("tracker width: " .. width)
+        return
+    elseif command == "height" then
+        -- The same 60-900 range the corner grip clamps to (RESIZE_MIN_HEIGHT /
+        -- RESIZE_MAX_HEIGHT in Quest/TrackerFrame.lua), plus 0 for "no ceiling".
+        -- This is a MAXIMUM: a log shorter than it shrinks the window to fit.
+        local height = tonumber(value)
+        if not height or (height ~= 0 and (height < 60 or height > 900)) then
+            Line("usage: /uq tracker height <60-900>, or 0 for no limit")
+            return
+        end
+        config:Set("trackerHeight", height)
+        tracker.dirty = true
+        tracker:Refresh()
+        if height == 0 then
+            Line("tracker max height: none (grows with the log)")
+        else
+            Line("tracker max height: " .. height .. "px")
+        end
+        return
+    elseif command == "lines" then
+        local lines = tonumber(value)
+        if not lines or lines < 3 or lines > 60 then
+            Line("usage: /uq tracker lines <3-60>")
+            return
+        end
+        config:Set("trackerMaxLines", lines)
+        tracker.dirty = true
+        tracker:Refresh()
+        Line("tracker shows at most " .. lines .. " rows before scrolling")
+        return
+    elseif command == "unfold" then
+        config:ClearSection("trackerCollapsedQuests")
+        config:ClearSection("trackerCollapsedZones")
+        config:Set("trackerCollapsed", false)
+        tracker.dirty = true
+        tracker:Refresh()
+        Line("every folded quest and zone reopened")
+        return
+    elseif command == "unhideall" then
+        config:ClearSection("trackerHiddenQuests")
+        tracker.dirty = true
+        tracker:Refresh()
+        Line("every quest untracked out of the tracker is back")
+        return
+    elseif command ~= "" then
+        Line("unknown tracker command: " .. command)
+    end
+
+    local report = tracker:GetReport()
+    Line("quest tracker window")
+    if not report.created then
+        Line("  |cffff5555the window could not be created on this client|r")
+        return
+    end
+    Line("  " .. (report.enabled and "shown" or "hidden")
+        .. (report.collapsed and ", folded to the title bar" or "")
+        .. " -- " .. tostring(report.lines) .. " rows, "
+        .. tostring(report.linesDrawn) .. " on screen from "
+        .. tostring(report.offset + 1))
+    local height = report.height
+    if type(height) ~= "number" or height <= 0 then
+        -- The shipped state: no ceiling, so the window is as tall as the log
+        -- needs it to be.
+        height = "auto"
+    else
+        height = string.format("%.0f", height) .. " max"
+    end
+    Line("  width=" .. tostring(report.width) .. " height=" .. tostring(height)
+        .. " maxLines=" .. tostring(report.maxLines)
+        .. " objectives=" .. tostring(report.objectives)
+        .. " zones=" .. (report.groupByZone and "on" or "off"))
+    -- Stated rather than left as a silent absence: players do try the wheel
+    -- here, and "nothing happens" is a worse answer than "this client cannot".
+    Line("  mouse wheel unavailable on this client -- use the ^ and v buttons")
+    Line("  position " .. tostring(report.point) .. " "
+        .. string.format("%.0f, %.0f", report.x or 0, report.y or 0)
+        .. " (UIParent) -- drags=" .. tostring(report.drags)
+        .. " failures=" .. tostring(report.dragFailures)
+        .. " resizes=" .. tostring(report.resizes))
+    Line("  redraws=" .. tostring(report.redraws) .. " row clicks=" .. tostring(report.clicks))
+    Line("  native watch panel " .. (report.hideNativeWatch and "hidden" or "shown"))
+    if report.dragFailures > 0 then
+        Line("  |cffff5555StartMoving was refused -- see docs/QUEST-TRACKER.md|r")
+    end
+end
+
 -- Main quest -----------------------------------------------------------------
 
 -- Both /uq main and /uq waypoint drive the gated layer. When the gate is off
@@ -943,6 +1215,96 @@ local function ShowWaypoint()
     end
 end
 
+-- Diagnostic only: no probe covers QuestLogFrame's real child/region layout
+-- on this client (query_compat.py has nothing but generic Vanilla API docs
+-- for it), so this walks it live and prints what is actually there. Used to
+-- find a real anchor for the quest-log Show/Track buttons.
+local function DumpFrame(label, frame, depth)
+    if not frame then
+        Line(label .. ": not found")
+        return
+    end
+    Line(label .. ": " .. tostring(Client.GetObjectType(frame))
+        .. " " .. tostring(Client.GetObjectName(frame)))
+    local regions = Client.GetRegionList(frame) or {}
+    local index = 1
+    local total = table.getn(regions)
+    while index <= total do
+        local region = regions[index]
+        local point, relativeName, relativePoint, x, y = Client.GetPointInfo(region)
+        Line("  region " .. tostring(Client.GetObjectType(region)) .. " "
+            .. tostring(Client.GetObjectName(region))
+            .. " text=" .. tostring(Client.GetWidgetText(region))
+            .. " point=" .. tostring(point) .. "->" .. tostring(relativeName)
+            .. " " .. tostring(relativePoint) .. " " .. tostring(x) .. "," .. tostring(y))
+        index = index + 1
+    end
+    local children = Client.GetChildList(frame) or {}
+    index = 1
+    total = table.getn(children)
+    while index <= total do
+        local child = children[index]
+        local point, relativeName, relativePoint, x, y = Client.GetPointInfo(child)
+        Line("  child " .. tostring(Client.GetObjectType(child)) .. " "
+            .. tostring(Client.GetObjectName(child))
+            .. " point=" .. tostring(point) .. "->" .. tostring(relativeName)
+            .. " " .. tostring(relativePoint) .. " " .. tostring(x) .. "," .. tostring(y))
+        if depth and depth > 0 then
+            DumpFrame("    " .. tostring(Client.GetObjectName(child) or "?"), child, depth - 1)
+        end
+        index = index + 1
+    end
+end
+
+local function ShowQuestLogDump()
+    local logFrame = Client.GetNamedObject("QuestLogFrame")
+    if not logFrame or not Client.IsObjectShown(logFrame) then
+        Line("open the quest log and select a quest first")
+        return
+    end
+    DumpFrame("QuestLogFrame", logFrame, 1)
+    DumpFrame("QuestLogDetailScrollFrame", Client.GetNamedObject("QuestLogDetailScrollFrame"), 1)
+end
+
+-- Opens the options page in whichever window is hosting it. The command is the
+-- same either way; which window opens is Core/Settings.lua's decision and is
+-- reported by the unrealUISettingsHost line in /uq status.
+local function ShowConfig(target)
+    local settings = UQ:GetModule("Settings")
+    if not settings then
+        Line("the settings module is not loaded")
+        return
+    end
+
+    if target == "button" or target == "button on" or target == "button off" then
+        local report = settings:GetReport()
+        if report.host == "unrealui" then
+            Line("unrealUI's own settings button is already beside the minimap and opens this page")
+            return
+        end
+        local enabled = nil
+        if target == "button on" then
+            enabled = true
+        elseif target == "button off" then
+            enabled = false
+        end
+        if settings:SetMinimapButtonEnabled(enabled) then
+            Line("the settings button beside the minimap is shown ("
+                .. tostring(settings:GetReport().minimapAnchor) .. ")")
+        else
+            Line("the settings button beside the minimap is hidden")
+        end
+        return
+    end
+
+    if not settings:Toggle() then
+        local report = settings:GetReport()
+        if report.host ~= "unrealui" then
+            Line("the options window could not be opened; every option is still on /uq")
+        end
+    end
+end
+
 local function Handler(message)
     local argument = UQ.Trim(message) or ""
     local command = ""
@@ -956,6 +1318,8 @@ local function Handler(message)
 
     if command == "" or command == "help" then
         ShowHelp()
+    elseif command == "config" or command == "settings" or command == "options" then
+        ShowConfig(string.lower(UQ.Trim(target) or ""))
     elseif command == "status" then
         ShowStatus()
     elseif command == "quests" or command == "quest" then
@@ -963,13 +1327,15 @@ local function Handler(message)
     elseif command == "events" then
         ShowEvents()
     elseif command == "map" then
-        ShowMap()
+        ShowMap(target)
     elseif command == "minimap" then
         ShowMinimap(target)
     elseif command == "db" or command == "database" then
         ShowDatabase()
     elseif command == "tooltip" then
         ShowTooltip()
+    elseif command == "tracker" then
+        ShowTracker(UQ.Trim(target) or "")
     elseif command == "main" then
         if UQ:IsFeatureEnabled("mainQuestWaypoint") then
             ChangeMainQuest(target)
@@ -990,10 +1356,14 @@ local function Handler(message)
         ShowHiddenQuests()
     elseif command == "resetmarked" then
         ResetMarkedQuests(target)
+    elseif command == "pfquest" then
+        ImportPfQuestHistory(target)
     elseif command == "marks" or command == "mark" then
         ShowMarks(UQ.Trim(target) or "")
     elseif command == "worldscan" then
         ShowWorldScan(UQ.Trim(target) or "")
+    elseif command == "questlog" then
+        ShowQuestLogDump()
     elseif command == "debug" then
         local config = UQ:GetModule("Config")
         UQ.debug = not UQ.debug
