@@ -675,7 +675,7 @@ local function ChangeTracking(target, action)
     end
 
     if not changed then
-        Line("the client did not update tracking for '" .. quest.title .. "'")
+        Line("UnrealQuest did not update tracking for '" .. quest.title .. "'")
         return
     end
     if tracker:IsTracked(quest) then

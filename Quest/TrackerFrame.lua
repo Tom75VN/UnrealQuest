@@ -6,12 +6,10 @@ player's log, grouped by its quest log zone header, with each quest's
 objectives and their progress underneath it.
 
 Why this exists next to Quest/Tracker.lua, which is also called "tracker":
-they answer different questions. `Tracker` owns the CLIENT's watch list -- the
-five-quest native selection, and the persistence the client does not give it.
-This file owns a DISPLAY, and it is deliberately not bound by that list: the
-client caps watching at five quests, and "show me everything I am carrying" is
-not a watch request. A quest that happens to be in the native watch list is
-marked here with an accent stripe, nothing more.
+they answer different questions. `Tracker` owns UnrealQuest's unlimited saved
+selection and mirrors up to five entries into the capped native watch list.
+This file owns the DISPLAY. An addon-tracked quest is marked here with an
+accent stripe whether or not it fits in the native mirror.
 
 ## What it draws
 
@@ -47,10 +45,10 @@ accelerators, never the mechanism.
     its name-string relative frame, and is stored as a point name plus two
     numbers -- never a path, per the SavedVariables backslash hazard.
   * Left click a quest: selects it in the native Quest Log and opens it.
-  * Shift + left click a quest: toggles it on the client's native watch list
-    (Quest/Tracker.lua:Toggle) -- the same call the quest log's Track/Untrack
-    button uses (Quest/QuestLogButtons.lua), so the two surfaces cannot
-    disagree. Untracking also removes the quest from THIS WINDOW, and
+  * Shift + left click a quest: toggles it in UnrealQuest's unlimited tracked
+    set (Quest/Tracker.lua:Toggle) -- the same call the quest log's
+    Track/Untrack button uses (Quest/QuestLogButtons.lua), so the two surfaces
+    cannot disagree. Untracking also removes the quest from THIS WINDOW, and
     tracking it again brings it back -- see Hiding below.
   * Ctrl + left click a quest: opens the native fullscreen map (best effort;
     see Client.OpenWorldMap) and briefly flashes that quest's own pin(s) on it.
@@ -82,7 +80,7 @@ quest survived the filter" check in BuildLines -- so hiding the last quest in
 a zone does not leave an empty label behind.
 
 Fold state is persisted per quest title and per zone name, for the same reason
-Tracker persists watched titles and hidden quests are keyed the same way: this
+Tracker persists tracked titles and hidden quests are keyed the same way: this
 client has no quest ID, so the title is the only stable handle there is.
 ]]
 
@@ -505,7 +503,7 @@ local function BuildQuestTooltipLines(quest)
     local watch = Watch()
     if watch and watch:IsTracked(quest) then
         table.insert(lines, {
-            left = "Watched:", right = "yes",
+            left = "Tracked:", right = "yes",
             rightR = UQ.colors.accent[1], rightG = UQ.colors.accent[2], rightB = UQ.colors.accent[3],
         })
     end
@@ -578,10 +576,11 @@ local function OnQuestRowClick(row, first)
         return
     end
     if Client.IsShiftKeyDown() then
-        -- Toggles the client's native watch list -- the same Tracker:Toggle
-        -- call the quest log's Track/Untrack button uses (Quest/QuestLogButtons.lua),
-        -- so the two surfaces can never disagree about a quest's tracked
-        -- state. This reverses an earlier design (see docs/QUEST-TRACKER.md)
+        -- Toggles UnrealQuest's unlimited tracked set -- the same
+        -- Tracker:Toggle call the quest log's Track/Untrack button uses
+        -- (Quest/QuestLogButtons.lua), so the two surfaces can never disagree
+        -- about a quest's tracked state. This reverses an earlier design
+        -- (see docs/QUEST-TRACKER.md)
         -- that moved shift-click to a per-window hide instead, precisely to
         -- avoid this gesture meaning two different things -- superseded by
         -- explicit user request to unify it with the log button.
@@ -888,6 +887,35 @@ function TrackerFrame:Refresh()
     self.lines = lines
     self:Redraw(lines, questCount, completed)
     Client.ShowObject(window)
+end
+
+-- Makes one tracked quest visible after it is selected from the native quest
+-- log. Track has already cleared the quest and zone folds before this call;
+-- this method owns only the window's scroll slice. Starting on the preceding
+-- zone row when there is one preserves the context above the revealed quest.
+function TrackerFrame:RevealQuest(quest)
+    if not quest or not quest.title then
+        return false
+    end
+    local lines = self:BuildLines()
+    local index = 1
+    local total = table.getn(lines)
+    while index <= total do
+        local line = lines[index]
+        if line.kind == "quest" and line.quest
+            and line.quest.title == quest.title then
+            local first = index
+            if index > 1 and lines[index - 1].kind == "zone" then
+                first = index - 1
+            end
+            self.offset = first - 1
+            self.dirty = true
+            self:Refresh()
+            return true
+        end
+        index = index + 1
+    end
+    return false
 end
 
 -- Position ----------------------------------------------------------------------
@@ -1316,6 +1344,12 @@ function TrackerFrame:OnInit()
     end
 
     Client.SetTrackerHeaderButtons(window,
+        function()
+            local npcPins = UQ:GetModule("NpcPins")
+            if npcPins then
+                npcPins:ToggleMenu(window.unrealQuestNpcFinder)
+            end
+        end,
         function() TrackerFrame:ToggleCollapsed() end,
         function() TrackerFrame:Scroll(-5) end,
         function() TrackerFrame:Scroll(5) end)

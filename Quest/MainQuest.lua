@@ -145,8 +145,8 @@ function MainQuest:Set(titleKey)
 
     -- Following a quest and watching it are separate ideas here, and the
     -- default keeps them separate. With plain-click selection, auto-tracking
-    -- would fill the five-slot native watch list simply by browsing the quest
-    -- log. Opt in with mainQuestAutoTrack.
+    -- would add every quest browsed to the tracked set. Opt in with
+    -- mainQuestAutoTrack.
     local config = Config()
     if config and config:Get("mainQuestAutoTrack") then
         local tracker = Tracker()

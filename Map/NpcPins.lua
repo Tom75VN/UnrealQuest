@@ -1,10 +1,11 @@
 --[[
 UnrealQuest / Map/NpcPins.lua
 
-A movable HUD button and a compact multi-select menu for nearby service NPCs.
-Selected services are drawn as exact points on both the current-zone world map
-and the minimap. `Data/Database.lua` is the only layer that reads meta.lua and
-trainers.lua; this module only consumes normalized service locations.
+A compact multi-select menu for nearby service NPCs, opened from the quest
+tracker's spyglass. Selected services are drawn as exact points on both the
+current-zone world map and the minimap. `Data/Database.lua` is the only layer
+that reads meta.lua and trainers.lua; this module only consumes normalized
+service locations.
 
 The world map and minimap reuse their already-confirmed pooled pin contracts.
 Minimap points outside the current view are hidden rather than clamped: service
@@ -16,9 +17,6 @@ local UQ = UnrealQuest
 local Client = UQ.Client
 local NpcPins = UQ:NewModule("NpcPins")
 
-local BUTTON_NAME = "UnrealQuestNpcFinderButton"
-local HANDLE_NAME = "UnrealQuestNpcFinderHandle"
-local BUTTON_ICON = "Interface\\Icons\\INV_Misc_Spyglass_03"
 local REFRESH_INTERVAL = 0.1
 local WORLD_REFRESH_INTERVAL = 0.25
 local WORLD_INDEX_OFFSET = 6000
@@ -70,10 +68,6 @@ NpcPins.lastAreaId = nil
 NpcPins.lastWorldDrawAt = nil
 NpcPins.worldVisible = 0
 NpcPins.minimapVisible = 0
-NpcPins.dragged = false
-NpcPins.suppressClickUntil = nil
-NpcPins.button = nil
-NpcPins.handle = nil
 NpcPins.playerClassId = nil
 NpcPins.playerRaceId = nil
 NpcPins.playerClassName = nil
@@ -119,37 +113,6 @@ function NpcPins:HideAll()
     self.minimapVisible = HidePoolFrom(self.minimapPool, 1)
 end
 
-function NpcPins:ApplyStoredPosition()
-    if not self.button then
-        return false
-    end
-    local point = Setting("npcFinderPoint")
-    local relativePoint = Setting("npcFinderRelativePoint")
-    local x = Setting("npcFinderX")
-    local y = Setting("npcFinderY")
-    if type(point) ~= "string" or type(x) ~= "number" or type(y) ~= "number" then
-        return false
-    end
-    return Client.SetFrameAnchor(self.button, point, "UIParent",
-        type(relativePoint) == "string" and relativePoint or point, x, y)
-end
-
-function NpcPins:CapturePosition()
-    if not self.button then
-        return false
-    end
-    local point, _, relativePoint, x, y = Client.GetFrameAnchor(self.button)
-    if type(point) ~= "string" or type(x) ~= "number" or type(y) ~= "number" then
-        UQ:Warn("the NPC finder button could not report its position")
-        return false
-    end
-    Store("npcFinderPoint", point)
-    Store("npcFinderRelativePoint", type(relativePoint) == "string" and relativePoint or point)
-    Store("npcFinderX", x)
-    Store("npcFinderY", y)
-    return true
-end
-
 function NpcPins:GetMenuEntries()
     local entries = {}
     local index = 1
@@ -174,15 +137,16 @@ function NpcPins:GetMenuEntries()
     return entries
 end
 
-function NpcPins:ToggleMenu()
-    if not self.button then
+function NpcPins:ToggleMenu(anchor)
+    local menuAnchor = anchor or self.button
+    if not menuAnchor then
         return
     end
     if Client.IsNpcFilterMenuShown() then
         Client.HideNpcFilterMenu()
         return
     end
-    Client.ShowNpcFilterMenu(self.button, self:GetMenuEntries(), function(entry)
+    Client.ShowNpcFilterMenu(menuAnchor, self:GetMenuEntries(), function(entry)
         if entry and type(entry.setting) == "string" then
             Store(entry.setting, entry.checked and true or false)
             NpcPins.dirty = true
@@ -438,83 +402,14 @@ function NpcPins:OnInit()
     self.playerClassId = Client.GetPlayerClassId()
     self.playerRaceId = Client.GetPlayerRaceId()
     self.playerClassName = Client.GetPlayerClass()
-
-    local button = Client.CreateHudButton(BUTTON_NAME, BUTTON_ICON, "NPC")
-    if not button then
-        UQ:DeclareCapability("npcServicePins", "missing",
-            "the movable NPC finder HUD button could not be created")
-        UQ:Warn("the NPC finder HUD button could not be created")
-        return
-    end
-    self.button = button
-    local handle = Client.CreateHudButtonHandle(button, HANDLE_NAME)
-    if not handle then
-        Client.HideObject(button)
-        UQ:DeclareCapability("npcServicePins", "missing",
-            "the NPC finder root was created but its measured Button drag handle could not be created")
-        UQ:Warn("the NPC finder button has no drag handle")
-        return
-    end
-    self.handle = handle
-    if not self:ApplyStoredPosition() then
-        -- No stored position yet (never dragged): land immediately to the
-        -- left of wherever the settings icon actually is, not a fixed
-        -- screen offset. Not persisted -- CapturePosition takes over the
-        -- moment the player drags this button.
-        Client.AnchorHudButtonBesideSettingsIcon(button)
-    end
-
-    Client.SetObjectScript(handle, "OnDragStart", function()
-        NpcPins.dragged = true
-        Client.HideNpcFilterMenu()
-        if not Client.StartFrameDrag(button) then
-            NpcPins.dragged = false
-            UQ:Warn("the NPC finder button refused to move")
-        end
-    end)
-    Client.SetObjectScript(handle, "OnDragStop", function()
-        Client.StopFrameDrag(button)
-        NpcPins:CapturePosition()
-        NpcPins.dragged = false
-        local now = Client.Now()
-        if type(now) == "number" then
-            NpcPins.suppressClickUntil = now + 0.1
-        end
-    end)
-    Client.SetObjectScript(handle, "OnClick", function()
-        local now = Client.Now()
-        if NpcPins.dragged or (type(now) == "number"
-            and type(NpcPins.suppressClickUntil) == "number"
-            and now <= NpcPins.suppressClickUntil) then
-            NpcPins.suppressClickUntil = nil
-            return
-        end
-        NpcPins.suppressClickUntil = nil
-        NpcPins:ToggleMenu()
-    end)
-    Client.SetObjectScript(handle, "OnEnter", function()
-        Client.SetHudButtonHovered(button, true)
-        Client.ShowGameTooltip(button, {
-            { text = "Nearby NPCs", r = UQ.colors.accent[1], g = UQ.colors.accent[2],
-              b = UQ.colors.accent[3] },
-            { text = "Click to choose map markers.", r = 0.75, g = 0.75, b = 0.75 },
-            { text = "Drag to move this button.", r = 0.55, g = 0.55, b = 0.55 },
-        }, "ANCHOR_LEFT")
-    end)
-    Client.SetObjectScript(handle, "OnLeave", function()
-        Client.SetHudButtonHovered(button, false)
-        Client.HideGameTooltip(button)
-    end)
-    Client.ShowObject(button)
     UQ:DeclareCapability("npcServicePins", "unverified",
-        "the HUD selector and service pins reuse verified addon-owned button, world-map and minimap surfaces; the new composite has not yet been visually confirmed")
+        "the tracker-header selector and service pins reuse verified addon-owned button, world-map and minimap surfaces; the new composite has not yet been visually confirmed")
 end
 
 function NpcPins:OnEnable()
     if not self.playerClassId then self.playerClassId = Client.GetPlayerClassId() end
     if not self.playerRaceId then self.playerRaceId = Client.GetPlayerRaceId() end
     if not self.playerClassName then self.playerClassName = Client.GetPlayerClass() end
-    if self.button then Client.ShowObject(self.button) end
     local driver = UQ:GetModule("Driver")
     if driver then
         driver:Schedule("map.npcpins", REFRESH_INTERVAL, function()

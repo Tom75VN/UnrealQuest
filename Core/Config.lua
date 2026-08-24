@@ -254,10 +254,10 @@ local defaults = {
     -- held-modifier gesture and leave plain clicks alone.
     mainQuestClickModifier = "none",
 
-    -- Whether selecting a main quest also adds it to the native watch list.
-    -- Off by default and deliberately so: with plain-click selection this
-    -- would fill the client's five-quest watch list simply by browsing the
-    -- quest log. Following a quest and watching it are separate ideas.
+    -- Whether selecting a main quest also adds it to UnrealQuest's tracked
+    -- set. Off by default and deliberately so: with plain-click selection
+    -- this would track every quest merely browsed in the log. Following a
+    -- quest and tracking it are separate ideas.
     mainQuestAutoTrack = false,
 
     waypointEnabled = true,

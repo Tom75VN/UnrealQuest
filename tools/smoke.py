@@ -1,4 +1,4 @@
-"""Offline smoke test for UnrealQuest v0.0.2.
+"""Offline smoke test for UnrealQuest v0.0.3.
 
 Loads the real addon files, bundled world data included, into a Lua runtime
 with a mocked Vanilla-shaped client API, drives the bootstrap, and asserts the
@@ -596,7 +596,11 @@ function GetQuestLogQuestText()
 end
 
 function IsQuestWatched(index) return UQ_TEST_WATCHES[index] and true or false end
-function AddQuestWatch(index) UQ_TEST_WATCHES[index] = true end
+function AddQuestWatch(index)
+    if UQ_TEST_WATCHES[index] then return end
+    if GetNumQuestWatches() >= 5 then return end
+    UQ_TEST_WATCHES[index] = true
+end
 function RemoveQuestWatch(index) UQ_TEST_WATCHES[index] = nil end
 function GetNumQuestWatches()
     local n = 0
@@ -850,7 +854,7 @@ for path in toc_files(os.path.join(ADDONS, "unrealQuest", "UnrealQuest.toc")):
 
 check("world data populated", rt.eval("UnrealQuestData ~= nil and UnrealQuestData.quests ~= nil"))
 
-check("namespace created", rt.eval("UnrealQuest ~= nil and UnrealQuest.version == '0.0.2'"))
+check("namespace created", rt.eval("UnrealQuest ~= nil and UnrealQuest.version == '0.0.3'"))
 check("slash command registered", rt.eval("SlashCmdList.UNREALQUEST == nil"),
       "should still be nil before init")
 
@@ -878,12 +882,8 @@ check("objectives read", rt.eval("""(function()
 end)()"""))
 
 print("nearby NPC selector and pins")
-check("the movable HUD selector is created and shown", rt.eval("""(function()
-    local pins = UnrealQuest:GetModule('NpcPins')
-    return pins.button ~= nil and pins.button:IsShown()
-        and pins.handle and pins.handle.parent == pins.button
-        and pins.handle.dragTokens and pins.handle.dragTokens[1] == 'LeftButton'
-end)()"""))
+check("the NPC finder has no separate button near the minimap", rt.eval(
+    "UnrealQuestNpcFinderButton == nil"))
 check("the service adapter reads meta.lua and class-filtered trainers", rt.eval("""(function()
     local db = UnrealQuest:GetModule('Database')
     local locations = db:GetAreaServiceLocations(12, 8, 1)
@@ -900,10 +900,9 @@ check("the service adapter reads meta.lua and class-filtered trainers", rt.eval(
     return sawMeta and sawTrainer
 end)()"""))
 rt.execute("""
-    local pins = UnrealQuest:GetModule('NpcPins')
-    pins.handle.scripts.OnClick()
+    UnrealQuestTrackerNpcFinder:GetScript('OnClick')()
 """)
-check("clicking the HUD button opens the multi-select menu", rt.eval(
+check("clicking the tracker spyglass opens the multi-select menu", rt.eval(
     "UnrealQuest.Client.IsNpcFilterMenuShown()"))
 check("the trainer row names the player's current class", rt.eval("""(function()
     local row = UnrealQuestNpcFilterRow1
@@ -938,31 +937,21 @@ end)()"""), str(rt.eval("""(function()
             GetAreaServiceLocations(12, pins.playerClassId, pins.playerRaceId)))
 end)()""")))
 rt.execute("""
-    local pins = UnrealQuest:GetModule('NpcPins')
     UnrealQuestNpcFilterRow1.scripts.OnClick()
-    pins.handle.scripts.OnDragStart()
-    pins.button:SetPoint('RIGHT', UIParent, 'RIGHT', -80, 40)
-    pins.handle.scripts.OnDragStop()
 """)
-check("dragging the HUD button stores its new UIParent-relative position", rt.eval("""
-    UnrealQuestDB.npcFinderPoint == 'RIGHT'
-        and UnrealQuestDB.npcFinderX == -80 and UnrealQuestDB.npcFinderY == 40
-"""))
 rt.execute("""
-    local pins = UnrealQuest:GetModule('NpcPins')
-    pins.handle.scripts.OnClick()
+    UnrealQuestTrackerNpcFinder:GetScript('OnClick')()
 """)
-check("the click emitted after a drag is swallowed instead of opening the menu", rt.eval(
+check("clicking the tracker spyglass closes the NPC menu", rt.eval(
     "not UnrealQuest.Client.IsNpcFilterMenuShown()"))
 check("closing the NPC menu explicitly hides its child rows", rt.eval(
     "UnrealQuestNpcFilterRow1:IsShown() == false"))
 rt.execute("""
-    UQ_TEST_TICK(0.2, 1)
-    UnrealQuest:GetModule('NpcPins').handle.scripts.OnClick()
+    UnrealQuestTrackerNpcFinder:GetScript('OnClick')()
 """)
-check("the next intentional click opens the menu normally", rt.eval(
+check("the tracker spyglass reopens the NPC menu", rt.eval(
     "UnrealQuest.Client.IsNpcFilterMenuShown()"))
-rt.execute("UnrealQuest:GetModule('NpcPins').handle.scripts.OnClick()")
+rt.execute("UnrealQuestTrackerNpcFinder:GetScript('OnClick')()")
 check("clearing the last category hides both pin pools", rt.eval("""(function()
     local pins = UnrealQuest:GetModule('NpcPins')
     return pins.worldVisible == 0 and pins.minimapVisible == 0
@@ -2615,6 +2604,112 @@ rt.execute("""
 check("tracking restored after simulated reload", rt.eval("IsQuestWatched(2) == true"))
 check("restore refreshes native watch panel", rt.eval("UQ_TEST_WATCH_REFRESHES >= 2"))
 
+print("unlimited addon tracking with five-slot native mirror")
+rt.execute("""
+    UQ_TEST_LOG = {
+        { "Test Zone", 0, nil, 1, nil, nil },
+        { "Tracked One", 1, nil, nil, nil, nil, {} },
+        { "Tracked Two", 2, nil, nil, nil, nil, {} },
+        { "Tracked Three", 3, nil, nil, nil, nil, {} },
+        { "Tracked Four", 4, nil, nil, nil, nil, {} },
+        { "Tracked Five", 5, nil, nil, nil, nil, {} },
+        { "Tracked Six", 6, nil, nil, nil, nil, {} },
+    }
+    UQ_TEST_WATCHES = {}
+    UnrealQuestDB.trackedQuests = {}
+    UnrealQuestDB.trackerHiddenQuests = {}
+    local state = UnrealQuest:GetModule('QuestState')
+    local tracker = UnrealQuest:GetModule('Tracker')
+    state:Scan()
+    tracker.restored = true
+    tracker.nativeTitles = {}
+    local quests = state:GetOrderedQuests()
+    local index = 1
+    while index <= table.getn(quests) do
+        tracker:Track(quests[index])
+        index = index + 1
+    end
+""")
+check("six quests are addon-tracked", rt.eval("""(function()
+    local tracker = UnrealQuest:GetModule('Tracker')
+    local quests = UnrealQuest:GetModule('QuestState'):GetOrderedQuests()
+    local index = 1
+    while index <= table.getn(quests) do
+        if not tracker:IsTracked(quests[index]) then return false end
+        index = index + 1
+    end
+    return table.getn(tracker:GetTrackedTitles()) == 6
+end)()"""))
+check("native mirror remains capped at five", rt.eval(
+    "GetNumQuestWatches() == 5 and IsQuestWatched(7) == false"))
+check("sixth tracked quest is visible to the custom tracker", rt.eval("""(function()
+    local lines = UnrealQuest:GetModule('TrackerFrame'):BuildLines()
+    local index = 1
+    while index <= table.getn(lines) do
+        if lines[index].quest and lines[index].quest.title == 'Tracked Six' then
+            return lines[index].tracked == true
+        end
+        index = index + 1
+    end
+    return false
+end)()"""))
+rt.execute("""
+    local state = UnrealQuest:GetModule('QuestState')
+    local trackerFrame = UnrealQuest:GetModule('TrackerFrame')
+    UnrealQuestDB.trackerCollapsedZones['Test Zone'] = 1
+    UnrealQuestDB.trackerCollapsedQuests['Tracked Six'] = 1
+    trackerFrame.offset = 50
+    UnrealQuest:GetModule('Tracker'):Track(state:GetQuestByTitle('Tracked Six'))
+""")
+check("tracking expands the quest and its collapsed zone", rt.eval("""
+    UnrealQuestDB.trackerCollapsedZones['Test Zone'] == nil
+        and UnrealQuestDB.trackerCollapsedQuests['Tracked Six'] == nil
+"""))
+check("tracking scrolls the custom window to the quest", rt.eval("""(function()
+    local trackerFrame = UnrealQuest:GetModule('TrackerFrame')
+    local index = 1
+    while index <= table.getn(trackerFrame.lines) do
+        local line = trackerFrame.lines[index]
+        if line.quest and line.quest.title == 'Tracked Six' then
+            return index > trackerFrame.offset
+                and index <= trackerFrame.offset + trackerFrame.linesDrawn
+        end
+        index = index + 1
+    end
+    return false
+end)()"""))
+rt.execute("""
+    local state = UnrealQuest:GetModule('QuestState')
+    UnrealQuest:GetModule('Tracker'):Untrack(state:GetQuestByTitle('Tracked One'))
+""")
+check("opening a native slot promotes an overflow quest", rt.eval(
+    "GetNumQuestWatches() == 5 and IsQuestWatched(7) == true"))
+rt.execute("""
+    UQ_TEST_WATCHES = {}
+    local tracker = UnrealQuest:GetModule('Tracker')
+    tracker.restored = false
+    tracker.attempts = 0
+    tracker.nativeTitles = nil
+    tracker:Restore()
+""")
+check("overflow tracking survives reload restoration", rt.eval("""(function()
+    local tracker = UnrealQuest:GetModule('Tracker')
+    local quest = UnrealQuest:GetModule('QuestState'):GetQuestByTitle('Tracked Six')
+    return tracker:IsTracked(quest) and GetNumQuestWatches() == 5
+end)()"""))
+rt.execute("""
+    UQ_TEST_LOG = UQ_TEST_RESTORE_LOG
+    UQ_TEST_WATCHES = {}
+    UnrealQuestDB.trackedQuests = { ['Kobold Camp Cleanup'] = 1 }
+    UnrealQuestDB.trackerHiddenQuests = {}
+    UnrealQuest:GetModule('QuestState'):Scan()
+    local tracker = UnrealQuest:GetModule('Tracker')
+    tracker.restored = false
+    tracker.attempts = 0
+    tracker.nativeTitles = nil
+    tracker:Restore()
+""")
+
 print("late quest identity resolution")
 
 # The database title index builds across driver ticks, so on a login with a
@@ -3721,7 +3816,7 @@ rt.execute("""
     UnrealQuest:GetModule('TrackerFrame').dirty = true
     UnrealQuest:GetModule('TrackerFrame'):Refresh()
 """)
-check("a watched quest gets the accent stripe",
+check("an addon-tracked quest gets the accent stripe",
       rt.eval("UnrealQuestTrackerRowquest1.unrealQuestStripe:IsShown() == true"))
 
 rt.execute("""
@@ -4072,7 +4167,7 @@ check("the tracker reports the wheel as a missing capability, not a working one"
     return state == 'missing'
 end)()"""))
 
-check("objective display can be reduced to the watched quests", rt.eval("""(function()
+check("objective display can be reduced to the tracked quests", rt.eval("""(function()
     -- Re-track it: the shift-click/untrack coupling test above untracked it
     -- (untracking now also hides it, per the shift-click-equals-Untrack
     -- behavior), and this check needs it watched again to mean anything.
@@ -4151,6 +4246,7 @@ check("no row or header text carries a drop shadow", rt.eval("""(function()
         UnrealQuestTracker.unrealQuestCount,
         UnrealQuestTrackerCollapse.unrealQuestLabel,
         UnrealQuestTrackerScrollUp.unrealQuestLabel,
+        UnrealQuestTrackerNpcFinder.unrealQuestLabel,
         UnrealQuestTrackerRowquest1.unrealQuestLabel,
         UnrealQuestTrackerRowzone1.unrealQuestLabel,
     }
@@ -4213,13 +4309,33 @@ end)()"""))
 
 check("zone rows, objective rows and header buttons get no hover effect at all", rt.eval("""(function()
     local none = { UnrealQuestTrackerRowzone1, UnrealQuestTrackerRowobjective1,
-        UnrealQuestTrackerCollapse, UnrealQuestTrackerScrollUp, UnrealQuestTrackerScrollDown }
+        UnrealQuestTrackerNpcFinder, UnrealQuestTrackerCollapse, UnrealQuestTrackerScrollUp,
+        UnrealQuestTrackerScrollDown }
     for _, widget in ipairs(none) do
         if widget.unrealQuestHover ~= nil then return false end
         if widget.highlight ~= nil then return false end
         if widget.scripts.OnEnter ~= nil or widget.scripts.OnLeave ~= nil then return false end
     end
     return true
+end)()"""))
+
+check("the tracker scroll arrows use the accent colour", rt.eval("""(function()
+    local accent = UnrealQuest.colors.accent
+    local up = UnrealQuestTrackerScrollUp.unrealQuestLabel.color
+    local down = UnrealQuestTrackerScrollDown.unrealQuestLabel.color
+    return up[1] == accent[1] and up[2] == accent[2] and up[3] == accent[3]
+        and down[1] == accent[1] and down[2] == accent[2] and down[3] == accent[3]
+end)()"""))
+
+check("the tracker header's spyglass opens the NPC finder list", rt.eval("""(function()
+    local button = UnrealQuestTrackerNpcFinder
+    local icon = button and button.unrealQuestIcon
+    if not button or not icon or icon:GetTexture() ~= 'Interface\\\\Icons\\\\INV_Misc_Spyglass_03' then
+        return false
+    end
+    UnrealQuest.Client.HideNpcFilterMenu()
+    button:GetScript('OnClick')()
+    return UnrealQuest.Client.IsNpcFilterMenuShown()
 end)()"""))
 
 print("  tracker: commands and settings")
@@ -4557,7 +4673,11 @@ for cmd in ("", "status", "quests", "events", "map", "db"):
     ok = rt.eval("function(c) return pcall(SlashCmdList.UNREALQUEST, c) end")(cmd)
     check(f"/uq {cmd or '(help)'} runs", ok)
 
-rt.execute("RemoveQuestWatch(2); SlashCmdList.UNREALQUEST('track kobold')")
+rt.execute("""
+    local quest = UnrealQuest:GetModule('QuestState'):GetQuestByTitle('Kobold Camp Cleanup')
+    UnrealQuest:GetModule('Tracker'):Untrack(quest)
+    SlashCmdList.UNREALQUEST('track kobold')
+""")
 check("/uq track title fragment tracks quest", rt.eval("IsQuestWatched(2) == true"))
 rt.execute("SlashCmdList.UNREALQUEST('toggle 2')")
 check("/uq toggle index untracks quest", rt.eval("IsQuestWatched(2) == false"))

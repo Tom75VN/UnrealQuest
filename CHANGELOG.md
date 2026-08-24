@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.3
+
+- Fixed the limit of 5 in tracker windows; now unlimited.
+
 ## 0.0.2
 
 - Added RU and CN client support.

@@ -19,7 +19,7 @@ UnrealQuest turns questing into exploration instead of guesswork. It is designed
 - See objectives, available quests and turn-ins directly on the world map with dots, areas, `!` and `?` markers.
 - Follow nearby quest creatures and objectives from your minimap without constantly reopening the world map.
 - Watch every quest you need in a movable tracker window, beyond the client's native five-quest limit, grouped by zone with live objective progress.
-- Find nearby auctioneers, bankers, flight masters, mailboxes, vendors and class trainers from the movable NPC finder.
+- Find nearby auctioneers, bankers, flight masters, mailboxes, vendors and class trainers from the quest tracker's NPC finder.
 - See live quest progress in creature tooltips and recognize relevant targets through automatic quest marks.
 - Import completed-quest history from pfQuest so finished quests do not reappear on the map.
 
@@ -87,12 +87,12 @@ UnrealQuest is not a generic quest addon forced onto an unfamiliar client. Its t
 
 Use `/uq` in game to view the available commands and diagnostics.
 
-The `NPC` HUD button can be dragged anywhere. Click it to select or clear service categories;
-the class-trainer row automatically shows only trainers for your character's class.
+Use the tracker header's spyglass to select or clear service categories; the
+class-trainer row automatically shows only trainers for your character's class.
 
 ## Version
 
-Current release: 0.0.2
+Current release: 0.0.3
 
 ## License
 

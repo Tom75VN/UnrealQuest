@@ -1,8 +1,8 @@
 --[[
 UnrealQuest / Quest/Tracker.lua
 
-Wrapper over the client's quest watch list, plus the persistence the client
-does not provide.
+Unlimited addon-owned quest tracking, with a best-effort mirror into the
+client's native watch list.
 
 Client facts this is built on, all from measured or in-game confirmed evidence:
 
@@ -11,16 +11,19 @@ Client facts this is built on, all from measured or in-game confirmed evidence:
   * The watch list is client state that does NOT survive a UI reload here.
     After /reload the client reports zero watched quests even for a quest the
     player was tracking. Persisting and reapplying the set is the addon's job.
-  * The client caps the watch list at five quests.
+  * The client caps the watch list at five quests. That list is therefore a
+    mirror only: the saved addon set is authoritative and has no five-quest
+    ceiling. When a native slot opens, another addon-tracked quest is promoted
+    into it.
 
 Two ordering hazards are handled explicitly, because getting either wrong
 produces a bug that looks exactly like "the client does not persist tracking":
 
   1. The quest log may not be populated when the addon enables, so restoration
      retries on the driver instead of running once.
-  2. The first sync pass can run before restoration finishes. Remembering a
-     tracked quest is never gated, but forgetting one is gated behind the
-     restored flag, so an early sync can never erase the remembered set.
+  2. The first sync pass can run before restoration finishes. Native watches
+     are imported immediately, but native removals are not trusted until the
+     remembered set has been restored, so an early sync can never erase it.
 ]]
 
 local UQ = UnrealQuest
@@ -38,11 +41,14 @@ local SECTION = "trackedQuests"
 -- cross-module call, since the two modules otherwise stay independent
 -- (Quest/TrackerFrame.lua owns the window, this module owns the watch list).
 local HIDDEN_SECTION = "trackerHiddenQuests"
+local COLLAPSED_QUESTS_SECTION = "trackerCollapsedQuests"
+local COLLAPSED_ZONES_SECTION = "trackerCollapsedZones"
 local RESTORE_INTERVAL = 1.0
 local RESTORE_ATTEMPTS = 20
 
 Tracker.restored = false
 Tracker.attempts = 0
+Tracker.nativeTitles = nil
 
 local function Config()
     return UQ:GetModule("Config")
@@ -64,14 +70,14 @@ function Tracker:Remember(title)
     config:SetSectionEntry(SECTION, title, 1)
 end
 
-function Tracker:Forget(title)
+function Tracker:Forget(title, force)
     local config = Config()
     if not config then
         return
     end
     -- Never forget before restoration has completed: an early sync pass would
     -- otherwise wipe exactly the set it is meant to restore.
-    if not self.restored then
+    if not self.restored and not force then
         return
     end
     config:SetSectionEntry(SECTION, title, nil)
@@ -120,52 +126,134 @@ local function RefreshNativeWatch()
     end
 end
 
--- Live watch state ----------------------------------------------------------
+-- Live tracking state -------------------------------------------------------
+
+-- The saved set is the tracking state UnrealQuest exposes to every surface.
+-- IsQuestWatched cannot be authoritative because the client can represent at
+-- most five entries; using it here is what made the sixth Track click fail.
 
 function Tracker:IsTracked(quest)
-    if not quest or not quest.index then
+    if not quest or not quest.title then
         return false
     end
-    local watched = Client.IsQuestWatched(quest.index)
-    if watched == nil then
-        return false
+    return self:IsRemembered(quest.title)
+end
+
+local function SetHidden(title, hidden)
+    local config = Config()
+    if not config or not title then
+        return
     end
-    return watched
+    config:SetSectionEntry(HIDDEN_SECTION, title, hidden and 1 or nil)
+end
+
+-- A successful Track click must make the quest visible in the custom window,
+-- not merely change its saved stripe state. Clear folds that can conceal this
+-- particular quest, then let TrackerFrame move its visible slice to the row.
+local function RevealTrackedQuest(quest)
+    local config = Config()
+    if config then
+        config:SetSectionEntry(COLLAPSED_QUESTS_SECTION, quest.title, nil)
+        if type(quest.zone) == "string" and quest.zone ~= "" then
+            config:SetSectionEntry(COLLAPSED_ZONES_SECTION, quest.zone, nil)
+        end
+    end
+    local trackerFrame = UQ:GetModule("TrackerFrame")
+    if trackerFrame then
+        trackerFrame:RevealQuest(quest)
+    end
+end
+
+local function SnapshotNative(quests)
+    local titles = {}
+    local index = 1
+    local total = table.getn(quests)
+    while index <= total do
+        local quest = quests[index]
+        if quest and quest.index and quest.title and Client.IsQuestWatched(quest.index) then
+            titles[quest.title] = 1
+        end
+        index = index + 1
+    end
+    return titles
+end
+
+-- Fill only the native slots the client actually has. AddQuestWatch returns
+-- no useful success value, so every attempted addition is verified through
+-- IsQuestWatched before it counts as a changed native watch.
+function Tracker:MirrorNativeWatches(quests)
+    local count = Client.GetWatchCount()
+    if count >= Client.MAX_WATCHES then
+        return 0
+    end
+
+    local applied = 0
+    local index = 1
+    local total = table.getn(quests)
+    while index <= total and count < Client.MAX_WATCHES do
+        local quest = quests[index]
+        if quest and quest.index and self:IsTracked(quest)
+            and not Client.IsQuestWatched(quest.index) then
+            Client.AddQuestWatch(quest.index)
+            if Client.IsQuestWatched(quest.index) then
+                applied = applied + 1
+                count = count + 1
+            end
+        end
+        index = index + 1
+    end
+    return applied
 end
 
 function Tracker:Track(quest)
-    if not quest or not quest.index then
-        return false
-    end
-    if Client.GetWatchCount() >= Client.MAX_WATCHES and not self:IsTracked(quest) then
-        UQ:Print("the client allows at most " .. Client.MAX_WATCHES .. " tracked quests")
-        return false
-    end
-    if not Client.AddQuestWatch(quest.index) then
+    if not quest or not quest.index or not quest.title then
         return false
     end
     self:Remember(quest.title)
-    local config = Config()
-    if config and quest.title then
-        config:SetSectionEntry(HIDDEN_SECTION, quest.title, nil)
+    SetHidden(quest.title, false)
+
+    local nativeChanged = false
+    if not Client.IsQuestWatched(quest.index)
+        and Client.GetWatchCount() < Client.MAX_WATCHES then
+        Client.AddQuestWatch(quest.index)
+        nativeChanged = Client.IsQuestWatched(quest.index) and true or false
     end
-    RefreshNativeWatch()
+    if nativeChanged then
+        self.nativeTitles = self.nativeTitles or {}
+        self.nativeTitles[quest.title] = 1
+        RefreshNativeWatch()
+    end
+    RevealTrackedQuest(quest)
     return true
 end
 
 function Tracker:Untrack(quest)
-    if not quest or not quest.index then
+    if not quest or not quest.index or not quest.title then
         return false
     end
-    if not Client.RemoveQuestWatch(quest.index) then
-        return false
+    self:Forget(quest.title, true)
+    SetHidden(quest.title, true)
+
+    local nativeChanged = false
+    if Client.IsQuestWatched(quest.index) then
+        Client.RemoveQuestWatch(quest.index)
+        nativeChanged = not Client.IsQuestWatched(quest.index)
     end
-    self:Forget(quest.title)
-    local config = Config()
-    if config and quest.title then
-        config:SetSectionEntry(HIDDEN_SECTION, quest.title, 1)
+    if self.nativeTitles then
+        self.nativeTitles[quest.title] = nil
     end
-    RefreshNativeWatch()
+
+    local state = State()
+    if state then
+        local applied = self:MirrorNativeWatches(state:GetOrderedQuests())
+        if applied > 0 then
+            nativeChanged = true
+        end
+        self.nativeTitles = SnapshotNative(state:GetOrderedQuests())
+    end
+    if nativeChanged then
+        RefreshNativeWatch()
+    end
     return true
 end
 
@@ -217,22 +305,10 @@ function Tracker:Restore()
     end
 
     local quests = state:GetOrderedQuests()
-    local index = 1
-    local total = table.getn(quests)
-    local applied = 0
-    while index <= total do
-        local quest = quests[index]
-        if section[quest.title] and not self:IsTracked(quest) then
-            if Client.GetWatchCount() < Client.MAX_WATCHES then
-                if Client.AddQuestWatch(quest.index) then
-                    applied = applied + 1
-                end
-            end
-        end
-        index = index + 1
-    end
+    local applied = self:MirrorNativeWatches(quests)
 
     self.restored = true
+    self.nativeTitles = SnapshotNative(quests)
     if applied > 0 then
         RefreshNativeWatch()
         UQ:Debug("restored tracking on " .. applied .. " quest(s)")
@@ -240,7 +316,10 @@ function Tracker:Restore()
     return true
 end
 
--- Keeps the remembered set aligned with what the client currently reports.
+-- Imports native watch changes without letting the five-slot mirror erase
+-- addon-tracked overflow. A transition from watched to unwatched is trusted
+-- only when that title was in the previous native snapshot; a title that has
+-- never fit in the native list is therefore preserved.
 function Tracker:Sync()
     local state = State()
     if not state then
@@ -251,16 +330,58 @@ function Tracker:Sync()
     local trustRemovals = self.restored and state:IsComplete()
 
     local quests = state:GetOrderedQuests()
+    local native = SnapshotNative(quests)
+
+    if trustRemovals and self.nativeTitles then
+        for title in pairs(self.nativeTitles) do
+            if not native[title] and state:GetQuestByTitle(title) then
+                self:Forget(title, true)
+                SetHidden(title, true)
+            end
+        end
+    end
+
     local index = 1
     local total = table.getn(quests)
     while index <= total do
         local quest = quests[index]
-        if self:IsTracked(quest) then
+        if native[quest.title] then
             self:Remember(quest.title)
-        elseif trustRemovals and self:IsRemembered(quest.title) then
-            self:Forget(quest.title)
+            SetHidden(quest.title, false)
         end
         index = index + 1
+    end
+
+    -- A complete model is also the safe moment to remove stale saved titles
+    -- for quests no longer in the log, including overflow quests that never
+    -- occupied a native slot.
+    if trustRemovals then
+        local config = Config()
+        local section = config and config:GetSection(SECTION)
+        if section then
+            local stale = {}
+            for title in pairs(section) do
+                if not state:GetQuestByTitle(title) then
+                    table.insert(stale, title)
+                end
+            end
+            index = 1
+            total = table.getn(stale)
+            while index <= total do
+                self:Forget(stale[index], true)
+                SetHidden(stale[index], false)
+                index = index + 1
+            end
+        end
+    end
+
+    self.nativeTitles = native
+    if self.restored then
+        local applied = self:MirrorNativeWatches(quests)
+        if applied > 0 then
+            self.nativeTitles = SnapshotNative(quests)
+            RefreshNativeWatch()
+        end
     end
 end
 

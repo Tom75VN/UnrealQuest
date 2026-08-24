@@ -10,9 +10,9 @@ quest is currently selected there:
                        QuestClicks:RevealOnMap (Quest/QuestClicks.lua), shared
                        with the tracker so the two surfaces cannot drift
                        apart.
-  * Track / Untrack -- toggles the quest on the client's native watch list
-                       (the HUD tracker), through Quest/Tracker.lua, exactly
-                       what /uq track / the tracker window's own gestures use.
+  * Track / Untrack -- toggles the quest in UnrealQuest's unlimited saved
+                       tracked set through Quest/Tracker.lua, exactly what
+                       /uq track / the tracker window's own gestures use.
 
 ## Placement
 

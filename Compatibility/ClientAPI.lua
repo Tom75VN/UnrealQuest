@@ -2980,6 +2980,10 @@ end
 
 local TRACKER_HEADER_HEIGHT = 20
 local TRACKER_BUTTON_SIZE = 16
+local TRACKER_HEADER_BUTTONS = 4
+-- This is the already-shipped NPC finder's spyglass, so the tracker can use
+-- the same clear visual language without introducing a second texture asset.
+local TRACKER_NPC_FINDER_ICON_TEXTURE = "Interface\\Icons\\INV_Misc_Spyglass_03"
 local TRACKER_ACCENT_WIDTH = 2
 local TRACKER_PADDING = 6
 local TRACKER_BAR_HEIGHT = 2
@@ -3317,7 +3321,7 @@ function Client.CreateTrackerWindow(name)
     frame.unrealQuestBackground = background
     BuildFlatBorder(frame)
 
-    -- Header: the accent stripe, the title, the counter, and the three buttons
+    -- Header: the accent stripe, the title, the counter, and the four buttons
     -- laid out from the right edge inwards.
     local accent = CreateSolid(frame, "ARTWORK",
         UQ.colors.accent[1], UQ.colors.accent[2], UQ.colors.accent[3], 1)
@@ -3352,7 +3356,7 @@ function Client.CreateTrackerWindow(name)
             "GameFontNormalSmall")
         if countOk and count then
             pcall(count.SetPoint, count, "TOPRIGHT", frame, "TOPRIGHT",
-                -(TRACKER_PADDING + TRACKER_BUTTON_SIZE * 3), -TRACKER_PADDING - 1)
+                -(TRACKER_PADDING + TRACKER_BUTTON_SIZE * TRACKER_HEADER_BUTTONS), -TRACKER_PADDING - 1)
             pcall(count.SetJustifyH, count, "RIGHT")
             pcall(count.SetTextColor, count, 0.55, 0.55, 0.55)
             StripShadow(count)
@@ -3368,6 +3372,8 @@ function Client.CreateTrackerWindow(name)
 
     local scrollDown = CreateLabelledButton(frame, name .. "ScrollDown", TRACKER_BUTTON_SIZE, "v")
     if scrollDown then
+        Client.SetButtonLabel(scrollDown, "v",
+            UQ.colors.accent[1], UQ.colors.accent[2], UQ.colors.accent[3])
         pcall(scrollDown.SetPoint, scrollDown, "TOPRIGHT", frame, "TOPRIGHT",
             -(2 + TRACKER_BUTTON_SIZE), -2)
         pcall(scrollDown.Hide, scrollDown)
@@ -3376,11 +3382,32 @@ function Client.CreateTrackerWindow(name)
 
     local scrollUp = CreateLabelledButton(frame, name .. "ScrollUp", TRACKER_BUTTON_SIZE, "^")
     if scrollUp then
+        Client.SetButtonLabel(scrollUp, "^",
+            UQ.colors.accent[1], UQ.colors.accent[2], UQ.colors.accent[3])
         pcall(scrollUp.SetPoint, scrollUp, "TOPRIGHT", frame, "TOPRIGHT",
             -(2 + TRACKER_BUTTON_SIZE * 2), -2)
         pcall(scrollUp.Hide, scrollUp)
     end
     frame.unrealQuestScrollUp = scrollUp
+
+    -- A compact spyglass button opens the NPC finder list from the tracker,
+    -- rather than adding another button beside the map.
+    local npcFinder = CreateLabelledButton(frame, name .. "NpcFinder", TRACKER_BUTTON_SIZE, "")
+    if npcFinder then
+        pcall(npcFinder.SetPoint, npcFinder, "TOPRIGHT", frame, "TOPRIGHT",
+            -(2 + TRACKER_BUTTON_SIZE * 3), -2)
+        if type(npcFinder.CreateTexture) == "function" then
+            local iconOk, icon = pcall(npcFinder.CreateTexture, npcFinder, nil, "OVERLAY")
+            if iconOk and icon then
+                if type(icon.SetTexture) == "function" then
+                    pcall(icon.SetTexture, icon, TRACKER_NPC_FINDER_ICON_TEXTURE)
+                end
+                pcall(icon.SetAllPoints, icon, npcFinder)
+                npcFinder.unrealQuestIcon = icon
+            end
+        end
+    end
+    frame.unrealQuestNpcFinder = npcFinder
 
     frame.unrealQuestRows = { zone = {}, quest = {}, objective = {} }
     pcall(frame.Hide, frame)
@@ -3405,10 +3432,11 @@ function Client.SetTrackerCount(frame, text)
     return ok and true or false
 end
 
-function Client.SetTrackerHeaderButtons(frame, onCollapse, onScrollUp, onScrollDown)
+function Client.SetTrackerHeaderButtons(frame, onNpcFinder, onCollapse, onScrollUp, onScrollDown)
     if not frame then
         return false
     end
+    Client.SetObjectScript(frame.unrealQuestNpcFinder, "OnClick", onNpcFinder)
     Client.SetObjectScript(frame.unrealQuestCollapse, "OnClick", onCollapse)
     Client.SetObjectScript(frame.unrealQuestScrollUp, "OnClick", onScrollUp)
     Client.SetObjectScript(frame.unrealQuestScrollDown, "OnClick", onScrollDown)
@@ -3457,7 +3485,7 @@ function Client.CreateTrackerHandle(window, name)
     if type(handle.SetPoint) == "function" then
         pcall(handle.SetPoint, handle, "TOPLEFT", window, "TOPLEFT", 0, 0)
         pcall(handle.SetPoint, handle, "TOPRIGHT", window, "TOPRIGHT",
-            -(TRACKER_BUTTON_SIZE * 3), 0)
+            -(TRACKER_BUTTON_SIZE * TRACKER_HEADER_BUTTONS), 0)
     end
     Client.SetObjectSize(handle, nil, TRACKER_HEADER_HEIGHT)
     -- Raised with SetFrameLevel, never with a strata change: raising the handle
