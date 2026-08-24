@@ -16,20 +16,12 @@ UnrealQuest turns questing into exploration instead of guesswork. It is designed
 
 ## Main benefits
 
-- Enjoy a quest helper purpose-built for Unreal Azeroth instead of adapted from another client.
-- See active quest objectives as clear blue areas directly on your world map.
-- Discover available quests with `!` markers and find turn-in locations with `?` markers.
+- See objectives, available quests and turn-ins directly on the world map with dots, areas, `!` and `?` markers.
 - Follow nearby quest creatures and objectives from your minimap without constantly reopening the world map.
-- Pick nearby services from a movable HUD menu and show auctioneers, bankers, flight masters,
-  mailboxes, vendors and class-matched trainers on both maps.
-- Know instantly why a creature matters through live quest progress in its tooltip.
-- Watch every quest in your log at once in a movable tracker window, grouped by zone, with live objective progress.
-- Keep your chosen quests tracked across interface reloads.
-- Recognize relevant quest creatures faster with automatic quest marks.
-- Bring your finished quests with you: if you have been questing with pfQuest, import its
-  completed-quest history in one click so old quest markers stop coming back. It works even
-  after you disable pfQuest -- the import borrows it for a single reload and switches it
-  back off.
+- Watch every quest you need in a movable tracker window, beyond the client's native five-quest limit, grouped by zone with live objective progress.
+- Find nearby auctioneers, bankers, flight masters, mailboxes, vendors and class trainers from the movable NPC finder.
+- See live quest progress in creature tooltips and recognize relevant targets through automatic quest marks.
+- Import completed-quest history from pfQuest so finished quests do not reappear on the map.
 
 ## Stop searching. Start adventuring.
 
@@ -40,6 +32,30 @@ No more circling the same field wondering where a creature spawns. No more forge
 Install UnrealQuest and experience questing built specifically for Unreal Azeroth.
 
 ## Screenshots
+
+### Track every quest you need
+
+The movable tracker groups quests by zone, shows live objective progress and is not limited to the client's native five watched quests. Hover a quest for details and quick controls.
+
+![Movable quest tracker with live progress and quest details](screenshots/quest_tracker.png)
+
+### Control tracking from the quest log
+
+Show a quest on the map or add and remove it from the custom tracker without leaving the quest log.
+
+![Show and untrack controls in the quest log](screenshots/quest_log.png)
+
+### Find nearby services
+
+Choose the NPC categories you need from the movable finder, including auctioneers, bankers, flight masters, vendors and your class trainer.
+
+![NPC finder with service and trainer categories](screenshots/npc_finder.png)
+
+### Configure the experience
+
+Adjust tracker opacity, choose objective dots or areas, control overlapping-marker details and decide how off-screen minimap markers behave.
+
+![UnrealQuest settings for the tracker, world map and quest history](screenshots/settings.png)
 
 ### Turn your world map into a questing compass
 
