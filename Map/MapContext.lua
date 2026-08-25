@@ -91,7 +91,9 @@ function MapContext:Inspect()
     report.mapFile, report.tileHeight, report.tileWidth = Client.GetCurrentMapFile()
     report.continent = Client.GetCurrentMapContinent()
     report.zoneIndex = Client.GetCurrentMapZone()
+    report.mapZoneName = Client.GetMapZoneName(report.continent, report.zoneIndex)
     report.zoneText = Client.GetZoneText()
+    report.realZoneText = Client.GetRealZoneText()
     report.subZoneText = Client.GetSubZoneText()
 
     local x, y = Client.GetPlayerMapPosition("player")
@@ -100,12 +102,38 @@ function MapContext:Inspect()
 
     report.areaIdFromMapFile, report.areaIdFromMapFileHow = self:ResolveAreaId(report.mapFile)
     report.areaIdFromZoneText, report.areaIdFromZoneTextHow = self:ResolveAreaId(report.zoneText)
+    report.areaIdFromRealZoneText, report.areaIdFromRealZoneTextHow =
+        self:ResolveAreaId(report.realZoneText)
+    report.areaIdFromMapZone, report.areaIdFromMapZoneHow =
+        self:ResolveAreaId(report.mapZoneName)
+
+    -- The one area every consumer reads, resolved from the most trustworthy
+    -- name available.
+    --
+    -- The viewed map's own zone name comes first because it is the only one
+    -- that cannot be shadowed by where the player happens to be standing.
+    -- GetZoneText was measured returning "Brill Town Hall" -- a real area
+    -- (2118) in the bundled table, with no quest data of its own -- while the
+    -- Tirisfal map was open, and the layer duly matched its quests against a
+    -- town hall, found nothing and drew an empty map. GetRealZoneText is the
+    -- second choice for the same reason it is pfQuest's minimap route, and
+    -- GetZoneText last, which is the behaviour this had before.
+    report.areaId = report.areaIdFromMapZone
+    report.areaIdHow = report.areaIdFromMapZoneHow
+    if not report.areaId then
+        report.areaId = report.areaIdFromRealZoneText
+        report.areaIdHow = report.areaIdFromRealZoneTextHow
+    end
+    if not report.areaId then
+        report.areaId = report.areaIdFromZoneText
+        report.areaIdHow = report.areaIdFromZoneTextHow
+    end
 
     local database = Database()
-    if database and report.areaIdFromZoneText then
-        report.areaName = database:GetZoneName(report.areaIdFromZoneText)
-        report.zoneTransform = database:GetZoneTransform(report.areaIdFromZoneText)
-        report.zoneYards = database:GetZoneYards(report.areaIdFromZoneText)
+    if database and report.areaId then
+        report.areaName = database:GetZoneName(report.areaId)
+        report.zoneTransform = database:GetZoneTransform(report.areaId)
+        report.zoneYards = database:GetZoneYards(report.areaId)
     end
 
     return report
@@ -153,10 +181,42 @@ function MapContext:GetCurrentZoneView()
     if not report.playerX or not report.playerY then
         return nil, report, "playerNotOnView"
     end
-    if not report.areaIdFromZoneText then
-        return nil, report, report.areaIdFromZoneTextHow or "areaUnresolved"
+    if not report.areaId then
+        return nil, report, report.areaIdHow or "areaUnresolved"
     end
-    return report.areaIdFromZoneText, report, report.areaIdFromZoneTextHow
+    return report.areaId, report, report.areaIdHow
+end
+
+-- Whether the player is standing in a named sub-area of the zone the map is
+-- showing -- in practice, inside a building or a cave.
+--
+-- There is no direct route to this on this client: IsIndoors and IsOutdoors
+-- are both absent, and the minimapZoom/minimapInsideZoom pair that pfQuest
+-- uses is measured NOT MAINTAINED here (both read "0" always). What is left is
+-- the disagreement between two names the client does give:
+--
+-- * the zone the MAP is showing, from GetMapZones/GetCurrentMapZone;
+-- * the area the player is standing in, from GetZoneText -- which this client
+--   answers with the INTERIOR's own name when the player is inside one. That
+--   is the same behaviour that once emptied the whole map layer: standing in
+--   Brill Town Hall it returns "Brill Town Hall", area 2118, while the map
+--   shows Tirisfal Glades, area 85.
+--
+-- Two samples taken minutes apart at essentially the same spot are what makes
+-- this a test rather than a guess: outside at 0.608/0.520, in the village of
+-- Brill -- itself a named subzone -- GetZoneText returned "Tirisfal Glades",
+-- and inside the town hall at 0.611/0.506 it returned "Brill Town Hall". So it
+-- names the zone outdoors even where an outdoor subzone exists, and names the
+-- interior only inside one.
+--
+-- Returns nil, not false, when the comparison cannot be made: without the
+-- map-zone route there is only one name and nothing to disagree with.
+function MapContext:IsInterior(report)
+    report = report or self:Inspect()
+    if not report.areaIdFromMapZone or not report.areaIdFromZoneText then
+        return nil
+    end
+    return report.areaIdFromZoneText ~= report.areaIdFromMapZone
 end
 
 -- Converts direct database percentages to UV coordinates on the current-zone
@@ -169,7 +229,7 @@ function MapContext:DatabaseToCurrentMap(areaId, x, y, report)
     local viewedAreaId
     if report then
         if report.playerX and report.playerY then
-            viewedAreaId = report.areaIdFromZoneText
+            viewedAreaId = report.areaId
         end
     else
         viewedAreaId, report = self:GetCurrentZoneView()

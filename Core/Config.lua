@@ -99,6 +99,10 @@ local defaults = {
     -- tooltip; nothing else about the map layer changes with this setting.
     mapObjectiveDots = true,
 
+    -- Percentage of the 9px world-map objective dot. 100 is 10% smaller than
+    -- the former 10px default; the settings slider allows 50-150.
+    mapObjectiveDotScale = 100,
+
     -- Markers whose icons collide on the world map cannot be hovered apart,
     -- so hovering any of them describes all of them in one tooltip. On by
     -- default: without it, whichever pin the pool happened to place last
@@ -125,6 +129,14 @@ local defaults = {
     -- dots are never clamped either way -- this only affects the two icon
     -- pools. See Map/MinimapPins.lua.
     minimapPinsClampEdge = true,
+    -- Deliberately not on the options page: the page is at its height budget,
+    -- and this is an escape hatch rather than a preference -- "/uq minimap
+    -- indoors on|off" -- for the case where the interior test misfires.
+    minimapPinsHideIndoors = true,
+
+    -- Percentage of the 10.8px minimap objective dot. 100 is 10% smaller than
+    -- the former 12px default; the settings slider allows 50-150.
+    minimapObjectiveDotScale = 100,
 
     -- Nearby service NPCs ---------------------------------------------------
     --
@@ -144,6 +156,16 @@ local defaults = {
     npcCategoryStablemaster = false,
     npcCategoryVendor = false,
     npcCategoryTrainer = false,
+
+    -- World nodes, kept below the service rows in the same menu. These read
+    -- the bundled meta relations chests/fish/herbs/mines/rares rather than a
+    -- service relation, and a single zone can hold hundreds of them, so they
+    -- are only gathered from the database while the row is checked.
+    npcCategoryChests = false,
+    npcCategoryHerbs = false,
+    npcCategoryMines = false,
+    npcCategoryFish = false,
+    npcCategoryRares = false,
 
     -- No default point/x/y here on purpose: until the player drags the
     -- button, NpcPins:OnInit re-anchors it live beside wherever the settings
@@ -184,27 +206,10 @@ local defaults = {
     -- TrackerFrame converts it to the texture's 0-1 alpha at the view edge.
     trackerBackgroundOpacity = 55,
 
-    -- How many rows fit before the ^ / v buttons appear. A row is one line --
-    -- a zone, a quest or an objective -- so this is a height budget, not a
-    -- quest count. The mouse wheel scrolls the same budget while the cursor is
-    -- over the window, by temporarily borrowing the wheel's key binding: wheel
-    -- input is taken by the binding layer before an addon frame sees it here,
-    -- so it cannot be read directly (see Quest/TrackerFrame.lua, Mouse wheel).
-    trackerMaxLines = 24,
-
-    -- A MAXIMUM window height in PIXELS, or 0 for "no ceiling, as tall as the
-    -- log needs" -- what a fresh install gets, so the window opens compact
-    -- rather than reserving a screenful of empty panel. A log shorter than the
-    -- ceiling shrinks the window to fit it; a longer one is cut off there and
-    -- reached with the scroll buttons or the mouse wheel. The corner resize
-    -- grip writes a real height the first time it is dragged, /uq tracker
-    -- height sets it directly, and /uq tracker reset puts it back to 0.
-    --
-    -- Pixels, not a row count: rows here are not all one height (objective
-    -- rows are a pixel taller than quest rows, and both carry group gaps), so
-    -- no row count names an exact height -- and a drag that rounds to the
-    -- nearest row is a drag whose bottom edge drifts away from the cursor
-    -- holding it. trackerMaxLines stays what it always was, the scroll budget.
+    -- A maximum window height in pixels, or 0 for no ceiling. The corner grip
+    -- writes a real height on its first drag, /uq tracker height sets it
+    -- directly, and /uq tracker reset returns it to 0. Rows below a shorter
+    -- ceiling are not drawn; enlarging the window reveals them again.
     trackerHeight = 0,
 
     -- "all", "tracked" or "none". "tracked" shows objectives only under the
@@ -395,8 +400,7 @@ function Config:OnInit()
     -- trackerWidth's default has moved four times across sessions (260 -> 156
     -- -> 130 -> 170 -> 130). The 170 was a deliberate +30% widen that was
     -- reverted once the corner resize grip landed: the grip is now the way to
-    -- get a wider window, so the SHIPPED default goes back to the compact 130
-    -- and every player picks their own size from there. The fill loop above
+    -- get a wider window, so the shipped default stays at the compact 130. The fill loop above
     -- only writes a MISSING key, so a value an earlier version already wrote
     -- as ITS default stays stuck at that number even after the default changes
     -- underneath it. This forces the correction exactly once per change, gated

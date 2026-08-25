@@ -19,7 +19,7 @@ UnrealQuest = {}
 local UQ = UnrealQuest
 
 UQ.name = "UnrealQuest"
-UQ.version = "0.0.3"
+UQ.version = "0.1.0"
 
 -- Keep UnrealQuest visually aligned with UnrealUI without creating a runtime
 -- dependency between the two addons. These values mirror UnrealUI's shared
@@ -28,6 +28,168 @@ UQ.colors = {
     accentHex = "f5ae0a",
     accent = { 0.96, 0.68, 0.04, 1.00 },
 }
+
+-- Quest colours -------------------------------------------------------------
+-- One colour per quest, shared by every objective-dot surface (world map,
+-- minimap, HUD) and by the tracker swatch beside the quest name.
+--
+-- The point of the colour is telling two dots apart at a glance, so the
+-- palette is not a hand-picked list of pretty colours and the assignment is
+-- not a hash: a hash produces collisions -- two quests on screen wearing the
+-- same colour -- long before the palette runs out.
+--
+-- Palette: 20 colours (the largest quest log this client allows) chosen by
+-- farthest-point sampling in OKLab over the sRGB colours bright enough to
+-- read as a small dot (HSV s >= 0.6, v >= 0.78, OKLab L >= 0.60), seeded on
+-- the sky blue this addon has always used first. Farthest-point ordering is
+-- prefix-optimal: for any count k the first k entries are the k that stay
+-- furthest apart, so the fewer quests are on screen the more separated their
+-- colours are. Measured minimum pairwise OKLab distance is 0.34 at 4 quests,
+-- 0.19 at 8, 0.13 at 12 and 0.11 at 20 -- against 0.018 for a plain
+-- evenly-spaced hue wheel, which is below the just-noticeable difference.
+--
+-- Each row is r, g, b followed by that colour's OKLab L, a, b. The OKLab
+-- coordinates are baked in rather than computed at load because the runtime
+-- allocator below compares distances on every new quest and the cube roots
+-- have no business running on this client.
+UQ.questColors = {
+    { 0.133, 0.740, 1.000, 0.7525, -0.0886, -0.1222 }, -- #22BDFF sky
+    { 1.000, 0.000, 0.000, 0.6280,  0.2249,  0.1258 }, -- #FF0000 red
+    { 1.000, 1.000, 0.000, 0.9680, -0.0714,  0.1986 }, -- #FFFF00 yellow
+    { 0.800, 0.000, 1.000, 0.6273,  0.2221, -0.2116 }, -- #CC00FF violet
+    { 0.000, 0.780, 0.338, 0.7240, -0.1753,  0.1056 }, -- #00C756 green
+    { 0.853, 0.631, 0.341, 0.7479,  0.0351,  0.1077 }, -- #DAA157 sand
+    { 0.420, 0.400, 1.000, 0.6016,  0.0343, -0.2176 }, -- #6B66FF blue
+    { 1.000, 0.400, 0.740, 0.7279,  0.2014, -0.0416 }, -- #FF66BD pink
+    { 0.400, 1.000, 0.880, 0.9101, -0.1369,  0.0060 }, -- #66FFE0 ice
+    { 0.400, 1.000, 0.000, 0.8815, -0.2060,  0.1823 }, -- #66FF00 lime
+    { 0.780, 0.390, 0.312, 0.6154,  0.1105,  0.0708 }, -- #C76350 brick
+    { 0.728, 0.780, 0.000, 0.7920, -0.0742,  0.1626 }, -- #BAC700 olive
+    { 0.312, 0.530, 0.780, 0.6141, -0.0334, -0.1088 }, -- #5087C7 steel
+    { 0.312, 0.780, 0.702, 0.7566, -0.1107, -0.0006 }, -- #50C7B3 teal
+    { 0.853, 0.000, 0.711, 0.6022,  0.2449, -0.0984 }, -- #DA00B5 magenta
+    { 1.000, 0.820, 0.400, 0.8805,  0.0091,  0.1345 }, -- #FFD166 amber
+    { 0.649, 0.341, 0.853, 0.6072,  0.1257, -0.1531 }, -- #A557DA purple
+    { 0.853, 0.228, 0.478, 0.6039,  0.2007,  0.0040 }, -- #DA3A7A rose
+    { 0.920, 0.400, 1.000, 0.7306,  0.1903, -0.1480 }, -- #EB66FF orchid
+    { 1.000, 0.433, 0.000, 0.7069,  0.1367,  0.1430 }, -- #FF6F00 orange
+}
+
+-- Lightness counts a little less than chroma: on a six-pixel dot a hue step
+-- reads faster than a brightness step does. The same weight produced the
+-- palette above, so runtime and generator agree on what "far apart" means.
+local COLOR_LIGHTNESS_WEIGHT = 0.8
+
+-- titleKey -> palette slot, and the reverse. A quest keeps its slot for as
+-- long as it is in the log, so its colour never moves under the player; the
+-- slot returns to the pool when the quest leaves (see UQ.ReleaseQuestColor).
+local questColorSlot = {}
+local questColorOwner = {}
+
+local function ColorDistanceSquared(first, second)
+    local lightness = (first[4] - second[4]) * COLOR_LIGHTNESS_WEIGHT
+    local greenRed = first[5] - second[5]
+    local blueYellow = first[6] - second[6]
+    return lightness * lightness + greenRed * greenRed + blueYellow * blueYellow
+end
+
+-- Picks the free slot that sits furthest from every slot currently in use --
+-- the same greedy rule that ordered the palette, replayed against whatever
+-- holes earlier turn-ins left behind. On an empty board it walks the palette
+-- in order, so a fresh set of N quests gets exactly the prefix-optimal N.
+local function AllocateQuestColorSlot()
+    local total = table.getn(UQ.questColors)
+    local bestSlot = nil
+    local bestDistance = nil
+    local slot = 1
+    while slot <= total do
+        if not questColorOwner[slot] then
+            local nearest = nil
+            local other = 1
+            while other <= total do
+                if questColorOwner[other] then
+                    local distance = ColorDistanceSquared(
+                        UQ.questColors[slot], UQ.questColors[other])
+                    if not nearest or distance < nearest then
+                        nearest = distance
+                    end
+                end
+                other = other + 1
+            end
+            if not nearest then
+                -- Nothing is in use: the palette's own order is the answer.
+                return slot
+            end
+            if not bestDistance or nearest > bestDistance then
+                bestSlot = slot
+                bestDistance = nearest
+            end
+        end
+        slot = slot + 1
+    end
+    return bestSlot
+end
+
+-- Only reached when every slot is taken, which needs more live quests than
+-- the palette has colours. A hash keeps the duplicate at least stable.
+local function HashSlot(key)
+    -- djb2 reduced on every byte so the arithmetic stays exact in Lua's
+    -- number type even for a long UTF-8 quest title.
+    local hash = 5381
+    local index = 1
+    local length = string.len(key)
+    while index <= length do
+        hash = (hash * 33 + string.byte(key, index)) % 2147483647
+        index = index + 1
+    end
+    return (hash % table.getn(UQ.questColors)) + 1
+end
+
+function UQ.GetQuestColor(questOrKey)
+    local key = questOrKey
+    if type(questOrKey) == "table" then
+        key = questOrKey.titleKey or questOrKey.title
+    end
+    local color
+    if type(key) ~= "string" or key == "" then
+        color = UQ.questColors[1]
+        return color[1], color[2], color[3]
+    end
+
+    local slot = questColorSlot[key]
+    if not slot then
+        slot = AllocateQuestColorSlot()
+        if slot then
+            questColorOwner[slot] = key
+        else
+            slot = HashSlot(key)
+        end
+        questColorSlot[key] = slot
+    end
+    color = UQ.questColors[slot]
+    return color[1], color[2], color[3]
+end
+
+-- Called when a quest leaves the log. Returning the slot is what keeps the
+-- colours on screen spread out over a whole play session instead of drifting
+-- into whatever the palette's tail happens to hold.
+function UQ.ReleaseQuestColor(questOrKey)
+    local key = questOrKey
+    if type(questOrKey) == "table" then
+        key = questOrKey.titleKey or questOrKey.title
+    end
+    if type(key) ~= "string" or key == "" then
+        return
+    end
+    local slot = questColorSlot[key]
+    if not slot then
+        return
+    end
+    questColorSlot[key] = nil
+    if questColorOwner[slot] == key then
+        questColorOwner[slot] = nil
+    end
+end
 
 -- Module registry -----------------------------------------------------------
 -- Modules are plain tables with optional OnInit and OnEnable methods.

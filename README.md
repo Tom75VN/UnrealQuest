@@ -16,10 +16,11 @@ UnrealQuest turns questing into exploration instead of guesswork. It is designed
 
 ## Main benefits
 
-- See objectives, available quests and turn-ins directly on the world map with dots, areas, `!` and `?` markers.
+- See objectives, available quests and turn-ins directly on the world map with dots, areas, `!` and `?` markers, including patrol paths that remain visible while a moving quest NPC still has a marker.
 - Follow nearby quest creatures and objectives from your minimap without constantly reopening the world map.
 - Watch every quest you need in a movable tracker window, beyond the client's native five-quest limit, grouped by zone with live objective progress.
 - Find nearby auctioneers, bankers, flight masters, mailboxes, vendors and class trainers from the quest tracker's NPC finder.
+- Put treasure chests, herbs, mining veins, fishing pools and rare mobs on both maps from the same menu, each herb and vein drawn with its own icon.
 - See live quest progress in creature tooltips and recognize relevant targets through automatic quest marks.
 - Import completed-quest history from pfQuest so finished quests do not reappear on the map.
 
@@ -89,10 +90,15 @@ Use `/uq` in game to view the available commands and diagnostics.
 
 Use the tracker header's spyglass to select or clear service categories; the
 class-trainer row automatically shows only trainers for your character's class.
+Below the divider are the world-node categories -- chests, herbs, mines,
+fishing pools and rare mobs -- with the required gathering skill or the
+creature level shown in each pin's tooltip. Herb and vein pins carry their own
+artwork, so Peacebloom, Silverleaf and Copper Vein are told apart at a glance
+instead of sharing one category icon.
 
 ## Version
 
-Current release: 0.0.3
+Current release: 0.1.0
 
 ## License
 

@@ -17,20 +17,24 @@ The record fields this reads, and how many quests carry each:
   class  825 quests   bitmask, bit 2^(classId-1)
   min   4416 quests   minimum character level
   event  342 quests   seasonal world event id
-  pre   2399 quests   prerequisite quest(s) -- deliberately NOT used, see below
+  pre   2399 quests   alternative prerequisite quest(s)
 
 The race and class bits are derived from the numeric ids the client returns,
 which is measured behaviour here (UnitRace/UnitClass both return a third
 numeric value). Matching localized race names would break on any non-enUS
 client and is not done.
 
-`pre` is deliberately ignored. A prerequisite check needs to know which quests
-the character already completed, and this client has no completed-quest API at
-all -- Quest/QuestHistory.lua only knows what it personally watched happen. On
-a fresh install that history is empty, so filtering on `pre` would hide nearly
-every chain quest in the game rather than a handful of unavailable ones. Over-
-showing a follow-up quest is the better failure here, and it is recorded as an
-open question rather than silently accepted.
+`pre` follows pfQuest's offerability rule: when a quest records prerequisites,
+at least one of those quest IDs must be in the completion history. This is an
+OR, not an AND -- the data uses several IDs for alternative race, class or
+branch paths. A predecessor still active always withholds the follow-up.
+
+The history is necessarily local: this client exposes no completed-quest API,
+so Quest/QuestHistory.lua knows only what UnrealQuest watched, what the player
+marked, or what was imported from pfQuest. On a fresh install, later chain
+steps therefore stay hidden until that history is learned. This matches
+pfQuest and avoids presenting every same-title chain step at once, such as all
+four "A New Plague" quests on Apothecary Johaan.
 
 There is no `bit` library in the compatibility database, so mask tests are
 plain arithmetic in the conservative Lua subset.
@@ -43,6 +47,7 @@ local QuestEligibility = UQ:NewModule("QuestEligibility")
 QuestEligibility.raceBit = nil
 QuestEligibility.classBit = nil
 QuestEligibility.level = nil
+QuestEligibility.faction = nil
 QuestEligibility.resolved = false
 
 local function Database()
@@ -81,8 +86,38 @@ function QuestEligibility:RefreshPlayer()
     self.raceBit = BitForId(raceId)
     self.classBit = BitForId(classId)
     self.level = Client.GetPlayerLevel()
+    self.faction = Client.GetPlayerFaction()
     self.resolved = (self.raceBit ~= nil or self.classBit ~= nil or self.level ~= nil)
     return self.resolved
+end
+
+-- A quest can omit its race mask even though its starting NPC belongs to one
+-- faction. pfQuest applies this second gate after QuestFilter; without it the
+-- Horde-only givers in Splintertree Post appear to Alliance characters because
+-- quests such as Stonetalon Standstill carry no race field at all.
+--
+-- Missing data remains permissive. The entity faction is bundled world data,
+-- while UnitFactionGroup is documented but not runtime-probed on this client;
+-- either being unavailable must over-show instead of blanking valid givers.
+function QuestEligibility:MatchesGiverFaction(giver)
+    if type(giver) ~= "table" then
+        return true
+    end
+    local giverFaction = giver.faction
+    if type(giverFaction) ~= "string" or giverFaction == "" or giverFaction == "AH" then
+        return true
+    end
+
+    local playerToken = nil
+    if self.faction == "Alliance" then
+        playerToken = "A"
+    elseif self.faction == "Horde" then
+        playerToken = "H"
+    end
+    if not playerToken then
+        return true
+    end
+    return string.find(giverFaction, playerToken, 1, true) ~= nil
 end
 
 -- Race/class exclusion only, without the level/event checks IsOfferable also
@@ -119,7 +154,7 @@ end
 -- Returns true plus nil, or false plus the reason it was filtered out. An
 -- unknown player attribute never filters: a missing race id must not blank the
 -- map, so each test is skipped rather than failed when its input is absent.
-function QuestEligibility:IsOfferable(questId)
+function QuestEligibility:IsOfferable(questId, activeQuestIds, questHistory)
     local database = Database()
     if not database then
         return true
@@ -155,6 +190,30 @@ function QuestEligibility:IsOfferable(questId)
         return false, "event"
     end
 
+    -- Match pfQuest's QuestFilter: prerequisites are alternatives, and one
+    -- completed predecessor is enough to unlock the quest. Keep the stronger
+    -- live safeguard too -- a predecessor still active is visibly not done.
+    if type(record.pre) == "table" then
+        local oneComplete = false
+        local index = 1
+        local total = table.getn(record.pre)
+        while index <= total do
+            local prerequisiteId = record.pre[index]
+            if type(prerequisiteId) == "number" then
+                if type(activeQuestIds) == "table" and activeQuestIds[prerequisiteId] then
+                    return false, "activePrerequisite"
+                end
+                if questHistory and questHistory:IsDone(prerequisiteId) then
+                    oneComplete = true
+                end
+            end
+            index = index + 1
+        end
+        if not oneComplete then
+            return false, "prerequisite"
+        end
+    end
+
     return true
 end
 
@@ -162,5 +221,5 @@ function QuestEligibility:OnEnable()
     self:RefreshPlayer()
     UQ:DeclareCapability("questEligibility", "verified",
         "race/class masks resolved from the measured numeric ids UnitRace/UnitClass return; "
-        .. "prerequisite chains are not filtered because the client exposes no completed-quest history")
+        .. "prerequisites follow pfQuest's one-completed-predecessor rule using local or imported history")
 end

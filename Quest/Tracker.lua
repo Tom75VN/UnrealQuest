@@ -149,7 +149,7 @@ end
 
 -- A successful Track click must make the quest visible in the custom window,
 -- not merely change its saved stripe state. Clear folds that can conceal this
--- particular quest, then let TrackerFrame move its visible slice to the row.
+-- particular quest, then let TrackerFrame grow through the revealed quest.
 local function RevealTrackedQuest(quest)
     local config = Config()
     if config then
@@ -424,8 +424,14 @@ function Tracker:OnEnable()
 
     local state = State()
     if state then
-        state:AddListener(function(event)
-            if event == "QUEST_LOG_CHANGED" then
+        state:AddListener(function(event, quest)
+            -- QuestState's first scan runs before this module enables, so the
+            -- current login snapshot is not auto-tracked. Route later quest
+            -- additions through the ordinary path so the unlimited saved set,
+            -- native five-slot mirror and custom tracker window stay aligned.
+            if event == "QUEST_ADDED" and quest then
+                Tracker:Track(quest)
+            elseif event == "QUEST_LOG_CHANGED" then
                 local d = UQ:GetModule("Driver")
                 if d then
                     d:Wake("tracker.sync")

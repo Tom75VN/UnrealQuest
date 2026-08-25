@@ -249,7 +249,11 @@ function QuestState:Scan()
         local removedIndex = 1
         local removedTotal = table.getn(removed)
         while removedIndex <= removedTotal do
-            self.quests[removed[removedIndex].titleKey] = nil
+            local removedKey = removed[removedIndex].titleKey
+            self.quests[removedKey] = nil
+            -- Hands the quest's colour back to the palette so the colours
+            -- still on screen stay as far apart as the palette allows.
+            UQ.ReleaseQuestColor(removedKey)
             removedIndex = removedIndex + 1
         end
     end

@@ -13,7 +13,7 @@ accent stripe whether or not it fits in the native mirror.
 
 ## What it draws
 
-    UnrealQuest                      6/12  ^ v -
+    UnrealQuest                      6/12  [spyglass] -
     ELWYNN FOREST
       [5] Kobold Camp Cleanup
           Kobold Vermin slain: 2/5   [====      ]
@@ -44,6 +44,7 @@ accelerators, never the mechanism.
     Client.GetFrameAnchor, which undoes this client's inverted GetPoint Y and
     its name-string relative frame, and is stored as a point name plus two
     numbers -- never a path, per the SavedVariables backslash hazard.
+  * Drag the bottom-right corner to resize the window in both axes.
   * Left click a quest: selects it in the native Quest Log and opens it.
   * Shift + left click a quest: toggles it in UnrealQuest's unlimited tracked
     set (Quest/Tracker.lua:Toggle) -- the same call the quest log's
@@ -55,9 +56,6 @@ accelerators, never the mechanism.
   * Right click a quest: folds that quest's objectives away.
   * Left click a zone row: folds the whole zone away.
   * The header's - button folds the entire body to a title bar.
-  * The ^ and v buttons page a log too long for the window. There is no
-    mouse-wheel scrolling: it was implemented, measured and removed, and this
-    client cannot support it -- see the Mouse wheel section below.
   * Hovering a quest name shows its detail tooltip: level, zone, status,
     objectives and the gesture list above, through Client.ShowGameTooltip.
 
@@ -92,12 +90,6 @@ local WINDOW_NAME = "UnrealQuestTracker"
 local HANDLE_NAME = "UnrealQuestTrackerHandle"
 local GRIP_NAME = "UnrealQuestTrackerResizeGrip"
 
--- Width bounds are the same ones /uq tracker width already validates against
--- (Core/Commands.lua) -- the grip is a second way to reach that setting, not a
--- separate range for it. Height has no slash command and so no range to
--- inherit: the floor is the title bar plus about three rows, and the ceiling
--- is generous enough for the longest realistic log without letting a wild drag
--- leave a window taller than any screen.
 local RESIZE_MIN_WIDTH = 110
 local RESIZE_MAX_WIDTH = 600
 local RESIZE_MIN_HEIGHT = 60
@@ -114,7 +106,10 @@ local QUEST_ROW_HEIGHT = 13
 -- extra height is what actually reads as a margin-top on the bar -- the gap
 -- between the counter text above it and the bar itself.
 local OBJECTIVE_ROW_HEIGHT = 14
-local QUEST_INDENT = 4
+-- Quest rows sit almost flush with the zone header above them: the round
+-- quest dot is drawn at the row's own left edge, so a wider indent read as
+-- dead space down the whole left side of the window.
+local QUEST_INDENT = 1
 local OBJECTIVE_INDENT = 14
 local BODY_PADDING = 5
 
@@ -128,11 +123,6 @@ local QUEST_GROUP_GAP = 5
 -- zone's.
 local ZONE_GROUP_GAP = 5
 
--- Everything in the window's height that is NOT row area: the title bar, plus
--- the body padding above the first row and below the last. A dragged height
--- below this has no room for a single row, which is what makes it the floor
--- for treating trackerHeight as set at all. Mirrors Redraw's own height
--- arithmetic -- change one and the other has to follow.
 local ROW_AREA_CHROME = Client.TRACKER_HEADER_HEIGHT + BODY_PADDING * 2
 
 -- Rough advance width per character for the stock font sizes used here. The
@@ -176,13 +166,8 @@ local SHORTCUT_LINES = {
 TrackerFrame.window = nil
 TrackerFrame.handle = nil
 TrackerFrame.grip = nil
--- Last hover answer the griphover job acted on, so the common case (cursor
--- still where it was) costs one rectangle test and nothing else. Cleared,
--- never set, by the drag path -- a drag moves the mark behind this job's back,
--- and nil means "recompute on the next tick".
 TrackerFrame.gripHoverShown = nil
 TrackerFrame.lines = {}
-TrackerFrame.offset = 0
 TrackerFrame.signature = nil
 TrackerFrame.dirty = true
 TrackerFrame.drags = 0
@@ -191,14 +176,6 @@ TrackerFrame.resizes = 0
 TrackerFrame.redraws = 0
 TrackerFrame.clicks = 0
 TrackerFrame.totalLines = 0
--- How many lines the last Redraw actually placed. totalLines > linesDrawn is
--- the definition of "there is something to scroll to".
-TrackerFrame.linesDrawn = 0
--- Captured when the resize grip's drag starts; resizeStartX is nil whenever a
--- drag is not in progress, which is also what tracker.resize's own job guards
--- on so it costs nothing between drags. X/Y are the GRIP's own screen corner,
--- not the cursor's -- the grip is genuinely moved by the client during a drag,
--- so its position is the authoritative record of how far the corner travelled.
 TrackerFrame.resizeStartX = nil
 TrackerFrame.resizeStartY = nil
 TrackerFrame.resizeStartWidth = nil
@@ -281,17 +258,103 @@ local function Fit(text, width, charWidth)
     return string.sub(text, 1, cut) .. "..."
 end
 
--- An objective line's trailing "have/need" counter (the same pattern
--- QuestState.ParseProgress reads) is the single most important part of it --
--- the progress bar below the row is derived from it too. A plain end-anchored
--- Fit() would trim that counter off first on a narrow row, which defeats the
--- point of the line. When the pattern is present, it is kept intact and the
--- description ahead of it is what gets shortened instead; a line with no
--- counter (e.g. "Ready to turn in") falls straight through to plain Fit().
-local function FitObjective(text, width, charWidth)
+-- Quest titles can use the documented pixel measurement on their own label.
+-- The estimate remains the fallback for a client that does not provide it.
+-- Searching the largest byte prefix keeps the whole available label width in
+-- use while retaining Fit()'s protection against splitting a UTF-8 character.
+local function FitQuest(text, width, charWidth, row)
     if type(text) ~= "string" then
         return ""
     end
+    local measured = Client.MeasureTrackerRowTextWidth(row, text)
+    if type(measured) ~= "number" then
+        return Fit(text, width, charWidth)
+    end
+    if measured <= width then
+        return text
+    end
+
+    local low = 1
+    local high = string.len(text) - 3
+    local best = "..."
+    while low <= high do
+        local probe = math.floor((low + high) / 2)
+        local cut = probe
+        while cut > 1 do
+            local byte = string.byte(text, cut + 1)
+            if not byte or byte < 128 or byte > 191 then
+                break
+            end
+            cut = cut - 1
+        end
+        local candidate = string.sub(text, 1, cut) .. "..."
+        local candidateWidth = Client.MeasureTrackerRowTextWidth(row, candidate)
+        if type(candidateWidth) ~= "number" then
+            return Fit(text, width, charWidth)
+        end
+        if candidateWidth <= width then
+            best = candidate
+            low = probe + 1
+        else
+            high = probe - 1
+        end
+    end
+    return best
+end
+
+-- An objective line's trailing "have/need" counter (the same pattern
+-- QuestState.ParseProgress reads) is the single most important part of it --
+-- the progress bar below the row is derived from it too. The measured route
+-- searches the largest description prefix whose ellipsis AND counter still
+-- fit together; this avoids the large blank gap produced by reserving both
+-- pieces with an average character width. The arithmetic path remains the
+-- fallback when the documented pixel measurement is unavailable.
+local function FitObjective(text, width, charWidth, row)
+    if type(text) ~= "string" then
+        return ""
+    end
+    local measured = Client.MeasureTrackerRowTextWidth(row, text)
+    if type(measured) == "number" then
+        if measured <= width then
+            return text
+        end
+        local measuredStart = string.find(text, "%d+%s*/%s*%d+%s*$")
+        if not measuredStart then
+            return FitQuest(text, width, charWidth, row)
+        end
+        local measuredSuffix = string.sub(text, measuredStart)
+        local measuredLead = UQ.Trim(string.sub(text, 1, measuredStart - 1)) or ""
+        local low = 1
+        local high = string.len(measuredLead) - 3
+        local best = nil
+        while low <= high do
+            local probe = math.floor((low + high) / 2)
+            local cut = probe
+            while cut > 1 do
+                local byte = string.byte(measuredLead, cut + 1)
+                if not byte or byte < 128 or byte > 191 then
+                    break
+                end
+                cut = cut - 1
+            end
+            local candidate = string.sub(measuredLead, 1, cut) .. "... " .. measuredSuffix
+            local candidateWidth = Client.MeasureTrackerRowTextWidth(row, candidate)
+            if type(candidateWidth) ~= "number" then
+                break
+            end
+            if candidateWidth <= width then
+                best = candidate
+                low = probe + 1
+            else
+                high = probe - 1
+            end
+        end
+        if best then
+            return best
+        end
+        return FitQuest(text, width, charWidth, row)
+    end
+
     local budget = math.floor(width / charWidth) - FIT_SAFETY_CHARS
     if budget < 4 then
         budget = 4
@@ -413,6 +476,7 @@ function TrackerFrame:BuildLines()
                 key = quest.title,
                 tracked = tracked,
             }
+            line.questRed, line.questGreen, line.questBlue = UQ.GetQuestColor(quest)
             table.insert(lines, line)
 
             local questFolded = IsFolded(COLLAPSED_QUESTS, quest.title or "")
@@ -464,6 +528,27 @@ local function RowHeight(kind)
         return QUEST_ROW_HEIGHT
     end
     return OBJECTIVE_ROW_HEIGHT
+end
+
+-- Returns the exact content height needed to draw through one line, using the
+-- same row and inter-group spacing as Redraw. RevealQuest uses this to grow a
+-- manually shortened window just far enough to show a quest's complete block.
+local function HeightThroughLine(lines, stopIndex)
+    local top = Client.TRACKER_HEADER_HEIGHT + BODY_PADDING
+    local previousKind = nil
+    local index = 1
+    while index <= stopIndex do
+        local kind = lines[index].kind
+        if kind == "quest" and (previousKind == "quest" or previousKind == "objective") then
+            top = top + QUEST_GROUP_GAP
+        elseif kind == "zone" and previousKind ~= nil then
+            top = top + ZONE_GROUP_GAP
+        end
+        top = top + RowHeight(kind)
+        previousKind = kind
+        index = index + 1
+    end
+    return top + BODY_PADDING
 end
 
 local function RowIndent(kind)
@@ -640,27 +725,7 @@ function TrackerFrame:Redraw(lines, questCount, completed)
     if type(width) ~= "number" or width < 110 then
         width = 170
     end
-    local maxLines = Setting("trackerMaxLines")
-    if type(maxLines) ~= "number" or maxLines < 3 then
-        maxLines = 24
-    end
 
-    -- A MAXIMUM pixel height, or nil for "no ceiling, size to whatever the log
-    -- needs". Height is stored in PIXELS rather than as a row count because
-    -- rows here are not one size -- objective rows are a pixel taller than
-    -- quest rows and both carry group gaps -- so no row count can name an exact
-    -- height, and a resize that rounds to the nearest row is a resize whose
-    -- bottom edge does not stay under the cursor holding it.
-    --
-    -- A log SHORTER than this shrinks the window to fit rather than leaving
-    -- blank panel below the last row; a log longer is cut off here and reached
-    -- with the scroll buttons or the wheel. The one exception is an active grip
-    -- drag (resizeStartX non-nil): while the player is holding the corner the
-    -- window must be exactly as tall as they have dragged it, or the bottom
-    -- edge stops tracking the cursor and the grip reads as having stopped
-    -- responding -- which is the recorded failure that made this an exact
-    -- height in the first place. Auto-shrink therefore applies on release, not
-    -- during the drag.
     local targetHeight = Setting("trackerHeight")
     if type(targetHeight) ~= "number" or targetHeight <= ROW_AREA_CHROME then
         targetHeight = nil
@@ -672,46 +737,7 @@ function TrackerFrame:Redraw(lines, questCount, completed)
 
     local collapsed = Setting("trackerCollapsed") and true or false
     if collapsed then
-        maxLines = 0
         targetHeight = nil
-    elseif targetHeight then
-        -- A height ceiling replaces the row budget as the thing that decides
-        -- how much is on screen: the loop below stops on the pixel bound, and
-        -- this is only a generous cap so the row budget never cuts a window
-        -- short of the height the player asked for. It errs HIGH on purpose --
-        -- QUEST_ROW_HEIGHT is the shortest row kind and this ignores group
-        -- gaps entirely -- because drawing stops at the real pixel edge anyway.
-        maxLines = math.floor((targetHeight - ROW_AREA_CHROME) / QUEST_ROW_HEIGHT)
-        if maxLines < 1 then
-            maxLines = 1
-        end
-    end
-
-    -- Clamp the scroll offset every draw rather than only when scrolling: the
-    -- list shrinks on its own whenever a quest is handed in or a zone folded,
-    -- and an offset left past the end would show an empty window.
-    --
-    -- The clamp budget is how many lines LAST draw actually placed, not
-    -- maxLines. Under a height ceiling maxLines errs high (see above), and a
-    -- maxOffset built from it errs low by the same amount -- which is exactly
-    -- the bug where the last few rows could not be scrolled to and the v button
-    -- disappeared while there was still list below the fold. linesDrawn is the
-    -- measured count, so the clamp lands on the real end of the list; it is
-    -- self-correcting because the next draw measures again, and it falls back
-    -- to maxLines only on the very first draw, when nothing has been measured.
-    local budget = self.linesDrawn
-    if budget < 1 then
-        budget = maxLines
-    end
-    local maxOffset = total - budget
-    if maxOffset < 0 then
-        maxOffset = 0
-    end
-    if self.offset > maxOffset then
-        self.offset = maxOffset
-    end
-    if self.offset < 0 then
-        self.offset = 0
     end
 
     Client.SetTrackerTitle(window, "UnrealQuest")
@@ -720,14 +746,13 @@ function TrackerFrame:Redraw(lines, questCount, completed)
 
     local top = Client.TRACKER_HEADER_HEIGHT + BODY_PADDING
     local used = { zone = 1, quest = 1, objective = 1 }
-    local drawn = 0
     -- Tracks what was drawn immediately before, so a gap can be inserted
     -- between one quest's block and the next without also pushing a quest
     -- away from the zone header that just introduced it.
     local previousKind = nil
 
-    local index = self.offset + 1
-    while drawn < maxLines and index <= total do
+    local index = 1
+    while not collapsed and index <= total do
         local line = lines[index]
         local kind = line.kind
         if kind == "quest" and (previousKind == "quest" or previousKind == "objective") then
@@ -735,9 +760,9 @@ function TrackerFrame:Redraw(lines, questCount, completed)
         elseif kind == "zone" and previousKind ~= nil then
             top = top + ZONE_GROUP_GAP
         end
-        -- Stop on the dragged edge, not on a row count. Checked before the row
-        -- is placed and against this row's OWN height, so a window never draws
-        -- past the bottom the player dragged it to.
+        -- The window still resizes exactly as before, but there is no scrolling:
+        -- begin at the first line and stop once the next complete row would pass
+        -- the resized bottom edge.
         if targetHeight and top + RowHeight(kind) > targetHeight - BODY_PADDING then
             break
         end
@@ -749,12 +774,12 @@ function TrackerFrame:Redraw(lines, questCount, completed)
             local height = RowHeight(kind)
             Client.PlaceTrackerRow(row, window, indent, top, width, height)
 
-            local rowWidth = row.unrealQuestWidth or (width - indent)
+            local rowWidth = row.unrealQuestTextWidth or row.unrealQuestWidth or (width - indent)
             local fitted
             if kind == "quest" then
-                fitted = Fit(line.text, rowWidth, QUEST_CHAR_WIDTH)
+                fitted = FitQuest(line.text, rowWidth, QUEST_CHAR_WIDTH, row)
             elseif kind == "objective" then
-                fitted = FitObjective(line.text, rowWidth, OBJECTIVE_CHAR_WIDTH)
+                fitted = FitObjective(line.text, rowWidth, OBJECTIVE_CHAR_WIDTH, row)
             else
                 fitted = Fit(line.text, rowWidth, OBJECTIVE_CHAR_WIDTH)
             end
@@ -762,7 +787,8 @@ function TrackerFrame:Redraw(lines, questCount, completed)
 
             if kind == "quest" then
                 row.unrealQuestSubject = line.quest
-                Client.SetTrackerRowStripe(row, line.tracked and true or false)
+                Client.SetTrackerRowQuestMark(row,
+                    line.questRed, line.questGreen, line.questBlue)
                 Client.SetTrackerRowProgress(row, nil)
                 if not row.unrealQuestBound then
                     row.unrealQuestBound = true
@@ -776,7 +802,6 @@ function TrackerFrame:Redraw(lines, questCount, completed)
                 end
             elseif kind == "zone" then
                 row.unrealQuestSubject = line.key
-                Client.SetTrackerRowStripe(row, false)
                 Client.SetTrackerRowProgress(row, nil)
                 if not row.unrealQuestBound then
                     row.unrealQuestBound = true
@@ -784,7 +809,6 @@ function TrackerFrame:Redraw(lines, questCount, completed)
                 end
             else
                 row.unrealQuestSubject = nil
-                Client.SetTrackerRowStripe(row, false)
                 if line.progressDone then
                     Client.SetTrackerRowProgress(row, line.progress,
                         COLOR_OBJECTIVE_DONE[1], COLOR_OBJECTIVE_DONE[2], COLOR_OBJECTIVE_DONE[3])
@@ -795,7 +819,6 @@ function TrackerFrame:Redraw(lines, questCount, completed)
             end
 
             top = top + height
-            drawn = drawn + 1
             previousKind = kind
         else
             -- The pool refused to grow. Stop rather than spin: every later row
@@ -809,46 +832,24 @@ function TrackerFrame:Redraw(lines, questCount, completed)
     Client.HideTrackerRows(window, "quest", used.quest)
     Client.HideTrackerRows(window, "objective", used.objective)
 
-    -- Set from the MEASURED draw, after the loop, not from maxOffset before it.
-    -- "There is more below" is exactly "the last line drawn was not the last
-    -- line there is", and only the loop knows how many it managed to place --
-    -- it can stop early on the pixel ceiling or on a pool that refused to grow,
-    -- neither of which any up-front estimate can predict. A window folded to
-    -- its title bar drew nothing and must show neither button.
-    Client.SetTrackerScrollButtons(window,
-        not collapsed and self.offset > 0,
-        not collapsed and (self.offset + drawn) < total)
-
     local height = Client.TRACKER_HEADER_HEIGHT
     if collapsed then
-        -- nothing but the title bar
+        -- title bar only
     elseif targetHeight and resizing then
-        -- Mid-drag: exactly what the cursor is holding, blank space and all,
-        -- so the bottom edge never leaves the grip (see targetHeight above).
+        -- Keep the bottom edge under the grip while it is held, including blank
+        -- space when the requested height exceeds the content.
         height = targetHeight
     else
-        -- `top` only grew for rows actually drawn, so this is the content's own
-        -- height. The ceiling still applies -- the draw loop already stopped at
-        -- it -- but a shorter log now gives a shorter window instead of blank
-        -- panel below the last row.
         height = top + BODY_PADDING
         if targetHeight and height > targetHeight then
             height = targetHeight
         end
     end
     Client.SetObjectSize(window, width, height)
-    -- How many of totalLines actually fit. This is what the scroll clamp and
-    -- the ^/v buttons are built from -- the real drawn count rather than the
-    -- maxLines budget, because the draw loop can stop early on the pixel
-    -- ceiling or on a pool that refused to grow.
-    self.linesDrawn = drawn
     self.redraws = self.redraws + 1
 end
 
--- Rebuilds the line list and redraws only when what is on screen would
--- actually differ. The signature is built from the visible slice, so an
--- objective counter ticking over one row below the fold does not repaint the
--- window, and a redraw never happens twice for the same state.
+-- Rebuilds the line list and redraws only when the rendered content changes.
 function TrackerFrame:Refresh()
     local window = self.window
     if not window then
@@ -860,22 +861,16 @@ function TrackerFrame:Refresh()
     end
 
     local lines, questCount, completed = self:BuildLines()
-    local maxLines = Setting("trackerMaxLines")
-    if type(maxLines) ~= "number" or maxLines < 3 then
-        maxLines = 24
-    end
-
-    local parts = { tostring(questCount), tostring(completed), tostring(self.offset),
-        Setting("trackerCollapsed") and "1" or "0", tostring(Setting("trackerWidth")) }
-    local index = self.offset + 1
+    local parts = { tostring(questCount), tostring(completed),
+        Setting("trackerCollapsed") and "1" or "0", tostring(Setting("trackerWidth")),
+        tostring(Setting("trackerHeight")) }
+    local index = 1
     local total = table.getn(lines)
-    local seen = 0
-    while seen < maxLines and index <= total do
+    while index <= total do
         local line = lines[index]
         table.insert(parts, line.kind .. ":" .. tostring(line.text)
             .. ":" .. tostring(line.tracked) .. ":" .. tostring(line.progress))
         index = index + 1
-        seen = seen + 1
     end
     local signature = table.concat(parts, "|")
 
@@ -889,33 +884,49 @@ function TrackerFrame:Refresh()
     Client.ShowObject(window)
 end
 
--- Makes one tracked quest visible after it is selected from the native quest
--- log. Track has already cleared the quest and zone folds before this call;
--- this method owns only the window's scroll slice. Starting on the preceding
--- zone row when there is one preserves the context above the revealed quest.
+-- Refreshes after Tracker clears the quest and zone folds for a newly tracked
+-- quest. A saved height is a ceiling, so grow it through the quest's final
+-- objective before redrawing; both a Track action and a newly accepted quest
+-- reach this method through Tracker:Track.
 function TrackerFrame:RevealQuest(quest)
     if not quest or not quest.title then
         return false
     end
     local lines = self:BuildLines()
+    local revealIndex = nil
     local index = 1
     local total = table.getn(lines)
     while index <= total do
         local line = lines[index]
-        if line.kind == "quest" and line.quest
-            and line.quest.title == quest.title then
-            local first = index
-            if index > 1 and lines[index - 1].kind == "zone" then
-                first = index - 1
-            end
-            self.offset = first - 1
-            self.dirty = true
-            self:Refresh()
-            return true
+        if line.quest and line.quest.title == quest.title then
+            -- Objective lines carry the same quest, so retaining the last
+            -- match reveals the whole block rather than only its title row.
+            revealIndex = index
         end
         index = index + 1
     end
-    return false
+    if not revealIndex then
+        return false
+    end
+
+    local targetHeight = Setting("trackerHeight")
+    if type(targetHeight) == "number" and targetHeight > ROW_AREA_CHROME then
+        local requiredHeight = HeightThroughLine(lines, revealIndex)
+        if requiredHeight > targetHeight then
+            local config = Config()
+            if config then
+                if requiredHeight > RESIZE_MAX_HEIGHT then
+                    config:Set("trackerHeight", 0)
+                else
+                    config:Set("trackerHeight", requiredHeight)
+                end
+            end
+        end
+    end
+
+    self.dirty = true
+    self:Refresh()
+    return true
 end
 
 -- Position ----------------------------------------------------------------------
@@ -965,30 +976,11 @@ function TrackerFrame:ResetPosition()
     Store("trackerRelativePoint", "TOPRIGHT")
     Store("trackerX", -20)
     Store("trackerY", -240)
-    -- Also drops any height a grip drag set, so "reset" gives back the compact
-    -- shipped window and not just its corner.
     Store("trackerHeight", 0)
     self.dirty = true
     self:ApplyStoredPosition()
 end
 
--- Begins a grip drag, reproducing UnrealUI's measured chat-resize recipe
--- (unrealUI/modules/chat.lua's StartResize) rather than inventing one.
---
--- The decisive part is that the grip is GENUINELY MOVED by the client:
--- Client.StartFrameDrag applies SetMovable immediately before the drag, runs
--- the StartMoving/StopMovingOrSizing warm-up pair, then calls the real
--- StartMoving -- the same five-factor recipe the header handle needs
--- (frames.movable_drag_requires_button_handle, BEHAVIOR_VERIFIED).
---
--- An earlier version of this function did NOT do that. It left the grip
--- anchored and read the cursor instead, which meant the client was never put
--- into a drag state -- so it never reported one stopping, and the window kept
--- following the cursor after the button was released. Moving the grip for real
--- is what makes OnDragStop fire, and it is why there is no button-state
--- polling or OnMouseUp fallback here any more: the chat grip needs neither.
---
--- Returns false when the client refused, and the caller reports that visibly.
 function TrackerFrame:StartResize()
     local window = self.window
     local grip = self.grip
@@ -1005,9 +997,6 @@ function TrackerFrame:StartResize()
         Client.AnchorObjectToCorner(grip, window)
         return false
     end
-    -- Read the grip's corner AFTER the drag has started: the warm-up pair
-    -- inside StartFrameDrag can settle it a pixel or two, and a baseline taken
-    -- before that would show as a jump on the first tick.
     local gripX, gripY = Client.GetObjectCorner(grip)
     if not gripX then
         Client.StopFrameDrag(grip)
@@ -1020,42 +1009,22 @@ function TrackerFrame:StartResize()
     self.resizeStartWidth = width
     self.resizeStartHeight = height
 
-    -- Pin the window to the height it ALREADY has, in the same breath as
-    -- switching it to a fixed height at all. This is what stops the reported
-    -- jump-on-click: the ordinary redraw job can easily land between this and
-    -- the drag's first tick, and a fixed-height window whose height had not
-    -- been seeded yet would snap to whatever the old value was. Seeding it
-    -- from the measurement above makes that redraw a no-op -- the window is
-    -- already exactly that tall -- so nothing moves until the grip does.
     local config = Config()
     if config then
         config:Set("trackerHeight", height)
     end
 
     grip.unrealQuestResizing = true
-    -- Shown explicitly rather than relying on OnEnter having already fired: a
-    -- fast press-and-drag can beat the hover state, and the mark disappearing
-    -- for even one tick mid-resize would read as the grip letting go.
     Client.ShowObject(grip.unrealQuestMark)
     return true
 end
 
--- Ends a grip drag. Idempotent: OnDragStop is the only caller in normal use,
--- but a failed StartResize unwinds through here too, and stopping twice must
--- be a no-op rather than an error.
 function TrackerFrame:StopResize()
     local grip = self.grip
     if grip then
         grip.unrealQuestResizing = false
         Client.StopFrameDrag(grip)
-        -- The grip was moved by the client and keeps whatever point that left
-        -- it on, so it has to be put back in the window's corner explicitly or
-        -- it stays floating where it was dropped.
         Client.AnchorObjectToCorner(grip, self.window)
-        -- The mark is pinned visible for the whole drag (the cursor leaves the
-        -- 12x12 grip almost immediately), so releasing has to hide it unless
-        -- the cursor came to rest back inside the window, where the hover
-        -- reveal below would show it anyway.
         if grip.unrealQuestMark and not Client.IsCursorInsideObject(self.window) then
             Client.HideObject(grip.unrealQuestMark)
         end
@@ -1074,29 +1043,9 @@ function TrackerFrame:StopResize()
     end
 end
 
--- Runs on the shared driver's "tracker.griphover" job. The grip's own
--- OnEnter/OnLeave still work and are left in place, but they only ever fire
--- for the 12x12 corner itself -- a player who never happens to put the cursor
--- on those few pixels has no way to learn the window resizes at all. So the
--- mark is offered for the WHOLE window instead: hovering anywhere over the
--- tracker reveals the corner artwork, which is the affordance.
---
--- Polled rather than driven from the window's OnEnter/OnLeave, per the
--- addon's event rule and for a concrete reason here: the window is covered by
--- mouse-enabled quest rows, so moving onto a row fires the window's OnLeave
--- and the mark would blink off over exactly the area the player is reading.
--- Client.IsCursorInsideObject is a rectangle test and stays true across every
--- child. It is deliberately not Client.IsObjectMouseOver: Frame:IsMouseOver
--- has no record on this client and the first version of this job, written
--- against it, never revealed the mark once.
 function TrackerFrame:UpdateGripHover()
     local grip = self.grip
-    if not grip or not grip.unrealQuestMark then
-        return
-    end
-    -- A drag owns the mark outright (StartResize pins it, StopResize decides):
-    -- the cursor is usually far outside the window by the second tick.
-    if grip.unrealQuestResizing then
+    if not grip or not grip.unrealQuestMark or grip.unrealQuestResizing then
         return
     end
     local window = self.window
@@ -1113,18 +1062,6 @@ function TrackerFrame:UpdateGripHover()
     end
 end
 
--- Runs on the shared driver's "tracker.resize" job, scheduled only while the
--- corner grip is actually being dragged.
---
--- Both axes are computed in PIXELS from the window's size at drag start, the
--- way the chat grip does it. Doing it the other way round -- turning the drag
--- into a row count and storing that -- is what made the window jump the
--- instant the grip was clicked: trackerMaxLines is a MAXIMUM, rows here are
--- not all one height, and a log drawing fewer or shorter rows than the budget
--- leaves the window shorter than its own setting implies, so seeding a drag
--- from that setting teleported the bottom edge to where the setting had always
--- said it was. Seeding from the measured height means a zero-distance drag
--- produces a zero-pixel change, which is the only thing that can never jump.
 function TrackerFrame:ApplyResize()
     if not self.resizeStartX or not self.window or not self.grip then
         return
@@ -1145,10 +1082,6 @@ function TrackerFrame:ApplyResize()
         width = RESIZE_MAX_WIDTH
     end
 
-    -- The grip rides the window's BOTTOM edge, so dragging it downward lowers
-    -- its GetBottom while making the window taller -- hence the subtraction.
-    -- The grip rides the window's BOTTOM edge, so dragging it downward lowers
-    -- its GetBottom while making the window taller -- hence the subtraction.
     local height = self.resizeStartHeight - (gripY - self.resizeStartY)
     if height < RESIZE_MIN_HEIGHT then
         height = RESIZE_MIN_HEIGHT
@@ -1185,53 +1118,9 @@ end
 
 function TrackerFrame:ToggleCollapsed()
     Store("trackerCollapsed", not (Setting("trackerCollapsed") and true or false))
-    self.offset = 0
     self.dirty = true
     self:Refresh()
 end
-
-function TrackerFrame:Scroll(delta)
-    self.offset = self.offset + delta
-    if self.offset < 0 then
-        self.offset = 0
-    end
-    self.dirty = true
-    self:Refresh()
-end
-
--- Mouse wheel: NOT POSSIBLE ON THIS CLIENT ----------------------------------
---
--- There is no mouse-wheel scrolling here, and this section exists so the next
--- person does not implement it a third time. It was built, shipped, measured
--- in game and removed.
---
--- Wheel input never reaches an addon frame on this client -- the binding layer
--- consumes it first (chat.mousewheel_uses_binding_layer), so EnableMouseWheel
--- plus OnMouseWheel is a recorded failed approach, and CLICK bindings are
--- recorded in the same note as unimplemented. The one technique left, and the
--- one UnrealPfUI's chat uses, is to point MOUSEWHEELUP/DOWN at a real binding
--- command while the cursor is over the window. That is what used to be here.
---
--- The wheelbinding probe (behavior.json / wheelbinding.*, and the knowledge
--- record scripts.addon_wheel_binding_unavailable) measured why it never worked:
---
---   * This addon's own Bindings.xml commands are ABSENT from the client's
---     225-entry binding table. Addon-declared binding commands do not register
---     on this client at all -- unrealUI hit the identical wall with
---     UNREALUIBAR2BUTTON1-12 (actionbars.pages_without_binding_command). So
---     there was never a command to point the wheel at.
---   * SetBinding is REFUSED on MOUSEWHEELUP/MOUSEWHEELDOWN: it returns false
---     and GetBindingAction still reads CAMERAZOOMIN/OUT. Clearing the key with
---     the one-argument form first does not help. The same call on a free key
---     (MOUSEWHEELAXIS) is accepted, so this is these keys, not SetBinding.
---   * SetBinding does not validate the command name, which is why all of this
---     failed silently for as long as it did.
---
--- The key names were never the problem: MOUSEWHEELUP/DOWN are exactly what the
--- client itself has on CAMERAZOOMIN/OUT.
---
--- Do not re-add a Bindings.xml. Do not add EnableMouseWheel. The ^ / v buttons
--- and the resize grip are the scroll controls, deliberately.
 
 -- The native five-quest panel is hidden only while this window is actually
 -- up and the setting asks for it; every other combination shows it again, so
@@ -1252,17 +1141,11 @@ function TrackerFrame:GetReport()
         enabled = Setting("trackerEnabled") and true or false,
         collapsed = Setting("trackerCollapsed") and true or false,
         width = Setting("trackerWidth"),
-        -- 0 means "no ceiling, as tall as the log needs"; anything else is a
-        -- MAXIMUM, from the corner grip or /uq tracker height. A log shorter
-        -- than it shrinks the window rather than padding it.
         height = Setting("trackerHeight"),
-        linesDrawn = self.linesDrawn,
-        maxLines = Setting("trackerMaxLines"),
         objectives = Setting("trackerShowObjectives"),
         groupByZone = Setting("trackerGroupByZone") and true or false,
         hideNativeWatch = Setting("trackerHideNativeWatch") and true or false,
         lines = self.totalLines,
-        offset = self.offset,
         redraws = self.redraws,
         clicks = self.clicks,
         drags = self.drags,
@@ -1277,17 +1160,6 @@ end
 -- Lifecycle -----------------------------------------------------------------------
 
 function TrackerFrame:OnInit()
-    -- Missing, and measured missing rather than assumed: see the Mouse wheel
-    -- section above. Declared unconditionally because SetBinding and
-    -- GetBindingAction both RESOLVE on this client -- checking for them would
-    -- report a capability the tracker demonstrably does not have.
-    UQ:DeclareCapability("trackerMouseWheel", "missing",
-        "measured absent, not assumed (wheelbinding probe): this addon's Bindings.xml commands "
-        .. "never reach the client's 225-entry binding table, and SetBinding is refused on "
-        .. "MOUSEWHEELUP/MOUSEWHEELDOWN even after clearing them, so the wheel cannot be pointed "
-        .. "at addon code by any route. The tracker scrolls with its ^ and v buttons and the "
-        .. "resize grip")
-
     local window = Client.CreateTrackerWindow(WINDOW_NAME)
     if not window then
         UQ:Warn("the quest tracker window could not be created; the tracker is unavailable")
@@ -1322,11 +1194,8 @@ function TrackerFrame:OnInit()
         self.grip = grip
         Client.SetObjectScript(grip, "OnDragStart", function()
             if not TrackerFrame:StartResize() then
-                -- Reported visibly, never to debug-only output: a resize that
-                -- silently does nothing is the same class of bug as the
-                -- immovable window that logging-to-debug once hid completely.
                 UQ:Warn("the tracker's corner grip could not start a resize; its size can "
-                    .. "still be set with /uq tracker width and /uq tracker lines")
+                    .. "still be set with /uq tracker width and /uq tracker height")
                 return
             end
             TrackerFrame.resizes = TrackerFrame.resizes + 1
@@ -1340,7 +1209,7 @@ function TrackerFrame:OnInit()
         end)
     else
         UQ:Warn("the tracker window has no resize grip; its size can still be set with "
-            .. "/uq tracker width and /uq tracker lines")
+            .. "/uq tracker width and /uq tracker height")
     end
 
     Client.SetTrackerHeaderButtons(window,
@@ -1350,9 +1219,7 @@ function TrackerFrame:OnInit()
                 npcPins:ToggleMenu(window.unrealQuestNpcFinder)
             end
         end,
-        function() TrackerFrame:ToggleCollapsed() end,
-        function() TrackerFrame:Scroll(-5) end,
-        function() TrackerFrame:Scroll(5) end)
+        function() TrackerFrame:ToggleCollapsed() end)
 
     if not self:ApplyStoredPosition() then
         self:ResetPosition()
@@ -1390,9 +1257,6 @@ function TrackerFrame:OnEnable()
         -- touches the frame in that case -- the client owns it then, and
         -- re-Showing it on a timer would force an empty native panel on a
         -- player who has nothing tracked.
-        -- 0.1s is a hover reveal, so it has to feel immediate; the job reads
-        -- one rectangle and touches a texture only when the answer changed
-        -- side.
         driver:Schedule("tracker.griphover", 0.1, function()
             TrackerFrame:UpdateGripHover()
         end)
@@ -1423,4 +1287,5 @@ function TrackerFrame:OnEnable()
 end
 
 TrackerFrame.Fit = Fit
+TrackerFrame.FitQuest = FitQuest
 TrackerFrame.FitObjective = FitObjective

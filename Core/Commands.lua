@@ -51,6 +51,8 @@ local function ShowHelp()
     Line("  /uq map dots|areas  draw quest objectives as dots or as shaded areas")
     Line("  /uq minimap   quest pins around the player on the minimap")
     Line("  /uq minimap on|off            draw them, or stop")
+    Line("  /uq minimap span <yards>       dial in the scale for this zoom step")
+    Line("  /uq minimap indoors on|off    withhold markers indoors, or draw them anyway")
     Line("  /uq db        static quest database state")
     Line("  /uq tooltip   entity-tooltip objective diagnostics")
     Line("  /uq tracker   the movable quest tracker window")
@@ -60,7 +62,6 @@ local function ShowHelp()
     Line("  /uq tracker zones             group by zone, or do not")
     Line("  /uq tracker width <110-600>   how wide the window is")
     Line("  /uq tracker height <60-900>   max height in pixels, 0 for no limit")
-    Line("  /uq tracker lines <3-60>      how many rows before it scrolls")
     Line("  /uq tracker unfold            reopen every folded quest and zone")
     Line("  /uq tracker unhideall         bring back every quest untracked out of the tracker")
     Line("  /uq tracker native            hide or restore the client's own watch panel")
@@ -264,6 +265,13 @@ local function ShowMap(target)
         .. " (" .. tostring(report.areaIdFromMapFileHow) .. ")")
     Line("  area id from zone text: " .. tostring(report.areaIdFromZoneText)
         .. " (" .. tostring(report.areaIdFromZoneTextHow) .. ")")
+    Line("  area id from real zone text: " .. tostring(report.areaIdFromRealZoneText)
+        .. " (" .. tostring(report.areaIdFromRealZoneTextHow) .. ")")
+    Line("  map zone name: " .. tostring(report.mapZoneName))
+    Line("  area id from map zone: " .. tostring(report.areaIdFromMapZone)
+        .. " (" .. tostring(report.areaIdFromMapZoneHow) .. ")")
+    Line("  area id used: " .. tostring(report.areaId)
+        .. " (" .. tostring(report.areaIdHow) .. ")")
     local pins = UQ:GetModule("WorldMapPins")
     if pins then
         local status = pins:GetStatus()
@@ -292,9 +300,8 @@ local function ShowMap(target)
             Line("  objective style:     " .. (status.objectiveDots and "dots" or "areas")
                 .. " (/uq map dots|areas)")
             Line("  objective frames:    " .. tostring(status.areaVisible)
-                .. " visible / " .. tostring(status.areaPooled) .. " pooled"
-                .. (status.capped and " (capped)" or ""))
-            Line("  map colours:          blue objectives / green turn-ins"
+                .. " visible / " .. tostring(status.areaPooled) .. " pooled")
+            Line("  map colours:          blue objectives / green turn-ins / gold patrols"
                 .. (status.markersEnabled and " + yellow numbered markers" or ""))
             -- Marker counts, read together with the hover counters below: a
             -- non-zero count with nothing on screen means the client's gossip
@@ -302,6 +309,16 @@ local function ShowMap(target)
             -- about both pools.
             Line("  giver \"!\" markers:   " .. tostring(status.giverVisible)
                 .. " visible / " .. tostring(status.giverPooled) .. " pooled")
+            -- Invisible by construction (Map/WorldMapPins.lua): this is the
+            -- route's hit test, not something the player can see. A zero here
+            -- with a drawn route means the path is unhoverable.
+            Line("  patrol hover targets: " .. tostring(status.patrolVisible)
+                .. " visible / " .. tostring(status.patrolPooled) .. " pooled")
+            -- A width above the floor means the pool bound widened the spacing
+            -- and the stamps were grown to keep the stroke continuous. Read it
+            -- when a route looks heavier than it should.
+            Line("  patrol line stamps:  " .. tostring(status.patrolStrokes)
+                .. " visible at " .. tostring(status.patrolStrokeWidth) .. "px")
             Line("  turn-in \"?\" markers: " .. tostring(status.turnInVisible)
                 .. " visible / " .. tostring(status.turnInPooled) .. " pooled"
                 .. (status.inProgressTurnIns and "" or " (ready-to-hand-in only)"))
@@ -355,6 +372,54 @@ local function ShowMinimap(target)
         return
     end
 
+    -- "/uq minimap span <yards>" or "/uq minimap span reset". The scale of the
+    -- minimap cannot be read back from Lua on this client -- nothing on it is
+    -- a reference this addon did not draw itself -- so the only instrument is
+    -- a player walking past a pin and seeing whether it stays put. Too large a
+    -- span makes every offset undershoot and the pin creeps along in the
+    -- direction of travel; too small and it slides the other way.
+    if target == "indoors on" or target == "indoors off" then
+        config:Set("minimapPinsHideIndoors", target == "indoors on")
+        pins.dirty = true
+        pins:Refresh()
+        if target == "indoors on" then
+            Line("minimap markers are withheld indoors")
+        else
+            Line("minimap markers are drawn indoors, at a scale this client cannot confirm")
+        end
+        return
+    end
+
+    local spanWord, spanValue = string.find(target, "^span")
+    if spanWord then
+        local argument = UQ.Trim(string.sub(target, spanValue + 1)) or ""
+        local yards = tonumber(argument)
+        if argument == "" then
+            local status = pins:GetStatus()
+            Line("minimap scale at zoom " .. tostring(status.zoom) .. ": "
+                .. tostring(status.span) .. " yards across (" .. tostring(status.spanEvidence) .. ")")
+            Line("  /uq minimap span <yards>   set the scale for this zoom step, here")
+            Line("  /uq minimap span reset     go back to the built-in constant")
+            Line("  |cff888888a marker that creeps WITH you means the number is too big|r")
+            return
+        end
+        if argument == "reset" then
+            yards = nil
+        elseif not yards or yards <= 0 then
+            Line("give a number of yards, or 'reset'")
+            return
+        end
+        local key, zoom, indoor, span, evidence = pins:SetSpanOverride(yards)
+        if not key then
+            Line("the minimap zoom could not be read, so there is nothing to key this to")
+            return
+        end
+        Line("minimap scale at zoom " .. tostring(zoom)
+            .. " (" .. tostring(indoor or "environment unknown") .. "): "
+            .. tostring(span) .. " yards across (" .. tostring(evidence) .. ")")
+        return
+    end
+
     local status = pins:GetStatus()
     Line("minimap quest pins:")
     Line("  setting:        " .. (config:Get("minimapPins") and "on" or "off"))
@@ -371,7 +436,14 @@ local function ShowMinimap(target)
     if status.rotating then
         Line("  |cffff5555rotateMinimap is on: pins are hidden, this client exposes no player facing|r")
     end
-    Line("  |cff888888indoors cannot be detected here (IsIndoors is absent), so pins sit too far out inside|r")
+    if status.spanEvidence ~= "playerCalibrated" then
+        Line("  |cff888888/uq minimap span <yards> dials this in where it is wrong|r")
+    end
+    if config:Get("minimapPinsHideIndoors") ~= false then
+        Line("  indoors:        markers withheld (the scale inside cannot be established here)")
+    else
+        Line("  indoors:        markers drawn at the outdoor scale")
+    end
     if status.pinFailures and status.pinFailures > 0 then
         Line("  pin failures:   " .. tostring(status.pinFailures))
     end
@@ -970,9 +1042,6 @@ local function ShowTracker(argument)
         Line("tracker width: " .. width)
         return
     elseif command == "height" then
-        -- The same 60-900 range the corner grip clamps to (RESIZE_MIN_HEIGHT /
-        -- RESIZE_MAX_HEIGHT in Quest/TrackerFrame.lua), plus 0 for "no ceiling".
-        -- This is a MAXIMUM: a log shorter than it shrinks the window to fit.
         local height = tonumber(value)
         if not height or (height ~= 0 and (height < 60 or height > 900)) then
             Line("usage: /uq tracker height <60-900>, or 0 for no limit")
@@ -986,17 +1055,6 @@ local function ShowTracker(argument)
         else
             Line("tracker max height: " .. height .. "px")
         end
-        return
-    elseif command == "lines" then
-        local lines = tonumber(value)
-        if not lines or lines < 3 or lines > 60 then
-            Line("usage: /uq tracker lines <3-60>")
-            return
-        end
-        config:Set("trackerMaxLines", lines)
-        tracker.dirty = true
-        tracker:Refresh()
-        Line("tracker shows at most " .. lines .. " rows before scrolling")
         return
     elseif command == "unfold" then
         config:ClearSection("trackerCollapsedQuests")
@@ -1024,24 +1082,16 @@ local function ShowTracker(argument)
     end
     Line("  " .. (report.enabled and "shown" or "hidden")
         .. (report.collapsed and ", folded to the title bar" or "")
-        .. " -- " .. tostring(report.lines) .. " rows, "
-        .. tostring(report.linesDrawn) .. " on screen from "
-        .. tostring(report.offset + 1))
+        .. " -- " .. tostring(report.lines) .. " rows")
     local height = report.height
     if type(height) ~= "number" or height <= 0 then
-        -- The shipped state: no ceiling, so the window is as tall as the log
-        -- needs it to be.
         height = "auto"
     else
         height = string.format("%.0f", height) .. " max"
     end
     Line("  width=" .. tostring(report.width) .. " height=" .. tostring(height)
-        .. " maxLines=" .. tostring(report.maxLines)
         .. " objectives=" .. tostring(report.objectives)
         .. " zones=" .. (report.groupByZone and "on" or "off"))
-    -- Stated rather than left as a silent absence: players do try the wheel
-    -- here, and "nothing happens" is a worse answer than "this client cannot".
-    Line("  mouse wheel unavailable on this client -- use the ^ and v buttons")
     Line("  position " .. tostring(report.point) .. " "
         .. string.format("%.0f, %.0f", report.x or 0, report.y or 0)
         .. " (UIParent) -- drags=" .. tostring(report.drags)

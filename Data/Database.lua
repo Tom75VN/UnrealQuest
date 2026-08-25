@@ -26,6 +26,9 @@ Table shapes this adapter depends on:
   meta[key]         service entity IDs -> faction token (A, H or AH)
   trainers[unitId]  { trainerType, trainerClass, trainerRace, trainerSpell,
                       trainerId }; trainerType 0 is a class trainer
+  waypoint_index[unitId][continentGroup] = { routeId, ... }
+  waypoint_routes[routeId].zones[zoneId] = {
+                      { x, y, delay, script, orientation, order }, ... }
 
   Every "_enUS" text table above also ships as "_ruRU", "_zhCN", "_esES", and
   so on for every locale Database/ has a folder for. Client.GetLocale() picks
@@ -56,6 +59,7 @@ Database.indexedCount = 0
 -- first request. The source tables never change during a session, and doing
 -- the relation walk once keeps map refreshes allocation-light.
 Database.serviceLocationCache = {}
+Database.serviceLocationCacheCount = 0
 
 -- giverIndex[sourceType..":"..sourceId] = { sourceType, sourceId, questIds = {...} }
 -- areaGiverIndex[areaId] = { giverKey, giverKey, ... }
@@ -69,6 +73,48 @@ Database.giverIndexReady = false
 local db = nil
 local indexCursor = nil
 local giverIndexCursor = nil
+
+-- Static quest-location cache --------------------------------------------
+-- GetQuestLocations walks the bundled relation tables, and the bundled data
+-- never changes at runtime: for one (quest, completion, area, limit) tuple the
+-- answer is fixed for the whole session. Both map layers ask for it again on
+-- every rebuild and the HUD waypoint asks on every resolve, so the same walk
+-- was being repeated for an answer that could not have differed. The cache is
+-- keyed on the full argument tuple. OnInit invalidates it when `db` is
+-- attached, and the safety bound below may evict it wholesale.
+--
+-- The returned list is shared, not copied. Callers must treat it as read-only.
+-- QuestTarget:CollectLocations, the one caller that appends to a location
+-- list, copies first; nothing else writes to a list it did not build itself.
+local questLocationCache = {}
+local questLocationCacheCount = 0
+
+-- Same reasoning, one key: a quest's item-use targets are read straight out of
+-- the bundled tables and never change. Keyed by quest, so it is bounded by the
+-- 4433 bundled quests without a counter of its own.
+local questItemUseTargetCache = {}
+
+-- The map only ever asks about quests in the log, in the player's own area, so
+-- the live key set is a few dozen entries. This bound is a safety net for a
+-- session that somehow accumulates many zones and many quests, not an expected
+-- path: flushing whole costs one repeat of a walk that was being run on every
+-- refresh before this cache existed.
+local MAX_QUEST_LOCATION_CACHE = 512
+
+local function FlushQuestLocationCache()
+    questLocationCache = {}
+    questLocationCacheCount = 0
+    questItemUseTargetCache = {}
+end
+
+local function CacheQuestLocations(cacheKey, locations)
+    if questLocationCacheCount >= MAX_QUEST_LOCATION_CACHE then
+        FlushQuestLocationCache()
+    end
+    questLocationCache[cacheKey] = locations
+    questLocationCacheCount = questLocationCacheCount + 1
+    return locations
+end
 
 -- Locale-suffixed text tables --------------------------------------------
 -- The bundled data ships one text table per locale ("quests_enUS",
@@ -108,6 +154,8 @@ function Database:OnInit()
 
     db = value
     self.available = true
+    -- A new data table voids every walk cached against the old one.
+    FlushQuestLocationCache()
 
     local resolved = UQ.Client and UQ.Client.GetLocale and UQ.Client.GetLocale()
     if type(resolved) == "string" and resolved ~= "" then
@@ -259,6 +307,94 @@ function Database:GetUnitName(unitId)
     return names[unitId]
 end
 
+-- Permanent open-world patrol routes for one creature in one direct area.
+-- The lightweight unit index points into the two regional route files. Route
+-- points already use the same database-area percentages as unit coordinates,
+-- so the map layer can pass them through MapContext unchanged.
+--
+-- `closed` is true only when this area carries the route's complete original
+-- waypoint order. Some routes are projected in full onto two adjacent area
+-- maps; others genuinely cross a boundary and each map receives only a subset.
+-- Counting zone tables cannot distinguish those cases, but point[6] can.
+function Database:GetUnitPatrolRoutes(unitId, areaId)
+    local routes = {}
+    if not db or type(unitId) ~= "number" or type(areaId) ~= "number"
+        or type(db.waypoint_index) ~= "table" or type(db.waypoint_routes) ~= "table" then
+        return routes
+    end
+
+    local groups = db.waypoint_index[unitId]
+    if type(groups) ~= "table" then
+        return routes
+    end
+
+    local seen = {}
+    local _, routeIds
+    for _, routeIds in pairs(groups) do
+        if type(routeIds) == "table" then
+            local routeIndex = 1
+            local routeTotal = table.getn(routeIds)
+            while routeIndex <= routeTotal do
+                local routeId = routeIds[routeIndex]
+                local route = db.waypoint_routes[routeId]
+                local points = type(route) == "table" and type(route.zones) == "table"
+                    and route.zones[areaId] or nil
+                if type(routeId) == "number" and not seen[routeId]
+                    and type(points) == "table" and table.getn(points) > 0 then
+                    seen[routeId] = true
+                    local maxOrder = nil
+                    local _, zonePoints
+                    for _, zonePoints in pairs(route.zones) do
+                        if type(zonePoints) == "table" then
+                            local zonePointIndex = 1
+                            local zonePointTotal = table.getn(zonePoints)
+                            while zonePointIndex <= zonePointTotal do
+                                local zonePoint = zonePoints[zonePointIndex]
+                                local order = type(zonePoint) == "table" and zonePoint[6] or nil
+                                if type(order) == "number" and (not maxOrder or order > maxOrder) then
+                                    maxOrder = order
+                                end
+                                zonePointIndex = zonePointIndex + 1
+                            end
+                        end
+                    end
+                    local completeOrder = false
+                    local pointTotal = table.getn(points)
+                    local firstPoint = points[1]
+                    local lastPoint = points[pointTotal]
+                    if maxOrder and type(firstPoint) == "table" and type(lastPoint) == "table"
+                        and firstPoint[6] == 1 and lastPoint[6] == maxOrder then
+                        completeOrder = true
+                        local pointIndex = 2
+                        while pointIndex <= pointTotal do
+                            local point = points[pointIndex]
+                            local previous = points[pointIndex - 1]
+                            if type(point) ~= "table" or type(previous) ~= "table"
+                                or type(point[6]) ~= "number" or type(previous[6]) ~= "number"
+                                or point[6] ~= previous[6] + 1 then
+                                completeOrder = false
+                                break
+                            end
+                            pointIndex = pointIndex + 1
+                        end
+                    end
+                    table.insert(routes, {
+                        routeId = routeId,
+                        points = points,
+                        closed = completeOrder,
+                    })
+                end
+                routeIndex = routeIndex + 1
+            end
+        end
+    end
+
+    table.sort(routes, function(left, right)
+        return left.routeId < right.routeId
+    end)
+    return routes
+end
+
 function Database:GetObject(objectId)
     if not db or type(db.objects) ~= "table" then
         return nil
@@ -337,6 +473,31 @@ local SERVICE_META_KEYS = {
     "vendor",
 }
 
+-- The same meta table carries five world-node relations. They are kept apart
+-- from the service keys because they are an order of magnitude larger -- one
+-- zone holds up to ~800 herb spawns against a handful of innkeepers -- so they
+-- are only walked for a category the caller actually asked for, and the result
+-- is cached under a key that records which ones were included.
+--
+-- Their meta value is not a faction token: herbs and mines carry the required
+-- gathering skill, rares the creature level, chests 0 and fishing pools "AH".
+-- FactionAllows passes every non-string through, so a numeric value never
+-- filters a node out; it is carried to the caller as `detail` instead.
+local NODE_META_KEYS = {
+    "chests",
+    "fish",
+    "herbs",
+    "mines",
+    "rares",
+}
+
+-- A service-only zone entry is a few dozen locations; a zone with herbs and
+-- mines checked is closer to fifteen hundred. Roaming the world with nodes on
+-- would otherwise grow this cache without bound, so it is flushed wholesale
+-- once it holds more entries than a session plausibly revisits. Rebuilding one
+-- costs the same walk the cache was added to avoid, not a correctness risk.
+local MAX_SERVICE_LOCATION_CACHE = 48
+
 local function PlayerFactionForRace(raceId)
     if raceId == 1 or raceId == 3 or raceId == 4 or raceId == 7 then
         return "A"
@@ -364,14 +525,26 @@ end
 -- Class trainers are a twelfth category sourced from `trainers.lua`, limited
 -- to trainer_type 0 and the player's measured numeric class ID. Profession,
 -- mount and pet trainers deliberately do not leak into that option.
-function Database:GetAreaServiceLocations(areaId, playerClassId, playerRaceId)
+--
+-- `wanted` is an optional category -> boolean set. It only gates NODE_META_KEYS;
+-- the service relations are cheap enough to always gather, and callers that
+-- pass nothing get exactly the previous service-only result.
+function Database:GetAreaServiceLocations(areaId, playerClassId, playerRaceId, wanted)
     if not db or type(areaId) ~= "number" then
         return {}
     end
 
     local playerFaction = PlayerFactionForRace(playerRaceId)
+    local nodeSignature = ""
+    local nodeIndex = 1
+    local nodeTotal = table.getn(NODE_META_KEYS)
+    while nodeIndex <= nodeTotal do
+        local include = type(wanted) == "table" and wanted[NODE_META_KEYS[nodeIndex]]
+        nodeSignature = nodeSignature .. (include and "1" or "0")
+        nodeIndex = nodeIndex + 1
+    end
     local cacheKey = tostring(areaId) .. ":" .. tostring(playerClassId or 0)
-        .. ":" .. tostring(playerFaction or "?")
+        .. ":" .. tostring(playerFaction or "?") .. ":" .. nodeSignature
     local cached = self.serviceLocationCache[cacheKey]
     if cached then
         return cached
@@ -379,7 +552,7 @@ function Database:GetAreaServiceLocations(areaId, playerClassId, playerRaceId)
 
     local locations = {}
 
-    local function Append(category, rawId, faction)
+    local function Append(category, rawId, faction, detail)
         if type(rawId) ~= "number" or not FactionAllows(faction, playerFaction) then
             return
         end
@@ -414,6 +587,7 @@ function Database:GetAreaServiceLocations(areaId, playerClassId, playerRaceId)
                     sourceType = sourceType,
                     sourceId = sourceId,
                     name = type(name) == "string" and name or category,
+                    detail = detail,
                 })
             end
             coordIndex = coordIndex + 1
@@ -434,6 +608,25 @@ function Database:GetAreaServiceLocations(areaId, playerClassId, playerRaceId)
                 end
             end
             categoryIndex = categoryIndex + 1
+        end
+
+        nodeIndex = 1
+        while nodeIndex <= nodeTotal do
+            local category = NODE_META_KEYS[nodeIndex]
+            local relation = meta[category]
+            if type(wanted) == "table" and wanted[category] and type(relation) == "table" then
+                local rawId, value
+                for rawId, value in pairs(relation) do
+                    -- The meta value doubles as the detail: a positive number
+                    -- is a skill or a level, a string is a faction token.
+                    if type(value) == "number" and value > 0 then
+                        Append(category, rawId, nil, value)
+                    else
+                        Append(category, rawId, value, nil)
+                    end
+                end
+            end
+            nodeIndex = nodeIndex + 1
         end
     end
 
@@ -461,7 +654,12 @@ function Database:GetAreaServiceLocations(areaId, playerClassId, playerRaceId)
         return left.y < right.y
     end)
 
+    if self.serviceLocationCacheCount >= MAX_SERVICE_LOCATION_CACHE then
+        self.serviceLocationCache = {}
+        self.serviceLocationCacheCount = 0
+    end
     self.serviceLocationCache[cacheKey] = locations
+    self.serviceLocationCacheCount = self.serviceLocationCacheCount + 1
     return locations
 end
 
@@ -488,8 +686,16 @@ function Database:GetQuestItemUseTargets(questId)
     if not db or type(db["quests-itemreq"]) ~= "table" then
         return targets
     end
+    -- Static for the same reason GetQuestLocations is, and asked for on the
+    -- same hot paths: GetQuestLocations seeds its visited set from this list,
+    -- and QuestTarget consults it once to decide whether it has to copy.
+    local cached = questItemUseTargetCache[questId]
+    if cached then
+        return cached
+    end
     local relation = self:GetQuestObjectiveSources(questId)
     if type(relation) ~= "table" or type(relation.IR) ~= "table" then
+        questItemUseTargetCache[questId] = targets
         return targets
     end
 
@@ -519,11 +725,14 @@ function Database:GetQuestItemUseTargets(questId)
         end
     end
 
+    questItemUseTargetCache[questId] = targets
     return targets
 end
 
--- Builds a bounded list of direct database coordinates for one active quest
--- in one area. Item objectives are expanded through their unit/object source
+-- Builds the complete list of direct database coordinates for one active
+-- quest in one area. Passing a numeric limit remains available to callers
+-- that intentionally render a bounded non-objective surface such as turn-ins.
+-- Item objectives are expanded through their unit/object source
 -- tables here so the map layer never depends on the generated data shapes.
 -- Coordinates in child areas are deliberately excluded until transforms are
 -- runtime-verified; this first map slice is current-zone-only.
@@ -535,6 +744,17 @@ end
 function Database:GetQuestLocations(questId, isComplete, areaId, limit)
     if not db or type(questId) ~= "number" or type(areaId) ~= "number" then
         return {}
+    end
+    if type(limit) ~= "number" then
+        limit = nil
+    end
+    -- See questLocationCache above: every input to the walk below is in this
+    -- key, and none of the tables it reads can change while the session runs.
+    local cacheKey = questId .. ":" .. (isComplete and "1" or "0")
+        .. ":" .. areaId .. ":" .. (limit and tostring(limit) or "all")
+    local cached = questLocationCache[cacheKey]
+    if cached then
+        return cached
     end
     -- Written as a branch, not as `isComplete and finishers or objectives`.
     -- 174 of the 4433 bundled quests carry no `end` relation at all, 53 of
@@ -550,10 +770,12 @@ function Database:GetQuestLocations(questId, isComplete, areaId, limit)
         relation = self:GetQuestObjectiveSources(questId)
     end
     if type(relation) ~= "table" then
-        return {}
+        -- Absence is a static answer too. In particular, 174 bundled quests
+        -- have no finisher relation, so repeated turn-in rebuilds must not
+        -- repeat the same failed lookup.
+        return CacheQuestLocations(cacheKey, {})
     end
 
-    limit = type(limit) == "number" and limit or 200
     local locations = {}
     local visited = {}
 
@@ -572,7 +794,8 @@ function Database:GetQuestLocations(questId, isComplete, areaId, limit)
     end
 
     local function AppendEntity(sourceType, sourceId, record)
-        if table.getn(locations) >= limit or type(sourceId) ~= "number" or type(record) ~= "table" then
+        if (limit and table.getn(locations) >= limit)
+            or type(sourceId) ~= "number" or type(record) ~= "table" then
             return
         end
         local visitKey = sourceType .. tostring(sourceId)
@@ -586,7 +809,7 @@ function Database:GetQuestLocations(questId, isComplete, areaId, limit)
         end
         local index = 1
         local total = table.getn(coords)
-        while index <= total and table.getn(locations) < limit do
+        while index <= total and (not limit or table.getn(locations) < limit) do
             local coordinate = coords[index]
             if type(coordinate) == "table" and type(coordinate[1]) == "number"
                 and type(coordinate[2]) == "number" and coordinate[3] == areaId then
@@ -622,7 +845,7 @@ function Database:GetQuestLocations(questId, isComplete, areaId, limit)
     if type(relation.I) == "table" then
         local _, itemId
         for _, itemId in pairs(relation.I) do
-            if table.getn(locations) >= limit then
+            if limit and table.getn(locations) >= limit then
                 break
             end
             local item = self:GetItem(itemId)
@@ -643,7 +866,7 @@ function Database:GetQuestLocations(questId, isComplete, areaId, limit)
         end
     end
 
-    return locations
+    return CacheQuestLocations(cacheKey, locations)
 end
 
 -- Every distinct area a quest's objective or finisher relation has a recorded
@@ -751,11 +974,13 @@ function Database:GetEntityLocations(sourceType, sourceId, areaId, limit)
         return locations
     end
 
-    limit = type(limit) == "number" and limit or 200
+    if type(limit) ~= "number" then
+        limit = nil
+    end
     local coords = record.coords
     local index = 1
     local total = table.getn(coords)
-    while index <= total and table.getn(locations) < limit do
+    while index <= total and (not limit or table.getn(locations) < limit) do
         local coordinate = coords[index]
         if type(coordinate) == "table" and type(coordinate[1]) == "number"
             and type(coordinate[2]) == "number" and coordinate[3] == areaId then
@@ -932,8 +1157,9 @@ function Database:IsGiverIndexReady()
 end
 
 -- Bounded list of quest givers with a direct coordinate in areaId. Each entry
--- is { x, y, areaId, sourceType, sourceId, questIds }; questIds is the giver's
--- own list and must be treated as read-only by callers.
+-- is { x, y, areaId, sourceType, sourceId, faction, questIds }; faction is the
+-- entity's A/H/AH token when the bundled data supplies one, and questIds is the
+-- giver's own list and must be treated as read-only by callers.
 function Database:GetAreaQuestGivers(areaId, limit)
     if not self.giverIndex or not self.areaGiverIndex or type(areaId) ~= "number" then
         return {}
@@ -966,6 +1192,7 @@ function Database:GetAreaQuestGivers(areaId, limit)
                             areaId = areaId,
                             sourceType = giver.sourceType,
                             sourceId = giver.sourceId,
+                            faction = entity.fac,
                             questIds = giver.questIds,
                         })
                     end

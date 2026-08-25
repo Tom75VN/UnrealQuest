@@ -1,8 +1,26 @@
 # Changelog
 
-## 0.0.3
+## 0.1.0
 
+- Use different colors for map points from different quests.
+- Show a path for quest-giver NPCs with patrol waypoints.
+- Add nodes such as treasures, mining nodes, rares, and more.
+- Automatically track accepted quests and add them to the tracker window.
+- Add icons to the NPC Finder instead of colored squares.
+- Fixed accepted quests sometimes not disappearing from the map.
+- Turn the "?" map marker orange when a quest is complete.
+- Make map quest markers smaller and add an option to choose their size.
+- Reduce the opacity of other markers when hovering over a quest on the map.
+- Improved filtering to prevent some quests from being duplicated on the map due to the database.
+- Remove arrow scrolling from the tracker windows.
+- Truncate quest names when they do not fit the window now improved, no more blank space.
+- Remove the limit on the number of map dots displayed.
+- Quests given by NPCs from the other faction no longer display on the map.
 - Fixed the limit of 5 in tracker windows; now unlimited.
+- Improved world-map frame rate with many quest points on screen.
+- Fixed the map showing nothing while standing inside a building, such as Brill Town Hall.
+- Minimap markers are now withheld indoors, where this client gives no way to establish the map scale, instead of drifting along with the player.
+- Added /uq minimap span to dial in the minimap scale for a zoom step, and /uq minimap indoors on|off.
 
 ## 0.0.2
 

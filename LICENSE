@@ -56,10 +56,14 @@ and nothing else:
 Zone, minimap and English zone-name tables are kept intact, being small
 coordinate-support tables.
 
-The data tables and the `media/QuestDot.tga` minimap marker are reused under
-the license below. `Data/QuestMatch.lua` also uses pfQuest's quest-text token
-vocabulary and substitution semantics as prior art; it does not copy pfQuest's
-first-best-candidate identity policy.
+The data tables, the `media/QuestDot.tga` minimap marker, the
+`media/icons/*.tga` service icons and the `media/icons/herbs/*.tga` and
+`media/icons/mines/*.tga` gathering-node icons are reused under the license
+below. `Data/NodeIcons.lua` likewise reuses pfQuest's assignment of those node
+icons to game objects, resolved to object IDs at build time.
+`Data/QuestMatch.lua` also uses pfQuest's quest-text token vocabulary and
+substitution semantics as prior art; it does not copy pfQuest's first-best-
+candidate identity policy.
 
 pfQuest license
 ---------------

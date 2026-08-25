@@ -43,6 +43,26 @@ local Settings = UQ:NewModule("Settings")
 local TAB_ID = "unrealquest"
 local TAB_LABEL = "UnrealQuest"
 
+-- The page's own first line: "Unreal Quest" in the addon's two-tone wordmark,
+-- with the running version after it. The split is the one the TOC Title already
+-- uses -- "Unreal" white, "Quest" in the shared accent -- so the options page
+-- names the addon the way the addon list does. The hosts' menu row and window
+-- title stay the plain TAB_LABEL; this is the page, not the menu.
+--
+-- Inline colour escapes rather than SetTextColor, because one region has to
+-- carry three colours where a heading region has one. Every span is closed, so
+-- nothing runs on into the heading's own accent colour -- including the
+-- version, kept grey so it reads as a subscript of the name rather than part
+-- of it.
+--
+-- Built on call, not at file scope: a file-scope copy would freeze a version
+-- read before Core/Namespace.lua had necessarily run. UQ.version is the single
+-- place the number is written down in Lua.
+local function PageTitle()
+    return "|cffffffffUnreal |cff" .. UQ.colors.accentHex .. "Quest|r"
+        .. " |cff888888v" .. tostring(UQ.version) .. "|r"
+end
+
 -- No hyphens, ever: the client mangles a widget name containing one.
 local WINDOW_NAME = "UnrealQuestSettings"
 local HANDLE_NAME = "UnrealQuestSettingsHandle"
@@ -358,7 +378,7 @@ local function NewPage(parent)
     -- Standalone uses Client.CreateSettingsSlider, the imported equivalent in
     -- the compatibility layer. Both expose the same current/SetPoint/SetValue
     -- surface, so binding and live application stay host-independent.
-    page.Slider = function(key, text, minimum, maximum, step, onLive)
+    page.Slider = function(key, text, minimum, maximum, step, onLive, layout)
         local host = UnrealUI()
         local createSlider = host and type(host.CreateSlider) == "function"
             and host.CreateSlider or Client.CreateSettingsSlider
@@ -382,10 +402,14 @@ local function NewPage(parent)
             end
         end
 
+        layout = layout or {}
+        local width = type(layout.width) == "number" and layout.width or 260
+        local left = type(layout.left) == "number" and layout.left or 0
+        local advance = type(layout.advance) == "number" and layout.advance or SLIDER_ADVANCE
         local slider = createSlider(page.parent, {
             name = WidgetName(key),
             text = text,
-            width = 260,
+            width = width,
             min = minimum,
             max = maximum,
             step = step,
@@ -395,9 +419,9 @@ local function NewPage(parent)
         if not slider then
             return nil
         end
-        slider.SetPoint("TOPLEFT", page.parent, "TOPLEFT", 0, page.y - 18)
+        slider.SetPoint("TOPLEFT", page.parent, "TOPLEFT", left, page.y - 18)
         page.Add(slider)
-        page.y = page.y - SLIDER_ADVANCE
+        page.y = page.y - advance
 
         liveEntry = { key = key, control = slider, onLive = onLive,
             last = slider.current }
@@ -444,13 +468,12 @@ function Settings:BuildPage(parent)
     local page = NewPage(parent)
     self.liveSliders = {}
 
-    page.Heading(TAB_LABEL .. "  v" .. UQ.version)
-
-    -- No gap and no rule under the title, unlike between the sections below:
-    -- the box is a fixed 428px that neither host scrolls, and 24px of pure
-    -- separation directly above a heading that already separates the section
-    -- is the cheapest 24px on the page.
-    page.Heading("Quest tracker")
+    -- The page opens on the addon's own name and version (PageTitle) instead of
+    -- a section heading, in the heading's place and at the heading's cost -- so
+    -- the sections below sit exactly where they did and still fit the fixed
+    -- content box shared by the two hosts. The tracker options follow it
+    -- directly; they are the first section whether or not it is labelled.
+    page.Heading(PageTitle())
 
     page.Slider("trackerBackgroundOpacity", "Background opacity", 0, 100, 1,
         function(value)
@@ -475,6 +498,22 @@ function Settings:BuildPage(parent)
           note = "A shaded blue area covering where the targets are found." },
     })
 
+    page.Slider("mapObjectiveDotScale", "World map dot size", 50, 150, 1,
+        function()
+            local worldMapPins = UQ:GetModule("WorldMapPins")
+            if worldMapPins then
+                worldMapPins:ApplyObjectiveDotSize()
+            end
+        end, { width = 160, advance = 0 })
+
+    page.Slider("minimapObjectiveDotScale", "Minimap dot size", 50, 150, 1,
+        function()
+            local minimapPins = UQ:GetModule("MinimapPins")
+            if minimapPins then
+                minimapPins:ApplyObjectiveDotSize()
+            end
+        end, { left = 250, width = 160 })
+
     -- Notes on this page are kept to one line: both hosts hand the page a
     -- fixed 428px box that neither of them scrolls.
     page.Checkbox("mapClusterTooltips", "Describe overlapping map markers together",
@@ -483,7 +522,10 @@ function Settings:BuildPage(parent)
     page.Checkbox("minimapPinsClampEdge", "Clamp off-view minimap markers to the edge",
         "Off hides distant \"!\" and \"?\" markers instead of pinning them to the border.")
 
-    page.Rule()
+    -- The import button's label describes its action, so a compact gap is
+    -- enough separation after the dot-size sliders without pushing the page
+    -- beyond either host's fixed content box.
+    page.Gap(8)
     page.Heading("Quest history")
 
     -- This client has no completed-quest API, so a fresh install cannot know

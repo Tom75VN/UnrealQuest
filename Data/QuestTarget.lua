@@ -37,7 +37,6 @@ local QuestTarget = UQ:NewModule("QuestTarget")
 -- 1.32.0 confirmed a non-overlapping grid is uniform.
 QuestTarget.CELL_PERCENT = 2.5
 QuestTarget.LINK_CELLS = 2
-QuestTarget.MAX_LOCATIONS_PER_QUEST = 200
 
 local function Database()
     return UQ:GetModule("Database")
@@ -176,15 +175,14 @@ function QuestTarget:AppendCarriedItemUseLocations(database, quest, areaId, loca
     local unknown = 0
     local index = 1
     local total = table.getn(targets)
-    while index <= total and table.getn(locations) < self.MAX_LOCATIONS_PER_QUEST do
+    while index <= total do
         local target = targets[index]
         local carries = bagItems and bagItems:Carries(target.itemId)
         if carries == nil then
             unknown = unknown + 1
         elseif carries then
             local found = database:GetEntityLocations(
-                target.sourceType, target.sourceId, areaId,
-                self.MAX_LOCATIONS_PER_QUEST - table.getn(locations))
+                target.sourceType, target.sourceId, areaId)
             local foundIndex = 1
             local foundTotal = table.getn(found)
             while foundIndex <= foundTotal do
@@ -208,10 +206,24 @@ function QuestTarget:CollectLocations(quest, areaId, complete)
         or type(quest.questId) ~= "number" then
         return {}, 0
     end
-    local locations = database:GetQuestLocations(
-        quest.questId, complete, areaId, self.MAX_LOCATIONS_PER_QUEST)
+    local locations = database:GetQuestLocations(quest.questId, complete, areaId)
     local unknown = 0
     if not complete then
+        -- GetQuestLocations returns a cached, shared list, and appending the
+        -- item-use targets to it would write the carried-item state of one
+        -- moment into an answer that is supposed to be static. Copy first --
+        -- but only when this quest actually has an item-use step, so the
+        -- ordinary quest keeps returning the cached list untouched.
+        if table.getn(database:GetQuestItemUseTargets(quest.questId)) > 0 then
+            local copy = {}
+            local index = 1
+            local total = table.getn(locations)
+            while index <= total do
+                table.insert(copy, locations[index])
+                index = index + 1
+            end
+            locations = copy
+        end
         local _, withheld = self:AppendCarriedItemUseLocations(
             database, quest, areaId, locations)
         unknown = withheld

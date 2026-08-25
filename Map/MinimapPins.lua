@@ -5,7 +5,7 @@ The same quest scene as the world map, drawn around the player on the minimap.
 
 What it draws, and what it deliberately does not:
 
-  * one DOT per quest-creature spawn from the bundled database. These are the
+  * one quest-coloured DOT per quest-creature spawn from the bundled database. These are the
     raw positions that feed the world map's blue areas, but the minimap does
     not reconstruct, cluster, or otherwise approximate those areas;
   * the giver "!" and the turn-in "?", unchanged from the world map, because at
@@ -65,23 +65,25 @@ local MinimapPins = UQ:NewModule("MinimapPins")
 local REFRESH_INTERVAL = 0.1
 -- The safety net for state no listener reports: a quest item entering or
 -- leaving the bags changes which item-use objectives exist, and the quest-log
--- listener never fires for it.
+-- listener never fires for it. The poll is the mechanism, per the addon's
+-- event rule -- but it polls the bag token and only then dirties the layer,
+-- because the scene is otherwise static and rebuilding it on the clock
+-- re-derived, every five seconds forever, a list that could not have changed.
 local REBUILD_INTERVAL = 5
 
 local MAX_GIVER_PINS = 16
 local MAX_TURNIN_PINS = 16
--- Frame-name bands, exactly as the world map separates its pools. Names must
--- stay unique per pool; the client mangles nothing here but a collision would
--- silently hand two pools the same frame.
-local OBJECTIVE_INDEX_OFFSET = 0
-local GIVER_INDEX_OFFSET = 1000
-local TURNIN_INDEX_OFFSET = 2000
 
--- A quest-creature spawn is a dot, not the 14x14 the icons keep: at minimap
--- scale several nearby spawns can land close together and full-size squares
--- would merge into one blob.
-local DOT_SIZE = 6
-local ICON_SIZE = 12
+-- A quest-creature spawn is a dot, not an icon. At 100%, 10.8px is 10% smaller
+-- than the former 12px default; the player-facing percentage scales from there.
+local DEFAULT_DOT_SIZE = 10.8
+local MIN_DOT_SCALE = 50
+local MAX_DOT_SCALE = 150
+local DEFAULT_DOT_SCALE = 100
+-- The bundled available-quest "!" is 19x32. Keep the existing 12px minimap
+-- height while preserving that source ratio.
+local GIVER_ICON_HEIGHT = 12
+local GIVER_ICON_WIDTH = GIVER_ICON_HEIGHT * 19 / 32
 -- media/ActiveQuestIcon.tga is 19x32, so the "?" keeps its own aspect ratio
 -- rather than being squashed into a square by SetAllPoints -- the same
 -- reasoning as the world map's TURNIN_ICON_WIDTH.
@@ -95,7 +97,7 @@ local CLAMP_MARGIN = 2
 local EDGE_ALPHA = 0.55
 local INSIDE_ALPHA = 1
 
-local OBJECTIVE_RED, OBJECTIVE_GREEN, OBJECTIVE_BLUE = 0.12, 0.55, 1
+local OBJECTIVE_RED, OBJECTIVE_GREEN, OBJECTIVE_BLUE = UQ.GetQuestColor(nil)
 
 -- Yards across the full width of the minimap, indexed by Minimap:GetZoom().
 -- Zoom 0 is MEASURED on this client (probe 1.38.0, observation `glued`); the
@@ -111,7 +113,67 @@ local SPAN_OUTDOOR = {
     [4] = 200,
     [5] = 133.3,
 }
+-- The indoor row of the same Vanilla table. Its zoom-0 span is 64% of the
+-- outdoor 466.6 that probe 1.38.0 measured in game, which is the ratio the
+-- minimap actually changes by when the player steps inside, and the row the
+-- installed pfQuest uses for the same purpose. Selected only when
+-- Client.GetMinimapIndoorState says so; an unknown answer keeps the outdoor
+-- row, which is what this layer used before it could tell.
+local SPAN_INDOOR = {
+    [0] = 300,
+    [1] = 240,
+    [2] = 180,
+    [3] = 120,
+    [4] = 80,
+    [5] = 50,
+}
 local SPAN_MEASURED_ZOOM = 0
+-- How long the client may keep returning the same player map position, while
+-- it also says the player is moving, before this layer stops believing it.
+-- Long enough that a quantized position (GetPlayerMapPosition is measured
+-- accurate to one yard) or a single stalled frame cannot trip it, short enough
+-- that the pins do not spend seconds describing nothing.
+local PLAYER_POSITION_STALE_SECONDS = 1.5
+
+-- Measured spans, keyed by zoom step, dialled in from inside the game with
+-- "/uq minimap span <yards>" and kept in SavedVariables.
+--
+-- This exists because the constants above cannot be verified from Lua. The
+-- minimap draws no reference this addon can read back, so nothing in here can
+-- observe whether a pin is glued to the ground -- only a player walking past
+-- it can. A span that is too large makes every offset undershoot, and the pin
+-- creeps along in the direction of travel; too small and it slides the other
+-- way. Dialling until it stops moving IS the measurement, and the value it
+-- lands on is evidence of the same class as the zoom-0 walk that established
+-- 466.6.
+--
+-- Overrides are per zoom step and stored separately for indoors, because this
+-- client selects a different zoom step inside (measured: 3 inside Brill Town
+-- Hall against 0 outdoors) AND appears to use a different span at that same
+-- step. Neither is guessed at here: an unmeasured combination simply falls
+-- back to the Vanilla constant it used before.
+local SPAN_SECTION = "minimapSpans"
+
+local function SpanOverrideKey(zoom, indoor)
+    local prefix = "out"
+    if indoor == "indoor" then
+        prefix = "in"
+    end
+    return prefix .. tostring(zoom)
+end
+
+local function SpanOverride(zoom, indoor)
+    local config = UQ:GetModule("Config")
+    if not config or type(zoom) ~= "number" then
+        return nil
+    end
+    local section = config:GetSection(SPAN_SECTION)
+    local value = section and section[SpanOverrideKey(zoom, indoor)]
+    if type(value) ~= "number" or value <= 0 then
+        return nil
+    end
+    return value
+end
 
 MinimapPins.objectivePool = {}
 MinimapPins.giverPool = {}
@@ -122,6 +184,10 @@ MinimapPins.turnInVisible = 0
 MinimapPins.targets = {}
 MinimapPins.dirty = true
 MinimapPins.lastAreaId = nil
+MinimapPins.lastBagToken = nil
+MinimapPins.lastPlayerX = nil
+MinimapPins.lastPlayerY = nil
+MinimapPins.playerStaleSince = nil
 MinimapPins.rebuildCount = 0
 MinimapPins.clampedCount = 0
 MinimapPins.pinFailures = 0
@@ -145,6 +211,10 @@ local function WorldMapPins()
     return UQ:GetModule("WorldMapPins")
 end
 
+local function BagItems()
+    return UQ:GetModule("BagItems")
+end
+
 -- Pools ---------------------------------------------------------------------
 
 local function HidePoolFrom(pool, first)
@@ -163,12 +233,34 @@ function MinimapPins:HideAll()
     self.turnInVisible = HidePoolFrom(self.turnInPool, 1)
 end
 
+function MinimapPins:GetObjectiveDotSize()
+    local config = UQ:GetModule("Config")
+    local scale = config and config:Get("minimapObjectiveDotScale")
+    if type(scale) ~= "number" then
+        scale = DEFAULT_DOT_SCALE
+    elseif scale < MIN_DOT_SCALE then
+        scale = MIN_DOT_SCALE
+    elseif scale > MAX_DOT_SCALE then
+        scale = MAX_DOT_SCALE
+    end
+    return DEFAULT_DOT_SIZE * scale / 100
+end
+
+function MinimapPins:ApplyObjectiveDotSize()
+    local size = self:GetObjectiveDotSize()
+    local index = 1
+    while index <= table.getn(self.objectivePool) do
+        Client.SetMinimapPinSize(self.objectivePool[index], size, size)
+        index = index + 1
+    end
+end
+
 function MinimapPins:GetObjectivePin(index)
     local pin = self.objectivePool[index]
     if pin then
         return pin
     end
-    pin = Client.CreateMinimapPin(index + OBJECTIVE_INDEX_OFFSET, DOT_SIZE,
+    pin = Client.CreateMinimapPin("Objective" .. tostring(index), self:GetObjectiveDotSize(),
         OBJECTIVE_RED, OBJECTIVE_GREEN, OBJECTIVE_BLUE)
     if pin then
         self.objectivePool[index] = pin
@@ -182,10 +274,11 @@ function MinimapPins:GetGiverPin(index)
     if pin then
         return pin
     end
-    pin = Client.CreateMinimapPin(index + GIVER_INDEX_OFFSET, ICON_SIZE, 1, 1, 1)
+    pin = Client.CreateMinimapPin("Giver" .. tostring(index), GIVER_ICON_HEIGHT, 1, 1, 1)
     if pin then
         self.giverPool[index] = pin
         Client.SetMinimapPinTexture(pin, Client.AVAILABLE_QUEST_TEXTURE)
+        Client.SetMinimapPinSize(pin, GIVER_ICON_WIDTH, GIVER_ICON_HEIGHT)
     end
     return pin
 end
@@ -195,7 +288,7 @@ function MinimapPins:GetTurnInPin(index)
     if pin then
         return pin
     end
-    pin = Client.CreateMinimapPin(index + TURNIN_INDEX_OFFSET, TURNIN_ICON_HEIGHT, 1, 1, 1)
+    pin = Client.CreateMinimapPin("TurnIn" .. tostring(index), TURNIN_ICON_HEIGHT, 1, 1, 1)
     if pin then
         self.turnInPool[index] = pin
         Client.SetMinimapPinTexture(pin, Client.ACTIVE_QUEST_TEXTURE)
@@ -214,6 +307,11 @@ function MinimapPins:Record(state, extra)
     end
     local key = state .. ":" .. tostring(self.objectiveVisible) .. ":"
         .. tostring(self.giverVisible) .. ":" .. tostring(self.turnInVisible)
+        -- Indoor state and zoom are part of the identity of a sample, not
+        -- decoration on it: without them a record captured standing outside
+        -- survives untouched while the player walks around inside, and reads
+        -- as evidence about indoors when it is nothing of the kind.
+        .. ":" .. tostring(self.lastIndoorState) .. ":" .. tostring(self.lastZoom)
     if key == self.lastDiagnosticKey then
         return
     end
@@ -240,19 +338,30 @@ end
 -- rather than a nearby guess: an unknown step means an unknown scale, and a
 -- pin at an unknown scale is worse than no pin.
 local function SpanForZoom(zoom)
+    local indoor = Client.GetMinimapIndoorState()
+    local override = SpanOverride(zoom, indoor)
+    if override then
+        return override, "playerCalibrated"
+    end
+    local steps = SPAN_OUTDOOR
+    local indoorSuffix = ""
+    if indoor == "indoor" then
+        steps = SPAN_INDOOR
+        indoorSuffix = "Indoor"
+    end
     if type(zoom) ~= "number" then
         -- No zoom reading at all. The measured step is the only one that can
         -- be defended, and it is also the client's default.
-        return SPAN_OUTDOOR[SPAN_MEASURED_ZOOM], "assumedDefaultZoom"
+        return steps[SPAN_MEASURED_ZOOM], "assumedDefaultZoom" .. indoorSuffix
     end
-    local span = SPAN_OUTDOOR[zoom]
+    local span = steps[zoom]
     if not span then
         return nil, "unknownZoom"
     end
-    if zoom == SPAN_MEASURED_ZOOM then
+    if zoom == SPAN_MEASURED_ZOOM and indoorSuffix == "" then
         return span, "measured"
     end
-    return span, "vanillaConstant"
+    return span, "vanillaConstant" .. indoorSuffix
 end
 
 -- Shared with Map/NpcPins.lua. Both minimap layers must use the same measured
@@ -261,17 +370,44 @@ function MinimapPins:GetSpanForZoom(zoom)
     return SpanForZoom(zoom)
 end
 
+-- Records a span the player has dialled in for the zoom step and environment
+-- they are standing in right now. Passing nil clears it and returns the layer
+-- to the constant. Returns the key it wrote, the value, and the span now in
+-- use, so the caller can report exactly what changed.
+function MinimapPins:SetSpanOverride(yards)
+    local config = UQ:GetModule("Config")
+    if not config then
+        return nil
+    end
+    local width, height, zoom = Client.GetMinimapGeometry()
+    if type(zoom) ~= "number" then
+        return nil
+    end
+    local indoor = Client.GetMinimapIndoorState()
+    local key = SpanOverrideKey(zoom, indoor)
+    if yards and yards > 0 then
+        config:SetSectionEntry(SPAN_SECTION, key, yards)
+    else
+        config:SetSectionEntry(SPAN_SECTION, key, nil)
+    end
+    self.dirty = true
+    self:Refresh()
+    local span, evidence = SpanForZoom(zoom)
+    return key, zoom, indoor, span, evidence
+end
+
 -- Targets -------------------------------------------------------------------
 
--- The scene, in database percentages, rebuilt only when something that can
--- change it has changed. Projection to pixels happens every tick; this does
--- not.
-function MinimapPins:BuildTargets(areaId, config)
+-- The scene, in zone yards, rebuilt only when something that can change it
+-- has changed. Database percentages are converted here once; projection to
+-- pixels happens every tick and only subtracts the player's yard position.
+function MinimapPins:BuildTargets(areaId, widthYards, heightYards, config)
     local targets = {}
     local database = Database()
     local questState = QuestState()
     local worldMap = WorldMapPins()
-    if not database or not questState or not worldMap then
+    if not database or not questState or not worldMap
+        or type(widthYards) ~= "number" or type(heightYards) ~= "number" then
         return targets
     end
 
@@ -288,6 +424,7 @@ function MinimapPins:BuildTargets(areaId, config)
     while questIndex <= questTotal do
         local quest = quests[questIndex]
         if quest.isComplete ~= 1 then
+            local questRed, questGreen, questBlue = UQ.GetQuestColor(quest)
             local locations = worldMap:CollectQuestLocations(
                 quest, areaId, false, config)
             local locationIndex = 1
@@ -301,9 +438,13 @@ function MinimapPins:BuildTargets(areaId, config)
                         objectiveSeen[locationKey] = true
                         table.insert(targets, {
                             kind = "objective",
-                            x = location.x,
-                            y = location.y,
+                            yardX = location.x * widthYards / 100,
+                            yardY = location.y * heightYards / 100,
                             complete = false,
+                            quest = quest,
+                            red = questRed,
+                            green = questGreen,
+                            blue = questBlue,
                         })
                     end
                 end
@@ -321,8 +462,8 @@ function MinimapPins:BuildTargets(areaId, config)
         local point = turnIns[turnInIndex]
         table.insert(targets, {
             kind = "turnin",
-            x = point.x,
-            y = point.y,
+            yardX = point.x * widthYards / 100,
+            yardY = point.y * heightYards / 100,
             complete = point.complete and true or false,
         })
         turnInIndex = turnInIndex + 1
@@ -335,8 +476,8 @@ function MinimapPins:BuildTargets(areaId, config)
         local entry = givers[giverIndex]
         table.insert(targets, {
             kind = "giver",
-            x = entry.giver.x,
-            y = entry.giver.y,
+            yardX = entry.giver.x * widthYards / 100,
+            yardY = entry.giver.y * heightYards / 100,
         })
         giverIndex = giverIndex + 1
     end
@@ -353,8 +494,11 @@ end
 -- NORTH with y, so the vertical term is negated. This is the arithmetic the
 -- probe's `track` variant confirmed glued to the terrain, unchanged.
 function MinimapPins:Project(playerX, playerY, widthYards, heightYards, span, width, height, clampEdge)
-    local yardsPerPixel = span / width
+    local pixelsPerYard = width / span
+    local playerYardX = playerX * widthYards
+    local playerYardY = playerY * heightYards
     local shortest = width
+    local objectiveDotSize = self:GetObjectiveDotSize()
     if height < shortest then
         shortest = height
     end
@@ -368,13 +512,13 @@ function MinimapPins:Project(playerX, playerY, widthYards, heightYards, span, wi
     local total = table.getn(self.targets)
     while index <= total do
         local target = self.targets[index]
-        local offsetX = ((target.x / 100) - playerX) * widthYards / yardsPerPixel
-        local offsetY = -(((target.y / 100) - playerY) * heightYards) / yardsPerPixel
+        local offsetX = (target.yardX - playerYardX) * pixelsPerYard
+        local offsetY = -(target.yardY - playerYardY) * pixelsPerYard
         local distance = math.sqrt(offsetX * offsetX + offsetY * offsetY)
 
         local pin, half
         if target.kind == "objective" then
-            half = DOT_SIZE / 2
+            half = objectiveDotSize / 2
             local objectiveLimit = shortest / 2 - half - CLAMP_MARGIN
             if objectiveLimit < 0 then
                 objectiveLimit = 0
@@ -387,23 +531,22 @@ function MinimapPins:Project(playerX, playerY, widthYards, heightYards, span, wi
                 pin = self:GetObjectivePin(objectiveIndex)
                 if pin then
                     Client.SetMinimapPinColor(pin,
-                        OBJECTIVE_RED, OBJECTIVE_GREEN, OBJECTIVE_BLUE)
+                        target.red or OBJECTIVE_RED,
+                        target.green or OBJECTIVE_GREEN,
+                        target.blue or OBJECTIVE_BLUE)
                 end
             end
         elseif target.kind == "giver" and giverIndex <= MAX_GIVER_PINS then
             pin = self:GetGiverPin(giverIndex)
-            half = ICON_SIZE / 2
+            half = GIVER_ICON_HEIGHT / 2
         elseif target.kind == "turnin" and turnInIndex <= MAX_TURNIN_PINS then
             pin = self:GetTurnInPin(turnInIndex)
             half = TURNIN_ICON_HEIGHT / 2
             if pin then
-                -- Same two states as the world map's "?", by the same route:
-                -- greyscale for a quest still in progress, full colour once it
-                -- is ready to hand in.
                 if target.complete then
-                    Client.SetWorldMapPinDesaturated(pin, false)
+                    Client.SetMinimapPinTexture(pin, Client.COMPLETE_QUEST_TEXTURE)
                 else
-                    Client.SetWorldMapPinDesaturated(pin, true)
+                    Client.SetMinimapPinTexture(pin, Client.ACTIVE_QUEST_TEXTURE)
                 end
             end
         end
@@ -515,15 +658,97 @@ function MinimapPins:Refresh()
         return
     end
 
+    -- Persisted with every state below, not only on failure: a wrong area
+    -- resolves silently -- another zone's coordinates against another zone's
+    -- yard span still draws pins, they simply do not describe the ground. The
+    -- route that produced it is the thing that has to be readable afterwards.
+    local identity = {
+        areaId = areaId,
+        areaIdHow = tostring(report.areaIdHow),
+        mapZoneName = tostring(report.mapZoneName),
+        realZoneText = tostring(report.realZoneText),
+        zoneText = tostring(report.zoneText),
+        areaIdFromMapZone = tostring(report.areaIdFromMapZone),
+        areaIdFromRealZoneText = tostring(report.areaIdFromRealZoneText),
+        areaIdFromZoneText = tostring(report.areaIdFromZoneText),
+        playerX = report.playerX,
+        playerY = report.playerY,
+    }
+    -- Indoors the minimap covers fewer yards at the same zoom step, and this
+    -- client exposes no way to learn how many: the zoom CVars are measured
+    -- absent, so the layer cannot rescale and would place every pin at the
+    -- wrong distance -- drifting along with the player rather than staying on
+    -- the ground. Withholding the pins is the honest answer, and it is the
+    -- same rule this layer already applies to a rotating minimap and to a view
+    -- that cannot project the player.
+    if (not config or config:Get("minimapPinsHideIndoors") ~= false)
+        and mapContext:IsInterior(report) then
+        self:HideAll()
+        identity.interior = true
+        self:Record("interior", identity)
+        return
+    end
+
+    local indoorState, indoorHow = Client.GetMinimapIndoorState()
+    identity.indoor = tostring(indoorState)
+    identity.indoorHow = tostring(indoorHow)
+    local cvarOutside, cvarInside = Client.GetMinimapZoomCVars()
+    identity.zoomCVarOutside = tostring(cvarOutside)
+    identity.zoomCVarInside = tostring(cvarInside)
+    self.lastIndoorState = indoorState
+    self.lastZoom = zoom
+
     local yards = database:GetZoneYards(areaId)
     if type(yards) ~= "table" or type(yards[1]) ~= "number" or type(yards[2]) ~= "number" then
         self:HideAll()
-        self:Record("noZoneSize")
+        self:Record("noZoneSize", identity)
+        return
+    end
+    identity.zoneYardsX = yards[1]
+    identity.zoneYardsY = yards[2]
+
+    -- Does the client still describe where the player IS?
+    --
+    -- Every offset this layer computes is (target - player), so a player
+    -- position that stops updating does not degrade the pins, it inverts what
+    -- they mean: each one keeps exactly the offset it had and rides along with
+    -- the player, looking authoritative while describing nothing. That is the
+    -- same failure the layer already refuses elsewhere -- "the pins hide rather
+    -- than freeze" -- and the only one that produces markers which follow the
+    -- player instead of the ground.
+    --
+    -- IsPlayerMoving is what makes the test safe, and it is measured on this
+    -- client as tracking standing versus running: standing still is the
+    -- ordinary reason for an unchanged position, and it must never hide the
+    -- layer. An unavailable IsPlayerMoving returns nil, which can never
+    -- accumulate staleness, so nothing changes on a client that lacks it.
+    local now = Client.Now()
+    local moving = Client.IsPlayerMoving()
+    if report.playerX ~= self.lastPlayerX or report.playerY ~= self.lastPlayerY then
+        self.lastPlayerX = report.playerX
+        self.lastPlayerY = report.playerY
+        self.playerStaleSince = nil
+    elseif moving and now then
+        if not self.playerStaleSince then
+            self.playerStaleSince = now
+        end
+    else
+        self.playerStaleSince = nil
+    end
+    local staleFor = 0
+    if self.playerStaleSince and now then
+        staleFor = now - self.playerStaleSince
+    end
+    identity.playerMoving = moving and true or false
+    identity.playerStaleFor = staleFor
+    if staleFor >= PLAYER_POSITION_STALE_SECONDS then
+        self:HideAll()
+        self:Record("playerPositionStale", identity)
         return
     end
 
     if self.dirty or self.lastAreaId ~= areaId then
-        self.targets = self:BuildTargets(areaId, config)
+        self.targets = self:BuildTargets(areaId, yards[1], yards[2], config)
         self.lastAreaId = areaId
         self.dirty = false
     end
@@ -531,10 +756,33 @@ function MinimapPins:Refresh()
     local clampEdge = not config or config:Get("minimapPinsClampEdge") ~= false
     self:Project(report.playerX, report.playerY, yards[1], yards[2], span, width, height, clampEdge)
 
+    identity.zoom = tostring(zoom)
+    identity.span = span
+    identity.spanEvidence = spanEvidence
+    -- The job that re-points these pins is on the shared driver, and
+    -- Core/Driver.lua disables a job after five consecutive failures. A
+    -- disabled job does not hide anything: the pins keep their last offsets
+    -- from the minimap's centre, which is the player, so they appear to follow
+    -- the player around instead of staying on the ground. That is invisible
+    -- from the pins themselves, so the counter is persisted here.
+    local driver = UQ:GetModule("Driver")
+    if driver then
+        local jobs = driver:GetJobReport()
+        local jobIndex = 1
+        local jobTotal = table.getn(jobs)
+        while jobIndex <= jobTotal do
+            local job = jobs[jobIndex]
+            if job.name == "map.minimappins" then
+                identity.jobActive = job.active and true or false
+                identity.jobFailures = job.failures
+            end
+            jobIndex = jobIndex + 1
+        end
+    end
     if self.objectiveVisible > 0 or self.giverVisible > 0 or self.turnInVisible > 0 then
-        self:Record("rendered", { zoom = tostring(zoom), span = span, spanEvidence = spanEvidence })
+        self:Record("rendered", identity)
     else
-        self:Record("noTargets", { zoom = tostring(zoom), span = span, spanEvidence = spanEvidence })
+        self:Record("noTargets", identity)
     end
 end
 
@@ -568,6 +816,8 @@ function MinimapPins:OnEnable()
         end)
     end
 
+    local bagItems = BagItems()
+    self.lastBagToken = bagItems and bagItems:GetToken()
     local driver = UQ:GetModule("Driver")
     if driver then
         driver:Schedule("map.minimappins", REFRESH_INTERVAL, function()
@@ -576,7 +826,15 @@ function MinimapPins:OnEnable()
         -- Second job on the same shared driver rather than a second OnUpdate
         -- frame: it only flips a flag, and the refresh above picks it up.
         driver:Schedule("map.minimappins.rebuild", REBUILD_INTERVAL, function()
-            MinimapPins.dirty = true
+            local token = bagItems and bagItems:GetToken()
+            -- No BagItems module at all means no token to compare, so the
+            -- unconditional rebuild this replaced is what runs instead: the
+            -- poll must never become weaker than it was when it cannot see
+            -- the thing it is polling.
+            if not token or token ~= MinimapPins.lastBagToken then
+                MinimapPins.lastBagToken = token
+                MinimapPins.dirty = true
+            end
         end)
     end
     self.dirty = true
