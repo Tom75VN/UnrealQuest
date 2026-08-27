@@ -91,6 +91,12 @@ local HELP_TAIL_KEYS = {
     "CMD_HELP_PFQUEST",
     "CMD_HELP_PFQUEST_IMPORT",
     "CMD_HELP_PFQUEST_UNDO",
+    "CMD_HELP_RARE",
+    "CMD_HELP_RARE_ONOFF",
+    "CMD_HELP_RARE_ELITES",
+    "CMD_HELP_RARE_RANGE",
+    "CMD_HELP_RARE_SOUND",
+    "CMD_HELP_RARE_TEST",
     "CMD_HELP_MARKS",
     "CMD_HELP_MARKS_ONOFF",
     "CMD_HELP_MARKS_ICON",
@@ -528,6 +534,107 @@ local function ShowMinimap(target)
     if status.pinFailures and status.pinFailures > 0 then
         Line("  " .. UQ.L("CMD_MINIMAP_PIN_FAILURES", tostring(status.pinFailures)))
     end
+end
+
+-- "/uq rare", and its four settings. The range and the sound kit are here
+-- rather than on the options page for the reason named in Core/Settings.lua:
+-- an unknown SoundEntries kit name is SILENT on this client rather than an
+-- error, so choosing one means hearing it, and "/uq rare sound <kit>" plays
+-- the kit as it stores it.
+local function ShowRareAlert(target)
+    -- Two copies on purpose. Sub-commands are matched case-insensitively, but
+    -- a SoundEntries kit name is mixed case ("igMainMenuOption") and the client
+    -- looks it up by name, so the sound branch must read the ORIGINAL text.
+    local original = UQ.Trim(target) or ""
+    target = string.lower(original)
+    local alert = UQ:GetModule("RareAlert")
+    local config = UQ:GetModule("Config")
+    if not alert or not config then
+        Line(UQ.L("CMD_MODULE_MISSING_RARE"))
+        return
+    end
+
+    if target == "on" or target == "off" then
+        config:Set("rareAlert", target == "on")
+        if target == "on" then
+            Line(UQ.L("CMD_RARE_ON"))
+        else
+            alert:Dismiss()
+            Line(UQ.L("CMD_RARE_OFF"))
+        end
+        return
+    end
+
+    if target == "elites on" or target == "elites off" then
+        config:Set("rareAlertElites", target == "elites on")
+        if target == "elites on" then
+            Line(UQ.L("CMD_RARE_ELITES_ON"))
+        else
+            Line(UQ.L("CMD_RARE_ELITES_OFF"))
+        end
+        return
+    end
+
+    if target == "test" then
+        local name, why = alert:Test()
+        if name then
+            Line(UQ.L("CMD_RARE_TEST_OK", name))
+        else
+            Line(UQ.L("CMD_RARE_TEST_FAILED", tostring(why)))
+        end
+        return
+    end
+
+    local rangeWord, rangeEnd = string.find(target, "^range")
+    if rangeWord then
+        local argument = UQ.Trim(string.sub(target, rangeEnd + 1)) or ""
+        local yards = tonumber(argument)
+        if not yards or yards < 20 or yards > 500 then
+            Line(UQ.L("CMD_RARE_RANGE_USAGE"))
+            return
+        end
+        config:Set("rareAlertRange", yards)
+        Line(UQ.L("CMD_RARE_RANGE_SET", tostring(alert:GetRange())))
+        return
+    end
+
+    local soundWord, soundEnd = string.find(target, "^sound")
+    if soundWord then
+        local kit = UQ.Trim(string.sub(original, soundEnd + 1)) or ""
+        if kit == "" then
+            Line(UQ.L("CMD_RARE_SOUND_USAGE"))
+            Line("  |cff888888" .. UQ.L("CMD_RARE_SOUND_HINT") .. "|r")
+            return
+        end
+        config:Set("rareAlertSound", kit)
+        Client.PlayAlertSound(kit)
+        Line(UQ.L("CMD_RARE_SOUND_SET", kit))
+        Line("  |cff888888" .. UQ.L("CMD_RARE_SOUND_HINT") .. "|r")
+        return
+    end
+
+    local status = alert:GetStatus()
+    Line(UQ.L("CMD_RARE_TITLE"))
+    Line("  " .. UQ.L("CMD_RARE_SETTING",
+        status.enabled and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF"),
+        status.elites and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF")))
+    Line("  " .. UQ.L("CMD_RARE_RANGE", tostring(status.range), tostring(status.seconds)))
+    Line("  " .. UQ.L("CMD_RARE_SOUND", tostring(status.sound), tostring(status.soundPlayed)))
+    if not status.soundAvailable then
+        Line("  |cffff5555" .. UQ.L("CMD_RARE_SOUND_MISSING") .. "|r")
+    end
+    Line("  " .. UQ.L("CMD_RARE_STATE", tostring(status.state),
+        tostring(status.areaId or UQ.L("COMMON_NONE"))))
+    Line("  " .. UQ.L("CMD_RARE_INDEX",
+        status.indexReady and UQ.L("COMMON_YES") or UQ.L("COMMON_NO"),
+        tostring(status.indexedCreatures), tostring(status.candidates)))
+    Line("  " .. UQ.L("CMD_RARE_COUNTS", tostring(status.alerts), tostring(status.scans)))
+    if status.lastName then
+        Line("  " .. UQ.L("CMD_RARE_LAST", status.lastName,
+            tostring(status.lastRank or UQ.L("COMMON_UNKNOWN")),
+            tostring(status.lastDistance)))
+    end
+    Line("  |cff888888" .. UQ.L("CMD_RARE_PROXIMITY_NOTE") .. "|r")
 end
 
 local function ShowDatabase()
@@ -1171,7 +1278,8 @@ local function ShowTracker(argument)
     end
     Line("  width=" .. tostring(report.width) .. " height=" .. tostring(height)
         .. " objectives=" .. tostring(report.objectives)
-        .. " zones=" .. (report.groupByZone and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF")))
+        .. " zones=" .. (report.groupByZone and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF"))
+        .. " curzone=" .. (report.currentZoneOnly and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF")))
     Line("  " .. UQ.L("CMD_TRACKER_POSITION", tostring(report.point),
         string.format("%.0f, %.0f", report.x or 0, report.y or 0))
         .. " -- drags=" .. tostring(report.drags)
@@ -1487,6 +1595,8 @@ local function Handler(message)
         ResetMarkedQuests(target)
     elseif command == "pfquest" then
         ImportPfQuestHistory(target)
+    elseif command == "rare" or command == "rares" then
+        ShowRareAlert(target)
     elseif command == "marks" or command == "mark" then
         ShowMarks(UQ.Trim(target) or "")
     elseif command == "worldscan" then

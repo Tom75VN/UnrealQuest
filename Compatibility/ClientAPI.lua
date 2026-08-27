@@ -3081,6 +3081,37 @@ function Client.GetObjectText(object)
     return value
 end
 
+-- Writes the text of a widget the CLIENT owns, the counterpart of
+-- GetObjectText above -- not Client.SetButtonLabel, which drives the
+-- unrealQuestLabel FontString this addon attaches to buttons it created
+-- itself and which a native row does not have.
+--
+-- A native templated Button keeps its label in the FontString GetFontString
+-- returns, so that region is preferred and Button:SetText is only the
+-- fallback. Both are pcall'd: this is the one place in the addon that writes
+-- into stock FrameXML's own widgets, and a client that refuses must leave the
+-- caller with a false rather than an error.
+function Client.SetNativeObjectText(object, text)
+    if not object or type(text) ~= "string" then
+        return false
+    end
+    local target = nil
+    if type(object.GetFontString) == "function" then
+        local resolved, value = pcall(object.GetFontString, object)
+        if resolved and value and type(value.SetText) == "function" then
+            target = value
+        end
+    end
+    if not target and type(object.SetText) == "function" then
+        target = object
+    end
+    if not target then
+        return false
+    end
+    local ok = pcall(target.SetText, target, text)
+    return ok and true or false
+end
+
 function Client.IsObjectShown(object)
     if not object or type(object.IsShown) ~= "function" then
         return false
@@ -3494,45 +3525,6 @@ function Client.ShowObject(object)
     return ok and true or false
 end
 
--- Drives the quest-log tracking indicator without making the client's capped
--- IsQuestWatched state authoritative. When unrealUI has skinned the row it
--- publishes its existing accent bar on `row.uuiTrackMark`; otherwise the stock
--- QuestLogTitleNCheck texture is the native-client-style indicator.
---
--- QuestLogTitle1Check is present in the measured QuestLogFrame inventory
--- (BEHAVIOR_VERIFIED, captured 2026-08-23). The unrealUI field is an optional
--- cross-addon presentation surface, detected by shape rather than load order.
-function Client.SetQuestLogTrackMark(rowIndex, tracked)
-    if type(rowIndex) ~= "number" then
-        return nil
-    end
-    local row = Client.GetNamedObject("QuestLogTitle" .. tostring(rowIndex))
-    if not row then
-        return nil
-    end
-
-    local mark = row.uuiTrackMark
-    local style = "unrealUI"
-    if not mark or type(mark.Show) ~= "function" or type(mark.Hide) ~= "function" then
-        mark = Client.GetNamedObject("QuestLogTitle" .. tostring(rowIndex) .. "Check")
-        style = "native"
-        -- unrealUI suppresses the stock check with alpha as well as Hide(). If
-        -- its accent has not been built, restore the stock region completely.
-        if mark and type(mark.SetAlpha) == "function" then
-            pcall(mark.SetAlpha, mark, 1)
-        end
-    end
-    if not mark then
-        return nil
-    end
-    if tracked then
-        Client.ShowObject(mark)
-    else
-        Client.HideObject(mark)
-    end
-    return style
-end
-
 function Client.SetObjectSize(object, width, height)
     if not object then
         return false
@@ -3567,6 +3559,125 @@ local function CreateSolid(parent, layer, red, green, blue, alpha)
     return texture
 end
 
+-- Quest-log tracked mark ----------------------------------------------------
+--
+-- The stock QuestLogTitleNCheck texture is not a surface an addon can own.
+-- `questlog.stock_track_mark_is_native_owned_and_reanchored`
+-- (BEHAVIOR_VERIFIED, probeVersion 1.40.0) captured it moving from a common
+-- x=50 anchor to a title-width-dependent x=83..128 after native refreshes.
+-- `questlog.tracked_check_texture_cannot_be_reanchored` separately established
+-- that a bare replacement Texture cannot fix the stacking: it has no frame
+-- level and only a clipped sliver survives in the row gutter.
+--
+-- Standalone UnrealQuest therefore owns one real Frame per native row. Its
+-- fixed 3x14 accent never depends on the title or its temporary [level]
+-- decoration, and its explicit frame level puts it above the native list. If
+-- unrealUI has already published its equivalent `uuiTrackMark`, that existing
+-- presentation wins and our standalone frame stays hidden.
+local QUEST_LOG_TRACK_MARK_WIDTH = 3
+local QUEST_LOG_TRACK_MARK_HEIGHT = 14
+local QUEST_LOG_TRACK_MARK_OFFSET_X = 2
+local QUEST_LOG_TRACK_MARK_LEVEL_OFFSET = 4
+
+local function ConfigureQuestLogTrackMark(mark, row)
+    if not mark or not row then
+        return false
+    end
+    if not mark.unrealQuestConfigured then
+        Client.SetObjectSize(mark, QUEST_LOG_TRACK_MARK_WIDTH, QUEST_LOG_TRACK_MARK_HEIGHT)
+        if type(mark.ClearAllPoints) == "function" then
+            pcall(mark.ClearAllPoints, mark)
+        end
+        if type(mark.SetPoint) == "function" then
+            pcall(mark.SetPoint, mark, "LEFT", row, "LEFT", QUEST_LOG_TRACK_MARK_OFFSET_X, 0)
+        end
+        if type(mark.EnableMouse) == "function" then
+            pcall(mark.EnableMouse, mark, false)
+        end
+        mark.unrealQuestConfigured = true
+    end
+    if type(mark.SetFrameLevel) == "function" and type(row.GetFrameLevel) == "function" then
+        local ok, level = pcall(row.GetFrameLevel, row)
+        if ok and type(level) == "number" then
+            pcall(mark.SetFrameLevel, mark, level + QUEST_LOG_TRACK_MARK_LEVEL_OFFSET)
+        end
+    end
+    if not mark.unrealQuestTexture then
+        local accent = UQ.colors and UQ.colors.accent or { 1, 0.65, 0 }
+        local texture = CreateSolid(mark, "ARTWORK", accent[1], accent[2], accent[3], 1)
+        if texture and type(texture.SetAllPoints) == "function" then
+            pcall(texture.SetAllPoints, texture, mark)
+        end
+        mark.unrealQuestTexture = texture
+    end
+    return mark.unrealQuestTexture and true or false
+end
+
+local function GetStandaloneQuestLogTrackMark(row, rowIndex)
+    local name = "UnrealQuestQuestLogTrackMark" .. tostring(rowIndex)
+    local mark = row.unrealQuestTrackMark or ResolveObject(name)
+    if not mark or type(mark.Show) ~= "function" or type(mark.Hide) ~= "function" then
+        local create = Resolve("CreateFrame")
+        if not create then
+            return nil
+        end
+        local ok, created = pcall(create, "Frame", name, row)
+        if not ok or not created then
+            return nil
+        end
+        mark = created
+    end
+    row.unrealQuestTrackMark = mark
+    if not ConfigureQuestLogTrackMark(mark, row) then
+        return nil
+    end
+    return mark
+end
+
+-- Drives UnrealQuest's unlimited tracking indicator without treating the
+-- client's five-slot IsQuestWatched state as authoritative.
+function Client.SetQuestLogTrackMark(rowIndex, tracked)
+    if type(rowIndex) ~= "number" then
+        return nil
+    end
+    local row = Client.GetNamedObject("QuestLogTitle" .. tostring(rowIndex))
+    if not row then
+        return nil
+    end
+
+    local owned = row.unrealQuestTrackMark
+    local mark = row.uuiTrackMark
+    local style = "unrealUI"
+    if not mark or type(mark.Show) ~= "function" or type(mark.Hide) ~= "function" then
+        mark = GetStandaloneQuestLogTrackMark(row, rowIndex)
+        style = "standalone"
+    elseif owned then
+        Client.HideObject(owned)
+    end
+    if not mark then
+        return nil
+    end
+
+    -- Once an owned mark is available, the title-width-dependent stock check
+    -- must not draw beside it. Alpha is the stable suppression: the measured
+    -- public QuestLog_Update changed anchors and shown state but preserved
+    -- alpha. Hide closes the current frame immediately as well.
+    local stock = Client.GetNamedObject("QuestLogTitle" .. tostring(rowIndex) .. "Check")
+    if stock and stock ~= mark then
+        if type(stock.SetAlpha) == "function" then
+            pcall(stock.SetAlpha, stock, 0)
+        end
+        Client.HideObject(stock)
+    end
+
+    if tracked then
+        Client.ShowObject(mark)
+    else
+        Client.HideObject(mark)
+    end
+    return style
+end
+
 -- Removes the drop shadow every stock font template here carries by default.
 -- Documented (DOCUMENTED_NOT_RUNTIME_VERIFIED); guarded like every other
 -- widget method in this file, so a client without it simply keeps the
@@ -3587,8 +3698,12 @@ function Client.SetSolidColor(texture, red, green, blue, alpha)
     return ok and true or false
 end
 
--- Applies the player's percentage setting to the tracker background without
--- changing the frame's alpha (which would also dim its text and controls).
+-- Applies the player's percentage setting to the tracker background and to
+-- every border line drawn in the panel's own chrome colour -- the four outer
+-- edges and the rule under the header -- without changing the frame's alpha
+-- (which would also dim its text and controls). The lines fade with the
+-- background because a fully opaque outline around an invisible panel reads as
+-- a stray rectangle drawn on the world.
 function Client.SetTrackerBackgroundOpacity(frame, percent)
     if not frame or type(percent) ~= "number" then
         return false
@@ -3598,8 +3713,13 @@ function Client.SetTrackerBackgroundOpacity(frame, percent)
     elseif percent > 100 then
         percent = 100
     end
+    local scale = percent / 100
+    SetFlatBorderColor(frame, FLAT_BORDER[1], FLAT_BORDER[2], FLAT_BORDER[3],
+        FLAT_BORDER[4] * scale)
+    Client.SetSolidColor(frame.unrealQuestSeparator,
+        FLAT_BORDER[1], FLAT_BORDER[2], FLAT_BORDER[3], FLAT_BORDER[4] * scale)
     return Client.SetSolidColor(frame.unrealQuestBackground,
-        FLAT_BACKGROUND[1], FLAT_BACKGROUND[2], FLAT_BACKGROUND[3], percent / 100)
+        FLAT_BACKGROUND[1], FLAT_BACKGROUND[2], FLAT_BACKGROUND[3], scale)
 end
 
 -- Anchor capture and re-application ------------------------------------------
@@ -4643,17 +4763,23 @@ end
 -- here takes the host frame as an argument and anchors to it, and nothing
 -- reaches for a window by name.
 --
--- The geometry deliberately mirrors unrealUI's settings panel -- a 46px header,
--- a 46px footer and 12px gutters -- so the content area a page is handed is the
--- same size in both hosts and a layout tuned in one is not re-tuned for the
--- other.
+-- The footer and gutters deliberately mirror unrealUI's settings panel -- a
+-- 46px footer and 12px gutters -- so the content area a page is handed is the
+-- same 496x428 in both hosts and a layout tuned in one is not re-tuned for the
+-- other. The header is shorter here on purpose (32px, not unrealUI's 46): this
+-- window's header carries only the wordmark and the language flags, and the
+-- window sizes itself around the content box, so a trimmer header leaves the
+-- content box untouched and just makes the whole window 14px shorter.
 --
 -- Nothing about the drag is re-derived here. The handle is the same shape the
 -- tracker's is (frames.movable_drag_requires_button_handle, BEHAVIOR_VERIFIED):
 -- a Button parented to the frame it moves, raised with SetFrameLevel and never
 -- by a strata change, dragged through Client.StartFrameDrag.
 
-local SETTINGS_HEADER_HEIGHT = 46
+-- 30% shorter than the footer and than unrealUI's own 46px header: it holds
+-- only the wordmark and the flag row, both centred in it, and the content box
+-- below is unchanged (the window just loses the 14px).
+local SETTINGS_HEADER_HEIGHT = 32
 local SETTINGS_FOOTER_HEIGHT = 46
 local SETTINGS_PADDING = 12
 local SETTINGS_ACCENT_WIDTH = 2
@@ -4754,8 +4880,13 @@ function Client.CreateSettingsWindow(name, width, height)
     if type(frame.CreateFontString) == "function" then
         local titleOk, title = pcall(frame.CreateFontString, frame, nil, "OVERLAY", "GameFontNormal")
         if titleOk and title then
+            -- Top inset centres the ~14px wordmark in the header strip -- the
+            -- same half-the-slack the flag row uses on the other side, plus 4px
+            -- because the FontString's cap sits above its box top and the row
+            -- otherwise reads high against the flags.
             pcall(title.SetPoint, title, "TOPLEFT", frame, "TOPLEFT",
-                SETTINGS_ACCENT_WIDTH + SETTINGS_PADDING, -(SETTINGS_PADDING + 4))
+                SETTINGS_ACCENT_WIDTH + SETTINGS_PADDING,
+                -(math.floor((SETTINGS_HEADER_HEIGHT - 14) / 2) + 4))
             pcall(title.SetJustifyH, title, "LEFT")
             pcall(title.SetTextColor, title, UQ.colors.accent[1], UQ.colors.accent[2],
                 UQ.colors.accent[3])
@@ -5243,7 +5374,9 @@ local function CreateSettingsToggle(parent, name, text, offsetX, offsetY, width,
                 pcall(label.SetWidth, label, width)
             end
             pcall(label.SetText, label, type(text) == "string" and text or "")
-            pcall(label.SetTextColor, label, 0.85, 0.85, 0.85)
+            -- Full white: the control's own text is the option, and grey is
+            -- reserved for the explanatory note under it (CreateSettingsBody).
+            pcall(label.SetTextColor, label, 1, 1, 1)
             StripShadow(label)
             box.label = label
         end
@@ -6216,6 +6349,174 @@ function Client.IsNpcFilterMenuShown()
     return ok and shown and true or false
 end
 
+-- Proximity alert panel -----------------------------------------------------
+-- The on-screen card World/RareAlert.lua raises when the player walks into
+-- range of a rare or elite creature's recorded spawn, plus its sound.
+--
+-- SOUND. PlaySound(kitName) is the only audio route this client documents: it
+-- looks the name up in SoundEntries and is SILENT for a name it does not know,
+-- with no return value and no error. There is no PlaySoundFile among the 1054
+-- globals in the client's own API reference, so an addon cannot ship or play
+-- audio of its own here. The alert plays a kit the client already has, and
+-- WHICH kit is a setting precisely because "unknown names are silent" means
+-- the addon cannot verify one from Lua. "/uq rare sound <kit>" auditions one
+-- and keeps it.
+--
+-- PANEL. Built from the same flat chrome as the settings window rather than a
+-- native popup: nothing in this client's FrameXML is reachable as an alert
+-- template, and the addon already owns this look. It is deliberately NOT
+-- modal -- it takes no keyboard, dims nothing, and blocks no input outside its
+-- own small box. A creature walking past is not worth taking the player's
+-- hands away for.
+
+local ALERT_WIDTH = 250
+local ALERT_HEIGHT = 76
+local ALERT_PADDING = 10
+local ALERT_ACCENT_WIDTH = 2
+local ALERT_CLOSE_SIZE = 14
+
+function Client.PlayAlertSound(kitName)
+    local play = Resolve("PlaySound")
+    if not play or type(kitName) ~= "string" or kitName == "" then
+        return false
+    end
+    -- No return value to check and no error on an unknown name: "the call was
+    -- made" is the whole of what can honestly be reported from here.
+    local ok = pcall(play, kitName)
+    return ok and true or false
+end
+
+function Client.HasAlertSound()
+    return Client.HasFunction("PlaySound")
+end
+
+-- Creates the alert card, hidden. `name` must not contain "-": this client
+-- mangles hyphenated widget names.
+function Client.CreateAlertWindow(name)
+    local create = Resolve("CreateFrame")
+    local parent = ResolveObject("UIParent")
+    if not create or not parent or type(name) ~= "string" then
+        return nil
+    end
+    local ok, frame = pcall(create, "Frame", name, parent)
+    if not ok or not frame then
+        return nil
+    end
+
+    -- HIGH, like the settings window: the card is a deliberate interruption
+    -- and belongs over the ordinary panels rather than under them.
+    if type(frame.SetFrameStrata) == "function" then
+        pcall(frame.SetFrameStrata, frame, "HIGH")
+    end
+    -- Mouse on the card itself only, so its close button can be clicked.
+    if type(frame.EnableMouse) == "function" then
+        pcall(frame.EnableMouse, frame, true)
+    end
+    Client.SetObjectSize(frame, ALERT_WIDTH, ALERT_HEIGHT)
+
+    local background = CreateSolid(frame, "BACKGROUND",
+        FLAT_BACKGROUND[1], FLAT_BACKGROUND[2], FLAT_BACKGROUND[3], 0.94)
+    if background and type(background.SetAllPoints) == "function" then
+        pcall(background.SetAllPoints, background, frame)
+    end
+    frame.unrealQuestBackground = background
+    BuildFlatBorder(frame)
+
+    -- The accent runs the full height here rather than a header's: there is no
+    -- header rule on a card this short, so the bar is what says whose UI this
+    -- is.
+    local accent = CreateSolid(frame, "ARTWORK",
+        UQ.colors.accent[1], UQ.colors.accent[2], UQ.colors.accent[3], 1)
+    if accent then
+        pcall(accent.SetPoint, accent, "TOPLEFT", frame, "TOPLEFT", 0, 0)
+        pcall(accent.SetPoint, accent, "BOTTOMLEFT", frame, "BOTTOMLEFT", 0, 0)
+        pcall(accent.SetWidth, accent, ALERT_ACCENT_WIDTH)
+    end
+    frame.unrealQuestAccent = accent
+
+    local left = ALERT_ACCENT_WIDTH + ALERT_PADDING
+
+    local function Row(template, offsetY, red, green, blue)
+        if type(frame.CreateFontString) ~= "function" then
+            return nil
+        end
+        local rowOk, row = pcall(frame.CreateFontString, frame, nil, "OVERLAY", template)
+        if not rowOk or not row then
+            return nil
+        end
+        pcall(row.SetPoint, row, "TOPLEFT", frame, "TOPLEFT", left, offsetY)
+        pcall(row.SetPoint, row, "TOPRIGHT", frame, "TOPRIGHT",
+            -(ALERT_PADDING + ALERT_CLOSE_SIZE), offsetY)
+        if type(row.SetJustifyH) == "function" then
+            pcall(row.SetJustifyH, row, "LEFT")
+        end
+        if red and type(row.SetTextColor) == "function" then
+            pcall(row.SetTextColor, row, red, green, blue)
+        end
+        StripShadow(row)
+        return row
+    end
+
+    frame.unrealQuestTitle = Row("GameFontNormal", -ALERT_PADDING,
+        UQ.colors.accent[1], UQ.colors.accent[2], UQ.colors.accent[3])
+    frame.unrealQuestSubtitle = Row("GameFontHighlightSmall", -(ALERT_PADDING + 20))
+    frame.unrealQuestBody = Row("GameFontNormalSmall", -(ALERT_PADDING + 38),
+        0.72, 0.72, 0.72)
+
+    local close = Client.CreateTextButton(frame, name .. "Close",
+        ALERT_CLOSE_SIZE, ALERT_CLOSE_SIZE, "x")
+    if close then
+        pcall(close.SetPoint, close, "TOPRIGHT", frame, "TOPRIGHT", -6, -6)
+        frame.unrealQuestClose = close
+    end
+
+    pcall(frame.Hide, frame)
+    return frame
+end
+
+function Client.SetAlertWindowText(frame, title, subtitle, body)
+    if not frame then
+        return false
+    end
+    local rows = { frame.unrealQuestTitle, frame.unrealQuestSubtitle, frame.unrealQuestBody }
+    local texts = { title, subtitle, body }
+    local index = 1
+    while index <= 3 do
+        local row = rows[index]
+        if row and type(row.SetText) == "function" then
+            pcall(row.SetText, row, type(texts[index]) == "string" and texts[index] or "")
+        end
+        index = index + 1
+    end
+    return true
+end
+
+function Client.SetAlertWindowClose(frame, handler)
+    local close = frame and frame.unrealQuestClose
+    if not close then
+        return false
+    end
+    return Client.SetObjectScript(close, "OnClick", handler)
+end
+
+-- Anchors the card to a point of UIParent. Nothing about the position is
+-- persisted, so there is no stored anchor to go stale and no GetPoint read to
+-- be lied to about (docs/QUEST-TRACKER.md, "the two ways GetPoint lies").
+function Client.PositionAlertWindow(frame, point, offsetX, offsetY)
+    local parent = ResolveObject("UIParent")
+    if not frame or not parent or type(frame.SetPoint) ~= "function" then
+        return false
+    end
+    if type(frame.ClearAllPoints) == "function" then
+        pcall(frame.ClearAllPoints, frame)
+    end
+    local anchor = type(point) == "string" and point or "TOP"
+    local ok = pcall(frame.SetPoint, frame, anchor, parent, anchor,
+        type(offsetX) == "number" and offsetX or 0,
+        type(offsetY) == "number" and offsetY or 0)
+    return ok and true or false
+end
+
 -- Capability declarations ---------------------------------------------------
 -- Recorded once at load so /uq status reports the layer's real footing.
 
@@ -6227,6 +6528,15 @@ local function DeclareFunction(key, globalName, state, note)
     end
 end
 
+-- The alert sound. "documented" and no better: the client API reference
+-- carries PlaySound, but an unknown SoundEntries name is silent rather than an
+-- error, so nothing measurable comes back from a call and no probe can promote
+-- this. Which kit actually makes a noise is settled by the player's ears --
+-- "/uq rare sound <kit>".
+DeclareFunction("alertSound", "PlaySound", "documented",
+    "client API reference; PlaySound looks up a SoundEntries kit name and is silent for one it does "
+    .. "not know, so a successful call is not evidence a sound played. No PlaySoundFile exists among "
+    .. "this client's documented globals, so the addon cannot play audio of its own")
 DeclareFunction("time", "GetTime", "verified",
     "GetTime measured accurate to wall clock; sole sanctioned elapsed-time source")
 DeclareFunction("questLogSize", "GetNumQuestLogEntries", "verified",

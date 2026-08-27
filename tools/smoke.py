@@ -722,13 +722,30 @@ function GetMapZones(continent)
     if not UQ_TEST_MAP_ZONE_LIST then return end
     return unpackList(UQ_TEST_MAP_ZONE_LIST)
 end
+-- Documented: GetCurrentMapZone returns 0 specifically when no individual zone
+-- is selected, i.e. the player has zoomed the world map out to a continent.
+-- Nothing on that view can project the player, so every layer that measures
+-- from the player's own position has to withhold rather than guess.
+UQ_TEST_CONTINENT_VIEW = false
 function GetCurrentMapZone()
+    if UQ_TEST_CONTINENT_VIEW then return 0 end
     local wanted = UQ_TEST_MAP_ZONE_NAME or UQ_TEST_ZONE_NAME
     for index, name in ipairs(UQ_TEST_MAP_ZONE_LIST or {}) do
         if name == wanted then return index end
     end
     return 8
 end
+
+-- PlaySound is this client's ONLY audio route: there is no PlaySoundFile among
+-- the 1054 globals in its API reference, so an addon cannot play a file of its
+-- own here. It takes a SoundEntries KIT NAME, returns nothing, and is SILENT
+-- for a name it does not know rather than raising -- so recording the calls is
+-- exactly as much as the addon itself can ever observe about it.
+UQ_TEST_SOUNDS = {}
+function PlaySound(name)
+    table.insert(UQ_TEST_SOUNDS, name)
+end
+
 UQ_TEST_PLAYER_POSITION = { 0.42, 0.65 }
 
 -- Measured on this client by probe 1.37.0: GetPlayerMapPosition is quantized
@@ -2522,6 +2539,25 @@ check("hovering one quest fades every unrelated objective marker", rt.eval("""(f
     end
     return related and unrelated
 end)()"""))
+check("hovering one quest grows the marker that quest is linked to", rt.eval("""(function()
+    local pins = UnrealQuest:GetModule('WorldMapPins')
+    local quest = UQ_TEST_AREA.unrealQuestQuest
+    local grown, plain = 0, 0
+    local index = 1
+    while index <= pins.turnInVisibleCount do
+        local pin = pins.turnInPool[index]
+        local related = false
+        for _, carried in ipairs((pin.unrealQuestTurnIn or {}).quests or {}) do
+            if carried == quest then related = true end
+        end
+        local base = pin.unrealQuestBaseWidth
+        local wanted = related and base * 1.5 or base
+        if math.abs(pin.width - wanted) > 0.0001 then return false end
+        if related then grown = grown + 1 else plain = plain + 1 end
+        index = index + 1
+    end
+    return grown > 0 and plain > 0
+end)()"""))
 check("the area tooltip carries the quest level and its status", rt.eval("""(function()
     local seenLevel, seenStatus = false, false
     for _, pair in ipairs(WorldMapTooltip.doubles or {}) do
@@ -2553,6 +2589,17 @@ check("leaving the area restores every objective marker opacity", rt.eval("""(fu
         index = index + 1
     end
     return true
+end)()"""))
+check("leaving the area returns every marker to its base size", rt.eval("""(function()
+    local pins = UnrealQuest:GetModule('WorldMapPins')
+    local index = 1
+    while index <= pins.turnInVisibleCount do
+        local pin = pins.turnInPool[index]
+        if math.abs(pin.width - pin.unrealQuestBaseWidth) > 0.0001 then return false end
+        if pin:GetAlpha() ~= 1 then return false end
+        index = index + 1
+    end
+    return pins.turnInVisibleCount > 0
 end)()"""))
 check("area hovers are counted for the SavedVariables record", rt.eval(
     "UnrealQuestDB.mapDiagnostics.areaHovers > 0"))
@@ -4152,10 +4199,42 @@ rt.execute("""
 """)
 check("standalone quest-log marks include the sixth addon-tracked quest", rt.eval("""(function()
     local module = UnrealQuest:GetModule('QuestLogTracking')
-    return QuestLogTitle7Check:IsShown() == true and IsQuestWatched(7) == false
-        and module:GetReport().nativeMarks >= 7
+    local mark = UnrealQuestQuestLogTrackMark7
+    local point, relative, relativePoint, x, y = mark:GetPoint(1)
+    return mark ~= nil and mark:IsShown() == true and IsQuestWatched(7) == false
+        and QuestLogTitle7Check:IsShown() == false and QuestLogTitle7Check:GetAlpha() == 0
+        and mark:GetParent() == QuestLogTitle7
+        and mark:GetWidth() == 3 and mark:GetHeight() == 14
+        and point == 'LEFT' and relative == 'QuestLogTitle7'
+        and relativePoint == 'LEFT' and x == 2 and y == 0
+        and mark:GetFrameLevel() == QuestLogTitle7:GetFrameLevel() + 4
+        and string.find(mark.unrealQuestTexture:GetTexture(), 'WHITE8X8', 1, true) ~= nil
+        and mark.unrealQuestTexture.allPoints == mark
+        and module:GetReport().standaloneMarks >= 7
+        and module:GetReport().nativeMarks == module:GetReport().standaloneMarks
 end)()"""))
 rt.execute("""
+    -- Reproduce the measured native mutation: after refresh the stock check is
+    -- reanchored from the title width and shown for a native-watched quest.
+    QuestLogTitle2Check:ClearAllPoints()
+    QuestLogTitle2Check:SetPoint('LEFT', QuestLogTitle2, 'LEFT', 112, 0)
+    QuestLogTitle2Check:Show()
+    UnrealQuest:GetModule('QuestLogTracking'):RefreshMarks()
+""")
+check("native refresh cannot move or reveal the standalone quest-log mark", rt.eval("""(function()
+    local mark = UnrealQuestQuestLogTrackMark2
+    local point, relative, relativePoint, x, y = mark:GetPoint(1)
+    return mark:IsShown() == true
+        and point == 'LEFT' and relative == 'QuestLogTitle2'
+        and relativePoint == 'LEFT' and x == 2 and y == 0
+        and QuestLogTitle2Check:IsShown() == false
+        and QuestLogTitle2Check:GetAlpha() == 0
+end)()"""))
+rt.execute("""
+    -- The previous/native click handler rewrites the title before the chained
+    -- UnrealQuest handler runs. Leave it bare here so the chain has to restore
+    -- the level synchronously rather than waiting for the 0.2-second poll.
+    QuestLogTitle7:SetText('  Tracked Six')
     UQ_TEST_SHIFT_DOWN = true
     QuestLogTitle7:GetScript('OnClick')()
     UQ_TEST_SHIFT_DOWN = false
@@ -4164,7 +4243,9 @@ check("shift-click untracks an overflow quest even though it has no native slot"
     local state = UnrealQuest:GetModule('QuestState')
     local tracker = UnrealQuest:GetModule('Tracker')
     return not tracker:IsTracked(state:GetQuestByTitle('Tracked Six'))
+        and UnrealQuestQuestLogTrackMark7:IsShown() == false
         and QuestLogTitle7Check:IsShown() == false
+        and QuestLogTitle7:GetText() == '  [6] Tracked Six'
 end)()"""))
 rt.execute("""
     UQ_TEST_SHIFT_DOWN = true
@@ -4175,7 +4256,8 @@ check("shift-click tracks the overflow quest in the unlimited set", rt.eval("""(
     local state = UnrealQuest:GetModule('QuestState')
     local tracker = UnrealQuest:GetModule('Tracker')
     return tracker:IsTracked(state:GetQuestByTitle('Tracked Six'))
-        and QuestLogTitle7Check:IsShown() == true and IsQuestWatched(7) == false
+        and UnrealQuestQuestLogTrackMark7:IsShown() == true
+        and QuestLogTitle7Check:IsShown() == false and IsQuestWatched(7) == false
 end)()"""))
 rt.execute("""
     local accent = CreateFrame('Frame', 'UQTestUnrealUITrackMark', QuestLogTitle7)
@@ -4185,9 +4267,75 @@ rt.execute("""
 """)
 check("an unrealUI-skinned row uses its existing accent rectangle", rt.eval("""(function()
     local report = UnrealQuest:GetModule('QuestLogTracking'):GetReport()
-    return UQTestUnrealUITrackMark:IsShown() == true and report.unrealUIMarks == 1
+    return UQTestUnrealUITrackMark:IsShown() == true
+        and UnrealQuestQuestLogTrackMark7:IsShown() == false
+        and QuestLogTitle7Check:IsShown() == false
+        and report.unrealUIMarks == 1
 end)()"""))
 rt.execute("QuestLogTitle7.uuiTrackMark = nil")
+
+# Quest log level prefixes ---------------------------------------------------
+# The mock's own refresh writes a "[level] " prefix, modelling a client that
+# decorates its rows already; these rows are rewritten without one so the
+# module has something to do, and so the pass after it proves it does not
+# double up when the prefix is there.
+rt.execute("""
+    QuestLogFrame:Show()
+    UQ_TEST_REFRESH_NATIVE_QUEST_UI()
+    local index = 1
+    while index <= table.getn(UQ_TEST_LOG) do
+        local button = getglobal('QuestLogTitle' .. index)
+        local entry = UQ_TEST_LOG[index]
+        if button and entry then
+            if entry[4] then
+                button:SetText(entry[1])
+            else
+                button:SetText('  ' .. entry[1])
+            end
+        end
+        index = index + 1
+    end
+    UnrealQuest:GetModule('QuestLogLevels'):Refresh()
+""")
+check("quest log rows show the level in brackets before the name", rt.eval("""(function()
+    local quests = 0
+    local index = 1
+    while index <= table.getn(UQ_TEST_LOG) do
+        local button = getglobal('QuestLogTitle' .. index)
+        local title, level, _, isHeader = GetQuestLogTitle(index)
+        if button and title then
+            if isHeader then
+                -- A zone header has no level and must be left exactly as it is.
+                if button:GetText() ~= title then return false end
+            else
+                if button:GetText() ~= '  [' .. level .. '] ' .. title then return false end
+                quests = quests + 1
+            end
+        end
+        index = index + 1
+    end
+    return quests >= 1
+end)()"""))
+rt.execute("UnrealQuest:GetModule('QuestLogLevels'):Refresh()")
+check("a second pass does not stack a second bracket", rt.eval("""(function()
+    local index = 1
+    while index <= table.getn(UQ_TEST_LOG) do
+        local button = getglobal('QuestLogTitle' .. index)
+        local title, level, _, isHeader = GetQuestLogTitle(index)
+        if button and title and not isHeader then
+            if button:GetText() ~= '  [' .. level .. '] ' .. title then return false end
+        end
+        index = index + 1
+    end
+    return true
+end)()"""))
+check("the client's own quest titles stay undecorated for matching", rt.eval("""(function()
+    local title, level = UnrealQuest.Client.GetQuestLogEntry(2)
+    local state = UnrealQuest:GetModule('QuestState')
+    return string.find(title, '%[') == nil and level > 0
+        and state:GetQuestByTitle(title) ~= nil
+end)()"""))
+rt.execute("UQ_TEST_REFRESH_NATIVE_QUEST_UI()")
 check("sixth tracked quest is visible to the custom tracker", rt.eval("""(function()
     local lines = UnrealQuest:GetModule('TrackerFrame'):BuildLines()
     local index = 1
@@ -4904,7 +5052,11 @@ check("/uq main clear stops following", rt.eval("""(function()
 end)()"""))
 
 print("quest tracker window")
+# The whole-log behaviour is what this block measures, so the current-zone
+# filter is off for it -- with it on (the default) the Westfall quest below is
+# correctly left out, which is the subject of its own block further down.
 rt.execute("""
+    UnrealQuest:GetModule('Config'):Set('trackerCurrentZoneOnly', false)
     UQ_TEST_LOG = {
         { "Elwynn Forest", 0, nil, 1, nil, nil },
         { "Kobold Camp Cleanup", 6, nil, nil, nil, nil,
@@ -5866,6 +6018,146 @@ check("the tracker collapse glyph is vertically centred", rt.eval("""(function()
         and label.justifyV == 'CENTER' and label.inherits == 'GameFontNormal'
 end)()"""))
 
+print("  tracker: current-zone filter")
+# The player is in Elwynn Forest for this whole block (UQ_TEST_ZONE_NAME, set
+# above), and the log holds Elwynn quests, a Westfall quest and one filed under
+# a header that names no place at all.
+rt.execute("""
+    UQ_TEST_LOG = {
+        { "Elwynn Forest", 0, nil, 1, nil, nil },
+        { "Kobold Camp Cleanup", 6, nil, nil, nil, nil,
+          { { "Kobold Vermin slain: 4/10", "monster", nil } } },
+        { "Westfall", 0, nil, 1, nil, nil },
+        { "Poor Old Blanchy", 15, nil, nil, nil, nil,
+          { { "Blanchy watered", "item", nil } } },
+        { "Class", 0, nil, 1, nil, nil },
+        { "The Attack!", 12, nil, nil, nil, nil,
+          { { "Speak to Marshal Marris", "item", nil } } },
+    }
+    function UQ_TEST_TRACKER_TITLES()
+        local titles = {}
+        local index = 1
+        while getglobal('UnrealQuestTrackerRowquest' .. index) do
+            local row = getglobal('UnrealQuestTrackerRowquest' .. index)
+            if row:IsShown() then
+                table.insert(titles, row.fontString.text)
+            end
+            index = index + 1
+        end
+        return titles
+    end
+    function UQ_TEST_TRACKER_HAS(fragment)
+        local titles = UQ_TEST_TRACKER_TITLES()
+        local index = 1
+        while index <= table.getn(titles) do
+            if string.find(titles[index], fragment, 1, true) then return true end
+            index = index + 1
+        end
+        return false
+    end
+    function UQ_TEST_TRACKER_RESCAN()
+        UnrealQuest:GetModule('QuestState'):Scan()
+        local tracker = UnrealQuest:GetModule('TrackerFrame')
+        tracker.dirty = true
+        tracker:Refresh()
+    end
+    UnrealQuest:GetModule('Config'):Set('trackerCurrentZoneOnly', true)
+    UQ_TEST_TRACKER_RESCAN()
+""")
+
+check("the current-zone filter is on out of the box",
+      rt.eval("UnrealQuest:GetModule('Config'):Get('trackerCurrentZoneOnly') == true"))
+
+check("a quest filed under another zone is left out",
+      rt.eval("UQ_TEST_TRACKER_HAS('Blanchy') == false"))
+
+check("the quests of the zone the player is standing in stay",
+      rt.eval("UQ_TEST_TRACKER_HAS('Kobold') == true"))
+
+# A quest log header is not always a place: class and profession quests are
+# grouped under headers the bundled zone table carries no area for. Those are
+# never "another zone", so they are never filtered out.
+check("a header that names no known area is not treated as another zone",
+      rt.eval("UQ_TEST_TRACKER_HAS('The Attack!') == true"))
+
+check("a filtered-out zone writes no header row either", rt.eval("""(function()
+    local index = 1
+    while getglobal('UnrealQuestTrackerRowzone' .. index) do
+        local row = getglobal('UnrealQuestTrackerRowzone' .. index)
+        if row:IsShown() and row.fontString.text == 'Westfall' then return false end
+        index = index + 1
+    end
+    return true
+end)()"""))
+
+check("walking into the other zone swaps which quests are listed", rt.eval("""(function()
+    UQ_TEST_ZONE_NAME = 'Westfall'
+    UQ_TEST_REAL_ZONE_NAME = 'Westfall'
+    UQ_TEST_TRACKER_RESCAN()
+    local blanchy = UQ_TEST_TRACKER_HAS('Blanchy')
+    local kobold = UQ_TEST_TRACKER_HAS('Kobold')
+    UQ_TEST_ZONE_NAME = 'Elwynn Forest'
+    UQ_TEST_REAL_ZONE_NAME = 'Elwynn Forest'
+    UQ_TEST_TRACKER_RESCAN()
+    return blanchy == true and kobold == false
+end)()"""))
+
+# GetZoneText is measured answering with a building rather than its zone, which
+# matches no quest log header at all; GetRealZoneText is what the filter asks
+# first, exactly as Map/MapContext.lua does.
+check("standing in an interior filters by the real zone, not the building",
+      rt.eval("""(function()
+    UQ_TEST_ZONE_NAME = 'Brill Town Hall'
+    UQ_TEST_REAL_ZONE_NAME = 'Elwynn Forest'
+    UQ_TEST_TRACKER_RESCAN()
+    local kept = UQ_TEST_TRACKER_HAS('Kobold')
+    UQ_TEST_ZONE_NAME = 'Elwynn Forest'
+    UQ_TEST_TRACKER_RESCAN()
+    return kept == true
+end)()"""))
+
+# Nothing is hidden on a guess: a client that will not name the zone gets the
+# whole log rather than an empty window.
+check("a client that names no zone filters nothing", rt.eval("""(function()
+    UQ_TEST_ZONE_NAME = nil
+    UQ_TEST_REAL_ZONE_NAME = nil
+    UQ_TEST_TRACKER_RESCAN()
+    local everything = UQ_TEST_TRACKER_HAS('Blanchy') and UQ_TEST_TRACKER_HAS('Kobold')
+    UQ_TEST_ZONE_NAME = 'Elwynn Forest'
+    UQ_TEST_REAL_ZONE_NAME = 'Elwynn Forest'
+    UQ_TEST_TRACKER_RESCAN()
+    return everything == true
+end)()"""))
+
+check("turning the option off brings every zone back", rt.eval("""(function()
+    UnrealQuest:GetModule('Config'):Set('trackerCurrentZoneOnly', false)
+    UQ_TEST_TRACKER_RESCAN()
+    local all = UQ_TEST_TRACKER_HAS('Blanchy') and UQ_TEST_TRACKER_HAS('Kobold')
+    UnrealQuest:GetModule('Config'):Set('trackerCurrentZoneOnly', true)
+    return all == true
+end)()"""))
+
+check("the option is account-wide, not per character",
+      rt.eval("UnrealQuestDB.trackerCurrentZoneOnly ~= nil "
+              "and UnrealQuestCharDB.trackerCurrentZoneOnly == nil"))
+
+# Restore the whole-log view for the blocks below, which are about everything
+# except this filter.
+rt.execute("""
+    UnrealQuest:GetModule('Config'):Set('trackerCurrentZoneOnly', false)
+    UQ_TEST_LOG = {
+        { "Elwynn Forest", 0, nil, 1, nil, nil },
+        { "Kobold Camp Cleanup", 6, nil, nil, nil, nil,
+          { { "Kobold Vermin slain: 4/10", "monster", nil } } },
+        { "Sharptalon's Claw", 30, nil, nil, nil, 1,
+          { { "Sharptalon's Claw: 1/1", "item", 1 } } },
+        { "Westfall", 0, nil, 1, nil, nil },
+        { "Poor Old Blanchy", 15, nil, nil, nil, nil,
+          { { "Blanchy watered", "item", nil } } },
+    }
+    UQ_TEST_TRACKER_RESCAN()
+""")
+
 print("  tracker: commands and settings")
 for cmd in ("tracker", "tracker zones", "tracker zones", "tracker width 300",
             "tracker height 300", "tracker height 0", "tracker height 5",
@@ -6393,6 +6685,18 @@ check("the widget name is derived from the setting key, with no hyphen in it",
       rt.eval("getglobal('UnrealQuestSettingsMapObjectiveDotsOption1') ~= nil"))
 check("the page reports one tab and never registers a second",
       rt.eval("table.getn(UnrealUI.tabs) == 1"))
+check("the current-zone option reached the page",
+      rt.eval("UnrealQuestSettingsTrackerCurrentZoneOnly ~= nil"))
+
+check("a paired control shares its neighbour's row instead of costing the page height",
+      rt.eval("""(function()
+    local point = UnrealQuestSettingsTrackerCurrentZoneOnly.point
+    -- Placed in the second column, on the opacity slider's own row: x is the
+    -- column offset, y the row the slider was about to occupy anyway.
+    return point ~= nil and point[4] == 250
+end)()"""),
+      "the checkbox sits beside the opacity slider, not under it")
+
 check("the built page fits the content box both hosts hand it",
       rt.eval("UnrealQuest:GetModule('Settings').pageHeight <= 428"),
       str(rt.eval("UnrealQuest:GetModule('Settings').pageHeight")))
@@ -6532,8 +6836,10 @@ rt.execute("SlashCmdList.UNREALQUEST('config')")
 check("/uq config builds and shows the standalone window",
       rt.eval("getglobal('UnrealQuestSettings') ~= nil and UnrealQuestSettings:IsShown()"))
 # 496x428 of content either way: the same builder must not be laid out twice.
+# The window is 506 tall, not 520: 428 content + 46 footer + a header trimmed to
+# 32 (it carries only the wordmark and flags). The content box is unchanged.
 check("the standalone window's content box matches unrealUI's",
-      rt.eval("UnrealQuestSettings:GetWidth() == 520 and UnrealQuestSettings:GetHeight() == 520"),
+      rt.eval("UnrealQuestSettings:GetWidth() == 520 and UnrealQuestSettings:GetHeight() == 506"),
       f"{rt.eval('UnrealQuestSettings:GetWidth()')}x{rt.eval('UnrealQuestSettings:GetHeight()')}")
 check("the same builder runs against our own content frame",
       rt.eval("table.getn(UnrealQuestSettingsContent.regions) >= 3"))
@@ -7137,6 +7443,178 @@ check("minimap objective dots can grow past the old numeric name band",
       rt.eval("UQ_TEST_UNBOUNDED_MINIMAP_DOTS == 1001 "
               "and UQ_TEST_UNBOUNDED_MINIMAP_NAMES == true"),
       str(rt.eval("UQ_TEST_UNBOUNDED_MINIMAP_DOTS")))
+
+
+print("rare / elite proximity alert")
+# A WIRING check against the bundled data and a mocked client. It is not
+# evidence that the alert sound is audible on the real client: PlaySound is
+# silent for a kit name the client does not know, which is the whole reason
+# "/uq rare sound <kit>" exists.
+rt.execute("""
+    UQ_TEST_ZONE_NAME = 'Elwynn Forest'
+    UQ_TEST_MAP_ZONE_NAME = 'Elwynn Forest'
+    UQ_TEST_REAL_ZONE_NAME = nil
+    UQ_TEST_SUBZONE_NAME = ''
+    UQ_TEST_PLAYER_OFF_MAP = false
+    UQ_TEST_CONTINENT_VIEW = false
+""")
+# The index is chunked over driver ticks and is only started by the first Poll
+# that wants it, so it needs a few passes of the driver before it can answer.
+rt.execute("UQ_TEST_TICK(0.5, 120)")
+check("the ranked-creature index builds itself",
+      rt.eval("UnrealQuest:GetModule('Database'):IsRankIndexReady()"))
+print("     ranked creatures indexed:",
+      rt.eval("UnrealQuest:GetModule('Database').rankedUnitCount"))
+
+# Ranks come out of the data as STRINGS ("4"), and a caller comparing one
+# against a number would match nothing and alert on nobody. GetUnitRank is the
+# single place that conversion happens.
+check("a creature rank is read through the string the data stores", rt.eval("""(function()
+    local db = UnrealQuest:GetModule('Database')
+    local units = UnrealQuestData.units
+    local id, record = next(units, nil)
+    while id do
+        if type(record) == 'table' and record.rnk ~= nil then
+            return type(record.rnk) == 'string' and db:GetUnitRank(id) == tonumber(record.rnk)
+        end
+        id, record = next(units, id)
+    end
+    return false
+end)()"""))
+
+# Picked out of the index rather than hardcoded, so the test cannot rot when
+# the bundled data is re-reduced. Rank 1 is excluded because ordinary elites
+# are off by default and the pick has to be one the alert actually wants.
+rt.execute("""
+    UQ_TEST_RARE_AREA = UnrealQuest:GetModule('MapContext'):GetCurrentZoneView()
+    UQ_TEST_RARE_PICK = nil
+    local bucket = UnrealQuest:GetModule('Database'):GetAreaRankedUnits(UQ_TEST_RARE_AREA)
+    local index = 1
+    while bucket and index <= table.getn(bucket) do
+        local entry = bucket[index]
+        if entry.rank ~= 1 and UnrealQuest:GetModule('Database'):GetUnitName(entry.unitId) then
+            UQ_TEST_RARE_PICK = entry
+            index = table.getn(bucket) + 1
+        else
+            index = index + 1
+        end
+    end
+""")
+check("the player's zone carries a rare, rare elite or boss to alert on",
+      rt.eval("UQ_TEST_RARE_PICK ~= nil"),
+      str(rt.eval("UQ_TEST_RARE_AREA")))
+
+# Standing exactly on the recorded spawn, so the distance is zero whatever the
+# zone's yard dimensions are.
+rt.execute("""
+    UQ_TEST_SOUNDS = {}
+    UQ_TEST_PLAYER_POSITION = { UQ_TEST_RARE_PICK.coords[1][1] / 100,
+                                UQ_TEST_RARE_PICK.coords[1][2] / 100 }
+    local alert = UnrealQuest:GetModule('RareAlert')
+    alert:LeaveArea()
+    alert.alertedAt = {}
+    alert:Poll()
+    UQ_TEST_RARE_NAME = UnrealQuest:GetModule('Database'):GetUnitName(UQ_TEST_RARE_PICK.unitId)
+""")
+check("walking onto a recorded rare spawn raises the card", rt.eval(
+    "UnrealQuestRareAlert ~= nil and UnrealQuestRareAlert:IsShown() == true"),
+    str(rt.eval("UnrealQuest:GetModule('RareAlert').state")))
+check("the card names the creature", rt.eval(
+    "UnrealQuestRareAlert.unrealQuestTitle:GetText() == UQ_TEST_RARE_NAME"),
+    str(rt.eval("UQ_TEST_RARE_NAME")))
+check("and plays the configured sound kit", rt.eval(
+    "table.getn(UQ_TEST_SOUNDS) == 1 and UQ_TEST_SOUNDS[1] == 'RaidWarning'"),
+    str(rt.eval("table.getn(UQ_TEST_SOUNDS)")))
+
+# The re-alert cooldown. Standing still must not ping once a second, and
+# neither must walking out of range and back inside it.
+rt.execute("""
+    UQ_TEST_SOUNDS = {}
+    UnrealQuest:GetModule('RareAlert'):Poll()
+    UnrealQuest:GetModule('RareAlert'):LeaveArea()
+    UnrealQuest:GetModule('RareAlert'):Poll()
+""")
+check("standing on it, or leaving and returning, does not ping again",
+      rt.eval("table.getn(UQ_TEST_SOUNDS) == 0"),
+      str(rt.eval("table.getn(UQ_TEST_SOUNDS)")))
+
+# Ordinary elites are 816 of the 1182 creatures the index holds -- every elite
+# camp in the open world -- so they are opt-in, and the scan reads the opt-in
+# rather than carrying a second index.
+check("ordinary elites are excluded until asked for", rt.eval("""(function()
+    local alert = UnrealQuest:GetModule('RareAlert')
+    local config = UnrealQuest:GetModule('Config')
+    if alert:WantsRank(1) or not alert:WantsRank(4) then return false end
+    config:Set('rareAlertElites', true)
+    local wanted = alert:WantsRank(1)
+    config:Set('rareAlertElites', false)
+    return wanted
+end)()"""))
+
+# Directions are read off the north-up MAP. There is no readable player facing
+# on this client, so "ahead of you" cannot be said and is not.
+check("direction is named off the map, with map y growing downwards", rt.eval("""(function()
+    local alert = UnrealQuest:GetModule('RareAlert')
+    return alert:DirectionText(0, -10) == UnrealQuest.L('RARE_DIR_N')
+        and alert:DirectionText(0, 10) == UnrealQuest.L('RARE_DIR_S')
+        and alert:DirectionText(10, 0) == UnrealQuest.L('RARE_DIR_E')
+        and alert:DirectionText(-10, -10) == UnrealQuest.L('RARE_DIR_NW')
+end)()"""))
+
+check("the card times out on its own", rt.eval("""(function()
+    local alert = UnrealQuest:GetModule('RareAlert')
+    alert.shownUntil = UnrealQuest.Client.Now() - 1
+    alert:Poll()
+    return UnrealQuestRareAlert:IsShown() == false
+end)()"""))
+
+check("its close button dismisses it", rt.eval("""(function()
+    local alert = UnrealQuest:GetModule('RareAlert')
+    UnrealQuest.Client.ShowObject(UnrealQuestRareAlert)
+    UnrealQuestRareAlertClose:GetScript('OnClick')()
+    return UnrealQuestRareAlert:IsShown() == false and alert.shownUntil == nil
+end)()"""))
+
+# Zoomed out to a continent there is no view that can project the player, and a
+# distance measured from an unprojected player would be fiction. The scan
+# pauses and reports why instead.
+check("the scan pauses rather than guessing while the map is zoomed out",
+      rt.eval("""(function()
+    local alert = UnrealQuest:GetModule('RareAlert')
+    UQ_TEST_CONTINENT_VIEW = true
+    alert:Poll()
+    local state = alert.state
+    UQ_TEST_CONTINENT_VIEW = false
+    return state == 'continentView'
+end)()"""), str(rt.eval("UnrealQuest:GetModule('RareAlert').state")))
+
+rt.execute("""
+    UQ_TEST_SOUNDS = {}
+    SlashCmdList.UNREALQUEST('rare')
+    SlashCmdList.UNREALQUEST('rare sound igMainMenuOption')
+    SlashCmdList.UNREALQUEST('rare range 200')
+    SlashCmdList.UNREALQUEST('rare elites on')
+    SlashCmdList.UNREALQUEST('rare elites off')
+    UQ_TEST_RARE_COOLDOWN_BEFORE =
+        UnrealQuest:GetModule('RareAlert').alertedAt[UQ_TEST_RARE_PICK.unitId]
+    SlashCmdList.UNREALQUEST('rare test')
+    UQ_TEST_RARE_COOLDOWN_AFTER =
+        UnrealQuest:GetModule('RareAlert').alertedAt[UQ_TEST_RARE_PICK.unitId]
+""")
+check("/uq rare sound auditions the kit as it stores it, keeping its mixed case",
+      rt.eval("UnrealQuest:GetModule('Config'):Get('rareAlertSound') == 'igMainMenuOption' "
+              "and UQ_TEST_SOUNDS[1] == 'igMainMenuOption'"),
+      str(rt.eval("UnrealQuest:GetModule('Config'):Get('rareAlertSound')")))
+check("/uq rare range stores yards inside the clamp",
+      rt.eval("UnrealQuest:GetModule('RareAlert'):GetRange() == 200"))
+check("/uq rare test raises the card without spending the re-alert cooldown",
+      rt.eval("UnrealQuestRareAlert:IsShown() == true "
+              "and UQ_TEST_RARE_COOLDOWN_AFTER == UQ_TEST_RARE_COOLDOWN_BEFORE"))
+rt.execute("""
+    UnrealQuest:GetModule('Config'):Set('rareAlertSound', 'RaidWarning')
+    UnrealQuest:GetModule('Config'):Set('rareAlertRange', 120)
+    UnrealQuest:GetModule('RareAlert'):Dismiss()
+""")
 
 
 print("interface language")

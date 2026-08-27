@@ -48,6 +48,12 @@ STRINGS = {
     "/uq map dots|areas  рисовать цели точками или закрашенными областями",
     "/uq map dots|areas  以圆点或阴影区域绘制任务目标",
 ),
+"CMD_HELP_MAP_VENDORS": (
+    "/uq map vendors on|off  show where quest items you have to buy are sold",
+    "/uq map vendors on|off  montrer où s'achètent les objets de quête à acheter",
+    "/uq map vendors on|off  показывать, где продаются предметы заданий",
+    "/uq map vendors on|off  显示需要购买的任务物品在何处出售",
+),
 "CMD_HELP_MINIMAP": (
     "/uq minimap   quest pins around the player on the minimap",
     "/uq minimap   repères de quête autour du joueur sur la mini-carte",
@@ -357,4 +363,41 @@ STRINGS = {
 "CMD_MODULE_MISSING_SETTINGS": (
     "the settings module is not loaded", "le module de réglages n'est pas chargé",
     "модуль настроек не загружен", "设置模块未加载"),
+
+"CMD_HELP_RARE": (
+    u"/uq rare      the rare / elite proximity alert",
+    u"/uq rare      l'alerte de proximité rare / élite",
+    u"/uq rare      оповещение о редких и элитных",
+    u"/uq rare      稀有 / 精英接近提醒",
+),
+"CMD_HELP_RARE_ONOFF": (
+    u"/uq rare on|off               turn the alert on or off",
+    u"/uq rare on|off               activer ou désactiver l'alerte",
+    u"/uq rare on|off               включить или выключить оповещение",
+    u"/uq rare on|off               开启或关闭提醒",
+),
+"CMD_HELP_RARE_ELITES": (
+    u"/uq rare elites on|off        include ordinary elites",
+    u"/uq rare elites on|off        inclure les élites ordinaires",
+    u"/uq rare elites on|off        включать обычных элитных",
+    u"/uq rare elites on|off        包含普通精英",
+),
+"CMD_HELP_RARE_RANGE": (
+    u"/uq rare range <yards>        how near counts as near",
+    u"/uq rare range <mètres>       à quelle distance l'alerte se déclenche",
+    u"/uq rare range <метры>        на каком расстоянии срабатывать",
+    u"/uq rare range <码>          多近算靠近",
+),
+"CMD_HELP_RARE_SOUND": (
+    u"/uq rare sound <kit>          play and keep a SoundEntries kit",
+    u"/uq rare sound <kit>          jouer et garder un kit SoundEntries",
+    u"/uq rare sound <kit>          проиграть и сохранить набор SoundEntries",
+    u"/uq rare sound <kit>          试听并保存 SoundEntries 音效",
+),
+"CMD_HELP_RARE_TEST": (
+    u"/uq rare test                 raise the card on the nearest one",
+    u"/uq rare test                 afficher la carte pour le plus proche",
+    u"/uq rare test                 показать карточку для ближайшего",
+    u"/uq rare test                 对最近的目标弹出提示",
+),
 }

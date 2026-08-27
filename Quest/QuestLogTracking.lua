@@ -5,10 +5,11 @@ Unlimited tracking on the native quest-log rows. The client still owns only
 five real watch slots; this layer chains Shift-click into Tracker's saved set
 and renders that set independently on every visible row.
 
-Standalone uses the stock QuestLogTitleNCheck texture. When unrealUI has built
-its quest-log skin, Client.SetQuestLogTrackMark detects and drives the row's
-existing uuiTrackMark accent rectangle instead. No unrealUI load-order or API
-dependency is introduced.
+Standalone owns a fixed accent Frame on each row. The native
+QuestLogTitleNCheck texture cannot be reused: the client reanchors it from the
+title width after refreshes. When unrealUI has built its quest-log skin,
+Client.SetQuestLogTrackMark detects and drives the row's existing uuiTrackMark
+accent instead. No unrealUI load-order or API dependency is introduced.
 ]]
 
 local UQ = UnrealQuest
@@ -20,7 +21,7 @@ local CHAIN_MARKER = "unrealQuestUnlimitedTrackingChained"
 
 QuestLogTracking.chainedRows = 0
 QuestLogTracking.shiftClicks = 0
-QuestLogTracking.nativeMarks = 0
+QuestLogTracking.standaloneMarks = 0
 QuestLogTracking.unrealUIMarks = 0
 
 local function State()
@@ -83,16 +84,24 @@ function QuestLogTracking:InstallRow(rowIndex)
         return true, "already"
     end
     local installed = Client.ChainScript(row, "OnClick", function()
-        if not Client.IsShiftKeyDown() then
-            return
+        if Client.IsShiftKeyDown() then
+            local quest = QuestFromRow(row)
+            local tracker = Tracker()
+            if quest and tracker then
+                QuestLogTracking.shiftClicks = QuestLogTracking.shiftClicks + 1
+                tracker:Toggle(quest)
+            end
         end
-        local quest = QuestFromRow(row)
-        local tracker = Tracker()
-        if quest and tracker then
-            QuestLogTracking.shiftClicks = QuestLogTracking.shiftClicks + 1
-            tracker:Toggle(quest)
-            QuestLogTracking:RefreshMarks()
+
+        -- The native handler runs first and rewrites both the row text and the
+        -- stock Check texture. Reapply both addon-owned presentations in this
+        -- same click, rather than leaving a 0.2-second flash of bare titles or
+        -- the displaced native check for the poll to clean up.
+        local levels = UQ:GetModule("QuestLogLevels")
+        if levels then
+            levels:Refresh()
         end
+        QuestLogTracking:RefreshMarks()
     end)
     if not installed then
         return false, "chainFailed"
@@ -126,7 +135,7 @@ function QuestLogTracking:RefreshMarks()
         return
     end
 
-    local nativeMarks, unrealUIMarks = 0, 0
+    local standaloneMarks, unrealUIMarks = 0, 0
     local rowIndex = 1
     local misses = 0
     while rowIndex <= MAX_LOG_ROWS and misses < 3 do
@@ -143,13 +152,13 @@ function QuestLogTracking:RefreshMarks()
                 quest and tracker:IsTracked(quest))
             if style == "unrealUI" then
                 unrealUIMarks = unrealUIMarks + 1
-            elseif style == "native" then
-                nativeMarks = nativeMarks + 1
+            elseif style == "standalone" then
+                standaloneMarks = standaloneMarks + 1
             end
         end
         rowIndex = rowIndex + 1
     end
-    self.nativeMarks = nativeMarks
+    self.standaloneMarks = standaloneMarks
     self.unrealUIMarks = unrealUIMarks
 end
 
@@ -157,7 +166,10 @@ function QuestLogTracking:GetReport()
     return {
         chainedRows = self.chainedRows,
         shiftClicks = self.shiftClicks,
-        nativeMarks = self.nativeMarks,
+        standaloneMarks = self.standaloneMarks,
+        -- Kept for existing diagnostic consumers; the value now counts the
+        -- standalone owned frames rather than native Check textures.
+        nativeMarks = self.standaloneMarks,
         unrealUIMarks = self.unrealUIMarks,
     }
 end
@@ -165,8 +177,8 @@ end
 function QuestLogTracking:OnInit()
     UQ:DeclareCapability("questLogUnlimitedTracking", "unverified",
         "Shift-click is chained onto native QuestLogTitle rows and the unlimited saved tracking set "
-        .. "is rendered through the stock QuestLogTitleNCheck texture or unrealUI's detected "
-        .. "uuiTrackMark accent; both paths need one in-game visual confirmation")
+        .. "is rendered through an owned fixed accent Frame or unrealUI's detected uuiTrackMark; "
+        .. "the standalone owned-frame path needs one in-game visual confirmation")
 end
 
 function QuestLogTracking:OnEnable()

@@ -23,6 +23,12 @@ STRINGS.update({
     "Готово к сдаче",
     "可以交任务",
 ),
+"QUEST_VENDOR_SELLS": (
+    "Sells for your quests:",
+    "Vend pour vos quêtes :",
+    "Продаёт для ваших заданий:",
+    "为你的任务出售：",
+),
 "QUEST_STATUS_IN_PROGRESS": (
     "In progress",
     "En cours",
@@ -307,6 +313,12 @@ STRINGS.update({
 STRINGS.update({
 "SETTINGS_TRACKER_OPACITY": (
     "Background opacity", "Opacité du fond", "Непрозрачность фона", "背景不透明度"),
+"SETTINGS_TRACKER_CURRENT_ZONE": (
+    "Only show quests from the current zone",
+    "N'afficher que les quêtes de la zone actuelle",
+    "Показывать только задания текущей зоны",
+    "仅显示当前区域的任务",
+),
 "SETTINGS_HEADING_WORLD_MAP": ("World map", "Carte du monde", "Карта мира", "世界地图"),
 "SETTINGS_MAP_OBJECTIVE_STYLE": (
     "Quest objectives are shown as:",
@@ -625,5 +637,71 @@ STRINGS.update({
     "импортировано, pfQuest возвращён в прежнее состояние",
     "已为导入启用 pfQuest，但其历史记录始终未出现；未导入任何内容，"
     "pfQuest 已恢复原状",
+),
+
+# --- rare / elite proximity alert --------------------------------------------
+# The four creature ranks the bundled world data carries in units[id].rnk.
+"RARE_RANK_ELITE": (u"Elite", u"Élite", u"Элитный", u"精英"),
+"RARE_RANK_RARE_ELITE": (
+    u"Rare Elite",
+    u"Élite rare",
+    u"Редкий элитный",
+    u"稀有精英",
+),
+"RARE_RANK_BOSS": (
+    u"Boss",
+    u"Boss",
+    u"Босс",
+    u"首领",
+),
+"RARE_RANK_RARE": (
+    u"Rare",
+    u"Rare",
+    u"Редкий",
+    u"稀有",
+),
+
+# Compass directions on the north-up MAP, not headings relative to the player:
+# this client has no readable player facing, so "ahead of you" cannot be said.
+"RARE_DIR_N": (u"north", u"au nord", u"к северу", u"北方"),
+"RARE_DIR_NE": (u"north-east", u"au nord-est", u"к северо-востоку", u"东北方"),
+"RARE_DIR_E": (u"east", u"à l'est", u"к востоку", u"东方"),
+"RARE_DIR_SE": (u"south-east", u"au sud-est", u"к юго-востоку", u"东南方"),
+"RARE_DIR_S": (u"south", u"au sud", u"к югу", u"南方"),
+"RARE_DIR_SW": (u"south-west", u"au sud-ouest", u"к юго-западу", u"西南方"),
+"RARE_DIR_W": (u"west", u"à l'ouest", u"к западу", u"西方"),
+"RARE_DIR_NW": (u"north-west", u"au nord-ouest", u"к северо-западу", u"西北方"),
+
+"RARE_ALERT_SUBTITLE_LEVEL": (
+    u"%s — level %s",
+    u"%s — niveau %s",
+    u"%s — уровень %s",
+    u"%s — %s 级",
+),
+"RARE_ALERT_BODY": (
+    u"%s yards %s",
+    u"%s mètres %s",
+    u"%s м — %s",
+    u"%s 码，%s",
+),
+"RARE_ALERT_CHAT": (
+    u"%s (%s) is within %s yards of a recorded spawn",
+    u"%s (%s) est à %s mètres d'une apparition connue",
+    u"%s (%s) — в %s м от известной точки появления",
+    u"%s（%s）距已知刷新点 %s 码",
+),
+
+# --- settings page: the rare alert rows --------------------------------------
+"SETTINGS_RARE_ALERT": (
+    u"Rare and boss alert",
+    u"Alerte rare et boss",
+    u"Оповещать о редких",
+    u"稀有与首领提醒",
+),
+"SETTINGS_RARE_ALERT_ELITES": (
+    u"Alert on elites too",
+    u"Alerter aussi sur les élites",
+    u"И об обычных элитных",
+    u"普通精英也提醒",
 ),
 })

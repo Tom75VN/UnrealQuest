@@ -46,8 +46,10 @@ local TAB_LABEL = "UnrealQuest"
 -- The page's own first line: "Unreal Quest" in the addon's two-tone wordmark,
 -- with the running version after it. The split is the one the TOC Title already
 -- uses -- "Unreal" white, "Quest" in the shared accent -- so the options page
--- names the addon the way the addon list does. The hosts' menu row and window
--- title stay the plain TAB_LABEL; this is the page, not the menu.
+-- names the addon the way the addon list does. unrealUI's menu row stays the
+-- plain TAB_LABEL because that host draws it in a sidebar of its own rows; the
+-- standalone window has no such row and titles its header with this wordmark
+-- instead (see BuildWindow).
 --
 -- Inline colour escapes rather than SetTextColor, because one region has to
 -- carry three colours where a heading region has one. Every span is closed, so
@@ -259,13 +261,33 @@ local function NewPage(parent)
 
     -- One option. `key` is both the stored setting and the source of the widget
     -- name; `note` is the optional grey line under it.
-    page.Checkbox = function(key, text, note)
+    --
+    -- `layout` is the same optional table page.Slider takes, and is there for
+    -- the same reason: a control that shares a row with the one before it. The
+    -- earlier control passes `advance = 0` so the cursor stays on its line, and
+    -- this one is placed at `left` and given the width that is left over. The
+    -- fixed 428px content box is what makes it worth having -- a paired option
+    -- costs the page nothing vertically. Only pair a NOTELESS checkbox with a
+    -- taller control (a slider's 58px band), so no locale's wrapped text can
+    -- outgrow the row and run into whatever is drawn below it.
+    page.Checkbox = function(key, text, note, layout)
+        layout = layout or {}
+        local left = type(layout.left) == "number" and layout.left or 0
+        local width = type(layout.width) == "number" and layout.width
+            or (TEXT_WIDTH - NOTE_INDENT - left)
         local box = Client.CreateSettingsCheckbox(page.parent, WidgetName(key), text,
-            0, page.y, TEXT_WIDTH - NOTE_INDENT,
+            left, page.y, width,
             function(checked)
                 Store(key, checked)
             end)
         page.Add(box)
+        if type(layout.advance) == "number" then
+            page.y = page.y - layout.advance
+            page.Sync(function()
+                Client.SetSettingsCheckbox(box, Setting(key) and true or false)
+            end)
+            return box
+        end
         page.y = page.y - CHECKBOX_ADVANCE
         if note then
             page.Body(note, NOTE_INDENT)
@@ -476,7 +498,52 @@ function Settings:BuildPage(parent)
     -- the sections below sit exactly where they did and still fit the fixed
     -- content box shared by the two hosts. The tracker options follow it
     -- directly; they are the first section whether or not it is labelled.
-    page.Heading(PageTitle())
+    --
+    -- Skipped on the standalone host: that window's own header already carries
+    -- this wordmark (BuildWindow), so drawing it again as the first line would
+    -- show it twice. unrealUI draws no such title, so under that host this stays
+    -- the only place the page names the addon. The tracker section simply
+    -- starts one heading higher when it is skipped.
+    if self.host ~= "standalone" then
+        page.Heading(PageTitle())
+    else
+        -- No heading to sit under here (the window's own header carries the
+        -- wordmark), so the first row would otherwise butt right against the
+        -- header rule. A little of the height the skipped heading freed up
+        -- goes back as breathing room.
+        page.Gap(7)
+    end
+
+    -- THREE checkboxes stacked in the opacity slider's right column, and the
+    -- cursor put back to the top of the row afterwards, so the whole group
+    -- costs the page nothing vertically.
+    --
+    -- The page is within a PIXEL of the fixed 428px content box both hosts
+    -- hand it (the smoke test measures it), and neither host scrolls, so a new
+    -- heading plus a row of its own would have pushed its own controls off the
+    -- bottom -- silently, which is what the height check exists to prevent. A
+    -- noteless checkbox is 18px and the slider's band is 58, so three of them
+    -- fit inside height the row was already spending.
+    --
+    -- Their placement here is a height constraint, not a claim that the rare
+    -- alert is a tracker option: this first section is unlabelled (the page
+    -- title stands in its heading's place), so nothing above them says
+    -- otherwise. Each label is written to stand on its own for the same
+    -- reason.
+    --
+    -- The alert's range and sound kit are deliberately NOT on this page. Range
+    -- is a number a player sets once, and the sound has to be AUDITIONED to be
+    -- chosen at all -- an unknown SoundEntries kit name is silent rather than
+    -- an error on this client -- so both live on "/uq rare", which plays the
+    -- kit as it stores it.
+    local rowTop = page.y
+    page.Checkbox("trackerCurrentZoneOnly", UQ.L("SETTINGS_TRACKER_CURRENT_ZONE"),
+        nil, { left = 250, width = TEXT_WIDTH - 250, advance = CHECKBOX_ADVANCE })
+    page.Checkbox("rareAlert", UQ.L("SETTINGS_RARE_ALERT"),
+        nil, { left = 250, width = TEXT_WIDTH - 250, advance = CHECKBOX_ADVANCE })
+    page.Checkbox("rareAlertElites", UQ.L("SETTINGS_RARE_ALERT_ELITES"),
+        nil, { left = 250, width = TEXT_WIDTH - 250, advance = 0 })
+    page.y = rowTop
 
     page.Slider("trackerBackgroundOpacity", UQ.L("SETTINGS_TRACKER_OPACITY"), 0, 100, 1,
         function(value)
@@ -484,7 +551,7 @@ function Settings:BuildPage(parent)
             if tracker then
                 tracker:ApplyBackgroundOpacity(value)
             end
-        end)
+        end, { width = 160 })
 
     page.Rule()
     page.Heading(UQ.L("SETTINGS_HEADING_WORLD_MAP"))
@@ -750,8 +817,6 @@ local FLAG_WIDTH = 18
 local FLAG_HEIGHT = 14
 local FLAG_GAP = 3
 local FLAG_RIGHT_INSET = 12
--- Centred in the 46px header strip.
-local FLAG_TOP_INSET = 16
 
 -- What the drag handle has to give up so these stay clickable. The handle
 -- covers the header and is raised above it, so without this it would take
@@ -789,6 +854,10 @@ function Settings:BuildLanguageSelector(window)
 
     local languages = UQ.GetLanguages()
     local count = table.getn(languages)
+    -- Centred in the header strip: half the slack between its height and the
+    -- flag's, so the row follows the header height rather than a fixed inset.
+    local header = Client.GetSettingsMetrics()
+    local flagTop = (header - FLAG_HEIGHT) / 2
     local index = 1
     while index <= count do
         local entry = languages[index]
@@ -813,7 +882,7 @@ function Settings:BuildLanguageSelector(window)
             -- inset however many languages are registered.
             Client.AnchorObject(button, "TOPRIGHT", window, "TOPRIGHT",
                 -FLAG_RIGHT_INSET - (count - index) * (FLAG_WIDTH + FLAG_GAP),
-                -FLAG_TOP_INSET)
+                -flagTop)
             Client.SetObjectScript(button, "OnEnter", function()
                 if button.unrealQuestSelected then
                     return
@@ -913,7 +982,11 @@ function Settings:BuildWindow()
         return nil
     end
     self.window = window
-    Client.SetSettingsTitle(window, TAB_LABEL)
+    -- Standalone only. The wordmark and version, not the plain TAB_LABEL: this
+    -- window IS the addon's face when unrealUI is absent, so its header names
+    -- the addon the way the addon list and the page's first line do. With
+    -- unrealUI hosting, that host owns the menu row and this window is unused.
+    Client.SetSettingsTitle(window, PageTitle())
 
     -- The handle stops short of the flag row so the header is draggable
     -- everywhere except where those buttons are. When unrealUI owns the

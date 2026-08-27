@@ -91,6 +91,7 @@ Quest\PfQuestImport.lua
 Quest\QuestEligibility.lua
 Quest\Tracker.lua
 Quest\QuestLogTracking.lua
+Quest\QuestLogLevels.lua
 Quest\TrackerFrame.lua
 Quest\MainQuest.lua
 Quest\QuestClicks.lua
@@ -102,6 +103,7 @@ Map\NpcPins.lua
 Map\QuestVendorPins.lua
 World\WorldFrameScan.lua
 World\QuestMarks.lua
+World\RareAlert.lua
 HUD\PlayerHeading.lua
 HUD\Waypoint.lua
 Core\Settings.lua

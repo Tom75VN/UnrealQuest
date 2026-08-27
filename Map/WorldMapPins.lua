@@ -308,6 +308,7 @@ WorldMapPins.lastSnapshotKey = nil
 WorldMapPins.hoverArea = nil
 WorldMapPins.focusQuest = nil
 WorldMapPins.focusTurnInPin = nil
+WorldMapPins.hoverMarkerPin = nil
 WorldMapPins.hoverPatrolMarker = nil
 WorldMapPins.hoverPatrolTarget = nil
 WorldMapPins.hoverCount = 0
@@ -1388,6 +1389,75 @@ local function FocusTakesTurnIn(pin)
     return false
 end
 
+-- ONE writer for the size and the opacity of the "!" and "?" markers.
+--
+-- Three gestures can claim a marker: hovering it, hovering the patrol route of
+-- the NPC that owns it, and hovering an objective dot, an area tile or a "?"
+-- of a quest that marker belongs to. Each of them used to walk the two pools
+-- and stamp its own answer over whatever the other two had written, so the
+-- result depended on the order the client delivered the scripts in -- an
+-- OnLeave arriving after the next OnEnter shrank the marker the new hover had
+-- just grown, and the hover passes' unconditional alpha 1 undid the focus dim.
+-- None of them writes any more. Each records its own state and calls this,
+-- which reads all three and applies the single answer they add up to.
+function WorldMapPins:MarkerEmphasized(pin)
+    if not pin then
+        return false
+    end
+    if self.hoverMarkerPin == pin then
+        return true
+    end
+    -- Only the ROUTE's own hover reaches its siblings. A hovered "!" also
+    -- records a patrol unit (for the stroke), and reading that here would grow
+    -- every other marker of the same NPC on a plain marker hover -- which the
+    -- marker hover has never done and does not mean.
+    local target = self.hoverPatrolTarget
+    local unitId = target and target.unrealQuestPatrolUnitId
+    if unitId ~= nil and MarkerUnitId(pin) == unitId then
+        return true
+    end
+    -- The focus link, and the reason this pass exists: the quest under the
+    -- cursor dims the rest of the map, and its own giver and turn-in grow to
+    -- exactly the size a direct hover would give them, so the marker those
+    -- dots belong to is found by looking rather than by reading every icon
+    -- that was left lit.
+    return FocusGiverOffers(pin) or FocusTakesTurnIn(pin)
+end
+
+-- Size is walked over the WHOLE pool, opacity only over the visible part.
+-- A pooled marker that fell out of the last draw keeps its old point and its
+-- old quests, so asking whether it is related would fade or grow a frame
+-- nobody can see -- but it also keeps its old SIZE, and a grown one handed
+-- back out by a later rebuild would come back oversized. Resetting size past
+-- the visible range costs one call per spare frame and removes that case.
+local function ApplyMarkerEmphasis(pool, visible, Related)
+    local focused = focusQuestCount > 0
+    local index = 1
+    local total = table.getn(pool)
+    while index <= total do
+        local pin = pool[index]
+        if pin and pin.unrealQuestBaseWidth and pin.unrealQuestBaseHeight then
+            local scale = 1
+            if index <= visible and WorldMapPins:MarkerEmphasized(pin) then
+                scale = GIVER_TURNIN_HOVER_SCALE
+            end
+            Client.SetWorldMapPinSize(pin,
+                pin.unrealQuestBaseWidth * scale,
+                pin.unrealQuestBaseHeight * scale)
+            if index <= visible then
+                Client.SetWorldMapPinAlpha(pin,
+                    (not focused or Related(pin)) and 1 or UNRELATED_MARKER_ALPHA)
+            end
+        end
+        index = index + 1
+    end
+end
+
+function WorldMapPins:RefreshMarkerEmphasis()
+    ApplyMarkerEmphasis(self.giverPool, self.giverVisibleCount, FocusGiverOffers)
+    ApplyMarkerEmphasis(self.turnInPool, self.turnInVisibleCount, FocusTakesTurnIn)
+end
+
 -- Declared here because ApplyFocus below has to fold the fade into the stamp
 -- colour, and the stamp styling itself lives down with the rest of the patrol
 -- drawing.
@@ -1431,21 +1501,10 @@ function WorldMapPins:ApplyFocus(quest, turnInPin)
         index = index + 1
     end
 
-    index = 1
-    while index <= self.giverVisibleCount do
-        local pin = self.giverPool[index]
-        Client.SetWorldMapPinAlpha(pin,
-            (not focused or FocusGiverOffers(pin)) and 1 or UNRELATED_MARKER_ALPHA)
-        index = index + 1
-    end
-
-    index = 1
-    while index <= self.turnInVisibleCount do
-        local pin = self.turnInPool[index]
-        Client.SetWorldMapPinAlpha(pin,
-            (not focused or FocusTakesTurnIn(pin)) and 1 or UNRELATED_MARKER_ALPHA)
-        index = index + 1
-    end
+    -- The "!" and "?" take both halves of their answer from one place: the
+    -- fade this focus asks for, and the grow that says WHICH marker the
+    -- focused quest belongs to.
+    self:RefreshMarkerEmphasis()
 
     -- The patrol hover targets are skipped: they are invisible by construction,
     -- so there is nothing on them to fade. The route's own fade is the stroke's,
@@ -1726,7 +1785,7 @@ function WorldMapPins:OnGiverEnter(pin)
 end
 
 function WorldMapPins:OnGiverLeave(pin)
-    self:ApplyGiverTurnInHover(nil)
+    self:ClearGiverTurnInHover(pin)
     self:ApplyPatrolHover(nil)
     Client.HideMapTooltip(pin)
 end
@@ -1947,7 +2006,7 @@ function WorldMapPins:ChooseTurnInTooltipAnchor(pin)
 end
 
 function WorldMapPins:OnTurnInLeave(pin)
-    self:ApplyGiverTurnInHover(nil)
+    self:ClearGiverTurnInHover(pin)
     self:ApplyPatrolHover(nil)
     if self.focusTurnInPin == pin then
         self:ApplyTurnInFocus(nil)
@@ -1969,35 +2028,23 @@ function WorldMapPins:WakeMapDriver()
 end
 
 -- Grows the hovered "!"/"?" so the one under the mouse reads as distinct
--- from the rest of the layer. Passing nil restores every pin in both pools
--- to its base size. Reapplied over the whole pool on every enter/leave
--- rather than tracked incrementally, matching the once-per-hover cost of the
--- area tooltip path above and staying correct across pool rebuilds without
--- extra bookkeeping.
+-- from the rest of the layer. Passing nil drops the hover. The pin is only
+-- recorded here; RefreshMarkerEmphasis is what decides every marker's size and
+-- opacity, so this can no longer overwrite a focus dim or a route highlight.
 function WorldMapPins:ApplyGiverTurnInHover(hoveredPin)
-    local pools = { self.giverPool, self.turnInPool }
-    local poolIndex = 1
-    while poolIndex <= table.getn(pools) do
-        local pool = pools[poolIndex]
-        local index = 1
-        local total = table.getn(pool)
-        while index <= total do
-            local pin = pool[index]
-            if pin and pin.unrealQuestBaseWidth and pin.unrealQuestBaseHeight then
-                if pin == hoveredPin then
-                    Client.SetWorldMapPinSize(pin,
-                        pin.unrealQuestBaseWidth * GIVER_TURNIN_HOVER_SCALE,
-                        pin.unrealQuestBaseHeight * GIVER_TURNIN_HOVER_SCALE)
-                    Client.SetWorldMapPinAlpha(pin, 1)
-                else
-                    Client.SetWorldMapPinSize(pin, pin.unrealQuestBaseWidth, pin.unrealQuestBaseHeight)
-                    Client.SetWorldMapPinAlpha(pin, 1)
-                end
-            end
-            index = index + 1
-        end
-        poolIndex = poolIndex + 1
+    self.hoverMarkerPin = hoveredPin
+    self:RefreshMarkerEmphasis()
+end
+
+-- Leaving a marker must not drop a hover that already belongs to another one:
+-- this client can deliver the next marker's OnEnter before this OnLeave, and
+-- an unguarded clear would shrink the pin the mouse is actually on. The same
+-- guard the tile hover and the turn-in focus already use, for the same reason.
+function WorldMapPins:ClearGiverTurnInHover(pin)
+    if self.hoverMarkerPin ~= pin then
+        return
     end
+    self:ApplyGiverTurnInHover(nil)
 end
 
 -- Alpha 0 is applied once, here, and never touched again: nothing in the draw
@@ -2093,34 +2140,6 @@ function WorldMapPins:RefreshPatrolHighlight()
         SetPatrolStrokeStyle(self, index,
             unitId ~= nil and self.strokeUnitIds[index] == unitId)
         index = index + 1
-    end
-end
-
--- Reverse link from a route point to every visible quest marker owned by that
--- NPC. One unit can own several spawn markers and both marker types, so every
--- matching "!" and "?" grows rather than guessing one pool slot as canonical.
-function WorldMapPins:ApplyPatrolMarkerHighlight(unitId)
-    local pools = {
-        { pool = self.giverPool, visible = self.giverVisibleCount },
-        { pool = self.turnInPool, visible = self.turnInVisibleCount },
-    }
-    local poolIndex = 1
-    while poolIndex <= table.getn(pools) do
-        local entry = pools[poolIndex]
-        local index = 1
-        while index <= entry.visible do
-            local pin = entry.pool[index]
-            local highlighted = unitId ~= nil and MarkerUnitId(pin) == unitId
-            local scale = highlighted and GIVER_TURNIN_HOVER_SCALE or 1
-            if pin and pin.unrealQuestBaseWidth and pin.unrealQuestBaseHeight then
-                Client.SetWorldMapPinSize(pin,
-                    pin.unrealQuestBaseWidth * scale,
-                    pin.unrealQuestBaseHeight * scale)
-                Client.SetWorldMapPinAlpha(pin, 1)
-            end
-            index = index + 1
-        end
-        poolIndex = poolIndex + 1
     end
 end
 
@@ -2221,7 +2240,10 @@ function WorldMapPins:OnPatrolEnter(dash)
     self.hoverPatrolTarget = dash
     self:RefreshPatrolHighlight()
     local unitId = dash and dash.unrealQuestPatrolUnitId
-    self:ApplyPatrolMarkerHighlight(unitId)
+    -- Reverse link from a route point to every visible marker owned by that
+    -- NPC. One unit can own several spawn markers and both marker types, so
+    -- every matching "!" and "?" grows rather than one guessed pool slot.
+    self:RefreshMarkerEmphasis()
     local database = Database()
     local markerPin = self:FindPatrolMarkerPin(unitId)
     if database and markerPin then
@@ -2235,7 +2257,7 @@ function WorldMapPins:OnPatrolLeave(dash)
     if self.hoverPatrolTarget == dash then
         self.hoverPatrolTarget = nil
         self:RefreshPatrolHighlight()
-        self:ApplyPatrolMarkerHighlight(nil)
+        self:RefreshMarkerEmphasis()
     end
     Client.HideMapTooltip(dash)
 end

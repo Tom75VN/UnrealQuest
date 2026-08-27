@@ -198,7 +198,7 @@ def collect():
 def used_keys():
     """Every key the Lua source actually asks for."""
     call = re.compile(r'UQ\.(L|LN)\(\s*"([A-Z][A-Z0-9_]*)"')
-    table = re.compile(r'"((?:CMD_HELP|TRACKER_HINT|MARK|NPC_CATEGORY)_[A-Z0-9_]*)"')
+    table = re.compile(r'"((?:CMD_HELP|TRACKER_HINT|MARK|NPC_CATEGORY|RARE_RANK|RARE_DIR)_[A-Z0-9_]*)"')
     singular, plural = set(), set()
     for root, dirs, files in os.walk(ADDON):
         dirs[:] = [d for d in dirs

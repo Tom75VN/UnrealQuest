@@ -214,6 +214,35 @@ local defaults = {
     -- it stays opt-in rather than changing shared group marks silently.
     questMarksInGroup = false,
 
+    -- Rare / elite proximity alert -------------------------------------------
+    --
+    -- See World/RareAlert.lua. This is a PROXIMITY alert over the bundled
+    -- spawn data, not a sighting: this client has no way to enumerate the
+    -- creatures around the player, so "in range" means "within rareAlertRange
+    -- yards of a spawn point recorded for this creature".
+    rareAlert = true,
+
+    -- Yards. 120 is about a quarter of the minimap's measured 466.6-yard
+    -- zoom-0 span, so the creature's own minimap dot is on screen when the
+    -- card lands. World/RareAlert.lua clamps this to 20-500.
+    rareAlertRange = 120,
+
+    -- Ordinary elites (rank 1) are 816 of the 1182 creatures the alert can
+    -- see -- every elite camp in the open world. Alerting on them by default
+    -- would make the card furniture, so rare (257), rare elite (81) and boss
+    -- (28) are always on and this adds the fourth rank.
+    rareAlertElites = false,
+
+    -- Seconds the card stays up on its own. Clamped to 3-60.
+    rareAlertSeconds = 12,
+
+    -- A SoundEntries KIT NAME, never a file path. This client documents
+    -- PlaySound only -- there is no PlaySoundFile among its globals -- and it
+    -- is silent for a kit name it does not know, with no error and no return
+    -- value. So nothing in the addon can verify that this name makes a noise;
+    -- "/uq rare sound <kit>" is how the player's ears settle it.
+    rareAlertSound = "RaidWarning",
+
     -- Quest tracker window ---------------------------------------------------
     --
     -- The addon's own movable tracker, which lists every quest in the log
@@ -240,6 +269,19 @@ local defaults = {
 
     trackerGroupByZone = true,
     trackerCollapsed = false,
+
+    -- Restricts the window to the quests filed under the player's current zone
+    -- in the quest log, so a full log reads as "what can I do here" instead of
+    -- a career summary. On by default: the tracker is a fixed, unscrolled box
+    -- and a 20-quest log overflows it long before the ceiling is reached.
+    --
+    -- The comparison is between two localized strings -- the quest log's own
+    -- zone header and the client's zone name -- and everything that is NOT a
+    -- confirmed other zone stays visible: a quest with no header, a header the
+    -- bundled zone table does not know as an area (class and profession
+    -- groupings), and every quest at all when the client will not name the
+    -- current zone. See Quest/TrackerFrame.lua.
+    trackerCurrentZoneOnly = true,
 
     -- The native five-quest panel is redundant while this window is up, and is
     -- restored the moment either this setting or trackerEnabled is turned off.

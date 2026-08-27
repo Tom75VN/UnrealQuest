@@ -73,9 +73,34 @@ Database.giverIndex = nil
 Database.areaGiverIndex = nil
 Database.giverIndexReady = false
 
+-- areaRankIndex[areaId] = { { unitId, rnk, coords = { coord, coord, ... } }, ... }
+--
+-- `units[id].rnk` is the creature's rank in the source world data: "1" elite,
+-- "2" rare elite, "3" boss, "4" rare. 2635 of the 10385 bundled creatures
+-- carry one; the rest are ordinary mobs with the field absent. Only 1182 of
+-- those 2635 also carry world coordinates -- the others are instance-internal
+-- creatures the reduction left without any -- so the index holds 1182
+-- creatures over 1391 (creature, area) buckets. What makes it worth building
+-- up front is that the alternative is walking all 10385 records and their
+-- coordinate lists on every zone change.
+--
+-- `coords` holds REFERENCES to the coordinate tables already in the bundled
+-- data, filtered to one area. Nothing here copies a coordinate and nothing may
+-- write through one: this is a navigation index over data that never changes
+-- during a session, and World/RareAlert.lua reads it every second.
+--
+-- The index is not built at load. It is started on demand by the first caller
+-- that wants it (Database:StartRankIndex), because the only consumer is a
+-- feature the player can turn off.
+Database.areaRankIndex = nil
+Database.rankIndexReady = false
+Database.rankIndexRequested = false
+Database.rankedUnitCount = 0
+
 local db = nil
 local indexCursor = nil
 local giverIndexCursor = nil
+local rankIndexCursor = nil
 
 -- Static quest-location cache --------------------------------------------
 -- GetQuestLocations walks the bundled relation tables, and the bundled data
@@ -1108,6 +1133,146 @@ function Database:GetEntityLocations(sourceType, sourceId, areaId, limit)
     end
 
     return locations
+end
+
+-- Rank index ---------------------------------------------------------------
+-- Rare, rare-elite, boss and elite creatures, bucketed by the area their
+-- spawns are recorded in. Built once, in chunks on the shared driver, and only
+-- when something asks for it.
+
+-- The ranks this index carries. Ordinary mobs have no `rnk` at all and never
+-- enter it; which of these four the player is actually alerted about is a
+-- setting, applied when the bucket is read rather than when it is built, so
+-- changing the setting costs nothing and never rebuilds anything.
+local RANK_ELITE = 1
+local RANK_RARE_ELITE = 2
+local RANK_BOSS = 3
+local RANK_RARE = 4
+
+local RANKED = {
+    [RANK_ELITE] = true,
+    [RANK_RARE_ELITE] = true,
+    [RANK_BOSS] = true,
+    [RANK_RARE] = true,
+}
+
+-- `rnk` is stored as a STRING in the bundled data, exactly like `lvl` is (see
+-- docs/WORLD-DATA-NOTES.md). Every read of it goes through here so no caller
+-- can compare it against a number and silently match nothing.
+function Database:GetUnitRank(unitId)
+    local record = self:GetUnit(unitId)
+    if type(record) ~= "table" then
+        return nil
+    end
+    local rank = tonumber(record.rnk)
+    if not rank or not RANKED[rank] then
+        return nil
+    end
+    return rank
+end
+
+-- Asks for the index. Safe to call repeatedly; the first call schedules the
+-- chunked build and later ones are free.
+function Database:StartRankIndex()
+    if not self.available or self.rankIndexRequested then
+        return self.rankIndexReady
+    end
+    self.rankIndexRequested = true
+    local driver = UQ:GetModule("Driver")
+    if driver then
+        driver:Schedule("database.rankindex", 0, function() Database:IndexRankChunk() end)
+    end
+    return self.rankIndexReady
+end
+
+function Database:IndexRankChunk()
+    if not self.available or self.rankIndexReady then
+        local driver = UQ:GetModule("Driver")
+        if driver then
+            driver:Unschedule("database.rankindex")
+        end
+        return
+    end
+
+    if not self.areaRankIndex then
+        self.areaRankIndex = {}
+    end
+
+    local units = db and db.units
+    if type(units) ~= "table" then
+        self.rankIndexReady = true
+        return
+    end
+
+    local processed = 0
+    while processed < INDEX_CHUNK do
+        local unitId, record = next(units, rankIndexCursor)
+        if unitId == nil then
+            self.rankIndexReady = true
+            UQ:Debug("rank index complete: " .. self.rankedUnitCount .. " creatures")
+            local driver = UQ:GetModule("Driver")
+            if driver then
+                driver:Unschedule("database.rankindex")
+            end
+            return
+        end
+        rankIndexCursor = unitId
+
+        if type(record) == "table" and type(record.coords) == "table" then
+            local rank = tonumber(record.rnk)
+            if rank and RANKED[rank] then
+                -- One entry per (creature, area), not per spawn point: a rare
+                -- with four recorded spawns in one zone is one creature the
+                -- player can be near, and the alert names the creature.
+                local perArea = nil
+                local coords = record.coords
+                local index = 1
+                local total = table.getn(coords)
+                while index <= total do
+                    local coordinate = coords[index]
+                    if type(coordinate) == "table" and type(coordinate[1]) == "number"
+                        and type(coordinate[2]) == "number"
+                        and type(coordinate[3]) == "number" then
+                        local areaId = coordinate[3]
+                        if not perArea then
+                            perArea = {}
+                        end
+                        local entry = perArea[areaId]
+                        if not entry then
+                            entry = { unitId = unitId, rank = rank, coords = {} }
+                            perArea[areaId] = entry
+                            local bucket = self.areaRankIndex[areaId]
+                            if not bucket then
+                                bucket = {}
+                                self.areaRankIndex[areaId] = bucket
+                            end
+                            table.insert(bucket, entry)
+                        end
+                        table.insert(entry.coords, coordinate)
+                    end
+                    index = index + 1
+                end
+                if perArea then
+                    self.rankedUnitCount = self.rankedUnitCount + 1
+                end
+            end
+        end
+
+        processed = processed + 1
+    end
+end
+
+function Database:IsRankIndexReady()
+    return self.rankIndexReady
+end
+
+-- Every ranked creature with a spawn recorded in areaId. The returned array
+-- and the entries in it belong to the index and must be treated as read-only.
+function Database:GetAreaRankedUnits(areaId)
+    if not self.areaRankIndex or type(areaId) ~= "number" then
+        return nil
+    end
+    return self.areaRankIndex[areaId]
 end
 
 -- Title index ---------------------------------------------------------------

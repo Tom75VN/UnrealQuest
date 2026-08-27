@@ -196,4 +196,17 @@ PLURALS = {
               "%s заданий из истории pfQuest готовы к импорту.",
               "pfQuest 历史中有 %s 个任务可供导入。"),
 },
+
+"RARE_ALERT_MORE": {
+    "ONE":   (u"(+%s more nearby)",
+              u"(+%s autre à proximité)",
+              u"(+%s рядом)",
+              None),
+    "FEW":   (None, None, u"(+%s рядом)", None),
+    "MANY":  (None, None, u"(+%s рядом)", None),
+    "OTHER": (u"(+%s more nearby)",
+              u"(+%s autres à proximité)",
+              u"(+%s рядом)",
+              u"（附近还有 %s 个）"),
+},
 }

@@ -2,6 +2,9 @@
 
 ## 0.1.0
 
+- A card and a sound now warn you when you come within 120 yards of a rare, rare elite or boss creature's known spawn, naming it, its rank, its level and how far away it is. This is proximity to a spawn point in the world data, not a live sighting: this client gives an addon no way to see the creatures around you. Ordinary elites are off by default; /uq rare turns the alert on or off, sets the range and auditions the alert sound.
+- The quest log now shows each quest's level in brackets before its name, the way the tracker window already did.
+- Fixed standalone quest-log tracking marks jumping to the end of differently sized quest titles after Shift-click. UnrealQuest now owns a fixed accent on each row and restores level prefixes in the same click.
 - Quests that ask you to buy something now show the traders selling it, on the world map and the minimap, with the NPC finder's vendor icon and a tooltip naming the quest, the item and your progress. The points disappear once you have the item; /uq map vendors off turns them off.
 - A completed quest now takes a single green line in the tracker window: its "Ready to turn in" line and its finished objectives are no longer listed under it.
 - Fixed a Lua error thrown by the client's own tracked-objectives panel ("attempt to concatenate local 'text'" in QuestLogFrame.lua) on quests whose objectives that panel cannot read. Such a quest is kept out of the client's five watch slots and still tracks normally in UnrealQuest's own tracker window.
@@ -19,6 +22,7 @@
 - Turn the "?" map marker orange when a quest is complete.
 - Make map quest markers smaller and add an option to choose their size.
 - Reduce the opacity of other markers when hovering over a quest on the map.
+- Hovering a quest on the map now also enlarges the marker it is linked to, the same way hovering that marker does, so the point where it is handed in stands out among the markers left lit.
 - Improved filtering to prevent some quests from being duplicated on the map due to the database.
 - Remove arrow scrolling from the tracker windows.
 - Truncate quest names when they do not fit the window now improved, no more blank space.
