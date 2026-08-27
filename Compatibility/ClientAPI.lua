@@ -456,6 +456,16 @@ function Client.GetQuestLogSelection()
     return nil
 end
 
+-- Rebuilds the stock quest-log rows and detail pane. A focused runtime probe
+-- called this public FrameXML helper successfully (questlogmark.public_refresh_ownership.v1,
+-- BEHAVIOR_PARTIALLY_TESTED, 2026-08-27). Translation uses it only to hand
+-- native text back when its language/selection changes or the option is
+-- disabled; the regular presentation remains poll-driven.
+function Client.RefreshQuestLog()
+    local ok = Call0("QuestLog_Update")
+    return ok and true or false
+end
+
 -- Quest watch ---------------------------------------------------------------
 -- Measured: AddQuestWatch, RemoveQuestWatch and IsQuestWatched all share the
 -- raw GetQuestLogTitle index space, including header rows, and round-trip
@@ -927,6 +937,21 @@ function Client.GetQuestLevelColor(questLevel)
         end
         return 0.5, 0.5, 0.5
     end
+end
+
+-- Uses the exact boundary GetQuestLevelColor paints grey, kept as a boolean
+-- so map policy never has to infer semantics back from RGB values.
+function Client.IsQuestLevelTrivial(questLevel, playerLevel, greenRange)
+    if type(playerLevel) ~= "number" then
+        playerLevel = Client.GetPlayerLevel()
+    end
+    if type(questLevel) ~= "number" or type(playerLevel) ~= "number" then
+        return false
+    end
+    if type(greenRange) ~= "number" or greenRange <= 0 then
+        greenRange = Client.GetQuestGreenRange() or 5
+    end
+    return questLevel <= playerLevel - greenRange
 end
 
 -- Map -----------------------------------------------------------------------
@@ -2380,6 +2405,7 @@ end
 -- dependencies, so they carry no capability/evidence requirement.
 Client.WORLD_MAP_PIN_TEXTURE = WORLD_MAP_PIN_TEXTURE
 Client.AVAILABLE_QUEST_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\icons\\questIcon"
+Client.LOW_LEVEL_QUEST_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\icons\\QuestIcon-lowlvl"
 Client.ACTIVE_QUEST_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\ActiveQuestIcon"
 Client.COMPLETE_QUEST_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\CompleteQuestIcon"
 Client.MINIMAP_OBJECTIVE_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\QuestDot"
@@ -2659,9 +2685,11 @@ function Client.GetMinimapZoomCVars()
 end
 
 -- Same construction as Client.CreateWorldMapPin, against Minimap instead of
--- WorldMapButton. Frame, not Button: nothing on the minimap has a confirmed
--- click surface, and a mouse-enabled child would be the first thing to steal
--- the minimap's own scroll-zoom -- an open question in the knowledge record.
+-- WorldMapButton. The pin starts mouse-disabled; a layer that gives it a
+-- tooltip opts in through SetWorldMapPinHandlers. The installed pfQuest uses
+-- the same EnableMouse + OnEnter/OnLeave shape on its minimap nodes, while
+-- wheel input on this client is handled by the binding layer rather than an
+-- addon frame's mouse-wheel script.
 function Client.CreateMinimapPin(index, size, red, green, blue)
     local map = Client.GetMinimap()
     local create = Resolve("CreateFrame")
@@ -3109,6 +3137,17 @@ function Client.SetNativeObjectText(object, text)
         return false
     end
     local ok = pcall(target.SetText, target, text)
+    return ok and true or false
+end
+
+-- OFFICIAL_CLIENT_DOCUMENTATION: ScrollFrame:UpdateScrollChildRect() updates
+-- its range after child text changes height. The native Quest Log detail pane
+-- is a captured ScrollFrame; guarded dispatch keeps an altered skin harmless.
+function Client.UpdateScrollChildRect(object)
+    if not object or type(object.UpdateScrollChildRect) ~= "function" then
+        return false
+    end
+    local ok = pcall(object.UpdateScrollChildRect, object)
     return ok and true or false
 end
 
@@ -3927,6 +3966,23 @@ end
 
 -- The window -------------------------------------------------------------------
 
+-- Tracker controls are child frames, not regions. Pin them explicitly to the
+-- parent's strata and exactly one level above it: enough for their mouse input
+-- and text to clear the tracker's own regions, while remaining below the
+-- measured native minimap (level 2, with children at 3-4).
+local function SetTrackerChildLayer(frame, parent)
+    if frame and type(frame.SetFrameStrata) == "function" then
+        pcall(frame.SetFrameStrata, frame, "PARENT")
+    end
+    if frame and parent and type(parent.GetFrameLevel) == "function"
+        and type(frame.SetFrameLevel) == "function" then
+        local levelOk, level = pcall(parent.GetFrameLevel, parent)
+        if levelOk and type(level) == "number" then
+            pcall(frame.SetFrameLevel, frame, level + 1)
+        end
+    end
+end
+
 function Client.CreateTrackerWindow(name)
     local create = Resolve("CreateFrame")
     local parent = ResolveObject("UIParent")
@@ -3938,14 +3994,15 @@ function Client.CreateTrackerWindow(name)
         return nil
     end
 
-    -- LOW, not MEDIUM: the tracker is a background panel the player never
-    -- opens, so it must never cover a window they did open. At MEDIUM it
-    -- shares a strata with the stock panels (character sheet, quest log,
-    -- bags) and the winner is then decided by frame level, which put the
-    -- tracker on top of them. LOW keeps it under every ordinary panel,
-    -- dialog and tooltip while still drawing above the world.
+    -- BACKGROUND: the tracker is persistent HUD furniture, so unit frames must
+    -- win whenever the player places it underneath them. LOW was sufficient
+    -- for stock panels but shared a draw band with unit-frame layouts, where
+    -- the tracker's raised row levels let its text paint over the unit frame.
     if type(frame.SetFrameStrata) == "function" then
-        pcall(frame.SetFrameStrata, frame, "LOW")
+        pcall(frame.SetFrameStrata, frame, "BACKGROUND")
+    end
+    if type(frame.SetFrameLevel) == "function" then
+        pcall(frame.SetFrameLevel, frame, 0)
     end
     -- The window itself owns no mouse. Only the drag handle, the header
     -- buttons and the rows do, so the empty parts of the panel never swallow a
@@ -4012,6 +4069,7 @@ function Client.CreateTrackerWindow(name)
     local collapse = CreateLabelledButton(frame, name .. "Collapse", TRACKER_BUTTON_SIZE, "-",
         "GameFontNormal")
     if collapse then
+        SetTrackerChildLayer(collapse, frame)
         pcall(collapse.SetPoint, collapse, "TOPRIGHT", frame, "TOPRIGHT", -2, -2)
         local label = collapse.unrealQuestLabel
         if label then
@@ -4032,6 +4090,7 @@ function Client.CreateTrackerWindow(name)
     -- rather than adding another button beside the map.
     local npcFinder = CreateLabelledButton(frame, name .. "NpcFinder", TRACKER_BUTTON_SIZE, "")
     if npcFinder then
+        SetTrackerChildLayer(npcFinder, frame)
         pcall(npcFinder.SetPoint, npcFinder, "TOPRIGHT", frame, "TOPRIGHT",
             -(2 + TRACKER_BUTTON_SIZE), -2)
         if type(npcFinder.CreateTexture) == "function" then
@@ -4098,6 +4157,7 @@ function Client.CreateTrackerHandle(window, name)
     if not ok or not handle then
         return nil
     end
+    SetTrackerChildLayer(handle, window)
     -- Covers the header strip only, so the rows below keep their own clicks.
     if type(handle.SetPoint) == "function" then
         pcall(handle.SetPoint, handle, "TOPLEFT", window, "TOPLEFT", 0, 0)
@@ -4105,14 +4165,8 @@ function Client.CreateTrackerHandle(window, name)
             -(TRACKER_BUTTON_SIZE * TRACKER_HEADER_BUTTONS), 0)
     end
     Client.SetObjectSize(handle, nil, TRACKER_HEADER_HEIGHT)
-    -- Raised with SetFrameLevel, never with a strata change: raising the handle
-    -- by strata is one of the recorded failed approaches.
-    if type(window.GetFrameLevel) == "function" and type(handle.SetFrameLevel) == "function" then
-        local levelOk, level = pcall(window.GetFrameLevel, window)
-        if levelOk and type(level) == "number" then
-            pcall(handle.SetFrameLevel, handle, level + 10)
-        end
-    end
+    -- SetTrackerChildLayer raises it by frame level, never by strata: raising
+    -- the handle's strata is one of the recorded failed drag approaches.
     if type(handle.EnableMouse) == "function" then
         pcall(handle.EnableMouse, handle, true)
     end
@@ -4144,15 +4198,10 @@ function Client.CreateTrackerResizeGrip(window, name)
     if not ok or not grip then
         return nil
     end
+    SetTrackerChildLayer(grip, window)
     Client.SetObjectSize(grip, 12, 12)
     if type(grip.SetPoint) == "function" then
         pcall(grip.SetPoint, grip, "BOTTOMRIGHT", window, "BOTTOMRIGHT", 0, 0)
-    end
-    if type(window.GetFrameLevel) == "function" and type(grip.SetFrameLevel) == "function" then
-        local levelOk, level = pcall(window.GetFrameLevel, window)
-        if levelOk and type(level) == "number" then
-            pcall(grip.SetFrameLevel, grip, level + 10)
-        end
     end
     if type(grip.EnableMouse) == "function" then
         pcall(grip.EnableMouse, grip, true)
@@ -4327,12 +4376,7 @@ function Client.GetTrackerRow(window, kind, index)
     if not ok or not button then
         return nil
     end
-    if type(window.GetFrameLevel) == "function" and type(button.SetFrameLevel) == "function" then
-        local levelOk, level = pcall(window.GetFrameLevel, window)
-        if levelOk and type(level) == "number" then
-            pcall(button.SetFrameLevel, button, level + 5)
-        end
-    end
+    SetTrackerChildLayer(button, window)
     if type(button.EnableMouse) == "function" then
         pcall(button.EnableMouse, button, true)
     end
@@ -6369,11 +6413,27 @@ end
 -- own small box. A creature walking past is not worth taking the player's
 -- hands away for.
 
-local ALERT_WIDTH = 250
-local ALERT_HEIGHT = 76
+-- Four rows, in the order a reader needs them:
+--
+--   1. WHAT HAPPENED -- "A rare is nearby". The card used to open on the
+--      creature's name, which tells a player who has never seen this alert
+--      before nothing about why their screen just changed.
+--   2. WHICH creature.
+--   3. What it IS -- rank and level.
+--   4. Where it is -- distance and direction, rewritten live.
+--
+-- Only row 4 changes after the card goes up, so it has its own setter and the
+-- other three are written once.
+local ALERT_WIDTH = 260
+local ALERT_HEIGHT = 88
 local ALERT_PADDING = 10
 local ALERT_ACCENT_WIDTH = 2
 local ALERT_CLOSE_SIZE = 14
+
+local ALERT_ROW_EYEBROW = 0
+local ALERT_ROW_TITLE = 15
+local ALERT_ROW_SUBTITLE = 36
+local ALERT_ROW_DISTANCE = 54
 
 function Client.PlayAlertSound(kitName)
     local play = Resolve("PlaySound")
@@ -6457,11 +6517,18 @@ function Client.CreateAlertWindow(name)
         return row
     end
 
-    frame.unrealQuestTitle = Row("GameFontNormal", -ALERT_PADDING,
+    -- The accent goes on the WHY, not on the name: it is the line that has to
+    -- be readable out of the corner of an eye, and the name below it is
+    -- already the largest text on the card.
+    frame.unrealQuestEyebrow = Row("GameFontNormalSmall",
+        -(ALERT_PADDING + ALERT_ROW_EYEBROW),
         UQ.colors.accent[1], UQ.colors.accent[2], UQ.colors.accent[3])
-    frame.unrealQuestSubtitle = Row("GameFontHighlightSmall", -(ALERT_PADDING + 20))
-    frame.unrealQuestBody = Row("GameFontNormalSmall", -(ALERT_PADDING + 38),
-        0.72, 0.72, 0.72)
+    frame.unrealQuestTitle = Row("GameFontNormal",
+        -(ALERT_PADDING + ALERT_ROW_TITLE), 0.96, 0.96, 0.96)
+    frame.unrealQuestSubtitle = Row("GameFontHighlightSmall",
+        -(ALERT_PADDING + ALERT_ROW_SUBTITLE), 0.72, 0.72, 0.72)
+    frame.unrealQuestBody = Row("GameFontNormalSmall",
+        -(ALERT_PADDING + ALERT_ROW_DISTANCE), 0.86, 0.86, 0.86)
 
     local close = Client.CreateTextButton(frame, name .. "Close",
         ALERT_CLOSE_SIZE, ALERT_CLOSE_SIZE, "x")
@@ -6474,14 +6541,15 @@ function Client.CreateAlertWindow(name)
     return frame
 end
 
-function Client.SetAlertWindowText(frame, title, subtitle, body)
+function Client.SetAlertWindowText(frame, eyebrow, title, subtitle, body)
     if not frame then
         return false
     end
-    local rows = { frame.unrealQuestTitle, frame.unrealQuestSubtitle, frame.unrealQuestBody }
-    local texts = { title, subtitle, body }
+    local rows = { frame.unrealQuestEyebrow, frame.unrealQuestTitle,
+        frame.unrealQuestSubtitle, frame.unrealQuestBody }
+    local texts = { eyebrow, title, subtitle, body }
     local index = 1
-    while index <= 3 do
+    while index <= 4 do
         local row = rows[index]
         if row and type(row.SetText) == "function" then
             pcall(row.SetText, row, type(texts[index]) == "string" and texts[index] or "")
@@ -6489,6 +6557,17 @@ function Client.SetAlertWindowText(frame, title, subtitle, body)
         index = index + 1
     end
     return true
+end
+
+-- The one row that is rewritten while the card is up, on its own so the live
+-- tick costs a single SetText rather than four.
+function Client.SetAlertWindowDistance(frame, text)
+    local row = frame and frame.unrealQuestBody
+    if not row or type(row.SetText) ~= "function" then
+        return false
+    end
+    local ok = pcall(row.SetText, row, type(text) == "string" and text or "")
+    return ok and true or false
 end
 
 function Client.SetAlertWindowClose(frame, handler)

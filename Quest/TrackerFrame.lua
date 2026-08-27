@@ -401,7 +401,7 @@ local function QuestLabel(quest)
     if type(quest.level) == "number" and quest.level > 0 then
         label = "[" .. quest.level .. "] "
     end
-    return label .. (quest.title or "?")
+    return label .. (UQ.GetQuestDisplayTitle(quest) or "?")
 end
 
 -- The current-zone filter ------------------------------------------------------
@@ -413,8 +413,11 @@ end
 -- matched through UQ.NameKey rather than raw equality, exactly as every other
 -- name comparison in this addon is.
 --
--- The filter is deliberately ONE-SIDED: it hides only what it can confirm is
--- somewhere else, and everything it cannot decide stays on screen.
+-- Once the client names the current zone, every other non-empty header is
+-- outside that zone. Quest-log headers can also be profession, class or
+-- dungeon groupings; those must be excluded too, otherwise "current zone"
+-- quietly becomes "current zone plus every grouping the area database cannot
+-- resolve".
 local function CurrentZoneKey()
     if not Setting("trackerCurrentZoneOnly") then
         return nil
@@ -436,14 +439,12 @@ local function CurrentZoneKey()
     return UQ.NameKey(name)
 end
 
--- True only for a quest whose log header is a REAL place that is not this one.
+-- True for every named quest-log grouping other than the current zone.
 --
--- A quest log header is not always a zone: the client groups class and
--- profession quests under headers that name neither a continent nor an area,
--- and a quest may carry no header at all. Those are not "another zone" and are
--- never hidden -- the test is whether the bundled zone table carries the header
--- as an area, which Map/MapContext.lua already answers, locale included, off a
--- cached index. An ambiguous or unknown name falls through to visible.
+-- Both names come from the localized client, so comparing their normalized
+-- forms is more faithful to the setting than asking the bundled area table to
+-- classify the header first. A missing header remains visible because there is
+-- no comparison to make, and a missing current-zone name disables the filter.
 local function IsOtherZone(zone, currentZoneKey)
     if not currentZoneKey or type(zone) ~= "string" or zone == "" then
         return false
@@ -452,17 +453,43 @@ local function IsOtherZone(zone, currentZoneKey)
     if not zoneKey or zoneKey == currentZoneKey then
         return false
     end
-    local mapContext = UQ:GetModule("MapContext")
-    if not mapContext then
+    return true
+end
+
+-- True only when the live quest model proves that every objective is still at
+-- zero. A counterless line is undecidable and stays visible; otherwise talk,
+-- exploration or server-specific objectives could disappear merely because
+-- their text has no N/M suffix for QuestState to parse.
+local function IsUnstartedQuest(quest)
+    if not Setting("trackerHideUnstartedQuests") or quest.isComplete == 1 then
         return false
     end
-    return mapContext:ResolveAreaId(zone) and true or false
+
+    local objectives = quest.objectives or {}
+    local total = table.getn(objectives)
+    if total == 0 then
+        return false
+    end
+
+    local index = 1
+    while index <= total do
+        local objective = objectives[index]
+        if not objective or objective.finished
+            or type(objective.have) ~= "number"
+            or type(objective.need) ~= "number" or objective.need <= 0 then
+            return false
+        end
+        if objective.have > 0 then
+            return false
+        end
+        index = index + 1
+    end
+    return true
 end
 
 -- Turns the model into the flat list of rows the window draws. Everything that
--- decides what is visible -- folds, the current-zone filter, the objective
--- setting, zone grouping -- happens here, so the drawing pass below is pure
--- placement.
+-- decides what is visible -- folds, tracker filters, the objective setting,
+-- zone grouping -- happens here, so the drawing pass below is pure placement.
 function TrackerFrame:BuildLines()
     local lines = {}
     local state = State()
@@ -494,7 +521,7 @@ function TrackerFrame:BuildLines()
         -- header machinery below, so a zone filtered out entirely writes no
         -- header row either.
         local hidden = IsFolded(HIDDEN_QUESTS, quest.title or "")
-            or IsOtherZone(zone, currentZoneKey)
+            or IsOtherZone(zone, currentZoneKey) or IsUnstartedQuest(quest)
 
         if groupByZone and zone and zone ~= lastZone then
             lastZone = zone
@@ -633,7 +660,9 @@ end
 -- turn-in tooltips sometimes do.
 local function BuildQuestTooltipLines(quest)
     local lines = {}
-    table.insert(lines, { text = quest.title or "?", r = 1, g = 0.82, b = 0 })
+    table.insert(lines, {
+        text = UQ.GetQuestDisplayTitle(quest) or "?", r = 1, g = 0.82, b = 0,
+    })
 
     if type(quest.level) == "number" and quest.level > 0 then
         local red, green, blue = Client.GetQuestLevelColor(quest.level)
@@ -1226,6 +1255,7 @@ function TrackerFrame:GetReport()
         objectives = Setting("trackerShowObjectives"),
         groupByZone = Setting("trackerGroupByZone") and true or false,
         currentZoneOnly = Setting("trackerCurrentZoneOnly") and true or false,
+        hideUnstarted = Setting("trackerHideUnstartedQuests") and true or false,
         hideNativeWatch = Setting("trackerHideNativeWatch") and true or false,
         lines = self.totalLines,
         redraws = self.redraws,

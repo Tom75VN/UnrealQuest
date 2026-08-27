@@ -60,13 +60,26 @@ local RareAlert = UQ:NewModule("RareAlert")
 
 -- One second. The card is worth a small delay and the player cannot outrun the
 -- alert range in one tick: sprint speed is well under 20 yards a second and the
--- default range is 120.
+-- default range is 150.
 local POLL_INTERVAL = 1.0
 
--- Yards. 120 puts the card up while the spawn is still comfortably ahead --
--- roughly a quarter of the minimap's measured 466.6-yard zoom-0 span, so the
--- creature's own minimap dot is on screen when the alert lands.
-local DEFAULT_RANGE = 120
+-- The distance on a shown card is rewritten this often, so it counts down as
+-- the player walks instead of freezing at whatever it was when the card went
+-- up. 0.05 is a ceiling, not a promise: this runs on the addon's ONE shared
+-- driver (Core/Driver.lua), which ticks with the client's own frames, so a
+-- client rendering at 30fps refreshes it every ~33ms and one at 15fps every
+-- ~67ms. A job cannot run more often than the client draws, and no second
+-- OnUpdate frame exists to make it.
+--
+-- A tick costs one GetPlayerMapPosition and a square root: the zone and its
+-- yard dimensions are carried over from the pass that raised the card, so
+-- nothing here re-resolves the map twenty times a second.
+local LIVE_INTERVAL = 0.05
+
+-- Yards. 150 puts the card up while the spawn is still well ahead -- a bit
+-- under a third of the minimap's measured 466.6-yard zoom-0 span, so the
+-- creature's own minimap dot is comfortably on screen when the alert lands.
+local DEFAULT_RANGE = 150
 local MIN_RANGE = 20
 local MAX_RANGE = 500
 
@@ -105,6 +118,18 @@ local RANK_NAME_KEYS = {
     [RANK_RARE] = "RARE_RANK_RARE",
 }
 
+-- The line the card OPENS on: what happened, before who it was. One key per
+-- rank rather than one pattern with the rank substituted, because a language
+-- with grammatical gender cannot build "a rare elite is nearby" out of a
+-- sentence and a noun -- French alone needs "un rare" against "une elite
+-- rare". KEYS, not text: read at file load, before the language is resolved.
+local RANK_NEARBY_KEYS = {
+    [RANK_ELITE] = "RARE_NEARBY_ELITE",
+    [RANK_RARE_ELITE] = "RARE_NEARBY_RARE_ELITE",
+    [RANK_BOSS] = "RARE_NEARBY_BOSS",
+    [RANK_RARE] = "RARE_NEARBY_RARE",
+}
+
 local DIRECTION_KEYS = {
     N = "RARE_DIR_N", NE = "RARE_DIR_NE", E = "RARE_DIR_E", SE = "RARE_DIR_SE",
     S = "RARE_DIR_S", SW = "RARE_DIR_SW", W = "RARE_DIR_W", NW = "RARE_DIR_NW",
@@ -115,6 +140,16 @@ local DIRECTION_KEYS = {
 RareAlert.frame = nil
 RareAlert.shownUntil = nil
 RareAlert.areaId = nil
+
+-- What the shown card is about, so its distance row can be rebuilt without a
+-- full scan. The zone and its yard dimensions are snapshotted here on purpose:
+-- re-resolving the map twenty times a second would cost eight client calls a
+-- tick, and a zone change is picked up by the next ordinary pass anyway.
+RareAlert.shownEntry = nil
+RareAlert.shownOthers = 0
+RareAlert.shownYardsX = nil
+RareAlert.shownYardsY = nil
+RareAlert.shownAreaId = nil
 
 -- unitId -> true while that creature is inside the forget radius. Reset on
 -- leaving the area, because the same creature in a different zone is a
@@ -170,19 +205,20 @@ function RareAlert:GetSound()
     return value
 end
 
--- Rank 1 is ordinary elite: 816 of the 1182 creatures in the index, and every
--- elite camp in the open world. Alerting on those by default would make the
--- card furniture, so they are opt-in and the three genuinely notable ranks --
--- 257 rare, 81 rare elite, 28 boss -- are on.
-function RareAlert:WantsRank(rank)
-    if not rank then
+-- The index carries every rank, because Map/NpcPins.lua draws all of them.
+-- The ALERT is narrower, and asks the database which creatures are worth
+-- interrupting the player for: the curated `meta.rares` list plus bosses,
+-- never ordinary elites. See Database:IsAlertWorthy for why rank alone is the
+-- wrong test here.
+--
+-- There is no per-rank setting. One switch turns the alert on or off and that
+-- is the whole of the choice (the user's call, 2026-08-28).
+function RareAlert:IsWanted(entry)
+    if not entry or not entry.rank or not RANK_NAME_KEYS[entry.rank] then
         return false
     end
-    if rank == RANK_ELITE then
-        local config = UQ:GetModule("Config")
-        return config and config:Get("rareAlertElites") == true
-    end
-    return true
+    local database = UQ:GetModule("Database")
+    return database and database:IsAlertWorthy(entry.unitId) == true
 end
 
 -- Geometry -------------------------------------------------------------------
@@ -246,9 +282,61 @@ end
 
 function RareAlert:Dismiss()
     self.shownUntil = nil
+    self.shownEntry = nil
     if self.frame then
         Client.HideObject(self.frame)
     end
+end
+
+-- "A rare is nearby", and the rest of the distance row's wording. Both are
+-- here rather than inline in Show so the live tick below rebuilds exactly the
+-- string Show wrote, down to the "+2 more nearby" suffix.
+function RareAlert:NearbyText(rank)
+    local key = rank and RANK_NEARBY_KEYS[rank]
+    if not key then
+        return UQ.L("RARE_NEARBY_RARE")
+    end
+    return UQ.L(key)
+end
+
+function RareAlert:DistanceText(distance, dx, dy)
+    local text = UQ.L("RARE_ALERT_BODY", tostring(distance), self:DirectionText(dx, dy))
+    if self.shownOthers and self.shownOthers > 0 then
+        text = text .. "  " .. UQ.LN("RARE_ALERT_MORE", self.shownOthers)
+    end
+    return text
+end
+
+-- Rewrites the distance row of a card that is already up. Runs on the shared
+-- driver at LIVE_INTERVAL and does nothing at all when no card is shown, which
+-- is almost always -- so it is scheduled once at enable rather than started
+-- and stopped around each alert.
+--
+-- It deliberately does NOT re-resolve the zone. GetPlayerMapPosition answers
+-- against whatever map is currently OPEN, so a player who opens the world map
+-- on another zone would otherwise see the number jump to a distance measured
+-- from the wrong origin. This client answers 0, 0 for a view that cannot
+-- project the player, and that is the case guarded below; a genuine zone
+-- change is picked up by the next ordinary pass a second later.
+function RareAlert:LiveTick()
+    if not self.shownUntil or not self.shownEntry or not self.frame then
+        return
+    end
+    if not self.shownYardsX or not self.shownYardsY then
+        return
+    end
+    local x, y = Client.GetPlayerMapPosition("player")
+    if type(x) ~= "number" or type(y) ~= "number" or (x == 0 and y == 0) then
+        return
+    end
+    local distance, dx, dy = self:NearestPoint(self.shownEntry,
+        x * self.shownYardsX, y * self.shownYardsY,
+        self.shownYardsX, self.shownYardsY)
+    if not distance then
+        return
+    end
+    Client.SetAlertWindowDistance(self.frame,
+        self:DistanceText(math.floor(distance + 0.5), dx, dy))
 end
 
 function RareAlert:Show(entry, distance, dx, dy, others)
@@ -274,12 +362,11 @@ function RareAlert:Show(entry, distance, dx, dy, others)
         subtitle = self:RankText(entry.rank)
     end
 
-    local body = UQ.L("RARE_ALERT_BODY", tostring(distance), self:DirectionText(dx, dy))
-    if others and others > 0 then
-        body = body .. "  " .. UQ.LN("RARE_ALERT_MORE", others)
-    end
+    self.shownEntry = entry
+    self.shownOthers = others or 0
 
-    Client.SetAlertWindowText(frame, name, subtitle, body)
+    Client.SetAlertWindowText(frame, self:NearbyText(entry.rank), name, subtitle,
+        self:DistanceText(distance, dx, dy))
     Client.ShowObject(frame)
 
     local now = Client.Now()
@@ -411,7 +498,7 @@ function RareAlert:Poll()
     local total = table.getn(bucket)
     while index <= total do
         local entry = bucket[index]
-        if self:WantsRank(entry.rank) then
+        if self:IsWanted(entry) then
             local distance, dx, dy = self:NearestPoint(entry, playerYardX, playerYardY,
                 yards[1], yards[2])
             if distance and distance <= forget then
@@ -443,6 +530,8 @@ function RareAlert:Poll()
         -- Marked in range before the card goes up, so a failed Show cannot
         -- leave the creature eligible to re-alert on every following pass.
         self.inRange[best.unitId] = true
+        self.shownYardsX, self.shownYardsY = yards[1], yards[2]
+        self.shownAreaId = areaId
         self:Show(best, math.floor(bestDistance + 0.5), bestDX, bestDY, arrivals - 1)
     end
 end
@@ -483,7 +572,7 @@ function RareAlert:Test()
     local total = table.getn(bucket)
     while index <= total do
         local entry = bucket[index]
-        if self:WantsRank(entry.rank) then
+        if self:IsWanted(entry) then
             local distance, dx, dy = self:NearestPoint(entry, playerYardX, playerYardY,
                 yards[1], yards[2])
             if distance and (not bestDistance or distance < bestDistance) then
@@ -502,6 +591,8 @@ function RareAlert:Test()
     -- A test must not consume the real alert's cooldown, so the record of when
     -- this creature last alerted is put back exactly as it was.
     local previous = self.alertedAt[best.unitId]
+    self.shownYardsX, self.shownYardsY = yards[1], yards[2]
+    self.shownAreaId = areaId
     self:Show(best, math.floor(bestDistance + 0.5), bestDX, bestDY, 0)
     self.alertedAt[best.unitId] = previous
     local name = database:GetUnitName(best.unitId)
@@ -514,7 +605,6 @@ function RareAlert:GetStatus()
     local database = UQ:GetModule("Database")
     return {
         enabled = self:IsEnabled(),
-        elites = self:WantsRank(RANK_ELITE),
         range = self:GetRange(),
         seconds = self:GetSeconds(),
         sound = self:GetSound(),
@@ -543,5 +633,8 @@ function RareAlert:OnEnable()
     end
     driver:Schedule("world.rarealert", POLL_INTERVAL, function()
         RareAlert:Poll()
+    end)
+    driver:Schedule("world.rarealert.live", LIVE_INTERVAL, function()
+        RareAlert:LiveTick()
     end)
 end

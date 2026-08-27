@@ -920,10 +920,10 @@ STRINGS = {
     u"稀有 / 精英接近提醒：",
 ),
 "CMD_RARE_SETTING": (
-    u"alert: %s, ordinary elites: %s",
-    u"alerte : %s, élites ordinaires : %s",
-    u"оповещение: %s, обычные элитные: %s",
-    u"提醒：%s，普通精英：%s",
+    u"alert: %s",
+    u"alerte : %s",
+    u"оповещение: %s",
+    u"提醒：%s",
 ),
 "CMD_RARE_RANGE": (
     u"range: %s yards, card stays %s seconds",
@@ -972,18 +972,6 @@ STRINGS = {
     u"alerte rare / élite désactivée",
     u"оповещение о редких выключено",
     u"稀有 / 精英提醒已关闭",
-),
-"CMD_RARE_ELITES_ON": (
-    u"ordinary elites now alert too -- expect this often",
-    u"les élites ordinaires alertent aussi — attendez-vous à en voir souvent",
-    u"обычные элитные тоже оповещают — это будет часто",
-    u"普通精英也会触发提醒 — 会频繁出现",
-),
-"CMD_RARE_ELITES_OFF": (
-    u"ordinary elites no longer alert",
-    u"les élites ordinaires n'alertent plus",
-    u"обычные элитные больше не оповещают",
-    u"普通精英不再触发提醒",
 ),
 "CMD_RARE_RANGE_SET": (
     u"alert range set to %s yards",

@@ -84,6 +84,7 @@ local DEFAULT_DOT_SCALE = 100
 -- height while preserving that source ratio.
 local GIVER_ICON_HEIGHT = 12
 local GIVER_ICON_WIDTH = GIVER_ICON_HEIGHT * 19 / 32
+local LOW_LEVEL_GIVER_ICON_WIDTH = GIVER_ICON_HEIGHT * 27 / 64
 -- media/ActiveQuestIcon.tga is 19x32, so the "?" keeps its own aspect ratio
 -- rather than being squashed into a square by SetAllPoints -- the same
 -- reasoning as the world map's TURNIN_ICON_WIDTH.
@@ -221,6 +222,10 @@ local function HidePoolFrom(pool, first)
     local index = first
     local total = table.getn(pool)
     while index <= total do
+        if pool[index] == MinimapPins.hoverPin then
+            Client.HideGameTooltip(pool[index])
+            MinimapPins.hoverPin = nil
+        end
         Client.HideObject(pool[index])
         index = index + 1
     end
@@ -231,6 +236,71 @@ function MinimapPins:HideAll()
     self.objectiveVisible = HidePoolFrom(self.objectivePool, 1)
     self.giverVisible = HidePoolFrom(self.giverPool, 1)
     self.turnInVisible = HidePoolFrom(self.turnInPool, 1)
+end
+
+local function AppendTooltipBlock(lines, block)
+    if not block then
+        return
+    end
+    if table.getn(lines) > 0 then
+        table.insert(lines, { separator = true })
+    end
+    local index = 1
+    local total = table.getn(block)
+    while index <= total do
+        table.insert(lines, block[index])
+        index = index + 1
+    end
+end
+
+function MinimapPins:TooltipLines(pin)
+    local worldMap = WorldMapPins()
+    if not worldMap or not pin then
+        return nil
+    end
+    if pin.unrealQuestObjectiveQuests then
+        local lines = {}
+        local index = 1
+        local total = table.getn(pin.unrealQuestObjectiveQuests)
+        while index <= total do
+            AppendTooltipBlock(lines,
+                worldMap:BuildQuestTooltipLines(pin.unrealQuestObjectiveQuests[index]))
+            index = index + 1
+        end
+        return lines
+    end
+    if pin.unrealQuestGiver then
+        -- Minimap pins have no click gesture, so the world-map shift-click
+        -- hint would advertise an action this surface deliberately lacks.
+        return worldMap:BuildGiverTooltipLines(pin.unrealQuestGiver,
+            pin.unrealQuestAvailableQuestIds or {}, true)
+    end
+    if pin.unrealQuestTurnIn then
+        return worldMap:BuildTurnInTooltipLines(pin.unrealQuestTurnIn)
+    end
+    return nil
+end
+
+function MinimapPins:OnPinEnter(pin)
+    self.hoverPin = pin
+    local lines = self:TooltipLines(pin)
+    if lines and table.getn(lines) > 0 then
+        Client.ShowGameTooltip(pin, lines, "ANCHOR_LEFT")
+    end
+end
+
+function MinimapPins:OnPinLeave(pin)
+    if self.hoverPin == pin then
+        self.hoverPin = nil
+    end
+    Client.HideGameTooltip(pin)
+end
+
+function MinimapPins:SetTooltipHandlers(pin)
+    Client.SetWorldMapPinHandlers(pin,
+        function() MinimapPins:OnPinEnter(pin) end,
+        function() MinimapPins:OnPinLeave(pin) end,
+        nil)
 end
 
 function MinimapPins:GetObjectiveDotSize()
@@ -265,6 +335,7 @@ function MinimapPins:GetObjectivePin(index)
     if pin then
         self.objectivePool[index] = pin
         Client.SetMinimapPinTexture(pin, Client.MINIMAP_OBJECTIVE_TEXTURE)
+        self:SetTooltipHandlers(pin)
     end
     return pin
 end
@@ -279,6 +350,7 @@ function MinimapPins:GetGiverPin(index)
         self.giverPool[index] = pin
         Client.SetMinimapPinTexture(pin, Client.AVAILABLE_QUEST_TEXTURE)
         Client.SetMinimapPinSize(pin, GIVER_ICON_WIDTH, GIVER_ICON_HEIGHT)
+        self:SetTooltipHandlers(pin)
     end
     return pin
 end
@@ -293,6 +365,7 @@ function MinimapPins:GetTurnInPin(index)
         self.turnInPool[index] = pin
         Client.SetMinimapPinTexture(pin, Client.ACTIVE_QUEST_TEXTURE)
         Client.SetMinimapPinSize(pin, TURNIN_ICON_WIDTH, TURNIN_ICON_HEIGHT)
+        self:SetTooltipHandlers(pin)
     end
     return pin
 end
@@ -413,11 +486,14 @@ function MinimapPins:BuildTargets(areaId, widthYards, heightYards, config)
 
     local quests = questState:GetOrderedQuests()
 
-    -- Objectives: one dot for every raw creature spawn in the database. The
-    -- world map turns these coordinates into blue area cells, but the minimap
-    -- must retain the creature positions rather than rebuilding that shape or
-    -- choosing a representative centre. Completed quests use their existing
-    -- turn-in "?" and therefore contribute no objective dots.
+    -- Objectives: one dot for every still-needed direct objective coordinate
+    -- in the database. That includes creature spawns, objects and exploration
+    -- area triggers: all three are exact places the player can act. The shared
+    -- collector removes a creature whose matching live objective is finished.
+    -- The world map may turn the rest into blue area cells, but the minimap
+    -- retains the raw positions rather than rebuilding that shape or choosing
+    -- a representative centre. Completed quests use their existing turn-in
+    -- "?" and therefore contribute no objective dots.
     local questIndex = 1
     local questTotal = table.getn(quests)
     local objectiveSeen = {}
@@ -431,21 +507,29 @@ function MinimapPins:BuildTargets(areaId, widthYards, heightYards, config)
             local locationTotal = table.getn(locations)
             while locationIndex <= locationTotal do
                 local location = locations[locationIndex]
-                if location.sourceType == "unit"
-                    and type(location.x) == "number" and type(location.y) == "number" then
+                if type(location.x) == "number" and type(location.y) == "number" then
                     local locationKey = tostring(location.x) .. ":" .. tostring(location.y)
-                    if not objectiveSeen[locationKey] then
-                        objectiveSeen[locationKey] = true
-                        table.insert(targets, {
+                    local existing = objectiveSeen[locationKey]
+                    if existing then
+                        if not existing.questSet[quest] then
+                            existing.questSet[quest] = true
+                            table.insert(existing.quests, quest)
+                        end
+                    else
+                        local target = {
                             kind = "objective",
                             yardX = location.x * widthYards / 100,
                             yardY = location.y * heightYards / 100,
                             complete = false,
                             quest = quest,
+                            quests = { quest },
+                            questSet = { [quest] = true },
                             red = questRed,
                             green = questGreen,
                             blue = questBlue,
-                        })
+                        }
+                        objectiveSeen[locationKey] = target
+                        table.insert(targets, target)
                     end
                 end
                 locationIndex = locationIndex + 1
@@ -465,6 +549,7 @@ function MinimapPins:BuildTargets(areaId, widthYards, heightYards, config)
             yardX = point.x * widthYards / 100,
             yardY = point.y * heightYards / 100,
             complete = point.complete and true or false,
+            point = point,
         })
         turnInIndex = turnInIndex + 1
     end
@@ -478,6 +563,9 @@ function MinimapPins:BuildTargets(areaId, widthYards, heightYards, config)
             kind = "giver",
             yardX = entry.giver.x * widthYards / 100,
             yardY = entry.giver.y * heightYards / 100,
+            lowLevel = entry.lowLevel and true or false,
+            giver = entry.giver,
+            questIds = entry.questIds,
         })
         giverIndex = giverIndex + 1
     end
@@ -530,6 +618,10 @@ function MinimapPins:Project(playerX, playerY, widthYards, heightYards, span, wi
             if distance <= objectiveLimit then
                 pin = self:GetObjectivePin(objectiveIndex)
                 if pin then
+                    pin.unrealQuestObjectiveQuests = target.quests
+                    pin.unrealQuestGiver = nil
+                    pin.unrealQuestAvailableQuestIds = nil
+                    pin.unrealQuestTurnIn = nil
                     Client.SetMinimapPinColor(pin,
                         target.red or OBJECTIVE_RED,
                         target.green or OBJECTIVE_GREEN,
@@ -539,10 +631,27 @@ function MinimapPins:Project(playerX, playerY, widthYards, heightYards, span, wi
         elseif target.kind == "giver" and giverIndex <= MAX_GIVER_PINS then
             pin = self:GetGiverPin(giverIndex)
             half = GIVER_ICON_HEIGHT / 2
+            if pin then
+                pin.unrealQuestObjectiveQuests = nil
+                pin.unrealQuestGiver = target.giver
+                pin.unrealQuestAvailableQuestIds = target.questIds
+                pin.unrealQuestTurnIn = nil
+                if target.lowLevel then
+                    Client.SetMinimapPinTexture(pin, Client.LOW_LEVEL_QUEST_TEXTURE)
+                    Client.SetMinimapPinSize(pin, LOW_LEVEL_GIVER_ICON_WIDTH, GIVER_ICON_HEIGHT)
+                else
+                    Client.SetMinimapPinTexture(pin, Client.AVAILABLE_QUEST_TEXTURE)
+                    Client.SetMinimapPinSize(pin, GIVER_ICON_WIDTH, GIVER_ICON_HEIGHT)
+                end
+            end
         elseif target.kind == "turnin" and turnInIndex <= MAX_TURNIN_PINS then
             pin = self:GetTurnInPin(turnInIndex)
             half = TURNIN_ICON_HEIGHT / 2
             if pin then
+                pin.unrealQuestObjectiveQuests = nil
+                pin.unrealQuestGiver = nil
+                pin.unrealQuestAvailableQuestIds = nil
+                pin.unrealQuestTurnIn = target.point
                 if target.complete then
                     Client.SetMinimapPinTexture(pin, Client.COMPLETE_QUEST_TEXTURE)
                 else
@@ -747,9 +856,11 @@ function MinimapPins:Refresh()
         return
     end
 
-    if self.dirty or self.lastAreaId ~= areaId then
+    local showLowLevel = config and config:Get("showLowLevelQuests") and true or false
+    if self.dirty or self.lastAreaId ~= areaId or self.lastShowLowLevel ~= showLowLevel then
         self.targets = self:BuildTargets(areaId, yards[1], yards[2], config)
         self.lastAreaId = areaId
+        self.lastShowLowLevel = showLowLevel
         self.dirty = false
     end
 

@@ -171,6 +171,21 @@ local function LocaleTable(baseName)
     return db[baseName .. "_enUS"]
 end
 
+-- Unlike LocaleTable, this is an exact lookup with no English fallback. A
+-- presentation asking for French must either receive the bundled French row
+-- or nil, so a missing translation can fall back to the client's live title
+-- instead of silently changing it to a third language.
+local function ExactLocaleTable(baseName, language)
+    if not db or type(language) ~= "string" or language == "" then
+        return nil
+    end
+    local localized = db[baseName .. "_" .. language]
+    if type(localized) ~= "table" then
+        return nil
+    end
+    return localized
+end
+
 function Database:OnInit()
     -- The data ships with the addon and loads before this file, so an absent
     -- or malformed table means a broken install rather than a missing
@@ -241,6 +256,177 @@ function Database:GetQuestTitle(questId)
         return nil
     end
     return text.T
+end
+
+-- Exact-language access for presentation only. Quest matching continues to
+-- use GetQuestTitle/GetQuestText above, which are fixed to the CLIENT locale:
+-- changing the addon's interface language must never change the title index
+-- that resolves a live row to a database ID.
+function Database:GetQuestTextForLanguage(questId, language)
+    if type(questId) ~= "number" then
+        return nil
+    end
+    local texts = ExactLocaleTable("quests", language)
+    if not texts then
+        return nil
+    end
+    return texts[questId]
+end
+
+function Database:GetQuestTitleForLanguage(questId, language)
+    local text = self:GetQuestTextForLanguage(questId, language)
+    if not text or type(text.T) ~= "string" or text.T == "" then
+        return nil
+    end
+    return text.T
+end
+
+-- Expands the same quest-text variables the native Quest Log expands before
+-- drawing a database description. pfQuest's FormatQuestText is the proven
+-- prior art for this Vanilla token set ($N/$C/$R/$B/$G). If this client cannot
+-- supply a value, or the bundled row contains an unknown token, nil makes the
+-- caller retain the complete native field instead of exposing raw markup.
+local function LowerASCII(value)
+    local parts = {}
+    local index = 1
+    local length = string.len(value)
+    while index <= length do
+        local byte = string.byte(value, index)
+        if byte >= 65 and byte <= 90 then
+            byte = byte + 32
+        end
+        table.insert(parts, string.char(byte))
+        index = index + 1
+    end
+    return table.concat(parts)
+end
+
+local function ReplaceQuestToken(text, pattern, value, lower)
+    if not string.find(text, pattern) then
+        return text, true
+    end
+    if type(value) ~= "string" or value == "" then
+        return text, false
+    end
+    if lower then
+        -- C-locale string.lower can corrupt UTF-8 continuation bytes on this
+        -- client. Fold ASCII only, exactly like UQ.NameKey does.
+        value = LowerASCII(value)
+    end
+    return string.gsub(text, pattern, function() return value end), true
+end
+
+local function FormatQuestText(text)
+    if type(text) ~= "string" or text == "" then
+        return nil
+    end
+
+    local rendered, ok = ReplaceQuestToken(text, "%$[Nn]",
+        UQ.Client and UQ.Client.GetPlayerName and UQ.Client.GetPlayerName())
+    if not ok then return nil end
+    rendered, ok = ReplaceQuestToken(rendered, "%$[Cc]",
+        UQ.Client and UQ.Client.GetPlayerClass and UQ.Client.GetPlayerClass(), true)
+    if not ok then return nil end
+    rendered, ok = ReplaceQuestToken(rendered, "%$[Rr]",
+        UQ.Client and UQ.Client.GetPlayerRace and UQ.Client.GetPlayerRace(), true)
+    if not ok then return nil end
+    rendered = string.gsub(rendered, "%$[Bb]", "\n")
+
+    if string.find(rendered, "%$[Gg]") then
+        local sex = UQ.Client and UQ.Client.GetPlayerSex and UQ.Client.GetPlayerSex()
+        if sex ~= 2 and sex ~= 3 then
+            return nil
+        end
+        rendered = string.gsub(rendered, "%$[Gg]([^:;]+):([^;]+);",
+            function(male, female)
+                if sex == 3 then
+                    return female
+                end
+                return male
+            end)
+    end
+
+    -- A known token left behind is malformed; any other $letter token is a
+    -- database dialect this formatter does not understand. Both cases fail
+    -- closed to the live client text.
+    if string.find(rendered, "%$[A-Za-z]") then
+        return nil
+    end
+    return rendered
+end
+
+-- Exact translated T/O/D field for presentation. The internal setting name
+-- predates the description/objectives support and is retained so existing
+-- SavedVariables keep their opt-out. Identity and matching never call this.
+function Database:GetQuestDisplayText(questOrId, field, fallbackText)
+    if field ~= "T" and field ~= "O" and field ~= "D" then
+        return fallbackText
+    end
+
+    local questId = questOrId
+    local liveText = fallbackText
+    if type(questOrId) == "table" then
+        questId = questOrId.questId
+        if field == "T" then
+            liveText = questOrId.title or fallbackText
+        end
+    end
+    if type(liveText) ~= "string" or liveText == "" then
+        liveText = nil
+    end
+
+    local config = UQ:GetModule("Config")
+    local translate = not config or config:Get("translateQuestTitles") ~= false
+    local language = UQ.GetLanguage and UQ.GetLanguage()
+    if translate and type(questId) == "number" and type(language) == "string" then
+        -- The selected language already matches the client: its live text is
+        -- newer, already token-expanded, and may contain realm-specific edits.
+        if not liveText or language ~= locale then
+            local row = self:GetQuestTextForLanguage(questId, language)
+            local translated = row and row[field]
+            translated = FormatQuestText(translated)
+            if translated then
+                if UQ.PrepareTranslatedGameText then
+                    translated = UQ.PrepareTranslatedGameText(translated, language)
+                end
+                return translated
+            end
+        end
+    end
+    return liveText
+end
+
+-- The one title policy used by every addon-owned presentation. `questOrId`
+-- may be a live QuestState row or a numeric database ID (available-quest
+-- markers have no live row yet). The live title always wins when translation
+-- is disabled, when the selected language already is the client language, or
+-- when no exact translated row exists. That preserves server-edited titles
+-- and makes unmatched/ambiguous quests degrade to precisely what the client
+-- showed rather than to a database guess.
+function Database:GetQuestDisplayTitle(questOrId, fallbackTitle)
+    local translated = self:GetQuestDisplayText(questOrId, "T", fallbackTitle)
+    if translated then
+        return translated
+    end
+    local questId = type(questOrId) == "table" and questOrId.questId or questOrId
+    if type(questId) == "number" then
+        return self:GetQuestTitle(questId)
+    end
+    return fallbackTitle
+end
+
+-- Presentation modules call one helper rather than each reimplementing the
+-- fallback chain. The adapter remains the only code that knows the bundled
+-- locale-table shapes.
+function UQ.GetQuestDisplayTitle(questOrId, fallbackTitle)
+    local database = UQ:GetModule("Database")
+    if database and type(database.GetQuestDisplayTitle) == "function" then
+        return database:GetQuestDisplayTitle(questOrId, fallbackTitle)
+    end
+    if type(questOrId) == "table" then
+        return questOrId.title or fallbackTitle
+    end
+    return fallbackTitle
 end
 
 -- Relation accessors. "end" is a Lua keyword, so the raw field can only be
@@ -435,6 +621,13 @@ function Database:GetObject(objectId)
     return db.objects[objectId]
 end
 
+function Database:GetAreaTrigger(triggerId)
+    if not db or type(db.areatrigger) ~= "table" then
+        return nil
+    end
+    return db.areatrigger[triggerId]
+end
+
 function Database:GetObjectName(objectId)
     local names = LocaleTable("objects")
     if type(names) ~= "table" then
@@ -627,6 +820,84 @@ function Database:GetAreaServiceLocations(areaId, playerClassId, playerRaceId, w
         end
     end
 
+    -- ONE pin per creature per area, for the Rare/Elite/Boss row.
+    --
+    -- The bundled data records every spawn point a creature has, and for a
+    -- roamer that is its whole patrol: Hogger carries five coordinates in
+    -- Elwynn Forest and was drawn five times (reported 2026-08-28). A player
+    -- reading the map wants to know Hogger is there, once.
+    --
+    -- The point chosen is the MEDOID -- the recorded coordinate closest to the
+    -- average of them all -- and not the average itself. A centroid is a place
+    -- the data never claimed anything stands: with spawns around a lake or a
+    -- ridge it lands in the water or inside the rock. The medoid is always a
+    -- real recorded spawn, and it sits in the middle of the cluster rather
+    -- than on its edge the way "the first coordinate" would.
+    --
+    -- Measured over the 420 (creature, area) pairs that have more than one
+    -- spawn: half sit within 4.4% of the zone of their centre and 90% within
+    -- 18.3%, so for most of them the choice barely matters. 106 are spread
+    -- over more than 10% of the zone -- those are creatures with two genuinely
+    -- separate camps, where one pin necessarily names one of them.
+    local function AppendMedoid(category, rawId, detail)
+        if type(rawId) ~= "number" or rawId < 0 then
+            return
+        end
+        local entity = self:GetUnit(rawId)
+        if type(entity) ~= "table" or type(entity.coords) ~= "table" then
+            return
+        end
+
+        local sumX, sumY, count = 0, 0, 0
+        local index = 1
+        local total = table.getn(entity.coords)
+        while index <= total do
+            local coordinate = entity.coords[index]
+            if type(coordinate) == "table" and coordinate[3] == areaId
+                and type(coordinate[1]) == "number" and type(coordinate[2]) == "number" then
+                sumX = sumX + coordinate[1]
+                sumY = sumY + coordinate[2]
+                count = count + 1
+            end
+            index = index + 1
+        end
+        if count == 0 then
+            return
+        end
+        local centreX, centreY = sumX / count, sumY / count
+
+        local best, bestX, bestY
+        index = 1
+        while index <= total do
+            local coordinate = entity.coords[index]
+            if type(coordinate) == "table" and coordinate[3] == areaId
+                and type(coordinate[1]) == "number" and type(coordinate[2]) == "number" then
+                local dx = coordinate[1] - centreX
+                local dy = coordinate[2] - centreY
+                local squared = dx * dx + dy * dy
+                if not best or squared < best then
+                    best = squared
+                    bestX = coordinate[1]
+                    bestY = coordinate[2]
+                end
+            end
+            index = index + 1
+        end
+
+        local name = self:GetUnitName(rawId)
+        table.insert(locations, {
+            category = category,
+            x = bestX,
+            y = bestY,
+            areaId = areaId,
+            sourceType = "unit",
+            sourceId = rawId,
+            name = type(name) == "string" and name or category,
+            detail = detail,
+            spawnCount = count,
+        })
+    end
+
     local meta = db.meta
     if type(meta) == "table" then
         local categoryIndex = 1
@@ -646,13 +917,21 @@ function Database:GetAreaServiceLocations(areaId, playerClassId, playerRaceId, w
         nodeIndex = 1
         while nodeIndex <= nodeTotal do
             local category = NODE_META_KEYS[nodeIndex]
+            -- "rares" is the one node category that is NOT a meta relation any
+            -- more: the row covers every ranked creature, not the curated 409.
             local relation = meta[category]
+            if category == "rares" then
+                relation = self:GetRankedMobRelation()
+            end
             if type(wanted) == "table" and wanted[category] and type(relation) == "table" then
                 local rawId, value
                 for rawId, value in pairs(relation) do
                     -- The meta value doubles as the detail: a positive number
                     -- is a skill or a level, a string is a faction token.
-                    if type(value) == "number" and value > 0 then
+                    if category == "rares" then
+                        AppendMedoid(category, rawId,
+                            type(value) == "number" and value > 0 and value or nil)
+                    elseif type(value) == "number" and value > 0 then
                         Append(category, rawId, nil, value)
                     else
                         Append(category, rawId, value, nil)
@@ -869,8 +1148,9 @@ end
 -- Builds the complete list of direct database coordinates for one active
 -- quest in one area. Passing a numeric limit remains available to callers
 -- that intentionally render a bounded non-objective surface such as turn-ins.
--- Item objectives are expanded through their unit/object source
--- tables here so the map layer never depends on the generated data shapes.
+-- Item objectives are expanded through their unit/object source tables, and
+-- exploration objectives through their area-trigger records, so the map layer
+-- never depends on the generated data shapes.
 -- Coordinates in child areas are deliberately excluded until transforms are
 -- runtime-verified; this first map slice is current-zone-only.
 --
@@ -970,14 +1250,17 @@ function Database:GetQuestLocations(questId, isComplete, areaId, limit)
         for _, sourceId in pairs(sources) do
             if sourceType == "unit" then
                 AppendEntity(sourceType, sourceId, self:GetUnit(sourceId))
-            else
+            elseif sourceType == "object" then
                 AppendEntity(sourceType, sourceId, self:GetObject(sourceId))
+            elseif sourceType == "areaTrigger" then
+                AppendEntity(sourceType, sourceId, self:GetAreaTrigger(sourceId))
             end
         end
     end
 
     AppendRelationSources("unit", relation.U)
     AppendRelationSources("object", relation.O)
+    AppendRelationSources("areaTrigger", relation.A)
 
     if type(relation.I) == "table" then
         local _, itemId
@@ -1013,8 +1296,8 @@ end
 -- question a pin cannot: which zone(s) does the static data say this quest's
 -- objectives or turn-in are actually in, so a caller can at least NAME the
 -- zone to travel to when nothing is renderable in the current view. Same
--- relation-walking shape as GetQuestLocations (unit/object direct sources,
--- plus item-use sources), traversed the same way so the two can never
+-- relation-walking shape as GetQuestLocations (unit/object/area-trigger direct
+-- sources, plus item sources), traversed the same way so the two can never
 -- disagree about what "this quest's locations" means.
 function Database:GetQuestAreaIds(questId, isComplete)
     if not db or type(questId) ~= "number" then
@@ -1058,14 +1341,17 @@ function Database:GetQuestAreaIds(questId, isComplete)
         for _, sourceId in pairs(sources) do
             if sourceType == "unit" then
                 AppendAreasFrom(self:GetUnit(sourceId))
-            else
+            elseif sourceType == "object" then
                 AppendAreasFrom(self:GetObject(sourceId))
+            elseif sourceType == "areaTrigger" then
+                AppendAreasFrom(self:GetAreaTrigger(sourceId))
             end
         end
     end
 
     AppendRelationSources("unit", relation.U)
     AppendRelationSources("object", relation.O)
+    AppendRelationSources("areaTrigger", relation.A)
 
     if type(relation.I) == "table" then
         local itemId
@@ -1106,6 +1392,8 @@ function Database:GetEntityLocations(sourceType, sourceId, areaId, limit)
         record = self:GetUnit(sourceId)
     elseif sourceType == "object" then
         record = self:GetObject(sourceId)
+    elseif sourceType == "areaTrigger" then
+        record = self:GetAreaTrigger(sourceId)
     end
     if type(record) ~= "table" or type(record.coords) ~= "table" then
         return locations
@@ -1140,35 +1428,212 @@ end
 -- spawns are recorded in. Built once, in chunks on the shared driver, and only
 -- when something asks for it.
 
--- The ranks this index carries. Ordinary mobs have no `rnk` at all and never
--- enter it; which of these four the player is actually alerted about is a
--- setting, applied when the bucket is read rather than when it is built, so
--- changing the setting costs nothing and never rebuilds anything.
+-- The ranks this index carries: all four of them, because two features read
+-- it and they want different subsets.
+--
+-- `Map/NpcPins.lua` draws the whole thing as its Rare/Elite/Boss layer. The
+-- proximity alert (`World/RareAlert.lua`) narrows it with
+-- `Database:IsAlertWorthy` below, because ALERTING off rank alone is wrong:
+-- rank 1 is 816 ordinary elites, every elite camp in the game plus a tail of
+-- parked NPCs that are elite for reasons unrelated to being worth hunting.
+-- Silas Darkmoon, the Darkmoon Faire barker, is rank 1, level 61, with a
+-- recorded spawn in Goldshire, and alerting off rank put him in front of a
+-- level-8 player in Elwynn Forest (reported 2026-08-28). Drawing him on a map
+-- the player chose to open is fine; interrupting them with a sound is not.
 local RANK_ELITE = 1
 local RANK_RARE_ELITE = 2
 local RANK_BOSS = 3
 local RANK_RARE = 4
 
-local RANKED = {
+-- Every rank the data defines. This is only "is this string a rank at all";
+-- it decides nothing about alerting.
+local KNOWN_RANK = {
     [RANK_ELITE] = true,
     [RANK_RARE_ELITE] = true,
     [RANK_BOSS] = true,
     [RANK_RARE] = true,
 }
 
+-- Ranks the ALERT admits on rank alone. Deliberately just the boss rank --
+-- 28 creatures with world coordinates, the open-world bosses; everything else
+-- it alerts on has to be named by the curated `meta.rares` list (409 entries:
+-- exactly the 272 rank-4 rares plus the 137 rank-2 rare elites, no ordinary
+-- elites and no bosses), which is the same list the NPC finder's rare row drew
+-- before it was widened to every rank.
+local ALERT_RANKED = {
+    [RANK_BOSS] = true,
+}
+
+local function IsCuratedRare(unitId)
+    local meta = db and db.meta
+    local rares = meta and meta["rares"]
+    return type(rares) == "table" and rares[unitId] ~= nil
+end
+
+-- WHAT IS NOT A MOB, EVEN WITH A RANK ON IT
+-- ------------------------------------------
+-- Two filters, both structural, both measured against the bundled data. They
+-- exist because a rank says how hard something hits, not whether anybody would
+-- ever fight it.
+--
+-- 1. A `fac` TOKEN MEANS IT BELONGS TO A PLAYER FACTION.
+--
+--    Every one of the 33 ranked creatures with coordinates in Orgrimmar
+--    carries one -- the grunts, the officers, the trainers, Thrall and Vol'jin
+--    (rank 3, so they were even reaching the proximity alert). They filled the
+--    capital's map with pins for things no one hunts (reported 2026-08-28).
+--    Across the whole dataset the split is clean: 362 rank-1 and 12 rank-3
+--    creatures carry a faction token, while Hogger, Mor'Ladim, King Bangalash
+--    and the other 454 real elites carry none.
+--
+--    The curated `meta.rares` list overrides this: 18 creatures it names do
+--    carry a token, and a human calling something a rare mob outranks an
+--    inference drawn from one field.
+--
+-- 2. SPAWNS IN EXACTLY ELWYNN FOREST AND MULGORE MEAN THE DARKMOON FAIRE.
+--
+--    Those are the faire's two rotation sites in this data, on opposite
+--    continents, and nothing native lives in both. The signature selects 22
+--    creatures and every one of them is faire staff -- Sayge, Rinling, Flik's
+--    Frog, the carnies -- of which two are ranked: Silas Darkmoon (elite,
+--    level 61, which is what put a level-61 elite in front of a level-8 player
+--    in Elwynn) and Felinni. It catches nothing else, so it is a rule rather
+--    than a list of IDs to keep in sync.
+--
+--    This does not generalise to other holidays: the Lunar Festival's ranked
+--    NPCs are already gone via their faction token, and no other event in the
+--    bundled data moves between fixed sites.
+local FAIRE_AREA_A = 12       -- Elwynn Forest
+local FAIRE_AREA_B = 215      -- Mulgore
+
+local function IsTravellingFaire(record)
+    local coords = record.coords
+    if type(coords) ~= "table" then
+        return false
+    end
+    local sawA, sawB = false, false
+    local index = 1
+    local total = table.getn(coords)
+    while index <= total do
+        local coordinate = coords[index]
+        local areaId = type(coordinate) == "table" and coordinate[3] or nil
+        if type(areaId) == "number" then
+            if areaId == FAIRE_AREA_A then
+                sawA = true
+            elseif areaId == FAIRE_AREA_B then
+                sawB = true
+            else
+                -- A third zone means it lives somewhere of its own.
+                return false
+            end
+        end
+        index = index + 1
+    end
+    return sawA and sawB
+end
+
+-- Whether a ranked creature is something a player would actually hunt. Both
+-- the NPC finder's Rare/Elite/Boss row and the proximity alert are built on
+-- this, so a city guard cannot appear on one and not the other.
+local function IsMobRecord(unitId, record)
+    if type(record) ~= "table" then
+        return false
+    end
+    if IsCuratedRare(unitId) then
+        return true
+    end
+    if type(record.fac) == "string" and record.fac ~= "" then
+        return false
+    end
+    return not IsTravellingFaire(record)
+end
+
 -- `rnk` is stored as a STRING in the bundled data, exactly like `lvl` is (see
 -- docs/WORLD-DATA-NOTES.md). Every read of it goes through here so no caller
 -- can compare it against a number and silently match nothing.
+--
+-- This answers the creature's rank whatever it is, so the alert can SAY
+-- "Rare Elite" or "Boss". Whether the creature is alerted about at all is
+-- Database:IsAlertWorthy below, which is a different question.
 function Database:GetUnitRank(unitId)
     local record = self:GetUnit(unitId)
     if type(record) ~= "table" then
         return nil
     end
     local rank = tonumber(record.rnk)
-    if not rank or not RANKED[rank] then
+    if not rank or not KNOWN_RANK[rank] then
         return nil
     end
     return rank
+end
+
+-- Whether a creature is a huntable mob at all: ranked, and not one of the
+-- things IsMobRecord above rules out. This is what the rank index admits, so
+-- it is the set the NPC finder's Rare/Elite/Boss row draws.
+function Database:IsMob(unitId)
+    local record = self:GetUnit(unitId)
+    if type(record) ~= "table" then
+        return false
+    end
+    local rank = tonumber(record.rnk)
+    if not rank or not KNOWN_RANK[rank] then
+        return false
+    end
+    return IsMobRecord(unitId, record)
+end
+
+-- Whether a creature is worth INTERRUPTING the player for: a mob, and either
+-- named by the curated `meta.rares` list or a boss. Narrower than IsMob on
+-- purpose -- drawing an ordinary elite on a map the player chose to open is
+-- fine, playing a sound at them for one is not.
+function Database:IsAlertWorthy(unitId)
+    if not self:IsMob(unitId) then
+        return false
+    end
+    if IsCuratedRare(unitId) then
+        return true
+    end
+    local record = self:GetUnit(unitId)
+    local rank = type(record) == "table" and tonumber(record.rnk) or nil
+    return rank ~= nil and ALERT_RANKED[rank] == true
+end
+
+-- Every ranked creature as a service-style relation, unitId -> level, for the
+-- NPC finder's Rare/Elite/Boss row. `meta.rares` carries a curated level for
+-- the 409 it names; everything else takes the level off the unit record, where
+-- `lvl` is a string and may be a range ("24-25") -- the first number in it is
+-- what a numeric detail can carry, and 0 stands for "no level in the data".
+--
+-- Built once and kept: it is a projection of tables that never change during a
+-- session.
+function Database:GetRankedMobRelation()
+    if self.rankedMobRelation then
+        return self.rankedMobRelation
+    end
+    local relation = {}
+    self.rankedMobRelation = relation
+    local units = db and db.units
+    if type(units) ~= "table" then
+        return relation
+    end
+    local meta = db.meta
+    local curated = type(meta) == "table" and meta["rares"] or nil
+
+    local unitId, record
+    for unitId, record in pairs(units) do
+        if type(record) == "table" then
+            local rank = tonumber(record.rnk)
+            if rank and KNOWN_RANK[rank] and IsMobRecord(unitId, record) then
+                local level = type(curated) == "table" and tonumber(curated[unitId]) or nil
+                if not level then
+                    local _, _, first = string.find(tostring(record.lvl or ""), "^(%d+)")
+                    level = tonumber(first) or 0
+                end
+                relation[unitId] = level
+            end
+        end
+    end
+    return relation
 end
 
 -- Asks for the index. Safe to call repeatedly; the first call schedules the
@@ -1220,7 +1685,7 @@ function Database:IndexRankChunk()
 
         if type(record) == "table" and type(record.coords) == "table" then
             local rank = tonumber(record.rnk)
-            if rank and RANKED[rank] then
+            if rank and KNOWN_RANK[rank] and IsMobRecord(unitId, record) then
                 -- One entry per (creature, area), not per spawn point: a rare
                 -- with four recorded spawns in one zone is one creature the
                 -- player can be near, and the alert names the creature.

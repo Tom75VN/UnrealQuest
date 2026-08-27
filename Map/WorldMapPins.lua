@@ -14,7 +14,7 @@ Nearby objective locations are merged into translucent blue areas; a completed
 quest uses green. Area tiles are pooled and refreshed on the shared driver.
 
 TWO PRESENTATIONS, ONE SCENE. The `mapObjectiveDots` setting decides which is
-drawn, and it DEFAULTS TO THE DOTS: one dot per raw spawn point, in the
+drawn, and it DEFAULTS TO THE DOTS: one dot per raw still-needed spawn point, in the
 minimap's own style, so both map layers show the player the same shape. Turning
 it off restores the areas above -- the same quests and hover tooltip, a region
 instead of positions. Dots use stable per-quest colours; areas keep their
@@ -232,6 +232,11 @@ local GIVER_ICON_WIDTH = GIVER_ICON_HEIGHT * 19 / 32
 -- under the mouse. Other markers keep their own size and opacity -- area
 -- tiles are untouched too, they already have their own hover presentation.
 local GIVER_TURNIN_HOVER_SCALE = 1.5
+-- The grow answers quickly, then settles softly at full size. Returning to the
+-- base size eases at both ends so an OnLeave does not look like a snap in the
+-- opposite direction. Both animations run on the single shared driver and
+-- unschedule themselves as soon as every marker reaches its target.
+local MARKER_EMPHASIS_DURATION = 0.16
 -- Two markers whose centres are closer together than this many pixels on the
 -- canvas cannot be separated with the mouse, so hovering either one describes
 -- both. Half the pins' own 14x14 width, deliberately: the criterion is icons
@@ -439,6 +444,13 @@ local function ClusterTooltipsEnabled()
     return config:Get("mapClusterTooltips") and true or false
 end
 
+local function LowLevelQuestsEnabled(config)
+    if not config then
+        config = UQ:GetModule("Config")
+    end
+    return config and config:Get("showLowLevelQuests") and true or false
+end
+
 local function ViewSignature(areaId, report)
     local bagItems = BagItems()
     return tostring(areaId) .. "|" .. tostring(report and report.mapFile)
@@ -451,6 +463,7 @@ local function ViewSignature(areaId, report)
         -- until something else happened to dirty the layer.
         .. "|" .. tostring(ObjectiveDotsEnabled())
         .. "|" .. tostring(ObjectiveDotSize())
+        .. "|" .. tostring(LowLevelQuestsEnabled())
 end
 
 local function IsResolvedQuest(quest)
@@ -525,9 +538,10 @@ local function GetQuestMapIds(quest)
     return ids
 end
 
--- Union and deduplicate the locations of every drawable candidate. The
--- complete union is returned: ambiguity must not introduce a hidden per-row
--- crop that a resolved quest no longer has.
+-- Union and deduplicate the still-needed locations of every drawable
+-- candidate. Ambiguity must not introduce a hidden per-row crop that a
+-- resolved quest no longer has, while a finished live creature objective may
+-- safely remove the matching source from every candidate's union.
 local function CollectQuestMapLocations(quest, areaId, complete, config)
     local questTarget = QuestTarget()
     if not questTarget then
@@ -544,7 +558,11 @@ local function CollectQuestMapLocations(quest, areaId, complete, config)
         local questId = ids[idIndex]
         if not IsQuestMapHidden(config, questId) then
             usedIds = usedIds + 1
-            local candidate = { questId = questId }
+            local candidate = {
+                questId = questId,
+                objectives = quest and quest.objectives,
+                objectiveOwner = quest,
+            }
             local found, withheld = questTarget:CollectLocations(candidate, areaId, complete)
             unknown = unknown + withheld
             local locationIndex = 1
@@ -584,20 +602,27 @@ end
 -- list.
 local function FilterAvailableQuestIds(questIds, activeQuestIds, questHistory, eligibility, config)
     local out = {}
+    local lowLevelCount = 0
+    local showLowLevel = LowLevelQuestsEnabled(config)
     local index = 1
     local total = table.getn(questIds)
     while index <= total do
         local questId = questIds[index]
-        if type(questId) == "number" and not activeQuestIds[questId]
+        local lowLevel = eligibility and eligibility:IsLowLevel(questId)
+        if type(questId) == "number" and (not lowLevel or showLowLevel)
+            and not activeQuestIds[questId]
             and not (questHistory and questHistory:IsDone(questId))
             and not (eligibility
                 and not eligibility:IsOfferable(questId, activeQuestIds, questHistory))
             and not IsQuestMapHidden(config, questId) then
             table.insert(out, questId)
+            if lowLevel then
+                lowLevelCount = lowLevelCount + 1
+            end
         end
         index = index + 1
     end
-    return out
+    return out, table.getn(out) > 0 and lowLevelCount == table.getn(out)
 end
 
 -- Adds the targets of the quest's item-use steps to an objective location
@@ -774,7 +799,7 @@ local function BuildGiverTooltipLines(database, giver, availableQuestIds, suppre
     local total = table.getn(availableQuestIds)
     while index <= total do
         local questId = availableQuestIds[index]
-        local title = database:GetQuestTitle(questId)
+        local title = UQ.GetQuestDisplayTitle(questId)
         if title then
             if index > 1 then
                 table.insert(lines, { separator = true })
@@ -854,10 +879,7 @@ local function BuildTurnInTooltipLines(database, point)
     local total = table.getn(point.quests)
     while index <= total do
         local quest = point.quests[index]
-        local title = quest.title
-        if not title and type(quest.questId) == "number" then
-            title = database:GetQuestTitle(quest.questId)
-        end
+        local title = UQ.GetQuestDisplayTitle(quest)
         if index > 1 then
             table.insert(lines, { separator = true })
         end
@@ -892,10 +914,7 @@ end
 -- (a "go and speak to" quest has none).
 local function BuildQuestTooltipLines(database, quest)
     local lines = {}
-    local title = quest.title
-    if not title and type(quest.questId) == "number" then
-        title = database:GetQuestTitle(quest.questId)
-    end
+    local title = UQ.GetQuestDisplayTitle(quest)
     table.insert(lines, { text = title or UQ.L("COMMON_UNKNOWN"), r = 1, g = 0.82, b = 0 })
 
     if type(quest.level) == "number" then
@@ -1430,8 +1449,59 @@ end
 -- nobody can see -- but it also keeps its old SIZE, and a grown one handed
 -- back out by a later rebuild would come back oversized. Resetting size past
 -- the visible range costs one call per spare frame and removes that case.
+local function ClampUnit(value)
+    if value < 0 then
+        return 0
+    end
+    if value > 1 then
+        return 1
+    end
+    return value
+end
+
+local function EaseOutCubic(progress)
+    local inverse = 1 - ClampUnit(progress)
+    return 1 - inverse * inverse * inverse
+end
+
+local function EaseInOutCubic(progress)
+    progress = ClampUnit(progress)
+    if progress < 0.5 then
+        return 4 * progress * progress * progress
+    end
+    local inverse = -2 * progress + 2
+    return 1 - inverse * inverse * inverse / 2
+end
+
+local function SetMarkerEmphasisScale(pin, scale)
+    pin.unrealQuestEmphasisScale = scale
+    Client.SetWorldMapPinSize(pin,
+        pin.unrealQuestBaseWidth * scale,
+        pin.unrealQuestBaseHeight * scale)
+end
+
+local function SetMarkerEmphasisTarget(pin, target, animate)
+    local current = pin.unrealQuestEmphasisScale or 1
+    if not animate then
+        pin.unrealQuestEmphasisFrom = target
+        pin.unrealQuestEmphasisTarget = target
+        pin.unrealQuestEmphasisElapsed = 0
+        if current ~= target then
+            SetMarkerEmphasisScale(pin, target)
+        end
+        return false
+    end
+    if pin.unrealQuestEmphasisTarget ~= target then
+        pin.unrealQuestEmphasisFrom = current
+        pin.unrealQuestEmphasisTarget = target
+        pin.unrealQuestEmphasisElapsed = 0
+    end
+    return current ~= target
+end
+
 local function ApplyMarkerEmphasis(pool, visible, Related)
     local focused = focusQuestCount > 0
+    local animating = false
     local index = 1
     local total = table.getn(pool)
     while index <= total do
@@ -1441,9 +1511,9 @@ local function ApplyMarkerEmphasis(pool, visible, Related)
             if index <= visible and WorldMapPins:MarkerEmphasized(pin) then
                 scale = GIVER_TURNIN_HOVER_SCALE
             end
-            Client.SetWorldMapPinSize(pin,
-                pin.unrealQuestBaseWidth * scale,
-                pin.unrealQuestBaseHeight * scale)
+            if SetMarkerEmphasisTarget(pin, scale, index <= visible) then
+                animating = true
+            end
             if index <= visible then
                 Client.SetWorldMapPinAlpha(pin,
                     (not focused or Related(pin)) and 1 or UNRELATED_MARKER_ALPHA)
@@ -1451,11 +1521,75 @@ local function ApplyMarkerEmphasis(pool, visible, Related)
         end
         index = index + 1
     end
+    return animating
+end
+
+local function AnimateMarkerPool(pool, elapsed)
+    local animating = false
+    local index = 1
+    local total = table.getn(pool)
+    while index <= total do
+        local pin = pool[index]
+        local current = pin and pin.unrealQuestEmphasisScale
+        local target = pin and pin.unrealQuestEmphasisTarget
+        if type(current) == "number" and type(target) == "number" and current ~= target then
+            local from = pin.unrealQuestEmphasisFrom or current
+            local animationElapsed = (pin.unrealQuestEmphasisElapsed or 0) + elapsed
+            local progress = ClampUnit(animationElapsed / MARKER_EMPHASIS_DURATION)
+            local eased
+            if target > from then
+                eased = EaseOutCubic(progress)
+            else
+                eased = EaseInOutCubic(progress)
+            end
+            pin.unrealQuestEmphasisElapsed = animationElapsed
+            if progress >= 1 then
+                SetMarkerEmphasisScale(pin, target)
+            else
+                SetMarkerEmphasisScale(pin, from + (target - from) * eased)
+                animating = true
+            end
+        end
+        index = index + 1
+    end
+    return animating
+end
+
+function WorldMapPins:AnimateMarkerEmphasis(elapsed)
+    if type(elapsed) ~= "number" or elapsed < 0 then
+        elapsed = 0
+    end
+    local giverAnimating = AnimateMarkerPool(self.giverPool, elapsed)
+    local turnInAnimating = AnimateMarkerPool(self.turnInPool, elapsed)
+    self.markerEmphasisAnimating = giverAnimating or turnInAnimating
+    if not self.markerEmphasisAnimating then
+        local driver = UQ:GetModule("Driver")
+        if driver then
+            driver:Unschedule("map.markeremphasis")
+        end
+    end
+end
+
+local function RunMarkerEmphasisAnimation(elapsed)
+    WorldMapPins:AnimateMarkerEmphasis(elapsed)
 end
 
 function WorldMapPins:RefreshMarkerEmphasis()
-    ApplyMarkerEmphasis(self.giverPool, self.giverVisibleCount, FocusGiverOffers)
-    ApplyMarkerEmphasis(self.turnInPool, self.turnInVisibleCount, FocusTakesTurnIn)
+    local giverAnimating = ApplyMarkerEmphasis(
+        self.giverPool, self.giverVisibleCount, FocusGiverOffers)
+    local turnInAnimating = ApplyMarkerEmphasis(
+        self.turnInPool, self.turnInVisibleCount, FocusTakesTurnIn)
+    self.markerEmphasisAnimating = giverAnimating or turnInAnimating
+    local driver = UQ:GetModule("Driver")
+    if not driver then
+        -- With no timing source, preserve the interaction instead of leaving
+        -- a marker stranded between its base and emphasized sizes.
+        self:AnimateMarkerEmphasis(MARKER_EMPHASIS_DURATION)
+    elseif self.markerEmphasisAnimating then
+        driver:Schedule("map.markeremphasis", 0, RunMarkerEmphasisAnimation)
+    else
+        driver:Unschedule("map.markeremphasis")
+    end
 end
 
 -- Declared here because ApplyFocus below has to fold the fade into the stamp
@@ -1550,6 +1684,11 @@ local FLASH_DURATION = 2.2
 local FLASH_HZ = 2.5
 local FLASH_MIN_ALPHA = 0.3
 local FLASH_MAX_ALPHA = 1.0
+-- Normal UnrealQuest marks top out six levels above the shared pin floor
+-- (service, mob and vendor pins). A revealed quest must win every overlap for
+-- the whole flash, whether its target is an objective dot/area or a turn-in
+-- icon. The original level is restored exactly when the flash ends.
+local FLASH_LEVEL_BOOST = 10
 
 local function CollectFlashTargets(questId)
     local targets = {}
@@ -1577,6 +1716,38 @@ local function CollectFlashTargets(questId)
     return targets
 end
 
+local function RestoreFlashTargets()
+    local targets = WorldMapPins.flashTargets
+    if not targets then
+        return
+    end
+    local index = 1
+    local total = table.getn(targets)
+    while index <= total do
+        local target = targets[index]
+        Client.SetWorldMapPinAlpha(target, 1)
+        if target and target.unrealQuestFlashRaised then
+            Client.RaiseWorldMapPin(target, -FLASH_LEVEL_BOOST)
+            target.unrealQuestFlashRaised = nil
+        end
+        index = index + 1
+    end
+    WorldMapPins.flashTargets = nil
+end
+
+local function RaiseFlashTargets(targets)
+    local index = 1
+    local total = table.getn(targets)
+    while index <= total do
+        local target = targets[index]
+        if target and Client.RaiseWorldMapPin(target, FLASH_LEVEL_BOOST) then
+            target.unrealQuestFlashRaised = true
+        end
+        index = index + 1
+    end
+    WorldMapPins.flashTargets = targets
+end
+
 -- Pulses every target's whole-frame alpha (Client.SetWorldMapPinAlpha, the
 -- same stock SetAlpha already relied on for the waypoint marker and the
 -- turn-in hover dim) for FLASH_DURATION seconds, then hands every target back
@@ -1596,16 +1767,16 @@ function WorldMapPins:FlashQuest(questId)
     if not driver or not start then
         return false
     end
+    -- Scheduling another reveal replaces the existing named driver job. Hand
+    -- the previous targets back first so repeated Show actions never stack the
+    -- boost or leave an earlier quest stranded above the map.
+    RestoreFlashTargets()
+    RaiseFlashTargets(targets)
     driver:Schedule("map.questflash", 0.05, function()
         local now = Client.Now()
         local elapsed = now and (now - start) or FLASH_DURATION
         if elapsed < 0 or elapsed >= FLASH_DURATION then
-            local index = 1
-            local total = table.getn(targets)
-            while index <= total do
-                Client.SetWorldMapPinAlpha(targets[index], 1)
-                index = index + 1
-            end
+            RestoreFlashTargets()
             WorldMapPins.dirty = true
             local d = UQ:GetModule("Driver")
             if d then
@@ -1653,12 +1824,30 @@ function WorldMapPins:GetGiverPin(index)
         -- Base size the hover grow/shrink scales from and returns to.
         pin.unrealQuestBaseWidth = GIVER_ICON_WIDTH
         pin.unrealQuestBaseHeight = GIVER_ICON_HEIGHT
+        pin.unrealQuestEmphasisScale = 1
+        pin.unrealQuestEmphasisTarget = 1
         Client.SetWorldMapPinHandlers(pin,
             function() WorldMapPins:OnGiverEnter(pin) end,
             function() WorldMapPins:OnGiverLeave(pin) end,
             function() WorldMapPins:OnGiverClick(pin) end)
     end
     return pin
+end
+
+local function ApplyGiverAppearance(pin, lowLevel)
+    if not pin then
+        return
+    end
+    local width = GIVER_ICON_WIDTH
+    local texture = Client.AVAILABLE_QUEST_TEXTURE
+    if lowLevel then
+        width = GIVER_ICON_HEIGHT * 27 / 64
+        texture = Client.LOW_LEVEL_QUEST_TEXTURE
+    end
+    Client.SetWorldMapPinTexture(pin, texture)
+    Client.SetWorldMapPinSize(pin, width, GIVER_ICON_HEIGHT)
+    pin.unrealQuestBaseWidth = width
+    pin.unrealQuestBaseHeight = GIVER_ICON_HEIGHT
 end
 
 -- Which builder a pooled pin's own content calls for. The two pin pools never
@@ -1888,7 +2077,7 @@ function WorldMapPins:OnGiverClick(pin)
         local index = 1
         while index <= total do
             local questId = ids[index]
-            local title = database:GetQuestTitle(questId)
+            local title = UQ.GetQuestDisplayTitle(questId)
             if title then
                 table.insert(entries, { id = questId, text = title })
             end
@@ -1937,6 +2126,8 @@ function WorldMapPins:GetTurnInPin(index)
         -- Base size the hover grow/shrink scales from and returns to.
         pin.unrealQuestBaseWidth = TURNIN_ICON_WIDTH
         pin.unrealQuestBaseHeight = TURNIN_ICON_HEIGHT
+        pin.unrealQuestEmphasisScale = 1
+        pin.unrealQuestEmphasisTarget = 1
         Client.SetWorldMapPinHandlers(pin,
             function() WorldMapPins:OnTurnInEnter(pin) end,
             function() WorldMapPins:OnTurnInLeave(pin) end,
@@ -2862,8 +3053,9 @@ function WorldMapPins:Refresh()
         while giverIndex <= giverTotal and giverMarkerIndex <= MAX_GIVER_MARKERS do
             local giver = givers[giverIndex]
             local availableQuestIds = {}
+            local lowLevel = false
             if not eligibility or eligibility:MatchesGiverFaction(giver) then
-                availableQuestIds = FilterAvailableQuestIds(
+                availableQuestIds, lowLevel = FilterAvailableQuestIds(
                     giver.questIds, activeQuestIds, questHistory, eligibility, rebuildConfig)
             end
             if table.getn(availableQuestIds) > 0 then
@@ -2873,6 +3065,8 @@ function WorldMapPins:Refresh()
                     if pin then
                         pin.unrealQuestGiver = giver
                         pin.unrealQuestAvailableQuestIds = availableQuestIds
+                        pin.unrealQuestLowLevel = lowLevel
+                        ApplyGiverAppearance(pin, lowLevel)
                         if mapContext:PlaceOnWorldMap(pin, markerX, markerY) then
                             if giver.sourceType == "unit" then
                                 visiblePatrolUnitIds[giver.sourceId] = true
@@ -3048,6 +3242,33 @@ function WorldMapPins:CollectQuestLocations(quest, areaId, complete, config)
     return CollectQuestMapLocations(quest, areaId, complete, config)
 end
 
+-- Tooltip content is shared by the world map and minimap. Keeping these
+-- builders here makes both surfaces describe the same quest, giver and
+-- turn-in policy while each surface chooses its own tooltip frame.
+function WorldMapPins:BuildQuestTooltipLines(quest)
+    local database = Database()
+    if not database or not quest then
+        return nil
+    end
+    return BuildQuestTooltipLines(database, quest)
+end
+
+function WorldMapPins:BuildGiverTooltipLines(giver, questIds, suppressHint)
+    local database = Database()
+    if not database or not giver then
+        return nil
+    end
+    return BuildGiverTooltipLines(database, giver, questIds or {}, suppressHint)
+end
+
+function WorldMapPins:BuildTurnInTooltipLines(point)
+    local database = Database()
+    if not database or not point then
+        return nil
+    end
+    return BuildTurnInTooltipLines(database, point)
+end
+
 -- Givers in one area with at least one quest this character could take now.
 -- The giver entity's own faction is a second eligibility gate: some bundled
 -- Horde/Alliance quests omit a race mask even though the NPC is not usable by
@@ -3072,10 +3293,14 @@ function WorldMapPins:CollectAvailableGivers(database, quests, areaId, config, m
     while index <= total do
         local giver = source[index]
         if not eligibility or eligibility:MatchesGiverFaction(giver) then
-            local availableQuestIds = FilterAvailableQuestIds(
+            local availableQuestIds, lowLevel = FilterAvailableQuestIds(
                 giver.questIds, activeQuestIds, questHistory, eligibility, config)
             if table.getn(availableQuestIds) > 0 then
-                table.insert(givers, { giver = giver, questIds = availableQuestIds })
+                table.insert(givers, {
+                    giver = giver,
+                    questIds = availableQuestIds,
+                    lowLevel = lowLevel,
+                })
             end
         end
         index = index + 1

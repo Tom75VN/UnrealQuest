@@ -32,6 +32,18 @@ local function Tracker()
     return UQ:GetModule("Tracker")
 end
 
+local function KeyIsSuffix(textKey, titleKey)
+    if not textKey or not titleKey then
+        return false
+    end
+    local textLength = string.len(textKey)
+    local titleLength = string.len(titleKey)
+    if titleLength > textLength then
+        return false
+    end
+    return string.sub(textKey, textLength - titleLength + 1) == titleKey
+end
+
 local function QuestFromText(row)
     local text = Client.GetObjectText(row)
     local key = text and UQ.NameKey(text)
@@ -47,10 +59,18 @@ local function QuestFromText(row)
     while index <= total do
         local quest = quests[index]
         local titleKey = quest and quest.titleKey
-        if titleKey and string.len(titleKey) > bestLength
-            and (key == titleKey or string.find(key, titleKey .. "$")) then
+        local displayKey = quest and UQ.NameKey(UQ.GetQuestDisplayTitle(quest))
+        local matchedKey = nil
+        if KeyIsSuffix(key, titleKey) then
+            matchedKey = titleKey
+        end
+        if KeyIsSuffix(key, displayKey)
+            and (not matchedKey or string.len(displayKey) > string.len(matchedKey)) then
+            matchedKey = displayKey
+        end
+        if matchedKey and string.len(matchedKey) > bestLength then
             best = quest
-            bestLength = string.len(titleKey)
+            bestLength = string.len(matchedKey)
         end
         index = index + 1
     end

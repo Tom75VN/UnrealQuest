@@ -119,9 +119,23 @@ local function ObjectKey(object)
     return UQ.NameKey(text)
 end
 
--- Finds the quest whose title key is a suffix of the widget's normalized text.
--- The longest match wins, so a quest whose title is a suffix of another quest's
--- title cannot steal the click.
+local function KeyIsSuffix(textKey, titleKey)
+    if not textKey or not titleKey then
+        return false
+    end
+    local textLength = string.len(textKey)
+    local titleLength = string.len(titleKey)
+    if titleLength > textLength then
+        return false
+    end
+    return string.sub(textKey, textLength - titleLength + 1) == titleKey
+end
+
+-- Finds the quest whose live or translated display-title key is a suffix of
+-- the widget's normalized text. The second key matters only for a native Quest
+-- Log row whose stamped ID is unavailable after QuestLogLevels rewrote its
+-- presentation. The longest match wins, so a quest whose title is a suffix of
+-- another quest's title cannot steal the click.
 local function QuestFromText(object)
     local key = ObjectKey(object)
     if not key then
@@ -139,13 +153,18 @@ local function QuestFromText(object)
     while index <= total do
         local quest = quests[index]
         local titleKey = quest.titleKey
-        if titleKey and string.len(titleKey) > bestLength then
-            -- Anchored to the end. titleKey is alphanumeric by construction,
-            -- so it carries no Lua pattern magic characters.
-            if key == titleKey or string.find(key, titleKey .. "$") then
-                best = quest
-                bestLength = string.len(titleKey)
-            end
+        local displayKey = UQ.NameKey(UQ.GetQuestDisplayTitle(quest))
+        local matchedKey = nil
+        if KeyIsSuffix(key, titleKey) then
+            matchedKey = titleKey
+        end
+        if KeyIsSuffix(key, displayKey)
+            and (not matchedKey or string.len(displayKey) > string.len(matchedKey)) then
+            matchedKey = displayKey
+        end
+        if matchedKey and string.len(matchedKey) > bestLength then
+            best = quest
+            bestLength = string.len(matchedKey)
         end
         index = index + 1
     end
@@ -188,13 +207,14 @@ function QuestClicks:Select(quest, origin)
 
     local wasMain = mainQuest:IsMain(quest.titleKey)
     mainQuest:Toggle(quest.titleKey)
+    local title = UQ.GetQuestDisplayTitle(quest) or quest.title
 
     if wasMain then
         UQ:Print(UQ.L("MAINQUEST_NO_LONGER_FOLLOWING",
-            "|cffffffff" .. tostring(quest.title) .. "|r"))
+            "|cffffffff" .. tostring(title) .. "|r"))
     else
         UQ:Print(UQ.L("MAINQUEST_NOW_FOLLOWING",
-            "|cff" .. UQ.colors.accentHex .. tostring(quest.title) .. "|r"))
+            "|cff" .. UQ.colors.accentHex .. tostring(title) .. "|r"))
     end
     UQ:Debug("main quest click from " .. tostring(origin))
     return true
@@ -252,8 +272,9 @@ function QuestClicks:RevealOnMap(quest)
     if not quest then
         return
     end
+    local title = UQ.GetQuestDisplayTitle(quest) or quest.title
     if type(quest.questId) ~= "number" then
-        UQ:Print(UQ.L("REVEAL_NO_QUEST_ID", tostring(quest.title)))
+        UQ:Print(UQ.L("REVEAL_NO_QUEST_ID", tostring(title)))
         return
     end
     Client.OpenWorldMap()
@@ -274,12 +295,12 @@ function QuestClicks:RevealOnMap(quest)
         -- in: a language that inflects around it cannot be built from a
         -- fragment slotted into the middle of another string.
         if quest.isComplete == 1 then
-            UQ:Print(UQ.L("REVEAL_TURN_IN_ELSEWHERE", tostring(quest.title), zones))
+            UQ:Print(UQ.L("REVEAL_TURN_IN_ELSEWHERE", tostring(title), zones))
         else
-            UQ:Print(UQ.L("REVEAL_OBJECTIVES_ELSEWHERE", tostring(quest.title), zones))
+            UQ:Print(UQ.L("REVEAL_OBJECTIVES_ELSEWHERE", tostring(title), zones))
         end
     else
-        UQ:Print(UQ.L("REVEAL_NOTHING_KNOWN", tostring(quest.title)))
+        UQ:Print(UQ.L("REVEAL_NOTHING_KNOWN", tostring(title)))
     end
 end
 

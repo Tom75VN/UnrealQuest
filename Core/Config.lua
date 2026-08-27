@@ -92,10 +92,20 @@ local defaults = {
     -- having to find the flag row first.
     language = "enUS",
 
+    -- Uses the addon's selected language for quest titles and for the native
+    -- Quest Log's objective summary/description when that exact translation
+    -- exists in the bundled database. The historical key name is retained so
+    -- an existing opt-out remains respected. Live client text is always the
+    -- fallback; identity, progress counters and game state are never changed.
+    translateQuestTitles = true,
+
     restoreTracking = true,
     -- Seasonal quests are hidden by default: the client cannot report which
     -- world events are running, so they would otherwise show all year.
     showEventQuests = false,
+    -- Grey/trivial available quests are hidden like the native presentation.
+    -- Opting in adds them to both maps with their own subdued giver icon.
+    showLowLevelQuests = false,
     -- A quest that is ready to hand in always gets its turn-in "?" marker.
     -- This adds the dimmed "?" for quests still in progress, which is where a
     -- quest the player is carrying will eventually be handed in. On by
@@ -222,16 +232,20 @@ local defaults = {
     -- yards of a spawn point recorded for this creature".
     rareAlert = true,
 
-    -- Yards. 120 is about a quarter of the minimap's measured 466.6-yard
-    -- zoom-0 span, so the creature's own minimap dot is on screen when the
-    -- card lands. World/RareAlert.lua clamps this to 20-500.
-    rareAlertRange = 120,
+    -- Yards. 150 is a bit under a third of the minimap's measured 466.6-yard
+    -- zoom-0 span, so the creature's own minimap dot is well on screen when
+    -- the card lands. World/RareAlert.lua clamps this to 20-500.
+    rareAlertRange = 150,
 
-    -- Ordinary elites (rank 1) are 816 of the 1182 creatures the alert can
-    -- see -- every elite camp in the open world. Alerting on them by default
-    -- would make the card furniture, so rare (257), rare elite (81) and boss
-    -- (28) are always on and this adds the fourth rank.
-    rareAlertElites = false,
+    -- ONE switch, and it covers every rank the bundled data carries: rare,
+    -- rare elite, boss and ordinary elite alike (chosen by the user
+    -- 2026-08-28). There is deliberately no per-rank filtering -- if the data
+    -- says a creature is ranked and it is near, the player is told.
+    --
+    -- That includes 816 ordinary elites, which is most of the 1182 creatures
+    -- the alert can see. The 180-second per-creature cooldown and the
+    -- one-card-per-pass rule in World/RareAlert.lua are what keep that from
+    -- becoming a stream.
 
     -- Seconds the card stays up on its own. Clamped to 3-60.
     rareAlertSeconds = 12,
@@ -282,6 +296,12 @@ local defaults = {
     -- groupings), and every quest at all when the client will not name the
     -- current zone. See Quest/TrackerFrame.lua.
     trackerCurrentZoneOnly = true,
+
+    -- Hides a quest from the addon tracker while every readable objective
+    -- counter is still 0/N. Off by default: enabling a filter should always
+    -- be an explicit choice, and counterless objectives remain visible because
+    -- the client gives the addon no progress number to judge them by.
+    trackerHideUnstartedQuests = false,
 
     -- The native five-quest panel is redundant while this window is up, and is
     -- restored the moment either this setting or trackerEnabled is turned off.

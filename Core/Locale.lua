@@ -250,6 +250,63 @@ function UQ.LN(key, n, a, b)
     return UQ.L(suffixed, count, a, b)
 end
 
+-- Database text is not generated through tools/locale/gen_locales.py, so a
+-- French quest title selected for an addon-owned surface would otherwise keep
+-- glyphs this client's inherited font draws as blanks. This is the runtime
+-- counterpart of the generator's ASCII fold, applied only to newly translated
+-- database text. Client-provided titles are never rewritten.
+--
+-- Byte escapes keep this source English-only and make every replacement exact
+-- in the client's byte-oriented Lua strings. Multi-character punctuation
+-- pairs come first so French guillemet spacing is removed with the marks.
+local FRENCH_GAME_TEXT_FOLD = {
+    { "\194\171 ", "\"" }, { " \194\187", "\"" },
+    { "\195\160", "a" }, { "\195\161", "a" }, { "\195\162", "a" },
+    { "\195\163", "a" }, { "\195\164", "a" }, { "\195\165", "a" },
+    { "\195\167", "c" },
+    { "\195\168", "e" }, { "\195\169", "e" }, { "\195\170", "e" },
+    { "\195\171", "e" },
+    { "\195\172", "i" }, { "\195\173", "i" }, { "\195\174", "i" },
+    { "\195\175", "i" }, { "\195\177", "n" },
+    { "\195\178", "o" }, { "\195\179", "o" }, { "\195\180", "o" },
+    { "\195\181", "o" }, { "\195\182", "o" },
+    { "\195\185", "u" }, { "\195\186", "u" }, { "\195\187", "u" },
+    { "\195\188", "u" }, { "\195\189", "y" }, { "\195\191", "y" },
+    { "\195\128", "A" }, { "\195\129", "A" }, { "\195\130", "A" },
+    { "\195\131", "A" }, { "\195\132", "A" }, { "\195\133", "A" },
+    { "\195\135", "C" },
+    { "\195\136", "E" }, { "\195\137", "E" }, { "\195\138", "E" },
+    { "\195\139", "E" },
+    { "\195\140", "I" }, { "\195\141", "I" }, { "\195\142", "I" },
+    { "\195\143", "I" }, { "\195\145", "N" },
+    { "\195\146", "O" }, { "\195\147", "O" }, { "\195\148", "O" },
+    { "\195\149", "O" }, { "\195\150", "O" },
+    { "\195\153", "U" }, { "\195\154", "U" }, { "\195\155", "U" },
+    { "\195\156", "U" }, { "\195\157", "Y" },
+    { "\197\147", "oe" }, { "\197\146", "OE" },
+    { "\195\166", "ae" }, { "\195\134", "AE" }, { "\195\159", "ss" },
+    { "\194\171", "\"" }, { "\194\187", "\"" },
+    { "\226\128\152", "'" }, { "\226\128\153", "'" },
+    { "\226\128\156", "\"" }, { "\226\128\157", "\"" },
+    { "\226\128\147", "-" }, { "\226\128\148", "--" },
+    { "\226\128\166", "..." }, { "\194\160", " " },
+}
+
+function UQ.PrepareTranslatedGameText(text, language)
+    if type(text) ~= "string" or language ~= "frFR" then
+        return text
+    end
+    local folded = text
+    local index = 1
+    local total = table.getn(FRENCH_GAME_TEXT_FOLD)
+    while index <= total do
+        local replacement = FRENCH_GAME_TEXT_FOLD[index]
+        folded = string.gsub(folded, replacement[1], replacement[2])
+        index = index + 1
+    end
+    return folded
+end
+
 -- Selection ------------------------------------------------------------------
 
 function UQ.GetLanguages()

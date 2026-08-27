@@ -29,6 +29,14 @@ local WORLD_INDEX_OFFSET = 6000
 local MINIMAP_INDEX_OFFSET = 10000
 local WORLD_PIN_SIZE = 15
 local MINIMAP_PIN_SIZE = 14
+
+-- Grows a hovered Rare/Elite/Boss pin so the one under the mouse reads as
+-- distinct from the rest of the row, the same 1.5x the quest layer's giver
+-- and turn-in markers use (Map/WorldMapPins.lua, GIVER_TURNIN_HOVER_SCALE).
+-- Service and node icons do not grow: the request this answers was about the
+-- mob icons specifically, and there is no reason yet to widen it.
+local MOB_HOVER_SCALE = 1.5
+local MOB_HOVER_DURATION = 0.16
 -- Gathering nodes draw at half size on both maps. A service is one point the
 -- player is looking for; herbs and veins come in dense fields, and at the
 -- service size those fields cover the terrain they are supposed to sit on.
@@ -103,17 +111,57 @@ local CATEGORIES = {
       icon = "fish",
       red = 0.35, green = 0.70, blue = 0.95 },
     { key = "rares", setting = "npcCategoryRares", labelKey = "NPC_CATEGORY_RARES",
-      icon = "rares", detail = "level",
+      icon = "rare-mobs", detail = "level",
       red = 0.95, green = 0.85, blue = 0.20 },
 }
+
+-- The Rare/Elite/Boss row is one category with three faces, so a pin says
+-- which kind of creature it is without being hovered. The rank comes off the
+-- unit record; a creature whose rank cannot be read keeps the row's own icon.
+local RANK_ICONS = {
+    [1] = "elite-mobs",     -- elite
+    [2] = "elite-mobs",     -- rare elite
+    [3] = "boss-mobs",      -- boss / world boss
+    [4] = "rare-mobs",      -- rare
+}
+
+-- ...and the tooltip names the creature's OWN classification rather than the
+-- row it arrived on. "Rare/Elite/Boss" is the name of a filter and tells the
+-- player nothing about the thing under their cursor; "Rare Elite" does. KEYS,
+-- not text: this table is built at file load, before Core/Locale.lua has
+-- resolved the language.
+local RANK_LABEL_KEYS = {
+    [1] = "RARE_RANK_ELITE",
+    [2] = "RARE_RANK_RARE_ELITE",
+    [3] = "RARE_RANK_BOSS",
+    [4] = "RARE_RANK_RARE",
+}
+
+local function RankLabelKey(location)
+    if location.sourceType ~= "unit" then
+        return nil
+    end
+    local database = UQ:GetModule("Database")
+    local rank = database and database:GetUnitRank(location.sourceId)
+    return rank and RANK_LABEL_KEYS[rank] or nil
+end
 
 -- A herb or a vein draws its own artwork rather than the category icon, so a
 -- Peacebloom pin is recognizable as Peacebloom. `Data/NodeIcons.lua` maps the
 -- object ID to a file under media/icons/<category>/; an object it does not
 -- name -- Incendicite, Indurium, the Obsidian Chunks -- keeps the category
--- icon. Only objects are looked up: no unit category has per-entity artwork.
+-- icon. Objects are looked up there; the one UNIT category with per-entity
+-- artwork is Rare/Elite/Boss, which picks its face by rank above.
 local function IconForLocation(location, category)
-    if location.sourceType ~= "object" or type(UQ.nodeIcons) ~= "table" then
+    if location.sourceType == "unit" then
+        if category.key ~= "rares" then
+            return category.icon
+        end
+        local database = UQ:GetModule("Database")
+        local rank = database and database:GetUnitRank(location.sourceId)
+        return (rank and RANK_ICONS[rank]) or category.icon
+    end
+    if type(UQ.nodeIcons) ~= "table" then
         return category.icon
     end
     local perObject = UQ.nodeIcons[location.category]
@@ -147,6 +195,11 @@ NpcPins.playerClassId = nil
 NpcPins.playerRaceId = nil
 NpcPins.playerClassName = nil
 
+-- The world-map Rare/Elite/Boss pin currently under the mouse, or nil. Read by
+-- DrawWorldMap (which runs on a 0.25s timer regardless of hover) so a redraw
+-- mid-hover cannot silently shrink the pin back to its base size.
+NpcPins.hoveredMobPin = nil
+
 local function Config()
     return UQ:GetModule("Config")
 end
@@ -177,6 +230,10 @@ local function HidePoolFrom(pool, first)
     local index = first
     local total = table.getn(pool)
     while index <= total do
+        if pool[index] == NpcPins.minimapHoverPin then
+            Client.HideGameTooltip(pool[index])
+            NpcPins.minimapHoverPin = nil
+        end
         Client.HideObject(pool[index])
         index = index + 1
     end
@@ -323,6 +380,9 @@ function NpcPins:BuildTargets(areaId, selected, selectedCount)
             if target and not target.categorySeen[location.category] then
                 target.categorySeen[location.category] = true
                 target.details[location.category] = location.detail
+                if location.category == "rares" then
+                    target.rankLabelKey = RankLabelKey(location)
+                end
                 table.insert(target.categories, location.category)
             end
         end
@@ -342,7 +402,15 @@ function NpcPins:TooltipLines(target)
         local key = target.categories[index]
         local category = CATEGORY_BY_KEY[key]
         if category then
-            local text = UQ.L(category.labelKey)
+            -- The Rare/Elite/Boss row covers four classifications, so its
+            -- line says which one this creature is instead of repeating the
+            -- filter's name. A creature whose rank cannot be read falls back
+            -- to the row label rather than showing nothing.
+            local labelKey = category.labelKey
+            if key == "rares" and target.rankLabelKey then
+                labelKey = target.rankLabelKey
+            end
+            local text = UQ.L(labelKey)
             local detail = target.details and target.details[key]
             if type(detail) == "number" then
                 if category.detail == "skill" then
@@ -363,6 +431,147 @@ function NpcPins:TooltipLines(target)
     return lines
 end
 
+local function ClampUnit(value)
+    if value < 0 then
+        return 0
+    end
+    if value > 1 then
+        return 1
+    end
+    return value
+end
+
+local function EaseOutCubic(progress)
+    local inverse = 1 - ClampUnit(progress)
+    return 1 - inverse * inverse * inverse
+end
+
+local function EaseInOutCubic(progress)
+    progress = ClampUnit(progress)
+    if progress < 0.5 then
+        return 4 * progress * progress * progress
+    end
+    local inverse = -2 * progress + 2
+    return 1 - inverse * inverse * inverse / 2
+end
+
+local function SetPinScale(pin, scale)
+    pin.unrealQuestHoverScale = scale
+    local size = pin.unrealQuestBaseSize
+    Client.SetWorldMapPinSize(pin, size * scale, size * scale)
+end
+
+-- Resizes one pin to its current animated scale and updates the scale it is
+-- moving towards. A redraw passes animate=false: it must preserve an animation
+-- already in flight, but a pooled pin newly assigned to something else resets
+-- immediately rather than inheriting its previous owner's hover size.
+function NpcPins:ApplyPinSize(pin, size, animate)
+    pin.unrealQuestBaseSize = size
+    local isHoveredMob = self.hoveredMobPin == pin
+        and pin.unrealQuestNpcTarget
+        and pin.unrealQuestNpcTarget.rankLabelKey
+    local target = isHoveredMob and MOB_HOVER_SCALE or 1
+    local current = pin.unrealQuestHoverScale or 1
+    if pin.unrealQuestHoverTarget ~= target then
+        if animate then
+            pin.unrealQuestHoverFrom = current
+            pin.unrealQuestHoverElapsed = 0
+        else
+            current = target
+            pin.unrealQuestHoverFrom = target
+            pin.unrealQuestHoverElapsed = 0
+        end
+        pin.unrealQuestHoverTarget = target
+    end
+    SetPinScale(pin, current)
+    return current ~= target
+end
+
+function NpcPins:AnimateMobPinHover(elapsed)
+    if type(elapsed) ~= "number" or elapsed < 0 then
+        elapsed = 0
+    end
+    local animating = false
+    local index = 1
+    while index <= self.worldVisible do
+        local pin = self.worldPool[index]
+        local current = pin and pin.unrealQuestHoverScale
+        local target = pin and pin.unrealQuestHoverTarget
+        if type(current) == "number" and type(target) == "number" and current ~= target then
+            local from = pin.unrealQuestHoverFrom or current
+            local animationElapsed = (pin.unrealQuestHoverElapsed or 0) + elapsed
+            local progress = ClampUnit(animationElapsed / MOB_HOVER_DURATION)
+            local eased
+            if target > from then
+                eased = EaseOutCubic(progress)
+            else
+                eased = EaseInOutCubic(progress)
+            end
+            pin.unrealQuestHoverElapsed = animationElapsed
+            if progress >= 1 then
+                SetPinScale(pin, target)
+            else
+                SetPinScale(pin, from + (target - from) * eased)
+                animating = true
+            end
+        end
+        index = index + 1
+    end
+    self.mobPinAnimating = animating
+    if not animating then
+        local driver = UQ:GetModule("Driver")
+        if driver then
+            driver:Unschedule("map.npcpinemphasis")
+        end
+    end
+end
+
+local function RunMobPinHoverAnimation(elapsed)
+    NpcPins:AnimateMobPinHover(elapsed)
+end
+
+-- Growing a pin does not move it: every world-map pin is anchored by its
+-- centre (Client.PositionWorldMapPin), so a wider pin thickens around the same
+-- point instead of drifting off it.
+function NpcPins:SetHoveredMobPin(pin)
+    if self.hoveredMobPin == pin then
+        return
+    end
+    self.hoveredMobPin = pin
+    local animating = false
+    local index = 1
+    local total = table.getn(self.worldPool)
+    while index <= total do
+        local candidate = self.worldPool[index]
+        if candidate and candidate.unrealQuestBaseSize and index <= self.worldVisible then
+            if self:ApplyPinSize(candidate, candidate.unrealQuestBaseSize, true) then
+                animating = true
+            end
+        end
+        index = index + 1
+    end
+    self.mobPinAnimating = animating
+    local driver = UQ:GetModule("Driver")
+    if not driver then
+        self:AnimateMobPinHover(MOB_HOVER_DURATION)
+    elseif animating then
+        driver:Schedule("map.npcpinemphasis", 0, RunMobPinHoverAnimation)
+    else
+        driver:Unschedule("map.npcpinemphasis")
+    end
+end
+
+-- Leaving a pin must not drop a hover that already belongs to another one:
+-- this client can deliver the next pin's OnEnter before this OnLeave, and an
+-- unguarded clear would shrink the pin the mouse is actually on. The same
+-- guard the quest layer's giver/turn-in hover uses, for the same reason.
+function NpcPins:ClearHoveredMobPin(pin)
+    if self.hoveredMobPin ~= pin then
+        return
+    end
+    self:SetHoveredMobPin(nil)
+end
+
 function NpcPins:GetWorldPin(index)
     local pin = self.worldPool[index]
     if pin then
@@ -379,8 +588,14 @@ function NpcPins:GetWorldPin(index)
                     Client.ShowMapTooltip(pin,
                         NpcPins:TooltipLines(pin.unrealQuestNpcTarget))
                 end
+                if pin.unrealQuestNpcTarget and pin.unrealQuestNpcTarget.rankLabelKey then
+                    NpcPins:SetHoveredMobPin(pin)
+                end
             end,
-            function() Client.HideMapTooltip(pin) end,
+            function()
+                NpcPins:ClearHoveredMobPin(pin)
+                Client.HideMapTooltip(pin)
+            end,
             nil)
     end
     return pin
@@ -395,6 +610,21 @@ function NpcPins:GetMinimapPin(index)
         MINIMAP_PIN_SIZE, 1, 1, 1)
     if pin then
         self.minimapPool[index] = pin
+        Client.SetWorldMapPinHandlers(pin,
+            function()
+                NpcPins.minimapHoverPin = pin
+                if pin.unrealQuestNpcTarget then
+                    Client.ShowGameTooltip(pin,
+                        NpcPins:TooltipLines(pin.unrealQuestNpcTarget), "ANCHOR_LEFT")
+                end
+            end,
+            function()
+                if NpcPins.minimapHoverPin == pin then
+                    NpcPins.minimapHoverPin = nil
+                end
+                Client.HideGameTooltip(pin)
+            end,
+            nil)
     end
     return pin
 end
@@ -410,7 +640,7 @@ function NpcPins:DrawWorldMap()
             pin.unrealQuestNpcTarget = target
             local size = WORLD_PIN_SIZE
             if target.small then size = NODE_WORLD_PIN_SIZE end
-            Client.SetWorldMapPinSize(pin, size, size)
+            self:ApplyPinSize(pin, size, false)
             if type(target.icon) == "string" then
                 Client.SetWorldMapPinTexture(pin, Client.NPC_SERVICE_ICON_ROOT .. target.icon)
             else
@@ -469,6 +699,7 @@ function NpcPins:DrawMinimap(report, areaId)
         if distance <= reach then
             local pin = self:GetMinimapPin(visible + 1)
             if pin then
+                pin.unrealQuestNpcTarget = target
                 local size = MINIMAP_PIN_SIZE
                 if target.small then size = NODE_MINIMAP_PIN_SIZE end
                 Client.SetMinimapPinSize(pin, size, size)

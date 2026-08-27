@@ -47,6 +47,7 @@ local QuestEligibility = UQ:NewModule("QuestEligibility")
 QuestEligibility.raceBit = nil
 QuestEligibility.classBit = nil
 QuestEligibility.level = nil
+QuestEligibility.greenRange = nil
 QuestEligibility.faction = nil
 QuestEligibility.resolved = false
 
@@ -86,6 +87,7 @@ function QuestEligibility:RefreshPlayer()
     self.raceBit = BitForId(raceId)
     self.classBit = BitForId(classId)
     self.level = Client.GetPlayerLevel()
+    self.greenRange = Client.GetQuestGreenRange() or 5
     self.faction = Client.GetPlayerFaction()
     self.resolved = (self.raceBit ~= nil or self.classBit ~= nil or self.level ~= nil)
     return self.resolved
@@ -149,6 +151,18 @@ function QuestEligibility:ShowEventQuests()
         return false
     end
     return config:Get("showEventQuests") and true or false
+end
+
+-- A low-level quest is exactly one the client difficulty bands paint grey.
+-- Quest `lvl` is numeric bundled data; the boundary itself stays in ClientAPI
+-- beside GetQuestLevelColor so the tracker and the map cannot disagree.
+function QuestEligibility:IsLowLevel(questId)
+    local database = Database()
+    local record = database and database:GetQuest(questId)
+    if type(record) ~= "table" then
+        return false
+    end
+    return Client.IsQuestLevelTrivial(record.lvl, self.level, self.greenRange)
 end
 
 -- Returns true plus nil, or false plus the reason it was filtered out. An

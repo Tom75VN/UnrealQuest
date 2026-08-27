@@ -119,7 +119,8 @@ function EntityTooltip:BuildLines(unitKey)
             if not titled[quest.titleKey or ""] then
                 titled[quest.titleKey or ""] = true
                 table.insert(lines, {
-                    text = quest.title, r = TITLE_R, g = TITLE_G, b = TITLE_B,
+                    text = UQ.GetQuestDisplayTitle(quest),
+                    r = TITLE_R, g = TITLE_G, b = TITLE_B,
                 })
             end
             local line = ProgressLine(matcher, result)

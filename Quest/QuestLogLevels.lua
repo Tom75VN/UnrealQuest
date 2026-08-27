@@ -18,7 +18,8 @@ reproduced failure, not a worry -- see the long comment above
 Client.CleanQuestTitle in Compatibility/ClientAPI.lua, which exists to defend
 against exactly this when another addon does it.
 
-So the decoration is written onto the row widget's own text and nowhere else.
+So the decoration -- and, when enabled, the database-backed display title --
+is written onto the row widget's own text and nowhere else.
 Client.GetQuestLogEntry keeps returning the clean title, every matcher keeps
 working, and the two row-text fallbacks that do exist
 (Quest/QuestLogTracking.lua QuestFromText, Quest/QuestClicks.lua QuestFromText)
@@ -66,6 +67,10 @@ local POLL_INTERVAL = 0.2
 
 -- How many rows this pass wrote a prefix onto, for /uq status debugging.
 QuestLogLevels.decorated = 0
+-- Last exact text this module wrote to each recycled native row. It lets a
+-- language change safely replace its own previous translation while the row's
+-- stamped quest-log index remains the authoritative identity.
+QuestLogLevels.renderedRows = {}
 
 -- Splits off everything that has to stay in front of the prefix -- the row's
 -- indent, then a colour escape if there is one -- and returns it together
@@ -135,19 +140,53 @@ local function DecorateRow(row)
         return false
     end
 
+    local quest = nil
+    local state = UQ:GetModule("QuestState")
+    if state then
+        quest = state:GetQuestByTitle(title)
+    end
+    local displayTitle = UQ.GetQuestDisplayTitle(quest or { title = title }, title) or title
+
     local lead, rest = SplitLeadIn(text)
     local bare = StripLevelPrefix(rest)
-    if not RowCarriesTitle(bare, title) then
+    local previous = QuestLogLevels.renderedRows[row]
+    local isOwnText = previous and previous.questIndex == questIndex
+        and previous.text == text
+    if not isOwnText and not RowCarriesTitle(bare, title)
+        and not RowCarriesTitle(bare, displayTitle) then
         return false
     end
 
-    local decorated = lead .. "[" .. level .. "] " .. bare
+    -- Keep only what followed the title (normally a colour reset or a skin's
+    -- marker), never the old title itself. For our own previous rendering the
+    -- saved suffix avoids having to recognize a title from another language.
+    local suffix = isOwnText and (previous.suffix or "") or ""
+    if not isOwnText then
+        local startAt, endAt = string.find(bare, title, 1, true)
+        if not startAt then
+            startAt, endAt = string.find(bare, displayTitle, 1, true)
+        end
+        if startAt then
+            suffix = string.sub(bare, endAt + 1)
+        end
+    end
+
+    local decorated = lead .. "[" .. level .. "] " .. displayTitle .. suffix
     if decorated == text then
         -- Already correct, whoever wrote it. Writing it again every 0.2s
         -- would be the only thing here that could make the list flicker.
+        QuestLogLevels.renderedRows[row] = {
+            questIndex = questIndex, text = text, suffix = suffix,
+        }
         return true
     end
-    return Client.SetNativeObjectText(row, decorated)
+    if Client.SetNativeObjectText(row, decorated) then
+        QuestLogLevels.renderedRows[row] = {
+            questIndex = questIndex, text = decorated, suffix = suffix,
+        }
+        return true
+    end
+    return false
 end
 
 function QuestLogLevels:Refresh()

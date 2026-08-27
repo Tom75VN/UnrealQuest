@@ -376,12 +376,6 @@ STRINGS = {
     u"/uq rare on|off               включить или выключить оповещение",
     u"/uq rare on|off               开启或关闭提醒",
 ),
-"CMD_HELP_RARE_ELITES": (
-    u"/uq rare elites on|off        include ordinary elites",
-    u"/uq rare elites on|off        inclure les élites ordinaires",
-    u"/uq rare elites on|off        включать обычных элитных",
-    u"/uq rare elites on|off        包含普通精英",
-),
 "CMD_HELP_RARE_RANGE": (
     u"/uq rare range <yards>        how near counts as near",
     u"/uq rare range <mètres>       à quelle distance l'alerte se déclenche",

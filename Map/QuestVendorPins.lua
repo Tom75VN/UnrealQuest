@@ -140,6 +140,10 @@ local function HidePoolFrom(pool, first)
     local index = first
     local total = table.getn(pool)
     while index <= total do
+        if pool[index] == QuestVendorPins.minimapHoverPin then
+            Client.HideGameTooltip(pool[index])
+            QuestVendorPins.minimapHoverPin = nil
+        end
         Client.HideObject(pool[index])
         index = index + 1
     end
@@ -283,7 +287,7 @@ function QuestVendorPins:BuildTargets(areaId)
                             if target and not target.entrySeen[entryKey] then
                                 target.entrySeen[entryKey] = true
                                 table.insert(target.entries, {
-                                    questTitle = quest.title,
+                                    questTitle = UQ.GetQuestDisplayTitle(quest),
                                     itemName = row.itemName,
                                     have = have,
                                     need = need,
@@ -351,6 +355,7 @@ function QuestVendorPins:GetWorldPin(index)
         Client.RaiseWorldMapPin(pin, 6)
         Client.SetWorldMapPinHandlers(pin,
             function()
+                QuestVendorPins.minimapHoverPin = pin
                 if pin.unrealQuestVendorTarget then
                     Client.ShowMapTooltip(pin,
                         QuestVendorPins:TooltipLines(pin.unrealQuestVendorTarget))
@@ -371,6 +376,20 @@ function QuestVendorPins:GetMinimapPin(index)
         MINIMAP_PIN_SIZE, 1, 1, 1)
     if pin then
         self.minimapPool[index] = pin
+        Client.SetWorldMapPinHandlers(pin,
+            function()
+                if pin.unrealQuestVendorTarget then
+                    Client.ShowGameTooltip(pin,
+                        QuestVendorPins:TooltipLines(pin.unrealQuestVendorTarget), "ANCHOR_LEFT")
+                end
+            end,
+            function()
+                if QuestVendorPins.minimapHoverPin == pin then
+                    QuestVendorPins.minimapHoverPin = nil
+                end
+                Client.HideGameTooltip(pin)
+            end,
+            nil)
     end
     return pin
 end
@@ -440,6 +459,7 @@ function QuestVendorPins:DrawMinimap(report, areaId)
         if distance <= limit then
             local pin = self:GetMinimapPin(visible + 1)
             if pin then
+                pin.unrealQuestVendorTarget = target
                 Client.SetMinimapPinSize(pin, MINIMAP_PIN_SIZE, MINIMAP_PIN_SIZE)
                 if type(target.icon) == "string" then
                     Client.SetMinimapPinTexture(pin, Client.NPC_SERVICE_ICON_ROOT .. target.icon)
@@ -464,7 +484,10 @@ end
 -- without the quest log line ever moving.
 function QuestVendorPins:Signature()
     local bagItems = BagItems()
+    local config = Config()
     return tostring(self.questStamp) .. "|" .. tostring(bagItems and bagItems:GetToken())
+        .. "|" .. tostring(UQ.GetLanguage and UQ.GetLanguage())
+        .. "|" .. tostring(config and config:Get("translateQuestTitles"))
 end
 
 function QuestVendorPins:Refresh()

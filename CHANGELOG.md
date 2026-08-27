@@ -1,8 +1,20 @@
 # Changelog
 
-## 0.1.0
+## 0.2.0
 
-- A card and a sound now warn you when you come within 120 yards of a rare, rare elite or boss creature's known spawn, naming it, its rank, its level and how far away it is. This is proximity to a spawn point in the world data, not a live sighting: this client gives an addon no way to see the creatures around you. Ordinary elites are off by default; /uq rare turns the alert on or off, sets the range and auditions the alert sound.
+- Hovering any minimap quest dot, quest marker, service/node marker or quest vendor now opens its tooltip, matching pfQuest's minimap behavior.
+- Fixed the quest tracker's text and controls drawing over unit frames or the minimap when the tracker was placed beneath them.
+- Added a disabled-by-default "Show low-level quests" setting. When enabled, offerable grey/trivial quests appear on the world map and minimap with the low-level quest-giver icon; CLUCK! remains hidden because its chicken spawn cloud is map clutter.
+- Exploration quests now show their destination on the world map and minimap. "The Jasperlode Mine" now points to both recorded mine-entry exploration locations instead of displaying no objective dots.
+- Finished creature objectives now remove their own map and minimap dots while the quest remains in progress. For example, completing the Young Forest Bear objective in "Protect the Frontier" leaves only the Prowler locations.
+- Rare, elite and boss pins, quest giver markers and turn-in markers now ease smoothly into and out of their enlarged hover size.
+- A card and a sound now warn you when you come within 150 yards of a rare, rare elite or boss creature's known spawn, naming it, its rank, its level and how far away it is. This is proximity to a spawn point in the world data, not a live sighting: this client gives an addon no way to see the creatures around you. It covers the same creatures the NPC finder's rare-mob layer draws -- 409 curated rares and rare elites -- plus open-world bosses, and one checkbox turns the whole thing on or off. Ordinary elites are not included: they are every elite camp in the game plus parked NPCs like the level 61 Darkmoon Faire barker standing in Goldshire. /uq rare sets the range and auditions the alert sound.
+- City guards, faction officers and leaders no longer appear as elites on the map: Orgrimmar alone was drawing 33 of them, Thrall and Vol'jin included. Anything the world data marks as belonging to a player faction is treated as an NPC rather than a mob, unless it is a known rare.
+- The Darkmoon Faire's staff no longer appears either, so the level 61 barker standing in Goldshire stops showing up in a starter zone.
+- The proximity alert now opens with "A rare creature is nearby" above the name, so it says what happened before it says who, and the distance on it counts down live as you walk instead of freezing at the value it had when it appeared.
+- Hovering a rare, elite or boss pin on the map now grows it 1.5x, the same way a quest giver or turn-in marker does.
+- Each rare, elite or boss is drawn once per zone instead of once per recorded spawn point: Hogger has five coordinates in Elwynn Forest and took five pins. The pin sits on whichever of his real spawns is closest to the middle of them all, and its tooltip names the creature's own classification -- Rare, Rare Elite, Elite or Boss -- rather than the name of the filter row.
+- The NPC finder's "Rare Mobs" row is now "Rare/Elite/Boss" and shows every ranked creature in the zone, not just the 409 curated rares: elites and world bosses are drawn too, each pin wearing one of three icons for its rank.
 - The quest log now shows each quest's level in brackets before its name, the way the tracker window already did.
 - Fixed standalone quest-log tracking marks jumping to the end of differently sized quest titles after Shift-click. UnrealQuest now owns a fixed accent on each row and restores level prefixes in the same click.
 - Quests that ask you to buy something now show the traders selling it, on the world map and the minimap, with the NPC finder's vendor icon and a tooltip naming the quest, the item and your progress. The points disappear once you have the item; /uq map vendors off turns them off.

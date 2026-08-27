@@ -23,9 +23,9 @@ SelectPrimary's decision, and it is the densest one -- the same one the
 stable as the player moves, so the waypoint does not swap targets underfoot.
 Changing that is a change to SelectPrimary alone, and both layers follow.
 
-Nothing here reads the client. It is pure arithmetic over the bundled database
-plus the carried-item set, so it is exercised in full by the offline smoke
-test.
+Nothing here reads the client. It is pure arithmetic over the bundled database,
+the live objective model and the carried-item set, so it is exercised in full
+by the offline smoke test.
 ]]
 
 local UQ = UnrealQuest
@@ -44,6 +44,10 @@ end
 
 local function BagItems()
     return UQ:GetModule("BagItems")
+end
+
+local function ObjectiveMatch()
+    return UQ:GetModule("ObjectiveMatch")
 end
 
 local function CellKey(x, y)
@@ -161,6 +165,77 @@ function QuestTarget:SelectPrimary(components)
     return best
 end
 
+-- Removes a creature's locations only when the live quest log proves that
+-- every objective this creature can satisfy for this quest is finished.
+-- ObjectiveMatch already owns the two evidence paths: exact creature names
+-- parsed from kill lines, and bundled links from item objectives to their
+-- creature sources. An unmatched source stays visible rather than being
+-- guessed away; objects and area triggers likewise remain conservative until
+-- their own live-line matcher exists.
+local function FilterFinishedUnitObjectives(database, quest, locations)
+    local objectiveMatch = ObjectiveMatch()
+    local objectiveOwner = quest and (quest.objectiveOwner or quest)
+    if not objectiveMatch or not objectiveOwner
+        or table.getn(objectiveOwner.objectives or {}) == 0 then
+        return locations
+    end
+
+    local sourceFinished = {}
+    local hidesAny = false
+    local index = 1
+    local total = table.getn(locations)
+    while index <= total do
+        local location = locations[index]
+        if location and location.sourceType == "unit"
+            and type(location.sourceId) == "number" then
+            local finished = sourceFinished[location.sourceId]
+            if finished == nil then
+                finished = false
+                local unitKey = UQ.NameKey(database:GetUnitName(location.sourceId))
+                local matches = unitKey and objectiveMatch:FindForUnit(unitKey)
+                if matches then
+                    local matched = false
+                    local unfinished = false
+                    local matchIndex = 1
+                    local matchTotal = table.getn(matches)
+                    while matchIndex <= matchTotal do
+                        local objective = matches[matchIndex]
+                        if objective.quest == objectiveOwner then
+                            matched = true
+                            if not objective.finished then
+                                unfinished = true
+                            end
+                        end
+                        matchIndex = matchIndex + 1
+                    end
+                    finished = matched and not unfinished
+                end
+                sourceFinished[location.sourceId] = finished
+            end
+            if finished then
+                hidesAny = true
+            end
+        end
+        index = index + 1
+    end
+
+    if not hidesAny then
+        return locations
+    end
+
+    local filtered = {}
+    index = 1
+    while index <= total do
+        local location = locations[index]
+        if not location or location.sourceType ~= "unit"
+            or not sourceFinished[location.sourceId] then
+            table.insert(filtered, location)
+        end
+        index = index + 1
+    end
+    return filtered
+end
+
 -- Item-use objective sources, appended only while the player actually carries
 -- the item. Database:GetQuestLocations deliberately leaves these out because
 -- they are conditional: the objective does not exist until the item is in the
@@ -209,6 +284,7 @@ function QuestTarget:CollectLocations(quest, areaId, complete)
     local locations = database:GetQuestLocations(quest.questId, complete, areaId)
     local unknown = 0
     if not complete then
+        locations = FilterFinishedUnitObjectives(database, quest, locations)
         -- GetQuestLocations returns a cached, shared list, and appending the
         -- item-use targets to it would write the carried-item state of one
         -- moment into an answer that is supposed to be static. Copy first --

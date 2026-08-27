@@ -159,7 +159,7 @@ STRINGS.update({
 "NPC_CATEGORY_HERBS": ("Herbs & Flowers", "Herbes et fleurs", "Травы и цветы", "草药与花卉"),
 "NPC_CATEGORY_MINES": ("Mines & Ores", "Mines et minerais", "Жилы и руда", "矿脉与矿石"),
 "NPC_CATEGORY_FISH": ("Fishing Pools", "Bancs de poissons", "Рыбные места", "钓鱼点"),
-"NPC_CATEGORY_RARES": ("Rare Mobs", "Créatures rares", "Редкие существа", "稀有怪"),
+"NPC_CATEGORY_RARES": ("Rare/Elite/Boss", "Rare/Elite/Boss", "Редкие/элитные/боссы", "稀有/精英/首领"),
 "NPC_DETAIL_SKILL": ("(skill %s)", "(compétence %s)", "(навык %s)", "（技能 %s）"),
 "NPC_DETAIL_LEVEL": ("(level %s)", "(niveau %s)", "(уровень %s)", "（等级 %s）"),
 
@@ -359,6 +359,24 @@ STRINGS.update({
     "Маркеры с соприкасающимися значками нельзя навести по отдельности; "
     "это перечисляет их все.",
     "图标相接的标记无法分别悬停；此选项会将它们全部列出。",
+),
+"SETTINGS_LOW_LEVEL_QUESTS": (
+    "Show low-level quests",
+    "Afficher les quetes de bas niveau",
+    "Показывать задания низкого уровня",
+    "显示低等级任务",
+),
+"SETTINGS_TRANSLATE_QUEST_TITLES": (
+    "Translate quest text",
+    "Traduire le texte des quetes",
+    "Переводить текст заданий",
+    "翻译任务文本",
+),
+"SETTINGS_TRACKER_HIDE_UNSTARTED": (
+    "Hide quests until progress starts",
+    "Masquer les quetes sans progression",
+    "Скрывать задания без прогресса",
+    "隐藏尚无进度的任务",
 ),
 "SETTINGS_MINIMAP_CLAMP": (
     "Clamp off-view minimap markers to the edge",
@@ -672,6 +690,32 @@ STRINGS.update({
 "RARE_DIR_W": (u"west", u"à l'ouest", u"к западу", u"西方"),
 "RARE_DIR_NW": (u"north-west", u"au nord-ouest", u"к северо-западу", u"西北方"),
 
+# The line the card opens on. One per rank, not one pattern with the rank
+# poured into it: French alone needs "un rare" against "une elite rare".
+"RARE_NEARBY_RARE": (
+    u"A rare creature is nearby",
+    u"Une créature rare est à proximité",
+    u"Рядом редкое существо",
+    u"附近有稀有怪",
+),
+"RARE_NEARBY_RARE_ELITE": (
+    u"A rare elite is nearby",
+    u"Une élite rare est à proximité",
+    u"Рядом редкий элитный",
+    u"附近有稀有精英",
+),
+"RARE_NEARBY_BOSS": (
+    u"A boss is nearby",
+    u"Un boss est à proximité",
+    u"Рядом босс",
+    u"附近有首领",
+),
+"RARE_NEARBY_ELITE": (
+    u"An elite is nearby",
+    u"Une élite est à proximité",
+    u"Рядом элитный",
+    u"附近有精英",
+),
 "RARE_ALERT_SUBTITLE_LEVEL": (
     u"%s — level %s",
     u"%s — niveau %s",
@@ -693,15 +737,15 @@ STRINGS.update({
 
 # --- settings page: the rare alert rows --------------------------------------
 "SETTINGS_RARE_ALERT": (
-    u"Rare and boss alert",
-    u"Alerte rare et boss",
-    u"Оповещать о редких",
-    u"稀有与首领提醒",
+    u"Elite mobs alert",
+    u"Alerte monstres elites",
+    u"Оповещение об элитных",
+    u"精英怪提醒",
 ),
-"SETTINGS_RARE_ALERT_ELITES": (
-    u"Alert on elites too",
-    u"Alerter aussi sur les élites",
-    u"И об обычных элитных",
-    u"普通精英也提醒",
+"SETTINGS_RARE_ALERT_NOTE": (
+    u"Alert within %s yd of elite mobs.",
+    u"Alerte a %s m des elites.",
+    u"Оповещение в %s м от элитных.",
+    u"距精英怪 %s 码时提醒。",
 ),
 })

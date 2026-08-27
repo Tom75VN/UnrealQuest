@@ -514,34 +514,44 @@ function Settings:BuildPage(parent)
         page.Gap(7)
     end
 
-    -- THREE checkboxes stacked in the opacity slider's right column, and the
-    -- cursor put back to the top of the row afterwards, so the whole group
-    -- costs the page nothing vertically.
+    -- The rare alert, its one-line explanation and the two tracker filters are
+    -- stacked in the opacity slider's right column. The cursor is put back to
+    -- the top of the row afterwards, so the group shares one compact band.
     --
     -- The page is within a PIXEL of the fixed 428px content box both hosts
     -- hand it (the smoke test measures it), and neither host scrolls, so a new
     -- heading plus a row of its own would have pushed its own controls off the
     -- bottom -- silently, which is what the height check exists to prevent. A
-    -- noteless checkbox is 18px and the slider's band is 58, so three of them
-    -- fit inside height the row was already spending.
+    -- A checkbox is 18px and the reserved one-line note is 17px, so the three
+    -- switches plus the note need a 71px row. The page still remains inside
+    -- the fixed content box both hosts provide (guarded below and in smoke).
     --
-    -- Their placement here is a height constraint, not a claim that the rare
-    -- alert is a tracker option: this first section is unlabelled (the page
-    -- title stands in its heading's place), so nothing above them says
-    -- otherwise. Each label is written to stand on its own for the same
-    -- reason.
+    -- The alert is first in the column now, with a grey explanation immediately
+    -- below it, so it reads as its own feature rather than as a subordinate
+    -- tracker switch. Its placement in this shared row remains a height
+    -- constraint, not a claim that it is a tracker option.
     --
-    -- The alert's range and sound kit are deliberately NOT on this page. Range
-    -- is a number a player sets once, and the sound has to be AUDITIONED to be
-    -- chosen at all -- an unknown SoundEntries kit name is silent rather than
-    -- an error on this client -- so both live on "/uq rare", which plays the
-    -- kit as it stores it.
+    -- The rare alert is ONE switch on purpose: it covers rares, rare elites
+    -- and bosses, and there is no per-rank filtering to expose.
+    --
+    -- The alert's range and sound kit are deliberately NOT on this page.
+    -- Range is a number a player sets once, and the sound has to be AUDITIONED
+    -- to be chosen at all -- an unknown SoundEntries kit name is silent rather
+    -- than an error on this client -- so both live on "/uq rare", which plays
+    -- the kit as it stores it.
     local rowTop = page.y
-    page.Checkbox("trackerCurrentZoneOnly", UQ.L("SETTINGS_TRACKER_CURRENT_ZONE"),
-        nil, { left = 250, width = TEXT_WIDTH - 250, advance = CHECKBOX_ADVANCE })
+    local alertRowAdvance = CHECKBOX_ADVANCE * 3 + BODY_LINE_HEIGHT + 4
     page.Checkbox("rareAlert", UQ.L("SETTINGS_RARE_ALERT"),
         nil, { left = 250, width = TEXT_WIDTH - 250, advance = CHECKBOX_ADVANCE })
-    page.Checkbox("rareAlertElites", UQ.L("SETTINGS_RARE_ALERT_ELITES"),
+    local rareAlertNote = page.Body(UQ.L("SETTINGS_RARE_ALERT_NOTE",
+        Setting("rareAlertRange") or 150), 250 + NOTE_INDENT, 1)
+    page.Sync(function()
+        Client.SetSettingsBodyText(rareAlertNote, UQ.L("SETTINGS_RARE_ALERT_NOTE",
+            Setting("rareAlertRange") or 150))
+    end)
+    page.Checkbox("trackerCurrentZoneOnly", UQ.L("SETTINGS_TRACKER_CURRENT_ZONE"),
+        nil, { left = 250, width = TEXT_WIDTH - 250, advance = CHECKBOX_ADVANCE })
+    page.Checkbox("trackerHideUnstartedQuests", UQ.L("SETTINGS_TRACKER_HIDE_UNSTARTED"),
         nil, { left = 250, width = TEXT_WIDTH - 250, advance = 0 })
     page.y = rowTop
 
@@ -551,7 +561,7 @@ function Settings:BuildPage(parent)
             if tracker then
                 tracker:ApplyBackgroundOpacity(value)
             end
-        end, { width = 160 })
+        end, { width = 160, advance = alertRowAdvance })
 
     page.Rule()
     page.Heading(UQ.L("SETTINGS_HEADING_WORLD_MAP"))
@@ -586,16 +596,22 @@ function Settings:BuildPage(parent)
 
     -- Notes on this page are kept to one line: both hosts hand the page a
     -- fixed 428px box that neither of them scrolls.
-    page.Checkbox("mapClusterTooltips", UQ.L("SETTINGS_MAP_CLUSTER"),
-        UQ.L("SETTINGS_MAP_CLUSTER_NOTE"))
+    -- The two short quest options share one line. Their four translations are
+    -- deliberately kept within their half-width columns, preserving the page
+    -- height in both fixed, non-scrolling hosts.
+    page.Checkbox("mapClusterTooltips", UQ.L("SETTINGS_MAP_CLUSTER"), nil,
+        { advance = CHECKBOX_ADVANCE })
+    page.Checkbox("translateQuestTitles", UQ.L("SETTINGS_TRANSLATE_QUEST_TITLES"), nil,
+        { width = 230, advance = 0 })
+    page.Checkbox("showLowLevelQuests", UQ.L("SETTINGS_LOW_LEVEL_QUESTS"), nil,
+        { left = 250, width = TEXT_WIDTH - 250, advance = CHECKBOX_ADVANCE })
 
     page.Checkbox("minimapPinsClampEdge", UQ.L("SETTINGS_MINIMAP_CLAMP"),
         UQ.L("SETTINGS_MINIMAP_CLAMP_NOTE"))
 
-    -- The import button's label describes its action, so a compact gap is
-    -- enough separation after the dot-size sliders without pushing the page
-    -- beyond either host's fixed content box.
-    page.Gap(8)
+    -- The import button's label describes its action. The ordinary row gap
+    -- above is enough separation; the old extra 8px is now used by the clearer
+    -- two-line rare-alert description at the top of the page.
     page.Heading(UQ.L("SETTINGS_HEADING_QUEST_HISTORY"))
 
     -- This client has no completed-quest API, so a fresh install cannot know

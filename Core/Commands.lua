@@ -93,7 +93,6 @@ local HELP_TAIL_KEYS = {
     "CMD_HELP_PFQUEST_UNDO",
     "CMD_HELP_RARE",
     "CMD_HELP_RARE_ONOFF",
-    "CMD_HELP_RARE_ELITES",
     "CMD_HELP_RARE_RANGE",
     "CMD_HELP_RARE_SOUND",
     "CMD_HELP_RARE_TEST",
@@ -565,16 +564,6 @@ local function ShowRareAlert(target)
         return
     end
 
-    if target == "elites on" or target == "elites off" then
-        config:Set("rareAlertElites", target == "elites on")
-        if target == "elites on" then
-            Line(UQ.L("CMD_RARE_ELITES_ON"))
-        else
-            Line(UQ.L("CMD_RARE_ELITES_OFF"))
-        end
-        return
-    end
-
     if target == "test" then
         local name, why = alert:Test()
         if name then
@@ -616,8 +605,7 @@ local function ShowRareAlert(target)
     local status = alert:GetStatus()
     Line(UQ.L("CMD_RARE_TITLE"))
     Line("  " .. UQ.L("CMD_RARE_SETTING",
-        status.enabled and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF"),
-        status.elites and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF")))
+        status.enabled and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF")))
     Line("  " .. UQ.L("CMD_RARE_RANGE", tostring(status.range), tostring(status.seconds)))
     Line("  " .. UQ.L("CMD_RARE_SOUND", tostring(status.sound), tostring(status.soundPlayed)))
     if not status.soundAvailable then
@@ -1279,7 +1267,8 @@ local function ShowTracker(argument)
     Line("  width=" .. tostring(report.width) .. " height=" .. tostring(height)
         .. " objectives=" .. tostring(report.objectives)
         .. " zones=" .. (report.groupByZone and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF"))
-        .. " curzone=" .. (report.currentZoneOnly and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF")))
+        .. " curzone=" .. (report.currentZoneOnly and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF"))
+        .. " unstarted=" .. (report.hideUnstarted and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF")))
     Line("  " .. UQ.L("CMD_TRACKER_POSITION", tostring(report.point),
         string.format("%.0f, %.0f", report.x or 0, report.y or 0))
         .. " -- drags=" .. tostring(report.drags)
