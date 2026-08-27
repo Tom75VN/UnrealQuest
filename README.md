@@ -21,6 +21,7 @@ UnrealQuest turns questing into exploration instead of guesswork. It is designed
 - Watch every quest you need in a movable tracker window, beyond the client's native five-quest limit, grouped by zone with live objective progress.
 - Find nearby auctioneers, bankers, flight masters, mailboxes, vendors and class trainers from the quest tracker's NPC finder.
 - Put treasure chests, herbs, mining veins, fishing pools and rare mobs on both maps from the same menu, each herb and vein drawn with its own icon.
+- Buy quest items without hunting for the shop: when a quest asks for something a trader sells, the sellers in the zone are marked on both maps with the NPC finder's vendor icon, and the mark clears once you have the item.
 - See live quest progress in creature tooltips and recognize relevant targets through automatic quest marks.
 - Import completed-quest history from pfQuest so finished quests do not reappear on the map.
 - Read the whole interface in English, French, Russian or Simplified Chinese, chosen with the flag row in the settings window -- or automatically matched to unrealUI's language when that addon is installed.

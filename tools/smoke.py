@@ -1201,6 +1201,105 @@ check("clearing the last category hides both pin pools", rt.eval("""(function()
     return pins.worldVisible == 0 and pins.minimapVisible == 0
 end)()"""))
 
+print("quest vendor points")
+# "Give Gerard a Drink" (16) wants one Refreshing Spring Water, which nothing in
+# Elwynn Forest drops: it is bought, and the bundled item record names eight
+# sellers in the zone. The objective cloud has nothing to draw for such a quest,
+# so these pins are the only thing that answers "where do I get this".
+rt.execute("""
+    table.insert(UQ_TEST_LOG, { "Give Gerard a Drink", 5, nil, nil, nil, nil,
+      { { "Refreshing Spring Water: 0/1", "item", nil } } })
+    UnrealQuest:GetModule('QuestState'):Scan()
+    local pins = UnrealQuest:GetModule('QuestVendorPins')
+    pins.dirty = true
+    pins:Refresh()
+""")
+check("the bundled item record names a bought objective's vendors", rt.eval("""(function()
+    local rows = UnrealQuest:GetModule('Database'):GetQuestVendorTargets(16)
+    local sawItem, sawDobbins = false, false
+    for _, row in ipairs(rows) do
+        if row.itemName == 'Refreshing Spring Water' then sawItem = true end
+        if row.unitId == 465 then sawDobbins = true end
+        if type(row.unitName) ~= 'string' then return false end
+    end
+    return table.getn(rows) > 0 and sawItem and sawDobbins
+end)()"""))
+check("a bought objective is not folded into the quest's objective cloud", rt.eval("""(function()
+    -- GetQuestLocations must stay blind to the vendor relation: a shopkeeper is
+    -- not where the objective happens.
+    local locations = UnrealQuest:GetModule('Database'):GetQuestLocations(16, false, 12)
+    for _, location in ipairs(locations) do
+        if location.sourceType == 'unit' and location.sourceId == 465 then return false end
+    end
+    return true
+end)()"""))
+check("a quest that has to buy its item gets vendor points on both maps", rt.eval("""(function()
+    local pins = UnrealQuest:GetModule('QuestVendorPins')
+    return table.getn(pins.targets) > 0 and pins.worldVisible > 0 and pins.minimapVisible > 0
+end)()"""), str(rt.eval("""(function()
+    local pins = UnrealQuest:GetModule('QuestVendorPins')
+    return 'targets=' .. tostring(table.getn(pins.targets))
+        .. ' world=' .. tostring(pins.worldVisible)
+        .. ' minimap=' .. tostring(pins.minimapVisible)
+        .. ' area=' .. tostring(pins.lastAreaId)
+end)()""")))
+check("a vendor point wears the NPC finder's own vendor icon", rt.eval("""(function()
+    local pins = UnrealQuest:GetModule('QuestVendorPins')
+    local path = 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\icons\\\\vendor'
+    local world = pins.worldPool[1]
+    local minimap = pins.minimapPool[1]
+    return world and minimap and world.unrealQuestTexture and minimap.unrealQuestTexture
+        and world.unrealQuestTexture:GetTexture() == path
+        and minimap.unrealQuestTexture:GetTexture() == path
+        and world:GetWidth() == 15 and minimap:GetWidth() == 14
+end)()"""))
+check("its tooltip names the vendor, the quest and the item it sells", rt.eval("""(function()
+    local pins = UnrealQuest:GetModule('QuestVendorPins')
+    local target = pins.targets[1]
+    local lines = pins:TooltipLines(target)
+    local sawVendorLabel, sawQuest, sawItem = false, false, false
+    for _, line in ipairs(lines) do
+        if line.text == 'Vendor' then sawVendorLabel = true end
+        if line.text == 'Give Gerard a Drink' then sawQuest = true end
+        if line.text == '- Refreshing Spring Water 0/1' then sawItem = true end
+    end
+    return lines[1].text == target.name and sawVendorLabel and sawQuest and sawItem
+end)()"""))
+rt.execute("""
+    local pin = UnrealQuest:GetModule('QuestVendorPins').worldPool[1]
+    pin:GetScript('OnEnter')()
+""")
+check("hovering a vendor point opens the map tooltip on it", rt.eval("""(function()
+    local tooltip = WorldMapTooltip or GameTooltip
+    return tooltip.owner == UnrealQuest:GetModule('QuestVendorPins').worldPool[1]
+end)()"""))
+rt.execute("""
+    UQ_TEST_LOG[table.getn(UQ_TEST_LOG)][7][1][1] = 'Refreshing Spring Water: 1/1'
+    UQ_TEST_LOG[table.getn(UQ_TEST_LOG)][7][1][3] = 1
+    UnrealQuest:GetModule('QuestState'):Scan()
+    UnrealQuest:GetModule('QuestState'):RefreshObjectiveSlice()
+    local pins = UnrealQuest:GetModule('QuestVendorPins')
+    pins.dirty = true
+    pins:Refresh()
+""")
+check("a satisfied objective takes its vendor points back off the map", rt.eval("""(function()
+    local pins = UnrealQuest:GetModule('QuestVendorPins')
+    return table.getn(pins.targets) == 0 and pins.worldVisible == 0 and pins.minimapVisible == 0
+end)()"""))
+rt.execute("""
+    UnrealQuest:GetModule('Config'):Set('questVendorPins', false)
+    table.remove(UQ_TEST_LOG)
+    UnrealQuest:GetModule('QuestState'):Scan()
+    local pins = UnrealQuest:GetModule('QuestVendorPins')
+    pins.dirty = true
+    pins:Refresh()
+""")
+check("/uq map vendors off keeps the layer silent", rt.eval("""(function()
+    local pins = UnrealQuest:GetModule('QuestVendorPins')
+    return pins:GetStatus().enabled == false and pins.worldVisible == 0
+end)()"""))
+rt.execute("UnrealQuest:GetModule('Config'):Set('questVendorPins', true)")
+
 print("entity tooltip")
 rt.execute("""
     local state = UnrealQuest:GetModule('QuestState')

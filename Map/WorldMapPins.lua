@@ -2991,6 +2991,15 @@ function WorldMapPins:IsResolvedQuest(quest)
     return IsResolvedQuest(quest)
 end
 
+-- The database IDs one live quest row may be DRAWN for: its own when it
+-- resolved, the union of its same-title candidates when it is honestly
+-- ambiguous. Public so a second spatial layer -- Map/QuestVendorPins.lua --
+-- reads ambiguity the same way this one does instead of writing its own rule;
+-- the identity warning on GetQuestMapIds applies to every caller.
+function WorldMapPins:GetQuestMapIds(quest)
+    return GetQuestMapIds(quest)
+end
+
 -- Quest IDs already in the player's log, which is what makes a giver's quest
 -- "taken" rather than "still to take".
 function WorldMapPins:BuildActiveQuestIds(quests)

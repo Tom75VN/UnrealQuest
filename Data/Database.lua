@@ -19,7 +19,10 @@ Table shapes this adapter depends on:
   quests_<locale>[id]   T title, O objectives text, D description
   units[id]         coords = { { x, y, zoneId, respawn }, ... }, lvl
   objects[id]       coords = { { x, y, zoneId, respawn }, ... }, fac
-  items[id]         U = { unitId = dropRate }, O = { objectId = dropRate }
+  items[id]         U = { unitId = dropRate }, O = { objectId = dropRate },
+                    V = { unitId = stockLimit }; V is the vendor relation and
+                    its value is the vendor's limited stock (0 = unlimited),
+                    never a faction token or a price
   zones[zoneId]     parentZoneOrContinent, width, height, xOffset, yOffset
   zones_<locale>[id]    localized area name
   minimap[zoneId]   zone width and height in yards
@@ -94,6 +97,10 @@ local questLocationCacheCount = 0
 -- 4433 bundled quests without a counter of its own.
 local questItemUseTargetCache = {}
 
+-- And once more for the vendor targets of a quest's item objectives, which are
+-- the same kind of static relation walk asked for on the same map refresh.
+local questVendorTargetCache = {}
+
 -- The map only ever asks about quests in the log, in the player's own area, so
 -- the live key set is a few dozen entries. This bound is a safety net for a
 -- session that somehow accumulates many zones and many quests, not an expected
@@ -105,6 +112,7 @@ local function FlushQuestLocationCache()
     questLocationCache = {}
     questLocationCacheCount = 0
     questItemUseTargetCache = {}
+    questVendorTargetCache = {}
 end
 
 local function CacheQuestLocations(cacheKey, locations)
@@ -726,6 +734,110 @@ function Database:GetQuestItemUseTargets(questId)
     end
 
     questItemUseTargetCache[questId] = targets
+    return targets
+end
+
+-- Bought objectives ---------------------------------------------------------
+-- A quest item is not always killed for or looted. Some are simply sold: the
+-- Refreshing Spring Water of "Give Gerard a Drink", the Coarse Thread of
+-- "Kodo Hide Bag", the Skin of Sweet Rum of "Dry Times". The bundled item
+-- record carries that as its own relation -- items[id].V maps a vendor unit
+-- to the stock limit it keeps (0 = unlimited) -- and GetQuestLocations
+-- deliberately does not walk it: a vendor is not where the objective happens,
+-- it is where the objective is bought, so folding its coordinates into the
+-- objective cloud would put a blue area over a shopkeeper and drag the
+-- quest's single point towards him.
+--
+-- Both objective item relations are read. `obj.I` is the ordinary "bring me
+-- N of these" case and is almost all of it; `obj.IR` is the item-use case
+-- (see GetQuestItemUseTargets), where the item still has to be obtained
+-- before it can be used on anything, and two bundled quests buy it.
+--
+-- Returns a list of { itemId, itemName, unitId, unitName, faction }, ordered
+-- by item and then by unit ID so the same quest always produces the same
+-- list. Coordinates are deliberately NOT resolved here: the caller knows
+-- which area it is drawing and asks GetEntityLocations for that one.
+function Database:GetQuestVendorTargets(questId)
+    local targets = {}
+    if not db or type(questId) ~= "number" then
+        return targets
+    end
+    local cached = questVendorTargetCache[questId]
+    if cached then
+        return cached
+    end
+    local relation = self:GetQuestObjectiveSources(questId)
+    if type(relation) ~= "table" then
+        questVendorTargetCache[questId] = targets
+        return targets
+    end
+
+    local seenItem = {}
+
+    local function AppendItem(itemId)
+        if type(itemId) ~= "number" or seenItem[itemId] then
+            return
+        end
+        seenItem[itemId] = true
+        local item = self:GetItem(itemId)
+        if type(item) ~= "table" or type(item.V) ~= "table" then
+            return
+        end
+        local itemName = self:GetItemName(itemId)
+        -- pairs order is a hash order, and this list ends up deciding which
+        -- vendors survive a pin budget, so it is sorted before it is handed
+        -- out rather than shuffling between two identical rebuilds.
+        local unitIds = {}
+        local unitId
+        for unitId in pairs(item.V) do
+            if type(unitId) == "number" then
+                table.insert(unitIds, unitId)
+            end
+        end
+        table.sort(unitIds)
+        local index = 1
+        local total = table.getn(unitIds)
+        while index <= total do
+            local id = unitIds[index]
+            local unit = self:GetUnit(id)
+            -- A vendor with no recorded spawn cannot be drawn anywhere, so it
+            -- is dropped here instead of costing every caller a lookup.
+            if type(unit) == "table" and type(unit.coords) == "table" then
+                table.insert(targets, {
+                    itemId = itemId,
+                    itemName = itemName,
+                    unitId = id,
+                    unitName = self:GetUnitName(id),
+                    faction = unit.fac,
+                })
+            end
+            index = index + 1
+        end
+    end
+
+    -- Sorted for the same reason the unit IDs are: a hash order here would
+    -- let two rebuilds spend the caller's pin budget on different items.
+    local itemIds = {}
+    local _, itemId
+    if type(relation.I) == "table" then
+        for _, itemId in pairs(relation.I) do
+            if type(itemId) == "number" then table.insert(itemIds, itemId) end
+        end
+    end
+    if type(relation.IR) == "table" then
+        for _, itemId in pairs(relation.IR) do
+            if type(itemId) == "number" then table.insert(itemIds, itemId) end
+        end
+    end
+    table.sort(itemIds)
+    local itemIndex = 1
+    local itemTotal = table.getn(itemIds)
+    while itemIndex <= itemTotal do
+        AppendItem(itemIds[itemIndex])
+        itemIndex = itemIndex + 1
+    end
+
+    questVendorTargetCache[questId] = targets
     return targets
 end
 

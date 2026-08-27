@@ -53,6 +53,7 @@ local HELP_KEYS = {
     "CMD_HELP_EVENTS",
     "CMD_HELP_MAP",
     "CMD_HELP_MAP_STYLE",
+    "CMD_HELP_MAP_VENDORS",
     "CMD_HELP_MINIMAP",
     "CMD_HELP_MINIMAP_ONOFF",
     "CMD_HELP_MINIMAP_SPAN",
@@ -282,6 +283,35 @@ local function ShowMap(target)
         end
         return
     end
+
+    -- The same shape one line up, for the vendor points of quest items that
+    -- are bought (Map/QuestVendorPins.lua). That layer reads the setting on
+    -- its own refresh, so writing it is the whole job; `dirty` only saves the
+    -- player a view change before it takes effect.
+    local vendorWord, vendorEnd = string.find(target, "^vendors")
+    if vendorWord then
+        local argument = UQ.Trim(string.sub(target, vendorEnd + 1)) or ""
+        if argument ~= "on" and argument ~= "off" then
+            Line(UQ.L("CMD_MAP_VENDORS_USAGE"))
+            return
+        end
+        local config = UQ:GetModule("Config")
+        if not config then
+            Line(UQ.L("CMD_MODULE_MISSING_CONFIG"))
+            return
+        end
+        config:Set("questVendorPins", argument == "on")
+        local vendorPins = UQ:GetModule("QuestVendorPins")
+        if vendorPins then
+            vendorPins.dirty = true
+        end
+        if argument == "on" then
+            Line(UQ.L("CMD_MAP_VENDORS_SET_ON"))
+        else
+            Line(UQ.L("CMD_MAP_VENDORS_SET_OFF"))
+        end
+        return
+    end
     local report = map:Inspect()
     Line(UQ.L("CMD_MAP_TITLE"))
     Line("  " .. UQ.L("CMD_MAP_MAPFILE", tostring(report.mapFile)))
@@ -386,6 +416,18 @@ local function ShowMap(target)
             Line("  " .. UQ.L("CMD_MAP_AREAS_UNAVAILABLE"))
             Line("  " .. UQ.L("CMD_MAP_MARKER_COLOURS"))
         end
+    end
+
+    -- Its own layer, so its own line: a quest whose item is bought has no
+    -- objective area at all, and a zero here with the setting on is the
+    -- difference between "no such quest in the log" and "the layer is not
+    -- drawing".
+    local vendorPins = UQ:GetModule("QuestVendorPins")
+    if vendorPins then
+        local vendorStatus = vendorPins:GetStatus()
+        Line("  " .. UQ.L("CMD_MAP_VENDOR_PINS",
+            vendorStatus.enabled and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF"),
+            tostring(vendorStatus.worldVisible), tostring(vendorStatus.minimapVisible)))
     end
 end
 

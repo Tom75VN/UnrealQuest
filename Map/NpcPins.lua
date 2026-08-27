@@ -214,6 +214,27 @@ function NpcPins:GetMenuEntries()
     return entries
 end
 
+-- One category's presentation, for a layer that draws the same KIND of point
+-- from a different source -- Map/QuestVendorPins.lua puts a quest's vendors on
+-- the map with the vendor row's own artwork and colour. Handed out as a copy
+-- so the menu's own table cannot be edited from outside, and read through this
+-- rather than duplicated over there so the two can never drift into showing
+-- two different icons for the same thing. Returns nil for an unknown key.
+function NpcPins:GetCategory(key)
+    local category = CATEGORY_BY_KEY[key]
+    if not category then
+        return nil
+    end
+    return {
+        key = category.key,
+        labelKey = category.labelKey,
+        icon = category.icon,
+        red = category.red,
+        green = category.green,
+        blue = category.blue,
+    }
+end
+
 function NpcPins:ToggleMenu(anchor)
     local menuAnchor = anchor or self.button
     if not menuAnchor then

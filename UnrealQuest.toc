@@ -99,6 +99,7 @@ Map\MapContext.lua
 Map\WorldMapPins.lua
 Map\MinimapPins.lua
 Map\NpcPins.lua
+Map\QuestVendorPins.lua
 World\WorldFrameScan.lua
 World\QuestMarks.lua
 HUD\PlayerHeading.lua

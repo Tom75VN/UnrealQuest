@@ -149,6 +149,12 @@ local defaults = {
     -- indoors on|off" -- for the case where the interior test misfires.
     minimapPinsHideIndoors = true,
 
+    -- Vendor points for quest items that are bought rather than killed for or
+    -- looted -- see Map/QuestVendorPins.lua. On by default: without them the
+    -- map has nothing at all to say about such a quest, and the points come
+    -- and go with the objective instead of standing there permanently.
+    questVendorPins = true,
+
     -- Percentage of the 10.8px minimap objective dot. 100 is 10% smaller than
     -- the former 12px default; the settings slider allows 50-150.
     minimapObjectiveDotScale = 100,
