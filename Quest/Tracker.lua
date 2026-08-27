@@ -178,6 +178,42 @@ local function SnapshotNative(quests)
     return titles
 end
 
+-- Drops a native watch the native panel cannot render.
+--
+-- See Client.CanNativeWatchQuest: QuestWatch_Update concatenates the objective
+-- text it reads with the two-argument GetQuestLogLeaderBoard without a nil
+-- check, and it does so from QuestLog_OnEvent, where no pcall of ours can
+-- catch the error. A watch already placed on such a quest -- by an earlier
+-- session of this addon, or by the player through the native Quest Log -- is
+-- therefore removed again before the next QUEST_LOG_UPDATE turns it into an
+-- uncatchable error.
+--
+-- The title stays remembered, because UnrealQuest's own tracker window reads
+-- objectives through the compatibility layer's fallback path and renders the
+-- quest fine. It is dropped from the native snapshot as well, so that Sync
+-- does not read this removal as the player untracking the quest.
+local function PurgeUnreadableNativeWatches(self, quests)
+    local removed = 0
+    local index = 1
+    local total = table.getn(quests)
+    while index <= total do
+        local quest = quests[index]
+        if quest and quest.index and quest.title
+            and Client.IsQuestWatched(quest.index)
+            and not Client.CanNativeWatchQuest(quest.index) then
+            Client.RemoveQuestWatch(quest.index)
+            if self.nativeTitles then
+                self.nativeTitles[quest.title] = nil
+            end
+            removed = removed + 1
+            UQ:Debug("dropped the native watch on \"" .. quest.title
+                .. "\": the native panel cannot read its objectives")
+        end
+        index = index + 1
+    end
+    return removed
+end
+
 -- Fill only the native slots the client actually has. AddQuestWatch returns
 -- no useful success value, so every attempted addition is verified through
 -- IsQuestWatched before it counts as a changed native watch.
@@ -193,7 +229,8 @@ function Tracker:MirrorNativeWatches(quests)
     while index <= total and count < Client.MAX_WATCHES do
         local quest = quests[index]
         if quest and quest.index and self:IsTracked(quest)
-            and not Client.IsQuestWatched(quest.index) then
+            and not Client.IsQuestWatched(quest.index)
+            and Client.CanNativeWatchQuest(quest.index) then
             Client.AddQuestWatch(quest.index)
             if Client.IsQuestWatched(quest.index) then
                 applied = applied + 1
@@ -214,7 +251,8 @@ function Tracker:Track(quest)
 
     local nativeChanged = false
     if not Client.IsQuestWatched(quest.index)
-        and Client.GetWatchCount() < Client.MAX_WATCHES then
+        and Client.GetWatchCount() < Client.MAX_WATCHES
+        and Client.CanNativeWatchQuest(quest.index) then
         Client.AddQuestWatch(quest.index)
         nativeChanged = Client.IsQuestWatched(quest.index) and true or false
     end
@@ -255,6 +293,24 @@ function Tracker:Untrack(quest)
         RefreshNativeWatch()
     end
     return true
+end
+
+-- The event-driven half of the purge above. Tracker:Sync polls once a second,
+-- which is fast enough to keep the addon's own state honest but not fast
+-- enough here: the native panel redraws on the very next QUEST_LOG_UPDATE, so
+-- a watch the player just placed through the native Quest Log's own Track
+-- button -- the one tracking path this addon does not own -- has to be checked
+-- the moment the client says the quest log or the watch list changed.
+function Tracker:PurgeNativeWatches()
+    local state = State()
+    if not state then
+        return 0
+    end
+    local removed = PurgeUnreadableNativeWatches(self, state:GetOrderedQuests())
+    if removed > 0 then
+        RefreshNativeWatch()
+    end
+    return removed
 end
 
 function Tracker:Toggle(quest)
@@ -305,10 +361,14 @@ function Tracker:Restore()
     end
 
     local quests = state:GetOrderedQuests()
+    local purged = PurgeUnreadableNativeWatches(self, quests)
     local applied = self:MirrorNativeWatches(quests)
 
     self.restored = true
     self.nativeTitles = SnapshotNative(quests)
+    if purged > 0 then
+        RefreshNativeWatch()
+    end
     if applied > 0 then
         RefreshNativeWatch()
         UQ:Debug("restored tracking on " .. applied .. " quest(s)")
@@ -330,6 +390,7 @@ function Tracker:Sync()
     local trustRemovals = self.restored and state:IsComplete()
 
     local quests = state:GetOrderedQuests()
+    local purged = PurgeUnreadableNativeWatches(self, quests)
     local native = SnapshotNative(quests)
 
     if trustRemovals and self.nativeTitles then
@@ -380,8 +441,12 @@ function Tracker:Sync()
         local applied = self:MirrorNativeWatches(quests)
         if applied > 0 then
             self.nativeTitles = SnapshotNative(quests)
+        end
+        if applied > 0 or purged > 0 then
             RefreshNativeWatch()
         end
+    elseif purged > 0 then
+        RefreshNativeWatch()
     end
 end
 
@@ -420,6 +485,16 @@ function Tracker:OnEnable()
             end
         end)
         driver:Schedule("tracker.sync", 1.0, function() Tracker:Sync() end)
+    end
+
+    local events = UQ:GetModule("Events")
+    if events then
+        local purge = function()
+            Tracker:PurgeNativeWatches()
+        end
+        events:Register("QUEST_LOG_UPDATE", purge)
+        events:Register("QUEST_WATCH_UPDATE", purge)
+        events:Register("UNIT_QUEST_LOG_CHANGED", purge)
     end
 
     local state = State()

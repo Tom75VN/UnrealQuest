@@ -45,60 +45,64 @@ local MAX_PINS = 480
 -- selection still shows something of each.
 local MIN_PINS_PER_CATEGORY = 60
 
+-- `labelKey` rather than a label: this table is built when the file loads,
+-- which is before Core/Locale.lua has resolved the language, so a translated
+-- string baked in here would be English for the whole session. Resolved at use
+-- in GetMenuEntries and TooltipLines.
 local CATEGORIES = {
-    { key = "trainer", setting = "npcCategoryTrainer", label = "Class Trainer",
+    { key = "trainer", setting = "npcCategoryTrainer", labelKey = "NPC_CATEGORY_TRAINER",
       icon = "trainers-icon",
       red = 0.74, green = 0.36, blue = 1.00 },
-    { key = "auctioneer", setting = "npcCategoryAuctioneer", label = "Auctioneer",
+    { key = "auctioneer", setting = "npcCategoryAuctioneer", labelKey = "NPC_CATEGORY_AUCTIONEER",
       icon = "auctioneer",
       red = 1.00, green = 0.73, blue = 0.10 },
-    { key = "banker", setting = "npcCategoryBanker", label = "Banker",
+    { key = "banker", setting = "npcCategoryBanker", labelKey = "NPC_CATEGORY_BANKER",
       icon = "banker",
       red = 0.74, green = 0.55, blue = 0.24 },
-    { key = "battlemaster", setting = "npcCategoryBattlemaster", label = "Battlemaster",
+    { key = "battlemaster", setting = "npcCategoryBattlemaster", labelKey = "NPC_CATEGORY_BATTLEMASTER",
       icon = "battlemaster",
       red = 0.92, green = 0.20, blue = 0.18 },
-    { key = "flight", setting = "npcCategoryFlight", label = "Flight Master",
+    { key = "flight", setting = "npcCategoryFlight", labelKey = "NPC_CATEGORY_FLIGHT",
       icon = "flight",
       red = 0.78, green = 0.78, blue = 0.88 },
-    { key = "innkeeper", setting = "npcCategoryInnkeeper", label = "Innkeeper",
+    { key = "innkeeper", setting = "npcCategoryInnkeeper", labelKey = "NPC_CATEGORY_INNKEEPER",
       icon = "innkeeper",
       red = 0.20, green = 0.78, blue = 0.92 },
-    { key = "mailbox", setting = "npcCategoryMailbox", label = "Mailbox",
+    { key = "mailbox", setting = "npcCategoryMailbox", labelKey = "NPC_CATEGORY_MAILBOX",
       icon = "mailbox",
       red = 0.95, green = 0.95, blue = 0.95 },
-    { key = "meetingstone", setting = "npcCategoryMeetingstone", label = "Meeting Stone",
+    { key = "meetingstone", setting = "npcCategoryMeetingstone", labelKey = "NPC_CATEGORY_MEETINGSTONE",
       icon = "meetingstone",
       red = 0.10, green = 0.72, blue = 1.00 },
-    { key = "repair", setting = "npcCategoryRepair", label = "Repair",
+    { key = "repair", setting = "npcCategoryRepair", labelKey = "NPC_CATEGORY_REPAIR",
       icon = "repair",
       red = 0.62, green = 0.66, blue = 0.72 },
-    { key = "spirithealer", setting = "npcCategorySpirithealer", label = "Spirit Healer",
+    { key = "spirithealer", setting = "npcCategorySpirithealer", labelKey = "NPC_CATEGORY_SPIRITHEALER",
       icon = "spirithealer",
       red = 0.34, green = 0.62, blue = 1.00 },
-    { key = "stablemaster", setting = "npcCategoryStablemaster", label = "Stable Master",
+    { key = "stablemaster", setting = "npcCategoryStablemaster", labelKey = "NPC_CATEGORY_STABLEMASTER",
       icon = "stablemaster",
       red = 0.67, green = 0.42, blue = 0.20 },
-    { key = "vendor", setting = "npcCategoryVendor", label = "Vendor",
+    { key = "vendor", setting = "npcCategoryVendor", labelKey = "NPC_CATEGORY_VENDOR",
       icon = "vendor",
       red = 1.00, green = 0.52, blue = 0.12 },
 
     -- World nodes. `separator` draws the one-pixel rule that divides them from
     -- the service rows above; `detail` names what the meta value on this
     -- relation means, for the tooltip.
-    { key = "chests", setting = "npcCategoryChests", label = "Chests & Treasures",
+    { key = "chests", setting = "npcCategoryChests", labelKey = "NPC_CATEGORY_CHESTS",
       icon = "chests", separator = true,
       red = 1.00, green = 0.82, blue = 0.35 },
-    { key = "herbs", setting = "npcCategoryHerbs", label = "Herbs & Flowers",
+    { key = "herbs", setting = "npcCategoryHerbs", labelKey = "NPC_CATEGORY_HERBS",
       icon = "herbs", detail = "skill", small = true,
       red = 0.40, green = 0.85, blue = 0.35 },
-    { key = "mines", setting = "npcCategoryMines", label = "Mines & Ores",
+    { key = "mines", setting = "npcCategoryMines", labelKey = "NPC_CATEGORY_MINES",
       icon = "mines", detail = "skill", small = true,
       red = 0.80, green = 0.62, blue = 0.40 },
-    { key = "fish", setting = "npcCategoryFish", label = "Fishing Pools",
+    { key = "fish", setting = "npcCategoryFish", labelKey = "NPC_CATEGORY_FISH",
       icon = "fish",
       red = 0.35, green = 0.70, blue = 0.95 },
-    { key = "rares", setting = "npcCategoryRares", label = "Rare Mobs",
+    { key = "rares", setting = "npcCategoryRares", labelKey = "NPC_CATEGORY_RARES",
       icon = "rares", detail = "level",
       red = 0.95, green = 0.85, blue = 0.20 },
 }
@@ -130,8 +134,12 @@ end
 NpcPins.worldPool = {}
 NpcPins.minimapPool = {}
 NpcPins.targets = {}
+-- The minimap's own set: it can only ever draw the player's zone, so it parts
+-- company with self.targets whenever the world map is showing another one.
+NpcPins.minimapTargets = {}
 NpcPins.dirty = true
 NpcPins.lastAreaId = nil
+NpcPins.lastPlayerAreaId = nil
 NpcPins.lastWorldDrawAt = nil
 NpcPins.worldVisible = 0
 NpcPins.minimapVisible = 0
@@ -186,7 +194,7 @@ function NpcPins:GetMenuEntries()
     local total = table.getn(CATEGORIES)
     while index <= total do
         local category = CATEGORIES[index]
-        local label = category.label
+        local label = UQ.L(category.labelKey)
         if category.key == "trainer" and type(self.playerClassName) == "string" then
             label = label .. " (" .. self.playerClassName .. ")"
         end
@@ -313,13 +321,13 @@ function NpcPins:TooltipLines(target)
         local key = target.categories[index]
         local category = CATEGORY_BY_KEY[key]
         if category then
-            local text = category.label
+            local text = UQ.L(category.labelKey)
             local detail = target.details and target.details[key]
             if type(detail) == "number" then
                 if category.detail == "skill" then
-                    text = text .. " (skill " .. tostring(detail) .. ")"
+                    text = text .. " " .. UQ.L("NPC_DETAIL_SKILL", tostring(detail))
                 elseif category.detail == "level" then
-                    text = text .. " (level " .. tostring(detail) .. ")"
+                    text = text .. " " .. UQ.L("NPC_DETAIL_LEVEL", tostring(detail))
                 end
             end
             table.insert(lines, {
@@ -429,9 +437,9 @@ function NpcPins:DrawMinimap(report, areaId)
 
     local visible = 0
     local index = 1
-    local total = table.getn(self.targets)
+    local total = table.getn(self.minimapTargets)
     while index <= total do
-        local target = self.targets[index]
+        local target = self.minimapTargets[index]
         local offsetX = ((target.x / 100) - report.playerX) * yards[1] / yardsPerPixel
         local offsetY = -(((target.y / 100) - report.playerY) * yards[2]) / yardsPerPixel
         local distance = math.sqrt(offsetX * offsetX + offsetY * offsetY)
@@ -470,25 +478,47 @@ function NpcPins:Refresh()
     end
 
     local mapContext = MapContext()
-    local areaId, report
-    if mapContext then
-        areaId, report = mapContext:GetCurrentZoneView()
-    end
-    if not areaId or not report then
+    if not mapContext then
         self:HideAll()
         return
     end
 
-    if self.dirty or self.lastAreaId ~= areaId
+    -- Two zones, because the two surfaces answer to different things. The
+    -- world map draws whatever zone is open, so it follows the view. The
+    -- minimap places every pin by subtracting the player's own position, so it
+    -- can only ever draw the zone the player is standing in. They are the same
+    -- zone in the common case, and one target set then serves both.
+    local viewedAreaId = mapContext:GetViewedZone()
+    local playerAreaId, report = mapContext:GetCurrentZoneView()
+    if not viewedAreaId and not playerAreaId then
+        self:HideAll()
+        return
+    end
+
+    if self.dirty or self.lastAreaId ~= viewedAreaId
+        or self.lastPlayerAreaId ~= playerAreaId
         or self.lastSelectionSignature ~= signature then
-        self.targets = self:BuildTargets(areaId, selected, selectedCount)
-        self.lastAreaId = areaId
+        if viewedAreaId then
+            self.targets = self:BuildTargets(viewedAreaId, selected, selectedCount)
+        else
+            self.targets = {}
+        end
+        if playerAreaId and playerAreaId == viewedAreaId then
+            self.minimapTargets = self.targets
+        elseif playerAreaId then
+            self.minimapTargets = self:BuildTargets(playerAreaId, selected, selectedCount)
+        else
+            self.minimapTargets = {}
+        end
+        self.lastAreaId = viewedAreaId
+        self.lastPlayerAreaId = playerAreaId
         self.lastSelectionSignature = signature
         self.dirty = false
         self.lastWorldDrawAt = nil
         local config = Config()
         if config then
-            config:SetSectionEntry("npcPinDiagnostics", "areaId", areaId)
+            config:SetSectionEntry("npcPinDiagnostics", "areaId", viewedAreaId or 0)
+            config:SetSectionEntry("npcPinDiagnostics", "playerAreaId", playerAreaId or 0)
             config:SetSectionEntry("npcPinDiagnostics", "selected", selectedCount)
             config:SetSectionEntry("npcPinDiagnostics", "targets", table.getn(self.targets))
         end
@@ -506,11 +536,13 @@ function NpcPins:Refresh()
     -- there rather than drawn at the wrong distance. See
     -- MapContext:IsInterior and docs/MINIMAP-PINS.md.
     local pinConfig = Config()
-    if (not pinConfig or pinConfig:Get("minimapPinsHideIndoors") ~= false)
+    if not playerAreaId or not report then
+        self.minimapVisible = HidePoolFrom(self.minimapPool, 1)
+    elseif (not pinConfig or pinConfig:Get("minimapPinsHideIndoors") ~= false)
         and mapContext:IsInterior(report) then
         self.minimapVisible = HidePoolFrom(self.minimapPool, 1)
     else
-        self:DrawMinimap(report, areaId)
+        self:DrawMinimap(report, playerAreaId)
     end
 end
 

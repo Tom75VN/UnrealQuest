@@ -79,7 +79,7 @@ local function OnUpdate()
                     UQ:Debug("job " .. job.name .. " failed: " .. tostring(err))
                     if job.failures >= 5 then
                         job.active = false
-                        UQ:Warn("job " .. job.name .. " disabled after repeated failures")
+                        UQ:Warn(UQ.L("DRIVER_JOB_DISABLED", job.name))
                     end
                 end
             end
@@ -112,7 +112,7 @@ function Driver:OnInit()
         frame = nil
     end
     if not frame then
-        UQ:Warn("could not create the shared driver frame; periodic work is disabled")
+        UQ:Warn(UQ.L("DRIVER_NO_FRAME"))
         return
     end
     frame:SetScript("OnUpdate", OnUpdate)

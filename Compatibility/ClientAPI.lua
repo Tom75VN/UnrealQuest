@@ -360,6 +360,27 @@ local function ReadObjectiveIndexed(objectiveIndex, questIndex)
     return text, objectiveType, isFinished
 end
 
+-- Puts the quest log selection back exactly as it was found, including back
+-- to "nothing selected".
+--
+-- The selection is global state the native UI reads too: GetQuestLogLeaderBoard
+-- and GetQuestLogQuestText answer for the selected row whenever they are not
+-- given a row of their own. Leaving it parked on the last row this addon
+-- happened to scan is therefore not harmless -- it silently redirects every
+-- unqualified read the rest of the UI makes. SelectQuestLogEntry is documented
+-- to clear the selection for an out-of-range index, which is how the cleared
+-- state (GetQuestLogSelection() == 0) is restored rather than left behind.
+local function RestoreQuestLogSelection(previousOk, previous)
+    if not previousOk or type(previous) ~= "number" then
+        return
+    end
+    if previous > 0 then
+        Call1("SelectQuestLogEntry", previous)
+    else
+        Call1("SelectQuestLogEntry", 0)
+    end
+end
+
 local function ReadObjectiveSelected(objectiveIndex, questIndex)
     local fn = Resolve("GetQuestLogLeaderBoard")
     if not fn then
@@ -368,9 +389,7 @@ local function ReadObjectiveSelected(objectiveIndex, questIndex)
     local previousOk, previous = Call0("GetQuestLogSelection")
     Call1("SelectQuestLogEntry", questIndex)
     local ok, text, objectiveType, isFinished = pcall(fn, objectiveIndex)
-    if previousOk and type(previous) == "number" and previous > 0 then
-        Call1("SelectQuestLogEntry", previous)
-    end
+    RestoreQuestLogSelection(previousOk, previous)
     if not ok then
         return nil
     end
@@ -418,9 +437,7 @@ function Client.GetQuestLogDetailText(questIndex)
     local previousOk, previous = Call0("GetQuestLogSelection")
     Call1("SelectQuestLogEntry", questIndex)
     local ok, text = pcall(fn)
-    if previousOk and type(previous) == "number" and previous > 0 then
-        Call1("SelectQuestLogEntry", previous)
-    end
+    RestoreQuestLogSelection(previousOk, previous)
     if not ok or type(text) ~= "string" or text == "" then
         return nil
     end
@@ -463,6 +480,42 @@ end
 function Client.RemoveQuestWatch(index)
     local ok = Call1("RemoveQuestWatch", index)
     return ok and true or false
+end
+
+-- Can the native tracked-objectives panel survive this quest?
+--
+-- QuestWatch_Update walks the watch list, takes the objective count from
+-- GetNumQuestLeaderBoards(questIndex), and then reads each line with the
+-- two-argument GetQuestLogLeaderBoard(objectiveIndex, questIndex), which it
+-- concatenates without a nil check ("attempt to concatenate local 'text'",
+-- QuestLogFrame.lua). The error is raised inside QuestLog_OnEvent on
+-- QUEST_LOG_UPDATE, so no addon is on the stack and no pcall of ours can catch
+-- it -- it just throws in the player's face on every quest log update.
+--
+-- Whether that two-argument form answers for a given row is exactly what this
+-- layer already refuses to assume (see the objectiveReadout note above): this
+-- addon can fall back to the selection-based path, but the native panel cannot.
+-- Since this addon is what puts quests into the watch list, it asks the same
+-- question the panel will ask, in the same way, and declines to feed the panel
+-- a quest whose objectives do not come back.
+function Client.CanNativeWatchQuest(questIndex)
+    if type(questIndex) ~= "number" then
+        return false
+    end
+    local count = Client.GetObjectiveCount(questIndex)
+    if count <= 0 then
+        -- The panel skips a quest with no objectives before it reads any line.
+        return true
+    end
+    local index = 1
+    while index <= count do
+        local text = ReadObjectiveIndexed(index, questIndex)
+        if type(text) ~= "string" or text == "" then
+            return false
+        end
+        index = index + 1
+    end
+    return true
 end
 
 function Client.GetWatchCount()
@@ -2256,10 +2309,10 @@ function Client.ShowGiverQuestMenu(anchorFrame, entries, onSelect)
     -- Keeps the old bulk gesture reachable now that a multi-quest click asks
     -- instead of assuming: same effect the unconditional shift-click had.
     LayOutGiverMenuRow(menu, GetGiverMenuRow(total + 1), total + 1,
-        "Mark all as done", 0.8, 0.8, 0.8, Select({ all = true }))
+        UQ.L("MAP_GIVER_MENU_MARK_ALL"), 0.8, 0.8, 0.8, Select({ all = true }))
 
     LayOutGiverMenuRow(menu, GetGiverMenuRow(total + 2), total + 2,
-        "Close", 0.5, 0.5, 0.5, function() Client.HideGiverQuestMenu() end)
+        UQ.L("COMMON_CLOSE"), 0.5, 0.5, 0.5, function() Client.HideGiverQuestMenu() end)
 
     -- A row pool can only grow across the session, so a shorter menu than
     -- last time leaves stale rows below it that must be hidden explicitly.
@@ -3765,10 +3818,14 @@ function Client.CreateTrackerWindow(name)
         return nil
     end
 
-    -- MEDIUM, not HIGH: this is an ordinary UI panel and must sit under
-    -- tooltips and dialogs rather than over them.
+    -- LOW, not MEDIUM: the tracker is a background panel the player never
+    -- opens, so it must never cover a window they did open. At MEDIUM it
+    -- shares a strata with the stock panels (character sheet, quest log,
+    -- bags) and the winner is then decided by frame level, which put the
+    -- tracker on top of them. LOW keeps it under every ordinary panel,
+    -- dialog and tooltip while still drawing above the world.
     if type(frame.SetFrameStrata) == "function" then
-        pcall(frame.SetFrameStrata, frame, "MEDIUM")
+        pcall(frame.SetFrameStrata, frame, "LOW")
     end
     -- The window itself owns no mouse. Only the drag handle, the header
     -- buttons and the rows do, so the empty parts of the panel never swallow a
@@ -4521,6 +4578,62 @@ function Client.SetNativeQuestWatchShown(shown)
     return Client.HideObject(frame)
 end
 
+-- Hiding the panel once is not enough: the client shows it again by itself.
+--
+-- QuestWatch_Update "immediately shows the native tracked-objectives panel"
+-- (knowledge.json / questwatch.public_refresh_after_watch_change), and the
+-- client calls it from its own QUEST_LOG_UPDATE handling -- so accepting a
+-- quest re-shows the panel with no addon on the stack. A one-shot Hide plus a
+-- periodic re-hide therefore reads on screen as the native window flashing in
+-- and blinking back out, for as long as the poll interval.
+--
+-- The guard closes that window: an OnShow handler that hides the frame in the
+-- same frame it was shown. It is installed at most once (NATIVE_WATCH_GUARD_KEY)
+-- and never removed, because SetScript(type, nil) does not detach a script on
+-- this client -- so it must be inert, not absent, when the player turns hiding
+-- off. That is what shouldHide is for: the handler asks, on every show, whether
+-- hiding is still wanted, and does nothing when it is not. The client then owns
+-- the panel again exactly as it did before the guard existed.
+--
+-- Still nothing but the frame's own Show/Hide is touched. QuestWatchFrame's
+-- native OnEvent handler is never called -- that crashes this client
+-- uncatchably, and remains a standing rule of this addon.
+local NATIVE_WATCH_GUARD_KEY = "unrealQuestNativeWatchGuard"
+
+function Client.InstallNativeQuestWatchGuard(shouldHide)
+    if type(shouldHide) ~= "function" then
+        return false
+    end
+    local frame = Client.GetNativeQuestWatchFrame()
+    if not frame then
+        return false
+    end
+    if Client.IsScriptChained(frame, NATIVE_WATCH_GUARD_KEY) then
+        return true
+    end
+
+    -- Hiding from inside OnShow can dispatch further script traffic on this
+    -- frame; the flag keeps a re-entrant show from recursing into the hide.
+    local hiding = false
+    local installed = Client.ChainScript(frame, "OnShow", function()
+        if hiding then
+            return
+        end
+        local ok, wanted = pcall(shouldHide)
+        if not ok or not wanted then
+            return
+        end
+        hiding = true
+        Client.HideObject(frame)
+        hiding = false
+    end)
+    if not installed then
+        return false
+    end
+    Client.MarkScriptChained(frame, NATIVE_WATCH_GUARD_KEY)
+    return true
+end
+
 -- The settings window ------------------------------------------------------------
 --
 -- UnrealQuest's own options window, built ONLY when unrealUI is not installed.
@@ -4585,7 +4698,7 @@ function Client.CreateSettingsWindow(name, width, height)
         return nil
     end
 
-    -- HIGH, where the tracker is MEDIUM: this is a dialog the player opened on
+    -- HIGH, where the tracker is LOW: this is a dialog the player opened on
     -- purpose and it belongs over the ordinary panels, which is also the strata
     -- unrealUI gives its own settings panel.
     if type(frame.SetFrameStrata) == "function" then
@@ -4664,9 +4777,114 @@ function Client.SetSettingsTitle(frame, text)
     return ok and true or false
 end
 
+-- One flag in the settings header's language row (Core/Settings.lua), drawn
+-- only in this addon's own window -- with unrealUI installed the language is
+-- set there and this row is not built at all.
+--
+-- No background, no border and no hover art: the flag texture owns the whole
+-- face and selection is communicated by opacity alone, which is the treatment
+-- unrealUI's identical row uses. A code whose artwork will not load keeps the
+-- two-letter ASCII badge instead of an empty square, the same fallback shape
+-- Client.CreateMinimapButton has for its gear.
+--
+-- Opacity goes through SetVertexColor, never Texture:SetAlpha: every other
+-- surface in this file already composites that way, and the shading here has
+-- to be exact for "which one is selected" to be readable at 18x14.
+function Client.CreateSettingsFlag(parent, name, texturePath, fallbackLabel,
+    width, height, onClick)
+    local create = Resolve("CreateFrame")
+    if not create or not parent or type(name) ~= "string" then
+        return nil
+    end
+    local ok, button = pcall(create, "Button", name, parent)
+    if not ok or not button then
+        return nil
+    end
+
+    Client.SetObjectSize(button, width, height)
+    if type(button.EnableMouse) == "function" then
+        pcall(button.EnableMouse, button, true)
+    end
+    if type(button.RegisterForClicks) == "function" then
+        pcall(button.RegisterForClicks, button, "LeftButtonUp")
+    end
+    -- Above the drag handle as well as beside it. The handle is already inset
+    -- to clear this row (Client.CreateSettingsHandle's rightInset), so this is
+    -- redundant by design rather than the mechanism -- geometry decides, and
+    -- this only removes the cost of being one pixel wrong about it.
+    if type(parent.GetFrameLevel) == "function" and type(button.SetFrameLevel) == "function" then
+        local levelOk, level = pcall(parent.GetFrameLevel, parent)
+        if levelOk and type(level) == "number" then
+            pcall(button.SetFrameLevel, button, level + 20)
+        end
+    end
+
+    local drawn = false
+    if type(texturePath) == "string" and type(button.CreateTexture) == "function" then
+        local iconOk, icon = pcall(button.CreateTexture, button, nil, "ARTWORK")
+        if iconOk and icon and type(icon.SetTexture) == "function" then
+            if pcall(icon.SetTexture, icon, texturePath) then
+                if type(icon.SetAllPoints) == "function" then
+                    pcall(icon.SetAllPoints, icon, button)
+                end
+                button.unrealQuestIcon = icon
+                drawn = true
+            else
+                pcall(icon.Hide, icon)
+            end
+        end
+    end
+    if not drawn and type(button.CreateFontString) == "function" then
+        local labelOk, label = pcall(button.CreateFontString, button, nil, "OVERLAY",
+            "GameFontHighlightSmall")
+        if labelOk and label then
+            pcall(label.SetPoint, label, "CENTER", button, "CENTER", 0, 0)
+            pcall(label.SetText, label,
+                type(fallbackLabel) == "string" and fallbackLabel or "?")
+            StripShadow(label)
+            button.unrealQuestLabel = label
+        end
+    end
+
+    if type(onClick) == "function" then
+        Client.SetObjectScript(button, "OnClick", onClick)
+    end
+    return button
+end
+
+-- Selection and hover for one of those flags. `shade` is the icon's opacity;
+-- the ASCII fallback cannot be shaded the same way and takes the accent or the
+-- dim grey instead, so both forms say the same thing.
+function Client.SetSettingsFlagShade(button, shade, selected)
+    if not button then
+        return false
+    end
+    if button.unrealQuestIcon then
+        Client.SetSolidColor(button.unrealQuestIcon, 1, 1, 1, shade)
+    end
+    local label = button.unrealQuestLabel
+    if label and type(label.SetTextColor) == "function" then
+        if selected then
+            pcall(label.SetTextColor, label, UQ.colors.accent[1], UQ.colors.accent[2],
+                UQ.colors.accent[3])
+        else
+            pcall(label.SetTextColor, label, 0.6, 0.6, 0.6)
+        end
+    end
+    return true
+end
+
 -- The drag handle. Covers the header strip only, so the page below keeps its
 -- own clicks. Same five-factor recipe as the tracker's handle.
-function Client.CreateSettingsHandle(window, name)
+--
+-- `rightInset` stops the handle short of the header's right edge, leaving that
+-- strip clickable. The handle is deliberately raised ten frame levels above the
+-- window (below), which is what makes a drag anywhere on the header work -- and
+-- equally what would make it swallow every click meant for a control drawn in
+-- the header. Reserving the space geometrically is the fix unrealUI's own
+-- settings header uses for its language flags, and it does not depend on frame
+-- level deciding mouse ownership.
+function Client.CreateSettingsHandle(window, name, rightInset)
     local create = Resolve("CreateFrame")
     if not create or not window or type(name) ~= "string" then
         return nil
@@ -4675,9 +4893,12 @@ function Client.CreateSettingsHandle(window, name)
     if not ok or not handle then
         return nil
     end
+    if type(rightInset) ~= "number" or rightInset < 0 then
+        rightInset = 0
+    end
     if type(handle.SetPoint) == "function" then
         pcall(handle.SetPoint, handle, "TOPLEFT", window, "TOPLEFT", 0, 0)
-        pcall(handle.SetPoint, handle, "TOPRIGHT", window, "TOPRIGHT", 0, 0)
+        pcall(handle.SetPoint, handle, "TOPRIGHT", window, "TOPRIGHT", -rightInset, 0)
     end
     Client.SetObjectSize(handle, nil, SETTINGS_HEADER_HEIGHT)
     -- SetFrameLevel, never a strata change: raising a drag handle by strata is
@@ -6246,8 +6467,11 @@ if Client.GetNativeQuestWatchFrame() then
     UQ:DeclareCapability("nativeQuestWatchFrame", "verified",
         "QuestWatchFrame confirmed in game as the native tracked-objectives root "
         .. "(questwatch.native_root_user_confirmed). Hidden while UnrealQuest's own window is up if the "
-        .. "trackerHideNativeWatch setting is on, and re-shown when it is turned off. Only Hide/Show are "
-        .. "used -- no script is ever attached to it, because SetScript cannot be undone on this client")
+        .. "trackerHideNativeWatch setting is on, and re-shown when it is turned off. Only the frame's own "
+        .. "Show/Hide are called -- its native OnEvent handler never is. One OnShow guard is chained onto "
+        .. "it so the client's own re-show (QUEST_LOG_UPDATE -> QuestWatch_Update) cannot flash it back on "
+        .. "screen; the guard is permanent because SetScript cannot be undone on this client, and asks the "
+        .. "setting on every show so it goes inert when hiding is turned off")
 else
     UQ:DeclareCapability("nativeQuestWatchFrame", "missing",
         "QuestWatchFrame was not available at load, so the native tracked-objectives panel cannot be "

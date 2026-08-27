@@ -190,10 +190,11 @@ function QuestClicks:Select(quest, origin)
     mainQuest:Toggle(quest.titleKey)
 
     if wasMain then
-        UQ:Print("no longer following |cffffffff" .. tostring(quest.title) .. "|r")
+        UQ:Print(UQ.L("MAINQUEST_NO_LONGER_FOLLOWING",
+            "|cffffffff" .. tostring(quest.title) .. "|r"))
     else
-        UQ:Print("following |cff" .. UQ.colors.accentHex
-            .. tostring(quest.title) .. "|r")
+        UQ:Print(UQ.L("MAINQUEST_NOW_FOLLOWING",
+            "|cff" .. UQ.colors.accentHex .. tostring(quest.title) .. "|r"))
     end
     UQ:Debug("main quest click from " .. tostring(origin))
     return true
@@ -252,8 +253,7 @@ function QuestClicks:RevealOnMap(quest)
         return
     end
     if type(quest.questId) ~= "number" then
-        UQ:Print("'" .. tostring(quest.title) .. "' has no resolved quest id, so it cannot be "
-            .. "shown on the map")
+        UQ:Print(UQ.L("REVEAL_NO_QUEST_ID", tostring(quest.title)))
         return
     end
     Client.OpenWorldMap()
@@ -268,15 +268,18 @@ function QuestClicks:RevealOnMap(quest)
     -- scope"). A pin cannot be faked into that other zone, but the static
     -- data can still be asked WHICH zone, so the player is told where to go
     -- even though nothing was drawn.
-    local verb = quest.isComplete == 1 and "hand it in" or "its objectives are"
     local zones = DescribeQuestZones(quest)
     if zones then
-        UQ:Print("'" .. tostring(quest.title) .. "': " .. verb .. " in " .. zones
-            .. " -- not the zone currently shown on the map, so nothing could be flashed there")
+        -- Two whole sentences rather than a shared one with the verb swapped
+        -- in: a language that inflects around it cannot be built from a
+        -- fragment slotted into the middle of another string.
+        if quest.isComplete == 1 then
+            UQ:Print(UQ.L("REVEAL_TURN_IN_ELSEWHERE", tostring(quest.title), zones))
+        else
+            UQ:Print(UQ.L("REVEAL_OBJECTIVES_ELSEWHERE", tostring(quest.title), zones))
+        end
     else
-        UQ:Print("no map marker for '" .. tostring(quest.title) .. "' is currently rendered, "
-            .. "and the bundled data records no location for it either "
-            .. "(hidden from the map, or simply not one this addon's data covers)")
+        UQ:Print(UQ.L("REVEAL_NOTHING_KNOWN", tostring(quest.title)))
     end
 end
 

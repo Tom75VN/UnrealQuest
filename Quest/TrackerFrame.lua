@@ -18,7 +18,6 @@ accent stripe whether or not it fits in the native mirror.
       [5] Kobold Camp Cleanup
           Kobold Vermin slain: 2/5   [====      ]
       [7] Wolves Across the Border
-          Ready to turn in
     WESTFALL
       ...
 
@@ -156,11 +155,14 @@ local COLOR_COMPLETE = { 0.35, 0.78, 0.35 }
 -- Appended to every quest tooltip (Client.ShowGameTooltip's line-list shape,
 -- see Compatibility/ClientAPI.lua RenderTooltipLines), so the gesture list is
 -- something the player can actually look up instead of having to remember.
-local SHORTCUT_LINES = {
-    { text = "Left-Click: open in Quest Log", r = 0.6, g = 0.6, b = 0.6 },
-    { text = "Shift-Click: remove from tracker", r = 0.6, g = 0.6, b = 0.6 },
-    { text = "Ctrl-Click: show on the map", r = 0.6, g = 0.6, b = 0.6 },
-    { text = "Right-Click: fold objectives", r = 0.6, g = 0.6, b = 0.6 },
+-- KEYS, not text. This table is built when the file loads, which is before
+-- Core/Locale.lua has resolved the language, so a translated string baked in
+-- here would be English for the whole session. Resolved per tooltip below.
+local SHORTCUT_KEYS = {
+    "TRACKER_HINT_LEFT_CLICK",
+    "TRACKER_HINT_SHIFT_CLICK",
+    "TRACKER_HINT_CTRL_CLICK",
+    "TRACKER_HINT_RIGHT_CLICK",
 }
 
 TrackerFrame.window = nil
@@ -480,12 +482,13 @@ function TrackerFrame:BuildLines()
             table.insert(lines, line)
 
             local questFolded = IsFolded(COLLAPSED_QUESTS, quest.title or "")
-            if showObjectives ~= "none" and not questFolded
-                and (showObjectives == "all" or tracked or quest.isComplete == 1) then
-                if quest.isComplete == 1 then
-                    AddLine(lines, "objective", "Ready to turn in",
-                        COLOR_COMPLETE[1], COLOR_COMPLETE[2], COLOR_COMPLETE[3], quest)
-                end
+            -- A complete quest is one green title row and nothing else. Its
+            -- objectives are all satisfied by definition, so neither they nor a
+            -- separate "ready to turn in" line carry information -- they only
+            -- make the window taller. The green title colour above is the whole
+            -- status signal.
+            if showObjectives ~= "none" and not questFolded and quest.isComplete ~= 1
+                and (showObjectives == "all" or tracked) then
                 local objectives = quest.objectives or {}
                 local objectiveIndex = 1
                 local objectiveCount = table.getn(objectives)
@@ -574,32 +577,33 @@ local function BuildQuestTooltipLines(quest)
     if type(quest.level) == "number" and quest.level > 0 then
         local red, green, blue = Client.GetQuestLevelColor(quest.level)
         table.insert(lines, {
-            left = "Level:", right = tostring(quest.level),
+            left = UQ.L("TOOLTIP_LEVEL"), right = tostring(quest.level),
             rightR = red, rightG = green, rightB = blue,
         })
     end
     if type(quest.zone) == "string" and quest.zone ~= "" then
-        table.insert(lines, { left = "Zone:", right = quest.zone })
+        table.insert(lines, { left = UQ.L("TOOLTIP_ZONE"), right = quest.zone })
     end
     if type(quest.questTag) == "string" and quest.questTag ~= "" then
-        table.insert(lines, { left = "Type:", right = quest.questTag })
+        table.insert(lines, { left = UQ.L("TOOLTIP_TYPE"), right = quest.questTag })
     end
 
     local watch = Watch()
     if watch and watch:IsTracked(quest) then
         table.insert(lines, {
-            left = "Tracked:", right = "yes",
+            left = UQ.L("TOOLTIP_TRACKED"), right = UQ.L("COMMON_YES"),
             rightR = UQ.colors.accent[1], rightG = UQ.colors.accent[2], rightB = UQ.colors.accent[3],
         })
     end
 
     if quest.isComplete == 1 then
         table.insert(lines, {
-            left = "Status:", right = "Ready to turn in",
+            left = UQ.L("TOOLTIP_STATUS"), right = UQ.L("QUEST_STATUS_READY_TO_TURN_IN"),
             rightR = COLOR_COMPLETE[1], rightG = COLOR_COMPLETE[2], rightB = COLOR_COMPLETE[3],
         })
     else
-        table.insert(lines, { left = "Status:", right = "In progress", rightR = 1, rightG = 0.82, rightB = 0 })
+        table.insert(lines, { left = UQ.L("TOOLTIP_STATUS"), right = UQ.L("QUEST_STATUS_IN_PROGRESS"),
+            rightR = 1, rightG = 0.82, rightB = 0 })
     end
 
     local objectives = quest.objectives or {}
@@ -620,9 +624,10 @@ local function BuildQuestTooltipLines(quest)
 
     table.insert(lines, { separator = true })
     local shortcutIndex = 1
-    local shortcutTotal = table.getn(SHORTCUT_LINES)
+    local shortcutTotal = table.getn(SHORTCUT_KEYS)
     while shortcutIndex <= shortcutTotal do
-        table.insert(lines, SHORTCUT_LINES[shortcutIndex])
+        table.insert(lines, { text = UQ.L(SHORTCUT_KEYS[shortcutIndex]),
+            r = 0.6, g = 0.6, b = 0.6 })
         shortcutIndex = shortcutIndex + 1
     end
 
@@ -958,7 +963,7 @@ function TrackerFrame:CapturePosition()
     end
     local point, relativeName, relativePoint, x, y = Client.GetFrameAnchor(window)
     if type(point) ~= "string" or type(x) ~= "number" or type(y) ~= "number" then
-        UQ:Warn("the tracker window could not report its position; it will reopen where it was")
+        UQ:Warn(UQ.L("TRACKER_WARN_NO_POSITION"))
         return false
     end
     -- relativeName is read but not stored. Anything the drag left the window
@@ -1122,12 +1127,27 @@ function TrackerFrame:ToggleCollapsed()
     self:Refresh()
 end
 
+-- The one question the OnShow guard installed below asks, on every show the
+-- client performs: does the player still want the native panel gone? It reads
+-- live settings rather than a captured value because the guard outlives any
+-- particular answer -- a script cannot be detached on this client.
+local function NativeWatchShouldHide()
+    return (Setting("trackerHideNativeWatch") and Setting("trackerEnabled")) and true or false
+end
+
 -- The native five-quest panel is hidden only while this window is actually
 -- up and the setting asks for it; every other combination shows it again, so
 -- turning the tracker off never leaves the player with no tracker at all.
 function TrackerFrame:ApplyNativeWatchVisibility()
     local hide = Setting("trackerHideNativeWatch") and true or false
     local enabled = Setting("trackerEnabled") and true or false
+    -- The Hide below only answers for this moment. The client re-shows the
+    -- panel on its own whenever it refreshes the watch list -- accepting a
+    -- quest is the case a player notices -- so without a guard the panel
+    -- flashes on and stays up until the next re-hide sweep. Installing it here
+    -- (idempotent, and inert whenever this function would show the panel
+    -- anyway) means it is in place before the first quest is accepted.
+    Client.InstallNativeQuestWatchGuard(NativeWatchShouldHide)
     if hide and enabled then
         Client.SetNativeQuestWatchShown(false)
     else
@@ -1162,7 +1182,7 @@ end
 function TrackerFrame:OnInit()
     local window = Client.CreateTrackerWindow(WINDOW_NAME)
     if not window then
-        UQ:Warn("the quest tracker window could not be created; the tracker is unavailable")
+        UQ:Warn(UQ.L("TRACKER_WARN_NO_WINDOW"))
         return
     end
     self.window = window
@@ -1178,7 +1198,7 @@ function TrackerFrame:OnInit()
                 TrackerFrame.dragFailures = TrackerFrame.dragFailures + 1
                 -- Visible, not debug-only. A drag that silently does nothing is
                 -- the exact failure mode this client already produced once.
-                UQ:Warn("the tracker window refused to move (StartMoving failed)")
+                UQ:Warn(UQ.L("TRACKER_WARN_DRAG_FAILED"))
             end
         end)
         Client.SetObjectScript(handle, "OnDragStop", function()
@@ -1186,7 +1206,7 @@ function TrackerFrame:OnInit()
             TrackerFrame:CapturePosition()
         end)
     else
-        UQ:Warn("the tracker window has no drag handle; it cannot be moved")
+        UQ:Warn(UQ.L("TRACKER_WARN_NO_HANDLE"))
     end
 
     local grip = Client.CreateTrackerResizeGrip(window, GRIP_NAME)
@@ -1194,8 +1214,7 @@ function TrackerFrame:OnInit()
         self.grip = grip
         Client.SetObjectScript(grip, "OnDragStart", function()
             if not TrackerFrame:StartResize() then
-                UQ:Warn("the tracker's corner grip could not start a resize; its size can "
-                    .. "still be set with /uq tracker width and /uq tracker height")
+                UQ:Warn(UQ.L("TRACKER_WARN_RESIZE_FAILED"))
                 return
             end
             TrackerFrame.resizes = TrackerFrame.resizes + 1
@@ -1208,8 +1227,7 @@ function TrackerFrame:OnInit()
             TrackerFrame:StopResize()
         end)
     else
-        UQ:Warn("the tracker window has no resize grip; its size can still be set with "
-            .. "/uq tracker width and /uq tracker height")
+        UQ:Warn(UQ.L("TRACKER_WARN_NO_GRIP"))
     end
 
     Client.SetTrackerHeaderButtons(window,

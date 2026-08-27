@@ -36,19 +36,32 @@ local function RunInit()
     initialized = true
 
     -- Config first: everything else may read settings during its own OnInit.
-    local config = UQ:GetModule("Config")
-    if config and config.OnInit then
-        local ok, err = pcall(config.OnInit, config)
-        if not ok then
-            UQ:Warn("Config failed to initialize: " .. tostring(err))
+    -- Locale immediately after it and before every other module, because a
+    -- label is translated once when it is built and never re-read -- so the
+    -- language has to be settled before anything can build one. Locale cannot
+    -- go first: it reads the stored language through Config.
+    --
+    -- Both are named here rather than left to registration order. Which of the
+    -- two runs first is a correctness property, not a TOC detail.
+    local ordered = { "Config", "Locale" }
+    local orderedIndex = 1
+    local orderedTotal = table.getn(ordered)
+    while orderedIndex <= orderedTotal do
+        local module = UQ:GetModule(ordered[orderedIndex])
+        if module and module.OnInit then
+            local ok, err = pcall(module.OnInit, module)
+            if not ok then
+                UQ:Warn(UQ.L("BOOT_MODULE_INIT_FAILED", module.name, tostring(err)))
+            end
         end
+        orderedIndex = orderedIndex + 1
     end
 
     UQ:ForEachModule(function(module)
-        if module.name ~= "Config" and module.OnInit then
+        if module.name ~= "Config" and module.name ~= "Locale" and module.OnInit then
             local ok, err = pcall(module.OnInit, module)
             if not ok then
-                UQ:Warn(module.name .. " failed to initialize: " .. tostring(err))
+                UQ:Warn(UQ.L("BOOT_MODULE_INIT_FAILED", module.name, tostring(err)))
             end
         end
     end)
@@ -69,14 +82,14 @@ local function RunEnable()
         if module.OnEnable then
             local ok, err = pcall(module.OnEnable, module)
             if not ok then
-                UQ:Warn(module.name .. " failed to enable: " .. tostring(err))
+                UQ:Warn(UQ.L("BOOT_MODULE_ENABLE_FAILED", module.name, tostring(err)))
             else
                 module.enabled = true
             end
         end
     end)
 
-    UQ:Print("v" .. UQ.version .. " loaded. /uq for status.")
+    UQ:Print(UQ.L("BOOT_LOADED", UQ.version))
 end
 
 local function OnBootstrapUpdate()

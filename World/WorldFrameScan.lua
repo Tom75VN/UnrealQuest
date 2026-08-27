@@ -157,11 +157,11 @@ function WorldFrameScan:Scan()
 
     local worldFrame = Client.GetWorldFrame()
     if not worldFrame then
-        return false, "WorldFrame is not reachable as an object"
+        return false, UQ.L("WORLDSCAN_NO_WORLDFRAME")
     end
     local count = Client.GetChildCount(worldFrame)
     if not count then
-        return false, "WorldFrame did not answer GetNumChildren"
+        return false, UQ.L("WORLDSCAN_NO_CHILD_COUNT")
     end
     self.childCount = count
     if count == 0 then
@@ -170,7 +170,7 @@ function WorldFrameScan:Scan()
 
     local children = Client.GetChildList(worldFrame)
     if not children then
-        return false, "WorldFrame did not answer GetChildren"
+        return false, UQ.L("WORLDSCAN_NO_CHILDREN")
     end
 
     local index = 1

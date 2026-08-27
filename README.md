@@ -23,6 +23,7 @@ UnrealQuest turns questing into exploration instead of guesswork. It is designed
 - Put treasure chests, herbs, mining veins, fishing pools and rare mobs on both maps from the same menu, each herb and vein drawn with its own icon.
 - See live quest progress in creature tooltips and recognize relevant targets through automatic quest marks.
 - Import completed-quest history from pfQuest so finished quests do not reappear on the map.
+- Read the whole interface in English, French, Russian or Simplified Chinese, chosen with the flag row in the settings window -- or automatically matched to unrealUI's language when that addon is installed.
 
 ## Stop searching. Start adventuring.
 
@@ -95,6 +96,22 @@ fishing pools and rare mobs -- with the required gathering skill or the
 creature level shown in each pin's tooltip. Herb and vein pins carry their own
 artwork, so Peacebloom, Silverleaf and Copper Vein are told apart at a glance
 instead of sharing one category icon.
+
+## Languages
+
+The interface is available in English, French, Russian and Simplified Chinese.
+Pick one with the flags in the top-right of the settings window. If unrealUI is
+installed, UnrealQuest follows the language set there instead and shows no flags
+of its own -- one setting for both addons, and neither one requires the other.
+
+Quest, creature and zone NAMES are a separate matter: they come from the
+bundled world data and follow your CLIENT's language, because they have to match
+what the game itself shows. Playing an English client in French therefore gives
+a French interface around English quest names, which is correct.
+
+Whether Cyrillic and Chinese characters draw at all depends on the client's own
+font. The flags stay recognizable either way, so the way back is always one
+visible click.
 
 ## Version
 

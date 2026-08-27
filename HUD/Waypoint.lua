@@ -197,14 +197,15 @@ local function FormatLabel(distanceYards, clamped, offsetX, stale)
     local text
     if type(distanceYards) == "number" then
         if distanceYards >= 1000 then
-            text = string.format("%.1f k", distanceYards / 1000)
+            text = UQ.L("WAYPOINT_DISTANCE_KILOYARDS",
+                string.format("%.1f", distanceYards / 1000))
         else
             -- Floored before formatting rather than handed to "%d" as a
             -- float. Vanilla's Lua tolerates that; newer ones raise "number
             -- has no integer representation", and the offline test runs on a
             -- newer one -- so this is the portable spelling as well as the
             -- correct rounding for a distance readout.
-            text = tostring(math.floor(distanceYards)) .. " yd"
+            text = UQ.L("WAYPOINT_DISTANCE_YARDS", tostring(math.floor(distanceYards)))
         end
     else
         text = ""

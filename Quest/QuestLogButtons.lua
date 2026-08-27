@@ -123,9 +123,9 @@ local function EnsureButtons()
         return nil
     end
     local show = Client.CreateStyledTextButton(dock, "UnrealQuestLogShowButton",
-        BUTTON_WIDTH, BUTTON_HEIGHT, "Show")
+        BUTTON_WIDTH, BUTTON_HEIGHT, UQ.L("QUESTLOG_BUTTON_SHOW"))
     local track = Client.CreateStyledTextButton(dock, "UnrealQuestLogTrackButton",
-        BUTTON_WIDTH, BUTTON_HEIGHT, "Track")
+        BUTTON_WIDTH, BUTTON_HEIGHT, UQ.L("QUESTLOG_BUTTON_TRACK"))
     if not show or not track then
         return nil
     end
@@ -229,7 +229,8 @@ function QuestLogButtons:Refresh()
 
     local tracker = Tracker()
     local tracked = tracker and tracker:IsTracked(quest)
-    Client.SetButtonLabel(buttons.track, tracked and "Untrack" or "Track")
+    Client.SetButtonLabel(buttons.track,
+        tracked and UQ.L("QUESTLOG_BUTTON_UNTRACK") or UQ.L("QUESTLOG_BUTTON_TRACK"))
 end
 
 -- Lifecycle ------------------------------------------------------------------

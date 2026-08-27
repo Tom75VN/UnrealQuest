@@ -227,7 +227,7 @@ function QuestMarks:CheckPending()
         self.stats.unconfirmed = self.stats.unconfirmed + 1
         if self.stats.unconfirmed >= MAX_UNCONFIRMED and self.stats.confirmed == 0 then
             self.refused = true
-            UQ:Warn("raid marks are not being accepted -- see /uq marks")
+            UQ:Warn(UQ.L("MARKS_WARN_REFUSED"))
         end
     end
     self.pendingUnit = nil
@@ -356,12 +356,19 @@ function QuestMarks:Record()
         self.stats.lastKind or "<none>")
 end
 
-local MARK_NAMES = {
-    "star", "circle", "diamond", "triangle", "moon", "square", "cross", "skull",
+-- KEYS, not names: this table is built at file load, before Core/Locale.lua
+-- has resolved the language.
+local MARK_NAME_KEYS = {
+    "MARK_STAR", "MARK_CIRCLE", "MARK_DIAMOND", "MARK_TRIANGLE",
+    "MARK_MOON", "MARK_SQUARE", "MARK_CROSS", "MARK_SKULL",
 }
 
 function QuestMarks:MarkName(index)
-    return MARK_NAMES[index] or ("mark " .. tostring(index))
+    local key = MARK_NAME_KEYS[index]
+    if key then
+        return UQ.L(key)
+    end
+    return UQ.L("MARK_UNNAMED", tostring(index))
 end
 
 function QuestMarks:GetStatus()

@@ -5,7 +5,7 @@ with a mocked Vanilla-shaped client API, drives the bootstrap, and asserts the
 module wiring works end to end. This is a wiring/logic check only; it proves
 nothing about the actual client and is not runtime evidence.
 """
-import lupa, os, sys
+import io, lupa, os, sys
 
 ADDONS = r"C:\Games\Azeroth Launcher\Azeroth\Binaries\Win64\Games\Emberveil\live\Azeroth\Interface\AddOns"
 
@@ -743,7 +743,12 @@ local function QuantizeUV(value, yards)
     return math.floor(value * yards + 0.5) / yards
 end
 
+-- Measured client behaviour: a map view the player is not standing on cannot
+-- project them, and this client answers 0, 0 rather than nothing at all. Set
+-- while the map is browsed away from the player's own zone.
+UQ_TEST_PLAYER_OFF_MAP = false
 function GetPlayerMapPosition(unit)
+    if UQ_TEST_PLAYER_OFF_MAP then return 0, 0 end
     return QuantizeUV(UQ_TEST_PLAYER_POSITION[1], UQ_TEST_ZONE_YARDS[1]),
            QuantizeUV(UQ_TEST_PLAYER_POSITION[2], UQ_TEST_ZONE_YARDS[2])
 end
@@ -2299,6 +2304,60 @@ check("map diagnostics record rendered state", rt.eval("""(function()
         and diagnostics.parentMatches == true and diagnostics.textureLayer == 'BACKGROUND'
         and diagnostics.textureHasPath == true
 end)()"""))
+print("browsing another zone's map")
+# The map layer follows the OPEN map, not the player. Standing in Elwynn
+# Forest with Westfall's map open, the client stops projecting the player
+# (0, 0) and names Westfall through GetMapZones/GetCurrentMapZone -- the one
+# route no subzone and no player position can shadow. The world map must draw
+# Westfall from that name alone, while the minimap and the HUD waypoint, which
+# place everything by subtracting the player's own position, must keep asking
+# for the player's zone and hide rather than guess.
+rt.execute("""
+    UQ_TEST_BROWSE_SAVED = { UQ_TEST_MAP_FILE, UQ_TEST_MAP_ZONE_NAME }
+    UQ_TEST_MAP_FILE = "Westfall"
+    UQ_TEST_MAP_ZONE_NAME = "Westfall"
+    UQ_TEST_PLAYER_OFF_MAP = true
+    -- One service category on, so the NPC layer actually resolves zones
+    -- instead of returning early on an empty selection.
+    UQ_TEST_BROWSE_VENDOR = UnrealQuest:GetModule('Config'):Get('npcCategoryVendor')
+    UnrealQuest:GetModule('Config'):Set('npcCategoryVendor', true)
+    local pins = UnrealQuest:GetModule('WorldMapPins')
+    pins.dirty = true
+    UnrealQuest:GetModule('MinimapPins').dirty = true
+    UnrealQuest:GetModule('NpcPins').dirty = true
+    UQ_TEST_TICK(0.5, 4)
+    UQ_TEST_BROWSE_VIEWED = UnrealQuest:GetModule('MapContext'):GetViewedZone()
+    UQ_TEST_BROWSE_PLAYER = UnrealQuest:GetModule('MapContext'):GetCurrentZoneView()
+""")
+check("the viewed zone resolves without the player standing in it", rt.eval(
+    "UQ_TEST_BROWSE_VIEWED == 40 and UQ_TEST_BROWSE_PLAYER == nil"))
+check("the world map rebuilds for the zone it is showing", rt.eval(
+    "UnrealQuestDB.mapDiagnostics.areaId == 40"))
+check("the minimap layer hides instead of drawing a foreign zone", rt.eval("""(function()
+    local pins = UnrealQuest:GetModule('MinimapPins')
+    return pins.objectiveVisible + pins.giverVisible + pins.turnInVisible == 0
+end)()"""))
+check("service pins split: the map follows the view, the minimap the player", rt.eval("""(function()
+    local pins = UnrealQuest:GetModule('NpcPins')
+    return pins.lastAreaId == 40 and pins.lastPlayerAreaId == nil
+        and pins.minimapVisible == 0
+end)()"""))
+rt.execute("""
+    UQ_TEST_MAP_FILE = UQ_TEST_BROWSE_SAVED[1]
+    UQ_TEST_MAP_ZONE_NAME = UQ_TEST_BROWSE_SAVED[2]
+    UQ_TEST_PLAYER_OFF_MAP = false
+    UnrealQuest:GetModule('Config'):Set('npcCategoryVendor', UQ_TEST_BROWSE_VENDOR)
+    UnrealQuest:GetModule('WorldMapPins').dirty = true
+    UnrealQuest:GetModule('MinimapPins').dirty = true
+    UnrealQuest:GetModule('NpcPins').dirty = true
+    UQ_TEST_TICK(0.5, 4)
+""")
+check("returning to the player's own zone restores both layers", rt.eval("""(function()
+    local pins = UnrealQuest:GetModule('WorldMapPins')
+    return UnrealQuestDB.mapDiagnostics.areaId == 12 and pins.areaVisibleCount > 0
+end)()"""))
+
+
 print("quest area hover")
 # Driven through the frame's own OnEnter/OnLeave scripts rather than by calling
 # the module methods, so the wiring from SetWorldMapPinHandlers is exercised too.
@@ -4755,7 +4814,7 @@ rt.execute("""
           { { "Sharptalon's Claw: 1/1", "item", 1 } } },
         { "Westfall", 0, nil, 1, nil, nil },
         { "Poor Old Blanchy", 15, nil, nil, nil, nil,
-          { { "Bucket of Water: 0/1", "item", nil } } },
+          { { "Blanchy watered", "item", nil } } },
     }
     UnrealQuest:GetModule('QuestState'):Scan()
     local tracker = UnrealQuest:GetModule('TrackerFrame')
@@ -4824,21 +4883,45 @@ check("FitObjective falls back to a plain trim when there is no have/need counte
     return string.sub(trimmed, -3) == '...'
 end)()"""))
 
-check("a quest ready to hand in says so", rt.eval("""(function()
+# A complete quest says so with the green title alone: its objectives are all
+# satisfied, so listing them -- or a separate "ready to turn in" line -- only
+# makes the window taller without adding information.
+check("a complete quest is one green row with no objective lines below it",
+      rt.eval("""(function()
+    local questRow
     local index = 1
-    while getglobal('UnrealQuestTrackerRowobjective' .. index) do
-        local row = getglobal('UnrealQuestTrackerRowobjective' .. index)
-        if row:IsShown() and row.fontString.text == 'Ready to turn in' then return true end
+    while getglobal('UnrealQuestTrackerRowquest' .. index) do
+        local row = getglobal('UnrealQuestTrackerRowquest' .. index)
+        if row:IsShown() and string.find(row.fontString.text, 'Sharptalon', 1, true) then
+            questRow = row
+        end
         index = index + 1
     end
-    return false
+    if questRow == nil then return false end
+    local color = questRow.fontString.color
+    if color == nil or color[1] ~= 0.35 or color[2] ~= 0.78 or color[3] ~= 0.35 then
+        return false
+    end
+    local shown = 0
+    index = 1
+    while getglobal('UnrealQuestTrackerRowobjective' .. index) do
+        local row = getglobal('UnrealQuestTrackerRowobjective' .. index)
+        if row:IsShown() then
+            if string.find(row.fontString.text, 'Sharptalon', 1, true) then return false end
+            if row.fontString.text == 'Ready to turn in' then return false end
+            shown = shown + 1
+        end
+        index = index + 1
+    end
+    -- Kobold Camp Cleanup and Poor Old Blanchy, one objective each.
+    return shown == 2
 end)()"""))
 
 check("an objective with no counter gets no progress bar", rt.eval("""(function()
     local index = 1
     while getglobal('UnrealQuestTrackerRowobjective' .. index) do
         local row = getglobal('UnrealQuestTrackerRowobjective' .. index)
-        if row:IsShown() and row.fontString.text == 'Ready to turn in' then
+        if row:IsShown() and row.fontString.text == 'Blanchy watered' then
             return row.unrealQuestBarTrack:IsShown() == false
         end
         index = index + 1
@@ -5480,10 +5563,10 @@ check("objective display can be reduced to the tracked quests", rt.eval("""(func
         index = index + 1
     end
     SlashCmdList.UNREALQUEST('tracker objectives all')
-    -- Kobold Camp Cleanup is watched (one objective) and Sharptalon's Claw is
-    -- complete (its "ready to turn in" line plus its own objective); Poor Old
-    -- Blanchy is neither and contributes nothing.
-    return shown == 3
+    -- Kobold Camp Cleanup is watched and contributes its one objective.
+    -- Sharptalon's Claw is complete, so it is a title row only, and Poor Old
+    -- Blanchy is neither watched nor complete.
+    return shown == 1
 end)()"""))
 
 check("a long line is trimmed rather than clipped", rt.eval("""(function()
@@ -6955,6 +7038,149 @@ check("minimap objective dots can grow past the old numeric name band",
       rt.eval("UQ_TEST_UNBOUNDED_MINIMAP_DOTS == 1001 "
               "and UQ_TEST_UNBOUNDED_MINIMAP_NAMES == true"),
       str(rt.eval("UQ_TEST_UNBOUNDED_MINIMAP_DOTS")))
+
+
+print("interface language")
+# Every catalog is already loaded (the TOC lists them), so this exercises the
+# lookup rather than the files: each language is activated in turn and asked
+# for a key that carries a format placeholder and a key that does not.
+check("four languages are registered", rt.eval(
+    "table.getn(UnrealQuest.GetLanguages()) == 4"))
+# The flag row in the standalone window's header. It exists only there: with
+# unrealUI hosting the page, the language is set in unrealUI and a second
+# selector would be two controls writing one value.
+check("the standalone settings header carries one flag per language", rt.eval(
+    "getglobal('UnrealQuestSettingsLanguageenUS') ~= nil "
+    "and getglobal('UnrealQuestSettingsLanguagefrFR') ~= nil "
+    "and getglobal('UnrealQuestSettingsLanguageruRU') ~= nil "
+    "and getglobal('UnrealQuestSettingsLanguagezhCN') ~= nil"))
+check("a flag button draws its texture and no chrome of its own", rt.eval(
+    "UnrealQuestSettingsLanguagefrFR.unrealQuestIcon ~= nil "
+    "and UnrealQuestSettingsLanguagefrFR.unrealQuestBackground == nil"))
+# Explicitly, never through the parent: nothing here may rely on a window's
+# visibility reaching its children, and a flag outliving its closed window
+# would sit on the screen with nothing behind it.
+rt.execute("UnrealQuest:GetModule('Settings'):Close()")
+check("the flags hide with the window", rt.eval(
+    "UnrealQuestSettingsLanguagefrFR:IsShown() == false"))
+rt.execute("UnrealQuest:GetModule('Settings'):Open()")
+check("and come back with it", rt.eval(
+    "UnrealQuestSettingsLanguagefrFR:IsShown() == true"))
+# A frame here keeps only its LAST SetPoint, which for the handle is the
+# TOPRIGHT edge -- the one the flag row pushes inwards.
+check("the drag handle is inset so the flags stay clickable", rt.eval(
+    "UnrealQuestSettingsHandle.point[1] == 'TOPRIGHT' "
+    "and UnrealQuestSettingsHandle.point[4] == -(12 + 4 * (18 + 3))"),
+    str(rt.eval("UnrealQuestSettingsHandle.point[4]")))
+check("English is the resolved default with no unrealUI present", rt.eval(
+    "UnrealQuest.GetLanguage() == 'enUS' "
+    "and UnrealQuest.IsLanguageFollowingUnrealUI() == false"))
+check("a flag texture path is rebuilt at runtime, never stored", rt.eval(
+    "UnrealQuest.FlagTexture('frFR') ~= nil "
+    "and UnrealQuestDB.language ~= nil "
+    "and string.find(UnrealQuestDB.language, '\\\\', 1, true) == nil"))
+
+# French is folded to plain ASCII on the way out of the generator, so the
+# sample is "quetes" and not the accented spelling -- see ascii_fold in
+# tools/locale/gen_locales.py for why the client's font forces that.
+for code, sample in (("frFR", "quetes"), ("ruRU", "задани"), ("zhCN", "任务")):
+    rt.execute("UnrealQuest.SetLanguage('%s')" % code)
+    check("%s activates and answers in its own language" % code, rt.eval(
+        "UnrealQuest.GetLanguage() == '%s' "
+        "and string.find(UnrealQuest.L('CMD_HELP_TRACKER'), '%s', 1, true) ~= nil"
+        % (code, sample)),
+        ascii(rt.eval("UnrealQuest.L('CMD_HELP_TRACKER')")))
+    check("%s keeps the format argument" % code, rt.eval(
+        "string.find(UnrealQuest.L('CMD_UNKNOWN', 'zzz'), 'zzz', 1, true) ~= nil"),
+        ascii(rt.eval("UnrealQuest.L('CMD_UNKNOWN', 'zzz')")))
+
+# The fold is a shipping rule, not a one-off cleanup: an accented glyph that
+# creeps back into the French catalog by hand draws as a blank box in game,
+# which is silent. Checked over the whole catalog rather than one string.
+french_accented = [line.strip()[:60] for line
+                   in io.open(os.path.join(ADDONS, "unrealQuest", "Locales",
+                                           "frFR.lua"), encoding="utf-8")
+                   if any(0x80 <= ord(ch) < 0x370 for ch in line)]
+check("no French string carries a glyph the client's font cannot draw",
+      french_accented == [], " | ".join(french_accented[:3]))
+
+# The Russian rule is the only one with three forms. 11 and 21 are the two
+# counts that separate it from a naive "1 vs the rest": 21 is ONE, 11 is MANY.
+rt.execute("UnrealQuest.SetLanguage('ruRU')")
+russian_rows = {n: str(rt.eval("UnrealQuest.LN('CMD_TRACKER_ROWS', %d)" % n))
+                for n in (1, 2, 5, 11, 21)}
+check("Russian picks ONE / FEW / MANY by count",
+      russian_rows == {
+          1: "1 строка",
+          2: "2 строки",
+          5: "5 строк",
+          11: "11 строк",
+          21: "21 строка",
+      },
+      # ascii(): this script prints to a console that is not necessarily UTF-8.
+      ascii(russian_rows))
+
+# A key with no entry must come back as itself, not as an empty label -- that
+# is the only failure mode a translator can actually spot in game.
+check("an unknown key returns itself", rt.eval(
+    "UnrealQuest.L('UQ_TEST_NO_SUCH_KEY') == 'UQ_TEST_NO_SUCH_KEY'"))
+# Non-English falls back to the English entry rather than to the raw key.
+check("a language without an entry falls back to English", rt.eval(
+    "UnrealQuest.L('CMD_HELP_TRACKER_OBJECTIVES') "
+    "== '/uq tracker objectives all|tracked|none'"))
+
+rt.execute("UnrealQuest.SetLanguage('enUS')")
+check("English can be selected back", rt.eval("UnrealQuest.GetLanguage() == 'enUS'"))
+
+# Following unrealUI. The harness has no unrealUI, which is the standalone case
+# already covered above; these two put one in place and re-run the resolution
+# the way a real load would, once through each of its two reads.
+#
+# The second read (the SavedVariables global) is the one that matters most: it
+# is what makes the language correct on the FIRST frame, before unrealUI's own
+# Initialise has run and while its GetLanguage would still answer with its
+# compiled-in default.
+rt.execute("""
+    local locale = UnrealQuest:GetModule('Locale')
+
+    -- unrealUI present but not yet initialised: only its saved value can answer.
+    UnrealUI = { ready = false, GetLanguage = function() return 'enUS' end }
+    UnrealUIProfiles = { language = 'ruRU' }
+    locale.settled = false
+    locale.followsUnrealUI = false
+    locale:Resolve(false)
+    UQ_TEST_FOLLOW_EARLY = UnrealQuest.GetLanguage()
+    UQ_TEST_FOLLOW_EARLY_FLAG = UnrealQuest.IsLanguageFollowingUnrealUI()
+
+    -- The player's own stored choice must not be able to override it, and the
+    -- flag row must not be able to write one either.
+    UQ_TEST_FOLLOW_REFUSED = UnrealQuest.SetLanguage('frFR')
+
+    -- unrealUI initialised: the getter is authoritative from here on.
+    UnrealUI.ready = true
+    UnrealUI.GetLanguage = function() return 'zhCN' end
+    locale.settled = false
+    locale:Resolve(false)
+    UQ_TEST_FOLLOW_READY = UnrealQuest.GetLanguage()
+
+    -- Back to standalone for anything that runs after this.
+    UnrealUI = nil
+    UnrealUIProfiles = nil
+    locale.settled = true
+    locale.followsUnrealUI = false
+    UnrealQuest.SetLanguage('enUS')
+""")
+check("an uninitialised unrealUI is still read, through its saved language",
+      rt.eval("UQ_TEST_FOLLOW_EARLY == 'ruRU' and UQ_TEST_FOLLOW_EARLY_FLAG == true"),
+      str(rt.eval("UQ_TEST_FOLLOW_EARLY")))
+check("the flag row cannot write a language unrealUI owns",
+      rt.eval("UQ_TEST_FOLLOW_REFUSED == false"))
+check("an initialised unrealUI answers through GetLanguage",
+      rt.eval("UQ_TEST_FOLLOW_READY == 'zhCN'"),
+      str(rt.eval("UQ_TEST_FOLLOW_READY")))
+check("removing unrealUI returns the language to this addon",
+      rt.eval("UnrealQuest.GetLanguage() == 'enUS' "
+              "and UnrealQuest.IsLanguageFollowingUnrealUI() == false"))
 
 
 print()

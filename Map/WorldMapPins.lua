@@ -350,6 +350,10 @@ local function BagItems()
     return UQ:GetModule("BagItems")
 end
 
+local function MinimapPins()
+    return UQ:GetModule("MinimapPins")
+end
+
 local function HidePoolFrom(pool, first)
     local index = first
     local total = table.getn(pool)
@@ -749,7 +753,7 @@ local function BuildGiverTooltipLines(database, giver, availableQuestIds, suppre
     local lines = {}
     local name = giver.sourceType == "unit" and database:GetUnitName(giver.sourceId)
         or database:GetObjectName(giver.sourceId)
-    table.insert(lines, { text = name or "Unknown", r = 0.3, g = 1, b = 0.8 })
+    table.insert(lines, { text = name or UQ.L("COMMON_UNKNOWN"), r = 0.3, g = 1, b = 0.8 })
 
     if giver.sourceType == "unit" then
         local unit = database:GetUnit(giver.sourceId)
@@ -758,11 +762,11 @@ local function BuildGiverTooltipLines(database, giver, availableQuestIds, suppre
         -- instead of being coerced to a number.
         local level = unit and unit.lvl
         if level ~= nil and level ~= "" then
-            table.insert(lines, { left = "Level:", right = tostring(level) })
+            table.insert(lines, { left = UQ.L("TOOLTIP_LEVEL"), right = tostring(level) })
         end
-        table.insert(lines, { left = "Type:", right = "Unit" })
+        table.insert(lines, { left = UQ.L("TOOLTIP_TYPE"), right = UQ.L("TOOLTIP_TYPE_UNIT") })
     else
-        table.insert(lines, { left = "Type:", right = "Object" })
+        table.insert(lines, { left = UQ.L("TOOLTIP_TYPE"), right = UQ.L("TOOLTIP_TYPE_OBJECT") })
     end
 
     local index = 1
@@ -782,8 +786,8 @@ local function BuildGiverTooltipLines(database, giver, availableQuestIds, suppre
             local record = database:GetQuest(questId)
             if record and (record.lvl ~= nil or record.min ~= nil) then
                 table.insert(lines, {
-                    left = "- Level: " .. tostring(record.lvl or "?"),
-                    right = "Required: " .. tostring(record.min or "?"),
+                    left = "- " .. UQ.L("TOOLTIP_LEVEL") .. " " .. tostring(record.lvl or "?"),
+                    right = UQ.L("TOOLTIP_REQUIRED") .. " " .. tostring(record.min or "?"),
                     r = 1, g = 0.82, b = 0,
                     rightR = 0.3, rightG = 1, rightB = 0.3,
                 })
@@ -803,12 +807,12 @@ local function BuildGiverTooltipLines(database, giver, availableQuestIds, suppre
         -- marker the player is not hovering would promise the wrong thing.
     elseif total > 1 then
         table.insert(lines, {
-            text = "Shift-click to choose which quest is already done",
+            text = UQ.L("MAP_HINT_SHIFT_CLICK_CHOOSE"),
             r = 0.5, g = 0.5, b = 0.5,
         })
     elseif total > 0 then
         table.insert(lines, {
-            text = "Shift-click to mark as already done",
+            text = UQ.L("MAP_HINT_SHIFT_CLICK_MARK"),
             r = 0.5, g = 0.5, b = 0.5,
         })
     end
@@ -829,7 +833,7 @@ local function BuildTurnInTooltipLines(database, point)
     local lines = {}
     local name = point.sourceType == "unit" and database:GetUnitName(point.sourceId)
         or database:GetObjectName(point.sourceId)
-    table.insert(lines, { text = name or "Unknown", r = 0.3, g = 1, b = 0.8 })
+    table.insert(lines, { text = name or UQ.L("COMMON_UNKNOWN"), r = 0.3, g = 1, b = 0.8 })
 
     if point.sourceType == "unit" then
         local unit = database:GetUnit(point.sourceId)
@@ -837,13 +841,13 @@ local function BuildTurnInTooltipLines(database, point)
         -- text is passed through rather than coerced (see BuildGiverTooltipLines).
         local level = unit and unit.lvl
         if level ~= nil and level ~= "" then
-            table.insert(lines, { left = "Level:", right = tostring(level) })
+            table.insert(lines, { left = UQ.L("TOOLTIP_LEVEL"), right = tostring(level) })
         end
-        table.insert(lines, { left = "Type:", right = "Unit" })
+        table.insert(lines, { left = UQ.L("TOOLTIP_TYPE"), right = UQ.L("TOOLTIP_TYPE_UNIT") })
     else
-        table.insert(lines, { left = "Type:", right = "Object" })
+        table.insert(lines, { left = UQ.L("TOOLTIP_TYPE"), right = UQ.L("TOOLTIP_TYPE_OBJECT") })
     end
-    table.insert(lines, { left = "Turns in:", right = tostring(table.getn(point.quests)) })
+    table.insert(lines, { left = UQ.L("TOOLTIP_TURNS_IN"), right = tostring(table.getn(point.quests)) })
 
     local index = 1
     local total = table.getn(point.quests)
@@ -857,15 +861,17 @@ local function BuildTurnInTooltipLines(database, point)
             table.insert(lines, { separator = true })
         end
         if quest.isComplete == 1 then
-            table.insert(lines, { text = "[?] " .. (title or "Unknown"), r = 1, g = 0.82, b = 0 })
+            table.insert(lines, { text = "[?] " .. (title or UQ.L("COMMON_UNKNOWN")),
+                r = 1, g = 0.82, b = 0 })
             table.insert(lines, {
-                left = "- Status:", right = "Ready to turn in",
+                left = "- " .. UQ.L("TOOLTIP_STATUS"), right = UQ.L("QUEST_STATUS_READY_TO_TURN_IN"),
                 rightR = 0.2, rightG = 1, rightB = 0.2,
             })
         else
-            table.insert(lines, { text = "[?] " .. (title or "Unknown"), r = 0.6, g = 0.6, b = 0.6 })
+            table.insert(lines, { text = "[?] " .. (title or UQ.L("COMMON_UNKNOWN")),
+                r = 0.6, g = 0.6, b = 0.6 })
             table.insert(lines, {
-                left = "- Status:", right = "In progress",
+                left = "- " .. UQ.L("TOOLTIP_STATUS"), right = UQ.L("QUEST_STATUS_IN_PROGRESS"),
                 rightR = 1, rightG = 0.82, rightB = 0,
             })
         end
@@ -889,28 +895,28 @@ local function BuildQuestTooltipLines(database, quest)
     if not title and type(quest.questId) == "number" then
         title = database:GetQuestTitle(quest.questId)
     end
-    table.insert(lines, { text = title or "Unknown", r = 1, g = 0.82, b = 0 })
+    table.insert(lines, { text = title or UQ.L("COMMON_UNKNOWN"), r = 1, g = 0.82, b = 0 })
 
     if type(quest.level) == "number" then
         local red, green, blue = Client.GetQuestLevelColor(quest.level)
         table.insert(lines, {
-            left = "Level:", right = tostring(quest.level),
+            left = UQ.L("TOOLTIP_LEVEL"), right = tostring(quest.level),
             rightR = red, rightG = green, rightB = blue,
         })
     end
     if type(quest.questTag) == "string" and quest.questTag ~= "" then
-        table.insert(lines, { left = "Type:", right = quest.questTag })
+        table.insert(lines, { left = UQ.L("TOOLTIP_TYPE"), right = quest.questTag })
     end
 
     local complete = quest.isComplete == 1
     if complete then
         table.insert(lines, {
-            left = "Status:", right = "Ready to turn in",
+            left = UQ.L("TOOLTIP_STATUS"), right = UQ.L("QUEST_STATUS_READY_TO_TURN_IN"),
             rightR = 0.2, rightG = 1, rightB = 0.2,
         })
     else
         table.insert(lines, {
-            left = "Status:", right = "In progress",
+            left = UQ.L("TOOLTIP_STATUS"), right = UQ.L("QUEST_STATUS_IN_PROGRESS"),
             rightR = 1, rightG = 0.82, rightB = 0,
         })
     end
@@ -1694,7 +1700,7 @@ function WorldMapPins:BuildClusterTooltipLines(database, pin)
     if omitted > 0 then
         table.insert(lines, { separator = true })
         table.insert(lines, {
-            text = "+ " .. tostring(omitted) .. " more marker(s) here",
+            text = UQ.LN("MAP_MORE_MARKERS", omitted),
             r = 0.5, g = 0.5, b = 0.5,
         })
     end
@@ -1736,6 +1742,16 @@ function WorldMapPins:MarkGiverQuestDone(questId)
     end
     questHistory:MarkDoneManually(questId)
     self.dirty = true
+    -- The minimap draws the same giver from the same CollectAvailableGivers
+    -- policy, but caches the result in its own target list and only rebuilds
+    -- it when QuestState fires or the bags change. Marking done touches
+    -- neither, so without this the "!" stays on the minimap until some
+    -- unrelated quest event happens to invalidate it. /uq resetmarked already
+    -- invalidates both sides for the same reason.
+    local minimap = MinimapPins()
+    if minimap then
+        minimap.dirty = true
+    end
     -- Redraw on the next tick instead of waiting out the refresh interval, so
     -- the "!" goes away as the player clicks it rather than up to a quarter
     -- second later. pfQuest does the same thing on its own mark-done click
@@ -1744,6 +1760,7 @@ function WorldMapPins:MarkGiverQuestDone(questId)
     local driver = UQ:GetModule("Driver")
     if driver then
         driver:Wake("map.worldpins")
+        driver:Wake("map.minimappins")
     end
 end
 
@@ -2588,7 +2605,13 @@ function WorldMapPins:Refresh()
         return
     end
 
-    local areaId, report, viewReason = mapContext:GetCurrentZoneView()
+    -- The zone the MAP is showing, not the zone the player is standing in:
+    -- this layer only converts database percentages to UVs on the canvas in
+    -- front of it, so opening Westfall's map from Elwynn Forest draws
+    -- Westfall's quest markers. The minimap layer and the HUD waypoint still
+    -- ask for the player's own zone -- both measure from the player's
+    -- position, which a foreign view cannot supply. See MapContext.
+    local areaId, report, viewReason = mapContext:GetViewedZone()
     if not areaId then
         HideAllPools()
         self.dirty = true
@@ -2611,6 +2634,10 @@ function WorldMapPins:Refresh()
     local rebuildConfig = UQ:GetModule("Config")
     if rebuildConfig then
         rebuildConfig:SetSectionEntry("mapDiagnostics", "rebuilds", self.rebuildCount)
+        -- The zone this pass drew, which is the open map's and no longer
+        -- necessarily the player's. Without it a foreign-zone map that came
+        -- out empty is indistinguishable from one drawn for the wrong area.
+        rebuildConfig:SetSectionEntry("mapDiagnostics", "areaId", areaId)
     end
     self.lastSignature = signature
 

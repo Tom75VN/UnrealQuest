@@ -103,6 +103,9 @@ Settings.liveSliders = {}
 -- unrealUI is found, its own identical button takes over and this one hides.
 Settings.minimapButton = nil
 Settings.minimapAnchor = nil
+-- The language flags in the standalone window's header, and nothing at all in
+-- the unrealUI host: see BuildLanguageSelector.
+Settings.languageButtons = {}
 
 local function Config()
     return UQ:GetModule("Config")
@@ -475,7 +478,7 @@ function Settings:BuildPage(parent)
     -- directly; they are the first section whether or not it is labelled.
     page.Heading(PageTitle())
 
-    page.Slider("trackerBackgroundOpacity", "Background opacity", 0, 100, 1,
+    page.Slider("trackerBackgroundOpacity", UQ.L("SETTINGS_TRACKER_OPACITY"), 0, 100, 1,
         function(value)
             local tracker = UQ:GetModule("TrackerFrame")
             if tracker then
@@ -484,21 +487,21 @@ function Settings:BuildPage(parent)
         end)
 
     page.Rule()
-    page.Heading("World map")
+    page.Heading(UQ.L("SETTINGS_HEADING_WORLD_MAP"))
 
     -- Two presentations of one scene, and neither is the absence of the other,
     -- so the choice is a radio rather than a checkbox naming one of them.
     -- Map/WorldMapPins.lua carries the setting into its view signature, so
     -- picking a row repaints the map on the next refresh with nothing here to
     -- notify.
-    page.Radio("mapObjectiveDots", "Quest objectives are shown as:", {
-        { value = true, label = "Dots",
-          note = "One dot per target position, in the same style as the minimap pins." },
-        { value = false, label = "Areas",
-          note = "A shaded blue area covering where the targets are found." },
+    page.Radio("mapObjectiveDots", UQ.L("SETTINGS_MAP_OBJECTIVE_STYLE"), {
+        { value = true, label = UQ.L("SETTINGS_MAP_STYLE_DOTS"),
+          note = UQ.L("SETTINGS_MAP_STYLE_DOTS_NOTE") },
+        { value = false, label = UQ.L("SETTINGS_MAP_STYLE_AREAS"),
+          note = UQ.L("SETTINGS_MAP_STYLE_AREAS_NOTE") },
     })
 
-    page.Slider("mapObjectiveDotScale", "World map dot size", 50, 150, 1,
+    page.Slider("mapObjectiveDotScale", UQ.L("SETTINGS_MAP_DOT_SIZE"), 50, 150, 1,
         function()
             local worldMapPins = UQ:GetModule("WorldMapPins")
             if worldMapPins then
@@ -506,7 +509,7 @@ function Settings:BuildPage(parent)
             end
         end, { width = 160, advance = 0 })
 
-    page.Slider("minimapObjectiveDotScale", "Minimap dot size", 50, 150, 1,
+    page.Slider("minimapObjectiveDotScale", UQ.L("SETTINGS_MINIMAP_DOT_SIZE"), 50, 150, 1,
         function()
             local minimapPins = UQ:GetModule("MinimapPins")
             if minimapPins then
@@ -516,17 +519,17 @@ function Settings:BuildPage(parent)
 
     -- Notes on this page are kept to one line: both hosts hand the page a
     -- fixed 428px box that neither of them scrolls.
-    page.Checkbox("mapClusterTooltips", "Describe overlapping map markers together",
-        "Markers whose icons touch cannot be hovered apart; this lists them all.")
+    page.Checkbox("mapClusterTooltips", UQ.L("SETTINGS_MAP_CLUSTER"),
+        UQ.L("SETTINGS_MAP_CLUSTER_NOTE"))
 
-    page.Checkbox("minimapPinsClampEdge", "Clamp off-view minimap markers to the edge",
-        "Off hides distant \"!\" and \"?\" markers instead of pinning them to the border.")
+    page.Checkbox("minimapPinsClampEdge", UQ.L("SETTINGS_MINIMAP_CLAMP"),
+        UQ.L("SETTINGS_MINIMAP_CLAMP_NOTE"))
 
     -- The import button's label describes its action, so a compact gap is
     -- enough separation after the dot-size sliders without pushing the page
     -- beyond either host's fixed content box.
     page.Gap(8)
-    page.Heading("Quest history")
+    page.Heading(UQ.L("SETTINGS_HEADING_QUEST_HISTORY"))
 
     -- This client has no completed-quest API, so a fresh install cannot know
     -- which quests the character already finished -- see Quest/QuestHistory.lua.
@@ -538,7 +541,7 @@ function Settings:BuildPage(parent)
     -- the page is close enough to the bottom of the content box that a
     -- three-line paragraph here pushed the button off it. The breakdown lives
     -- in `/uq pfquest`.
-    local importStatus = page.Body("Checking for pfQuest data...", 0, 1)
+    local importStatus = page.Body(UQ.L("SETTINGS_PFQUEST_CHECKING"), 0, 1)
 
     local importButton
 
@@ -555,7 +558,7 @@ function Settings:BuildPage(parent)
     -- thing: "get my finished quests in". Which of the three it does depends on
     -- what pfQuest is doing right now, and its label says which -- see
     -- PfQuestImport:GetButtonLabel and :Press.
-    importButton = page.Button("pfQuestImport", "Import from pfQuest", function()
+    importButton = page.Button("pfQuestImport", UQ.L("PFQUEST_BUTTON_IMPORT"), function()
         local importer = UQ:GetModule("PfQuestImport")
         if not importer then
             return
@@ -571,9 +574,8 @@ function Settings:BuildPage(parent)
     -- bottom -- silently. Said out loud the moment it happens instead.
     self.pageHeight = -page.y
     if self.pageHeight > CONTENT_HEIGHT then
-        UQ:Warn("the options page is " .. tostring(math.floor(self.pageHeight))
-            .. "px tall but the window shows " .. CONTENT_HEIGHT
-            .. "px; the last options are cut off")
+        UQ:Warn(UQ.L("SETTINGS_WARN_PAGE_TOO_TALL",
+            math.floor(self.pageHeight), CONTENT_HEIGHT))
     end
 
     return page.widgets, page.Refresh
@@ -653,7 +655,7 @@ function Settings:ResolveHost(force)
                 "unrealUI is present but refused the options page -- a page already registered under "
                 .. "the id '" .. TAB_ID .. "' is the only documented reason. UnrealQuest's own "
                 .. "settings window is used instead")
-            UQ:Warn("unrealUI refused the UnrealQuest options page; using UnrealQuest's own window")
+            UQ:Warn(UQ.L("SETTINGS_WARN_UNREALUI_REFUSED"))
             self:EnsureMinimapButton()
         end
         return self.host
@@ -714,7 +716,7 @@ function Settings:EnsureMinimapButton()
         Client.ShowGameTooltip(button, {
             { text = TAB_LABEL, r = UQ.colors.accent[1], g = UQ.colors.accent[2],
               b = UQ.colors.accent[3] },
-            { text = "Click to open the options.", r = 0.7, g = 0.7, b = 0.7 },
+            { text = UQ.L("SETTINGS_MINIMAP_TOOLTIP"), r = 0.7, g = 0.7, b = 0.7 },
         }, "ANCHOR_LEFT")
     end)
     Client.ChainScript(button, "OnLeave", function()
@@ -723,6 +725,131 @@ function Settings:EnsureMinimapButton()
 
     self:ApplyMinimapButton()
     return button
+end
+
+-- The language selector ------------------------------------------------------
+--
+-- Four flat flags in the top-right of this window's header, opposite the
+-- addon name. Not a dropdown: there are only four languages, and a player who
+-- has just landed in one they cannot read needs the way back to be visible on
+-- screen rather than one click inside a closed control.
+--
+-- ONLY IN THIS WINDOW. With unrealUI installed the language is whatever is set
+-- there (Core/Locale.lua), and a second selector would be two controls writing
+-- one value -- only one of which unrealUI would honour. UQ.SetLanguage refuses
+-- the write in that case as well, so the two guards agree.
+--
+-- Changing the language does not retranslate what is already on screen: every
+-- label in this addon is written once when its frame is built. The chat line
+-- asking for a /reload is the whole of the confirmation, deliberately printed
+-- in the language just chosen -- if the client's font has no glyphs for it, an
+-- unreadable line is the fastest possible signal that this language will not
+-- render, and the English flag is one visible click away.
+
+local FLAG_WIDTH = 18
+local FLAG_HEIGHT = 14
+local FLAG_GAP = 3
+local FLAG_RIGHT_INSET = 12
+-- Centred in the 46px header strip.
+local FLAG_TOP_INSET = 16
+
+-- What the drag handle has to give up so these stay clickable. The handle
+-- covers the header and is raised above it, so without this it would take
+-- every click on the row.
+local function LanguageSelectorInset()
+    local count = table.getn(UQ.GetLanguages())
+    return FLAG_RIGHT_INSET + count * (FLAG_WIDTH + FLAG_GAP)
+end
+
+-- Selection is communicated only through opacity: full for the active
+-- language, 30% for the others, 95% while an inactive one is hovered -- so
+-- pointing at the current choice never makes it look weaker.
+local FLAG_SHADE_SELECTED = 1
+local FLAG_SHADE_IDLE = 0.3
+local FLAG_SHADE_HOVER = 0.95
+
+function Settings:RefreshLanguageButtons()
+    local active = UQ.GetLanguage()
+    local index = 1
+    local total = table.getn(self.languageButtons)
+    while index <= total do
+        local button = self.languageButtons[index]
+        local selected = button.unrealQuestLanguage == active
+        button.unrealQuestSelected = selected
+        Client.SetSettingsFlagShade(button,
+            selected and FLAG_SHADE_SELECTED or FLAG_SHADE_IDLE, selected)
+        index = index + 1
+    end
+end
+
+function Settings:BuildLanguageSelector(window)
+    if UQ.IsLanguageFollowingUnrealUI() then
+        return
+    end
+
+    local languages = UQ.GetLanguages()
+    local count = table.getn(languages)
+    local index = 1
+    while index <= count do
+        local entry = languages[index]
+        -- Captured per row: the closures below outlive this iteration.
+        local code = entry.code
+        local label = entry.label
+
+        local button = Client.CreateSettingsFlag(window,
+            "UnrealQuestSettingsLanguage" .. code,
+            UQ.FlagTexture(code), entry.short, FLAG_WIDTH, FLAG_HEIGHT,
+            function()
+                if not UQ.SetLanguage(code) then
+                    return
+                end
+                Settings:RefreshLanguageButtons()
+                UQ:Print(UQ.L("SETTINGS_LANGUAGE_CHANGED", label))
+                UQ:Print(UQ.L("SETTINGS_LANGUAGE_RELOAD"))
+            end)
+        if button then
+            button.unrealQuestLanguage = code
+            -- Right to left from the header's right edge, so the row keeps its
+            -- inset however many languages are registered.
+            Client.AnchorObject(button, "TOPRIGHT", window, "TOPRIGHT",
+                -FLAG_RIGHT_INSET - (count - index) * (FLAG_WIDTH + FLAG_GAP),
+                -FLAG_TOP_INSET)
+            Client.SetObjectScript(button, "OnEnter", function()
+                if button.unrealQuestSelected then
+                    return
+                end
+                Client.SetSettingsFlagShade(button, FLAG_SHADE_HOVER, false)
+            end)
+            Client.SetObjectScript(button, "OnLeave", function()
+                if button.unrealQuestSelected then
+                    return
+                end
+                Client.SetSettingsFlagShade(button, FLAG_SHADE_IDLE, false)
+            end)
+            table.insert(self.languageButtons, button)
+        end
+        index = index + 1
+    end
+
+    self:RefreshLanguageButtons()
+end
+
+-- Shown and hidden with the window explicitly, never left to the parent. The
+-- rest of this file already refuses to rely on a parent's visibility reaching
+-- its children (SetRegionShown's note, rendering.parent_alpha_not_propagated),
+-- and a flag that outlived its closed window would sit on the screen with
+-- nothing behind it.
+function Settings:SetLanguageSelectorShown(shown)
+    local index = 1
+    local total = table.getn(self.languageButtons)
+    while index <= total do
+        if shown then
+            Client.ShowObject(self.languageButtons[index])
+        else
+            Client.HideObject(self.languageButtons[index])
+        end
+        index = index + 1
+    end
 end
 
 -- The standalone window -----------------------------------------------------
@@ -753,7 +880,7 @@ function Settings:CapturePosition()
     end
     local point, relativeName, relativePoint, x, y = Client.GetFrameAnchor(window)
     if type(point) ~= "string" or type(x) ~= "number" or type(y) ~= "number" then
-        UQ:Warn("the settings window could not report its position; it will reopen where it was")
+        UQ:Warn(UQ.L("SETTINGS_WARN_NO_POSITION"))
         return false
     end
     -- relativeName is read but not stored: whatever the drag left the window
@@ -782,13 +909,20 @@ function Settings:BuildWindow()
     local window = Client.CreateSettingsWindow(WINDOW_NAME,
         CONTENT_WIDTH + padding * 2, CONTENT_HEIGHT + header + footer)
     if not window then
-        UQ:Warn("the settings window could not be created; every option is still on /uq")
+        UQ:Warn(UQ.L("SETTINGS_WARN_NO_WINDOW"))
         return nil
     end
     self.window = window
     Client.SetSettingsTitle(window, TAB_LABEL)
 
-    local handle = Client.CreateSettingsHandle(window, HANDLE_NAME)
+    -- The handle stops short of the flag row so the header is draggable
+    -- everywhere except where those buttons are. When unrealUI owns the
+    -- language there is no row and the handle takes the whole strip.
+    local handleInset = 0
+    if not UQ.IsLanguageFollowingUnrealUI() then
+        handleInset = LanguageSelectorInset()
+    end
+    local handle = Client.CreateSettingsHandle(window, HANDLE_NAME, handleInset)
     if handle then
         self.handle = handle
         Client.SetObjectScript(handle, "OnDragStart", function()
@@ -796,7 +930,7 @@ function Settings:BuildWindow()
                 Settings.dragFailures = Settings.dragFailures + 1
                 -- Visible, never debug-only: a drag that silently does nothing
                 -- is the exact failure this client already produced once.
-                UQ:Warn("the settings window refused to move (StartMoving failed)")
+                UQ:Warn(UQ.L("SETTINGS_WARN_DRAG_FAILED"))
             end
         end)
         Client.SetObjectScript(handle, "OnDragStop", function()
@@ -804,10 +938,10 @@ function Settings:BuildWindow()
             Settings:CapturePosition()
         end)
     else
-        UQ:Warn("the settings window has no drag handle; it cannot be moved")
+        UQ:Warn(UQ.L("SETTINGS_WARN_NO_HANDLE"))
     end
 
-    local close = Client.CreateTextButton(window, CLOSE_NAME, 80, 22, "Close")
+    local close = Client.CreateTextButton(window, CLOSE_NAME, 80, 22, UQ.L("COMMON_CLOSE"))
     if close then
         self.close = close
         Client.AnchorObject(close, "BOTTOMRIGHT", window, "BOTTOMRIGHT", -padding, padding)
@@ -815,6 +949,8 @@ function Settings:BuildWindow()
             Settings:Close()
         end)
     end
+
+    self:BuildLanguageSelector(window)
 
     self.content = Client.CreateSettingsContent(window, CONTENT_NAME)
 
@@ -907,7 +1043,7 @@ function Settings:Open()
                 return true
             end
         end
-        UQ:Print("the UnrealQuest options are in the unrealUI settings window (/uui)")
+        UQ:Print(UQ.L("SETTINGS_IN_UNREALUI"))
         return false
     end
 
@@ -916,6 +1052,7 @@ function Settings:Open()
     end
     local page = self:EnsurePage()
     SetPageShown(page, true)
+    self:SetLanguageSelectorShown(true)
     if page and type(page.refresh) == "function" then
         page.refresh()
     end
@@ -932,6 +1069,7 @@ function Settings:Close()
         return false
     end
     SetPageShown(self.page, false)
+    self:SetLanguageSelectorShown(false)
     return Client.HideObject(self.window)
 end
 

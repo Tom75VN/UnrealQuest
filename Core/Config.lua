@@ -77,6 +77,21 @@ local CHARACTER_SECTIONS = {
 local defaults = {
     debug = false,
     pollInterval = 0.5,
+
+    -- Interface language, as one of the four-letter codes Core/Locale.lua
+    -- registers. Account-wide like every other setting here: a language is a
+    -- reading preference, not an alt's layout.
+    --
+    -- Only ever read when unrealUI is NOT installed. With unrealUI present the
+    -- language is whatever is set there and this value is left untouched, so
+    -- uninstalling unrealUI later returns the player to their own last choice
+    -- rather than to English.
+    --
+    -- The default is English, but a first run with no unrealUI seeds it from
+    -- GetLocale instead, so a French client opens in French without the player
+    -- having to find the flag row first.
+    language = "enUS",
+
     restoreTracking = true,
     -- Seasonal quests are hidden by default: the client cannot report which
     -- world events are running, so they would otherwise show all year.
@@ -378,8 +393,13 @@ function Config:OnInit()
     if UnrealQuestDB.schema and UnrealQuestDB.schema ~= SCHEMA then
         -- No migration path exists yet. Rather than reading a shape this build
         -- does not understand, start clean and say so.
-        UQ:Warn("saved settings were written by schema " .. tostring(UnrealQuestDB.schema)
-            .. "; resetting to schema " .. SCHEMA)
+        -- One of the few lines in this addon that can print before
+        -- Core/Locale.lua has resolved the language, because it runs inside
+        -- Config's own OnInit -- the phase the language is read FROM. It goes
+        -- through the catalog anyway, and simply answers in English when it
+        -- lands that early.
+        UQ:Warn(UQ.L("CONFIG_SCHEMA_RESET", tostring(UnrealQuestDB.schema),
+            tostring(SCHEMA)))
         UnrealQuestDB = {}
     end
 
@@ -452,7 +472,7 @@ function Config:SetCharacter(key, value)
         return true
     end
     if not IsSafeScalar(value) then
-        UQ:Warn("refused to persist an unsupported value for " .. tostring(key))
+        UQ:Warn(UQ.L("CONFIG_UNSUPPORTED_VALUE", tostring(key)))
         return false
     end
     self.characterStore[key] = value
@@ -475,7 +495,7 @@ function Config:Set(key, value)
         return false
     end
     if not IsSafeScalar(value) then
-        UQ:Warn("refused to persist an unsupported value for " .. tostring(key))
+        UQ:Warn(UQ.L("CONFIG_UNSUPPORTED_VALUE", tostring(key)))
         return false
     end
     self.store[key] = value
@@ -515,7 +535,7 @@ function Config:SetSectionEntry(name, key, value)
         count = count + 1
     end
     if section[key] == nil and count >= SectionLimit(name) then
-        UQ:Warn("section " .. tostring(name) .. " is full; entry not stored")
+        UQ:Warn(UQ.L("CONFIG_SECTION_FULL", tostring(name)))
         return false
     end
     section[key] = value

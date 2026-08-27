@@ -443,29 +443,28 @@ function PfQuestImport:DescribeShort(report)
 
     if report.found then
         if report.entries == 0 then
-            return "pfQuest is loaded, but its history for this character is empty."
+            return UQ.L("PFQUEST_SHORT_EMPTY_HISTORY")
         end
         if report.importable > 0 then
-            return tostring(report.importable)
-                .. " quest(s) in pfQuest's history are ready to import."
+            return UQ.LN("PFQUEST_SHORT_READY", report.importable)
         end
-        return "pfQuest's history holds nothing this addon has not already recorded."
+        return UQ.L("PFQUEST_SHORT_NOTHING_NEW")
     end
 
     local status = self:GetState()
     if status.state == "pending" then
-        return "pfQuest is on for one reload -- type /reload to run the import."
+        return UQ.L("PFQUEST_SHORT_PENDING")
     end
     if status.state == "disabled" then
-        return "pfQuest is installed but disabled -- the button borrows it for one reload."
+        return UQ.L("PFQUEST_SHORT_DISABLED")
     end
     if status.state == "missing" then
-        return "pfQuest is not installed, so there is no saved history to import."
+        return UQ.L("PFQUEST_SHORT_MISSING")
     end
     if status.state == "empty" then
-        return "pfQuest is loaded but has recorded no completed quests here."
+        return UQ.L("PFQUEST_SHORT_EMPTY")
     end
-    return "pfQuest is enabled but has written no history for this character yet."
+    return UQ.L("PFQUEST_SHORT_NO_HISTORY_YET")
 end
 
 -- The full breakdown, for `/uq pfquest` and for the line printed after a
@@ -477,44 +476,38 @@ function PfQuestImport:Describe(report)
     if not report.found then
         local status = self:GetState()
         if status.state == "pending" then
-            return "pfQuest has been switched on for one reload. Type /reload and the "
-                .. "import runs by itself, then switches it off again."
+            return UQ.L("PFQUEST_LONG_PENDING")
         end
         if status.state == "disabled" then
-            return "pfQuest is installed but disabled, so its saved history is not in "
-                .. "memory. The button switches it on for one reload, imports, and "
-                .. "switches it back off."
+            return UQ.L("PFQUEST_LONG_DISABLED")
         end
         if status.state == "missing" then
-            return "pfQuest is not installed, so there is no saved history to import from."
+            return UQ.L("PFQUEST_LONG_MISSING")
         end
         if status.state == "empty" then
-            return "pfQuest is loaded but has recorded no completed quests for this "
-                .. "character, so there is nothing to import."
+            return UQ.L("PFQUEST_LONG_EMPTY")
         end
-        return "pfQuest is enabled but its files have not run yet -- type /reload."
+        return UQ.L("PFQUEST_LONG_NOT_RUN_YET")
     end
 
     if report.entries == 0 then
-        return "pfQuest is loaded, but its history for this character is empty."
+        return UQ.L("PFQUEST_SHORT_EMPTY_HISTORY")
     end
 
-    local text = tostring(report.entries) .. " completed in pfQuest's history: "
-        .. tostring(report.importable) .. " to import, "
-        .. tostring(report.alreadyDone) .. " already here."
+    local text = UQ.L("PFQUEST_LONG_COUNTS", tostring(report.entries),
+        tostring(report.importable), tostring(report.alreadyDone))
     if report.waiting > 0 then
-        text = text .. " " .. tostring(report.waiting) .. " waiting on the title index."
+        text = text .. " " .. UQ.L("PFQUEST_LONG_WAITING", tostring(report.waiting))
     end
     local skipped = report.unknown + report.unmatched + report.ambiguous
     if skipped > 0 then
-        text = text .. " " .. tostring(skipped)
-            .. " skipped (not in this client's quest data, or an ambiguous title)."
+        text = text .. " " .. UQ.L("PFQUEST_LONG_SKIPPED", tostring(skipped))
     end
 
     local history = History()
     local imported = history and history:GetImportedCount() or 0
     if imported > 0 then
-        text = text .. " " .. tostring(imported) .. " imported previously."
+        text = text .. " " .. UQ.L("PFQUEST_LONG_PREVIOUS", tostring(imported))
     end
     return text
 end
@@ -527,18 +520,18 @@ end
 function PfQuestImport:GetButtonLabel()
     local state = self:GetState().state
     if state == "ready" then
-        return "Import from pfQuest"
+        return UQ.L("PFQUEST_BUTTON_IMPORT")
     end
     if state == "pending" then
-        return "Waiting for /reload"
+        return UQ.L("PFQUEST_BUTTON_WAITING")
     end
     if state == "missing" then
-        return "pfQuest not installed"
+        return UQ.L("PFQUEST_BUTTON_NOT_INSTALLED")
     end
     if state == "empty" then
-        return "pfQuest has no history"
+        return UQ.L("PFQUEST_BUTTON_NO_HISTORY")
     end
-    return "Enable pfQuest and import"
+    return UQ.L("PFQUEST_BUTTON_ENABLE_AND_IMPORT")
 end
 
 -- The one action behind the options-page button and `/uq pfquest import`.
@@ -551,39 +544,36 @@ function PfQuestImport:Press()
     local status = self:GetState()
 
     if status.state == "missing" then
-        UQ:Print("pfQuest is not installed, so there is no saved history to import")
+        UQ:Print(UQ.L("PFQUEST_PRESS_MISSING"))
         return status.state
     end
 
     if status.state == "empty" then
-        UQ:Print("pfQuest is loaded but has recorded no completed quests for this character, "
-            .. "so there is nothing to import")
+        UQ:Print(UQ.L("PFQUEST_PRESS_EMPTY"))
         return status.state
     end
 
     if status.state == "ready" then
         local report = self:Import()
         if report.imported > 0 then
-            UQ:Print("imported " .. report.imported
-                .. " completed quest(s) from pfQuest -- /uq pfquest undo takes them back")
+            UQ:Print(UQ.LN("PFQUEST_IMPORTED", report.imported))
         else
-            UQ:Print("nothing new to import: " .. self:Describe(report))
+            UQ:Print(UQ.L("PFQUEST_NOTHING_NEW", self:Describe(report)))
         end
         return status.state
     end
 
     if status.state == "pending" then
-        UQ:Print("pfQuest is already switched on for the import -- type /reload to run it")
+        UQ:Print(UQ.L("PFQUEST_PRESS_ALREADY_PENDING"))
         return status.state
     end
 
     local outcome = self:BeginAutoEnable()
     if outcome == "refused" then
-        UQ:Print("the client would not change pfQuest's enabled state; enable pfQuest "
-            .. "in the addon list yourself and press this again")
+        UQ:Print(UQ.L("PFQUEST_ENABLE_REFUSED"))
     elseif outcome == "asked" then
-        UQ:Print("pfQuest has been switched on for one reload")
-        UQ:Print("  type /reload -- the import runs by itself, then switches pfQuest back off")
+        UQ:Print(UQ.L("PFQUEST_ENABLED_FOR_RELOAD"))
+        UQ:Print("  " .. UQ.L("PFQUEST_ENABLED_FOR_RELOAD_HINT"))
     end
     return status.state
 end
@@ -656,13 +646,12 @@ function PfQuestImport:ResumeAutoImport()
         local report = self:Import()
         local restored = Finish()
         if report.imported > 0 then
-            UQ:Print("imported " .. report.imported
-                .. " completed quest(s) from pfQuest -- /uq pfquest undo takes them back")
+            UQ:Print(UQ.LN("PFQUEST_IMPORTED", report.imported))
         else
-            UQ:Print("pfQuest's history had nothing new to import")
+            UQ:Print(UQ.L("PFQUEST_RESUME_NOTHING_NEW"))
         end
         if restored then
-            UQ:Print("  pfQuest has been switched back off, as it was before")
+            UQ:Print("  " .. UQ.L("PFQUEST_RESTORED_OFF"))
         end
         return
     end
@@ -673,8 +662,7 @@ function PfQuestImport:ResumeAutoImport()
     end
 
     Finish()
-    UQ:Print("pfQuest was switched on for the import but its history never appeared; "
-        .. "nothing was imported and pfQuest has been put back as it was")
+    UQ:Print(UQ.L("PFQUEST_RESUME_TIMED_OUT"))
 end
 
 -- One look at enable, so `/uq status` has an honest row before the player ever

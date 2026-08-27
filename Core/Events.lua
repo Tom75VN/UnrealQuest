@@ -89,7 +89,7 @@ function Events:OnInit()
         frame = nil
     end
     if not frame then
-        UQ:Warn("could not create the event frame; UnrealQuest will rely on polling alone")
+        UQ:Warn(UQ.L("EVENTS_NO_FRAME"))
         return
     end
     frame:SetScript("OnEvent", Dispatch)

@@ -2,6 +2,13 @@
 
 ## 0.1.0
 
+- A completed quest now takes a single green line in the tracker window: its "Ready to turn in" line and its finished objectives are no longer listed under it.
+- Fixed a Lua error thrown by the client's own tracked-objectives panel ("attempt to concatenate local 'text'" in QuestLogFrame.lua) on quests whose objectives that panel cannot read. Such a quest is kept out of the client's five watch slots and still tracks normally in UnrealQuest's own tracker window.
+- Translated the whole interface into French, Russian and Simplified Chinese: the settings page, the tracker, every map, minimap and NPC tooltip, the quest log buttons and all /uq output.
+- French is written without accents ("quete", not the accented spelling), the way unrealUI writes it: the client's font draws accented letters as blank boxes, and no font this addon could ship changes that.
+- Pick the language with the flag row in the top-right of the settings window. With unrealUI installed the language follows the one set there instead, and no second selector is shown.
+- Quest markers and dots now follow the map you have open, not the zone you are standing in: open Westfall's map from Elwynn Forest and Westfall's quest points are drawn. The minimap markers and the HUD waypoint still follow your own zone, which is the only one they can measure from.
+- Fixed the map and minimap showing nothing at all in Westfall, whose name is carried by two different areas in the world data.
 - Use different colors for map points from different quests.
 - Show a path for quest-giver NPCs with patrol waypoints.
 - Add nodes such as treasures, mining nodes, rares, and more.

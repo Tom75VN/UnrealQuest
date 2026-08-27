@@ -71,6 +71,11 @@ Database\zhTW\quests.lua
 Core\Namespace.lua
 Compatibility\ClientAPI.lua
 Core\Config.lua
+Core\Locale.lua
+Locales\enUS.lua
+Locales\frFR.lua
+Locales\ruRU.lua
+Locales\zhCN.lua
 Core\Driver.lua
 Core\Events.lua
 Data\Database.lua

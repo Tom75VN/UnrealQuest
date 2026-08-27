@@ -80,6 +80,32 @@ function MapContext:ResolveAreaId(name)
     if table.getn(bucket) == 1 then
         return bucket[1], "unique"
     end
+
+    -- 47 names in the bundled zone table are carried by more than one area,
+    -- and one of them is a zone the player can stand in: "Westfall" is both
+    -- area 40 and area 206, so the whole pin layer resolved nothing there and
+    -- drew nothing. The tiebreak comes from the data itself -- only a zone
+    -- with its own map has a yard span in the minimap table, so a colliding
+    -- interior, dungeon wing or stretch of sea drops out. Applied only after
+    -- a true collision, and only when it leaves exactly one candidate:
+    -- anything else stays "ambiguous" and the caller keeps refusing to guess.
+    local database = Database()
+    if database then
+        local spanned = nil
+        local spannedCount = 0
+        local index = 1
+        local total = table.getn(bucket)
+        while index <= total do
+            if database:GetZoneYards(bucket[index]) then
+                spanned = bucket[index]
+                spannedCount = spannedCount + 1
+            end
+            index = index + 1
+        end
+        if spannedCount == 1 then
+            return spanned, "spanDisambiguated"
+        end
+    end
     return nil, "ambiguous"
 end
 
@@ -166,7 +192,7 @@ end
 -- once per session (primeAttempted), so it can never fight a player who later
 -- deliberately zooms out to browse a continent -- that zoneIndex 0 is left
 -- alone and correctly hides the layer.
-function MapContext:GetCurrentZoneView()
+function MapContext:InspectPrimed()
     local report = self:Inspect()
     if (not report.zoneIndex or report.zoneIndex == 0) and not report.mapFile
         and not self.primeAttempted then
@@ -175,6 +201,11 @@ function MapContext:GetCurrentZoneView()
             report = self:Inspect()
         end
     end
+    return report
+end
+
+function MapContext:GetCurrentZoneView()
+    local report = self:InspectPrimed()
     if not report.zoneIndex or report.zoneIndex == 0 then
         return nil, report, "continentView"
     end
@@ -184,6 +215,49 @@ function MapContext:GetCurrentZoneView()
     if not report.areaId then
         return nil, report, report.areaIdHow or "areaUnresolved"
     end
+    report.viewedAreaId = report.areaId
+    return report.areaId, report, report.areaIdHow
+end
+
+-- The area the MAP is showing, whether or not the player is standing in it.
+--
+-- GetCurrentZoneView above answers a different question -- "which zone is the
+-- player in, and can this view project them" -- and the minimap layer and the
+-- HUD waypoint must keep asking that one, because both measure offsets from
+-- the player's own position and a foreign zone's coordinates would be measured
+-- from the wrong origin. The world map has no such dependency: it converts
+-- database percentages straight to UVs on the canvas it is drawing, so it can
+-- serve any zone whose map is open.
+--
+-- The distinction rests entirely on which NAME the area was resolved from.
+-- GetMapZones/GetCurrentMapZone name the zone the map view is showing and
+-- nothing the player does can shadow that, so it is the only route that stays
+-- correct for a foreign zone. GetRealZoneText and GetZoneText name where the
+-- PLAYER is, and Inspect falls back to them when the map-zone route is empty
+-- -- which the documentation says it is until the map subsystem has been
+-- touched this session. Those two are therefore accepted only while the view
+-- projects the player, i.e. exactly the case where they agree with the view
+-- anyway. That fallback is what preserves the previous behaviour when
+-- GetMapZones returns nothing; it is never what draws a foreign zone.
+--
+-- A continent or world view is still refused: zoneIndex 0 means no individual
+-- zone is selected, so there is no area whose percentages could be converted.
+function MapContext:GetViewedZone()
+    local report = self:InspectPrimed()
+    if not report.zoneIndex or report.zoneIndex == 0 then
+        return nil, report, "continentView"
+    end
+    if report.areaIdFromMapZone then
+        report.viewedAreaId = report.areaIdFromMapZone
+        return report.viewedAreaId, report, report.areaIdFromMapZoneHow
+    end
+    if not report.playerX or not report.playerY then
+        return nil, report, "viewedZoneUnresolved"
+    end
+    if not report.areaId then
+        return nil, report, report.areaIdHow or "areaUnresolved"
+    end
+    report.viewedAreaId = report.areaId
     return report.areaId, report, report.areaIdHow
 end
 
@@ -219,8 +293,9 @@ function MapContext:IsInterior(report)
     return report.areaIdFromZoneText ~= report.areaIdFromMapZone
 end
 
--- Converts direct database percentages to UV coordinates on the current-zone
--- map. Child-area and continent transforms remain intentionally unsupported.
+-- Converts direct database percentages to UV coordinates on the map view the
+-- report describes. Child-area and continent transforms remain intentionally
+-- unsupported.
 function MapContext:DatabaseToCurrentMap(areaId, x, y, report)
     if type(areaId) ~= "number" or type(x) ~= "number" or type(y) ~= "number"
         or x < 0 or x > 100 or y < 0 or y > 100 then
@@ -228,11 +303,16 @@ function MapContext:DatabaseToCurrentMap(areaId, x, y, report)
     end
     local viewedAreaId
     if report then
-        if report.playerX and report.playerY then
+        -- Stamped by whichever resolver produced the report. Older callers
+        -- that hand over a bare Inspect() report keep the previous rule: the
+        -- names in it describe the player, so they are only trusted while the
+        -- view projects the player.
+        viewedAreaId = report.viewedAreaId
+        if not viewedAreaId and report.playerX and report.playerY then
             viewedAreaId = report.areaId
         end
     else
-        viewedAreaId, report = self:GetCurrentZoneView()
+        viewedAreaId, report = self:GetViewedZone()
     end
     if viewedAreaId ~= areaId then
         return nil, "differentArea"

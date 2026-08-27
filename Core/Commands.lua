@@ -40,61 +40,87 @@ local function StateColor(state)
     return "|cffaaaaaa"
 end
 
-local function ShowHelp()
-    Line("v" .. UQ.version .. " commands:")
-    Line("  /uq config    open the options window")
-    Line("  /uq config button on|off      the settings button beside the minimap")
-    Line("  /uq status    what this build established about the client")
-    Line("  /uq quests    the current quest log model")
-    Line("  /uq events    which quest events this client accepted and fired")
-    Line("  /uq map       current map identity and world-map pin status")
-    Line("  /uq map dots|areas  draw quest objectives as dots or as shaded areas")
-    Line("  /uq minimap   quest pins around the player on the minimap")
-    Line("  /uq minimap on|off            draw them, or stop")
-    Line("  /uq minimap span <yards>       dial in the scale for this zoom step")
-    Line("  /uq minimap indoors on|off    withhold markers indoors, or draw them anyway")
-    Line("  /uq db        static quest database state")
-    Line("  /uq tooltip   entity-tooltip objective diagnostics")
-    Line("  /uq tracker   the movable quest tracker window")
-    Line("  /uq tracker on|off|toggle     show or hide it")
-    Line("  /uq tracker reset             move it back to its default position")
-    Line("  /uq tracker objectives all|tracked|none")
-    Line("  /uq tracker zones             group by zone, or do not")
-    Line("  /uq tracker width <110-600>   how wide the window is")
-    Line("  /uq tracker height <60-900>   max height in pixels, 0 for no limit")
-    Line("  /uq tracker unfold            reopen every folded quest and zone")
-    Line("  /uq tracker unhideall         bring back every quest untracked out of the tracker")
-    Line("  /uq tracker native            hide or restore the client's own watch panel")
-    if UQ:IsFeatureEnabled("mainQuestWaypoint") then
-        Line("  /uq main <index or title>     follow a quest with the HUD waypoint")
-        Line("  /uq main                      report the followed quest")
-        Line("  /uq main clear                stop following")
-        Line("  /uq waypoint  HUD waypoint marker diagnostics")
-    else
-        Line("  |cff888888/uq main, /uq waypoint   disabled in this build|r")
+-- The help list is one catalog key per row, and each row carries its OWN
+-- command spelling. The commands themselves are never translated -- typing
+-- them is how they work -- so the key holds the fixed "/uq ..." prefix and the
+-- translatable description that follows it, which lets a language pad the
+-- column to whatever width its own words need.
+local HELP_KEYS = {
+    "CMD_HELP_CONFIG",
+    "CMD_HELP_CONFIG_BUTTON",
+    "CMD_HELP_STATUS",
+    "CMD_HELP_QUESTS",
+    "CMD_HELP_EVENTS",
+    "CMD_HELP_MAP",
+    "CMD_HELP_MAP_STYLE",
+    "CMD_HELP_MINIMAP",
+    "CMD_HELP_MINIMAP_ONOFF",
+    "CMD_HELP_MINIMAP_SPAN",
+    "CMD_HELP_MINIMAP_INDOORS",
+    "CMD_HELP_DB",
+    "CMD_HELP_TOOLTIP",
+    "CMD_HELP_TRACKER",
+    "CMD_HELP_TRACKER_ONOFF",
+    "CMD_HELP_TRACKER_RESET",
+    "CMD_HELP_TRACKER_OBJECTIVES",
+    "CMD_HELP_TRACKER_ZONES",
+    "CMD_HELP_TRACKER_WIDTH",
+    "CMD_HELP_TRACKER_HEIGHT",
+    "CMD_HELP_TRACKER_UNFOLD",
+    "CMD_HELP_TRACKER_UNHIDEALL",
+    "CMD_HELP_TRACKER_NATIVE",
+}
+
+local HELP_MAIN_KEYS = {
+    "CMD_HELP_MAIN_SET",
+    "CMD_HELP_MAIN_REPORT",
+    "CMD_HELP_MAIN_CLEAR",
+    "CMD_HELP_WAYPOINT",
+}
+
+local HELP_TAIL_KEYS = {
+    "CMD_HELP_TRACK",
+    "CMD_HELP_UNTRACK",
+    "CMD_HELP_TOGGLE",
+    "CMD_HELP_HIDE",
+    "CMD_HELP_UNHIDE",
+    "CMD_HELP_HIDDEN",
+    "CMD_HELP_RESETMARKED",
+    "CMD_HELP_RESETMARKED_ALL",
+    "CMD_HELP_PFQUEST",
+    "CMD_HELP_PFQUEST_IMPORT",
+    "CMD_HELP_PFQUEST_UNDO",
+    "CMD_HELP_MARKS",
+    "CMD_HELP_MARKS_ONOFF",
+    "CMD_HELP_MARKS_ICON",
+    "CMD_HELP_MARKS_GROUP",
+    "CMD_HELP_WORLDSCAN",
+    "CMD_HELP_WORLDSCAN_CHILD",
+    "CMD_HELP_DEBUG",
+}
+
+local function HelpBlock(keys)
+    local index = 1
+    local total = table.getn(keys)
+    while index <= total do
+        Line("  " .. UQ.L(keys[index]))
+        index = index + 1
     end
-    Line("  /uq track <index or title>    track a quest")
-    Line("  /uq untrack <index or title>  stop tracking a quest")
-    Line("  /uq toggle <index or title>   toggle quest tracking")
-    Line("  /uq hide <index or title>     hide a quest's pins from the world map")
-    Line("  /uq unhide <index or title>   restore a quest's map pins")
-    Line("  /uq hidden                    list quests hidden from the map")
-    Line("  /uq resetmarked               undo every shift/Ctrl-click 'mark done' on the map")
-    Line("  /uq resetmarked all           also undo marks made before that tracking existed")
-    Line("  /uq pfquest                   report what pfQuest's saved history holds")
-    Line("  /uq pfquest import            import it -- enables pfQuest for one reload if needed")
-    Line("  /uq pfquest undo              take back everything a previous import added")
-    Line("  /uq marks                 quest marks over creatures in the world")
-    Line("  /uq marks on|off          mark quest creatures with a raid target icon")
-    Line("  /uq marks icon <1-8>      which mark: 1 star .. 8 skull")
-    Line("  /uq marks group on|off    also mark while in a party or raid")
-    Line("  /uq worldscan             inventory WorldFrame's children (nameplate hunt)")
-    Line("  /uq worldscan <n>         one child in full: every region and child")
-    Line("  /uq debug     toggle debug output")
+end
+
+local function ShowHelp()
+    Line(UQ.L("CMD_HELP_TITLE", UQ.version))
+    HelpBlock(HELP_KEYS)
+    if UQ:IsFeatureEnabled("mainQuestWaypoint") then
+        HelpBlock(HELP_MAIN_KEYS)
+    else
+        Line("  |cff888888" .. UQ.L("CMD_HELP_MAIN_DISABLED") .. "|r")
+    end
+    HelpBlock(HELP_TAIL_KEYS)
 end
 
 local function ShowStatus()
-    Line("v" .. UQ.version .. " capability report")
+    Line(UQ.L("CMD_STATUS_TITLE", UQ.version))
     local index = 1
     local total = table.getn(UQ.capabilityOrder)
     while index <= total do
@@ -114,7 +140,7 @@ local function ShowStatus()
         local key = UQ.featureOrder[featureIndex]
         local feature = UQ.features[key]
         if feature and not feature.enabled then
-            Line("  |cffff5555disabled|r  " .. key
+            Line("  |cffff5555" .. UQ.L("CMD_STATE_DISABLED") .. "|r  " .. key
                 .. " |cff888888" .. tostring(feature.note) .. "|r")
         end
         featureIndex = featureIndex + 1
@@ -122,39 +148,37 @@ local function ShowStatus()
 
     local state = UQ:GetModule("QuestState")
     if state then
-        local completeness = "complete"
+        local completeness = UQ.L("CMD_STATUS_SNAPSHOT_COMPLETE")
         if not state:IsComplete() then
-            completeness = "incomplete, " .. state.collapsedHeaders .. " collapsed header(s)"
+            completeness = UQ.LN("CMD_STATUS_SNAPSHOT_INCOMPLETE", state.collapsedHeaders)
         end
-        Line("  quest log: " .. state:GetQuestCount() .. " quest(s), snapshot " .. completeness)
+        Line("  " .. UQ.LN("CMD_STATUS_QUEST_LOG", state:GetQuestCount(), completeness))
     end
 
-    Line("  objective readout path: " .. Client.GetObjectiveMode())
+    Line("  " .. UQ.L("CMD_STATUS_OBJECTIVE_PATH", Client.GetObjectiveMode()))
 end
 
 local function ShowQuests()
     local state = UQ:GetModule("QuestState")
     if not state then
-        Line("quest state module is not loaded")
+        Line(UQ.L("CMD_MODULE_MISSING_QUEST_STATE"))
         return
     end
     local quests = state:GetOrderedQuests()
     local total = table.getn(quests)
     if total == 0 then
-        Line("no quests in the log")
+        Line(UQ.L("CMD_QUESTS_NONE"))
         return
     end
     if not state:IsComplete() then
-        Line("|cffffff55snapshot is incomplete: " .. state.collapsedHeaders
-            .. " collapsed header(s) hide their quests from the client|r")
+        Line("|cffffff55" .. UQ.LN("CMD_QUESTS_SNAPSHOT_INCOMPLETE", state.collapsedHeaders) .. "|r")
     end
     -- Non-zero means something between the client and this addon is prefixing
     -- levels onto quest titles. The titles below are the stripped ones, so the
     -- count is the only place that shows it happened at all.
     local decorated = Client.GetQuestTitleDecorationCount and Client.GetQuestTitleDecorationCount()
     if decorated and decorated > 0 then
-        Line("|cff888888" .. decorated .. " title read(s) arrived carrying a level prefix; "
-            .. "stripped before matching|r")
+        Line("|cff888888" .. UQ.LN("CMD_QUESTS_LEVEL_PREFIXES", decorated) .. "|r")
     end
 
     local index = 1
@@ -169,14 +193,14 @@ local function ShowQuests()
         end
         local complete = ""
         if quest.isComplete == 1 then
-            complete = " |cff55ff55complete|r"
+            complete = " |cff55ff55" .. UQ.L("CMD_QUESTS_FLAG_COMPLETE") .. "|r"
         elseif quest.isComplete == -1 then
-            complete = " |cffff5555failed|r"
+            complete = " |cffff5555" .. UQ.L("CMD_QUESTS_FLAG_FAILED") .. "|r"
         end
         local tracked = ""
         local tracker = UQ:GetModule("Tracker")
         if tracker and tracker:IsTracked(quest) then
-            tracked = " |cff" .. UQ.colors.accentHex .. "tracked|r"
+            tracked = " |cff" .. UQ.colors.accentHex .. UQ.L("CMD_QUESTS_FLAG_TRACKED") .. "|r"
         end
 
         Line(string.format("  [%d] %s(%s)|r %s |cff888888%s|r%s%s",
@@ -211,10 +235,10 @@ end
 local function ShowEvents()
     local events = UQ:GetModule("Events")
     if not events then
-        Line("event module is not loaded")
+        Line(UQ.L("CMD_MODULE_MISSING_EVENTS"))
         return
     end
-    Line("event registration on this client:")
+    Line(UQ.L("CMD_EVENTS_TITLE"))
     local report = events:GetRegistrationReport()
     local index = 1
     local total = table.getn(report)
@@ -222,20 +246,21 @@ local function ShowEvents()
         local entry = report[index]
         local mark
         if entry.accepted then
-            mark = "|cff55ff55accepted|r"
+            mark = "|cff55ff55" .. UQ.L("CMD_EVENTS_ACCEPTED") .. "|r"
         else
-            mark = "|cffff5555rejected|r"
+            mark = "|cffff5555" .. UQ.L("CMD_EVENTS_REJECTED") .. "|r"
         end
-        Line("  " .. mark .. "  " .. entry.event .. "  fired " .. entry.observed .. "x this session")
+        Line("  " .. mark .. "  " .. entry.event .. "  "
+            .. UQ.L("CMD_EVENTS_FIRED", tostring(entry.observed)))
         index = index + 1
     end
-    Line("|cff888888counts persist across sessions; report them to close the quest-event gap|r")
+    Line("|cff888888" .. UQ.L("CMD_EVENTS_FOOTNOTE") .. "|r")
 end
 
 local function ShowMap(target)
     local map = UQ:GetModule("MapContext")
     if not map then
-        Line("map module is not loaded")
+        Line(UQ.L("CMD_MODULE_MISSING_MAP"))
         return
     end
 
@@ -246,42 +271,49 @@ local function ShowMap(target)
     if target == "dots" or target == "areas" then
         local config = UQ:GetModule("Config")
         if not config then
-            Line("config module is not loaded")
+            Line(UQ.L("CMD_MODULE_MISSING_CONFIG"))
             return
         end
         config:Set("mapObjectiveDots", target == "dots")
-        Line("world-map quest objectives drawn as " .. target)
+        if target == "dots" then
+            Line(UQ.L("CMD_MAP_STYLE_SET_DOTS"))
+        else
+            Line(UQ.L("CMD_MAP_STYLE_SET_AREAS"))
+        end
         return
     end
     local report = map:Inspect()
-    Line("map observation and current-zone pin status:")
-    Line("  GetMapInfo file:      " .. tostring(report.mapFile))
-    Line("  tile height/width:    " .. tostring(report.tileHeight) .. " / " .. tostring(report.tileWidth))
-    Line("  continent / zone idx: " .. tostring(report.continent) .. " / " .. tostring(report.zoneIndex))
-    Line("  GetZoneText:          " .. tostring(report.zoneText))
-    Line("  GetSubZoneText:       " .. tostring(report.subZoneText))
-    Line("  player map position:  " .. tostring(report.playerX) .. ", " .. tostring(report.playerY))
-    Line("  area id from map file: " .. tostring(report.areaIdFromMapFile)
-        .. " (" .. tostring(report.areaIdFromMapFileHow) .. ")")
-    Line("  area id from zone text: " .. tostring(report.areaIdFromZoneText)
-        .. " (" .. tostring(report.areaIdFromZoneTextHow) .. ")")
-    Line("  area id from real zone text: " .. tostring(report.areaIdFromRealZoneText)
-        .. " (" .. tostring(report.areaIdFromRealZoneTextHow) .. ")")
-    Line("  map zone name: " .. tostring(report.mapZoneName))
-    Line("  area id from map zone: " .. tostring(report.areaIdFromMapZone)
-        .. " (" .. tostring(report.areaIdFromMapZoneHow) .. ")")
-    Line("  area id used: " .. tostring(report.areaId)
-        .. " (" .. tostring(report.areaIdHow) .. ")")
+    Line(UQ.L("CMD_MAP_TITLE"))
+    Line("  " .. UQ.L("CMD_MAP_MAPFILE", tostring(report.mapFile)))
+    Line("  " .. UQ.L("CMD_MAP_TILE_SIZE",
+        tostring(report.tileHeight) .. " / " .. tostring(report.tileWidth)))
+    Line("  " .. UQ.L("CMD_MAP_CONTINENT_ZONE",
+        tostring(report.continent) .. " / " .. tostring(report.zoneIndex)))
+    Line("  " .. UQ.L("CMD_MAP_ZONE_TEXT", tostring(report.zoneText)))
+    Line("  " .. UQ.L("CMD_MAP_SUBZONE_TEXT", tostring(report.subZoneText)))
+    Line("  " .. UQ.L("CMD_MAP_PLAYER_POSITION",
+        tostring(report.playerX) .. ", " .. tostring(report.playerY)))
+    Line("  " .. UQ.L("CMD_MAP_AREA_FROM_MAPFILE", tostring(report.areaIdFromMapFile),
+        tostring(report.areaIdFromMapFileHow)))
+    Line("  " .. UQ.L("CMD_MAP_AREA_FROM_ZONE_TEXT", tostring(report.areaIdFromZoneText),
+        tostring(report.areaIdFromZoneTextHow)))
+    Line("  " .. UQ.L("CMD_MAP_AREA_FROM_REAL_ZONE_TEXT", tostring(report.areaIdFromRealZoneText),
+        tostring(report.areaIdFromRealZoneTextHow)))
+    Line("  " .. UQ.L("CMD_MAP_ZONE_NAME", tostring(report.mapZoneName)))
+    Line("  " .. UQ.L("CMD_MAP_AREA_FROM_MAP_ZONE", tostring(report.areaIdFromMapZone),
+        tostring(report.areaIdFromMapZoneHow)))
+    Line("  " .. UQ.L("CMD_MAP_AREA_USED", tostring(report.areaId),
+        tostring(report.areaIdHow)))
     local pins = UQ:GetModule("WorldMapPins")
     if pins then
         local status = pins:GetStatus()
         if not status.renderEnabled then
-            Line("  map overlay:         disabled")
+            Line("  " .. UQ.L("CMD_MAP_OVERLAY_DISABLED"))
         elseif status.markersEnabled then
-            Line("  quest markers:       " .. tostring(status.visible)
-                .. " visible / " .. tostring(status.pooled) .. " pooled")
+            Line("  " .. UQ.L("CMD_MAP_QUEST_MARKERS",
+                tostring(status.visible), tostring(status.pooled)))
         else
-            Line("  quest markers:       retired; hover an area for the quest")
+            Line("  " .. UQ.L("CMD_MAP_QUEST_MARKERS_RETIRED"))
         end
         -- Read next to itemUseUnknown below: "unreadable" there plus "unknown"
         -- here is a dead container API; "unreadable" there with the bags
@@ -291,66 +323,68 @@ local function ShowMap(target)
         local bagLine = nil
         if bagStatus then
             if bagStatus.available then
-                bagLine = tostring(bagStatus.distinctItems) .. " distinct items"
+                bagLine = UQ.LN("CMD_MAP_BAGS_ITEMS", bagStatus.distinctItems)
             else
-                bagLine = "unreadable"
+                bagLine = UQ.L("CMD_MAP_BAGS_UNREADABLE")
             end
         end
         if status.renderEnabled and status.areasEnabled then
-            Line("  objective style:     " .. (status.objectiveDots and "dots" or "areas")
-                .. " (/uq map dots|areas)")
-            Line("  objective frames:    " .. tostring(status.areaVisible)
-                .. " visible / " .. tostring(status.areaPooled) .. " pooled")
-            Line("  map colours:          blue objectives / green turn-ins / gold patrols"
-                .. (status.markersEnabled and " + yellow numbered markers" or ""))
+            Line("  " .. UQ.L("CMD_MAP_OBJECTIVE_STYLE",
+                status.objectiveDots and UQ.L("CMD_MAP_STYLE_DOTS")
+                    or UQ.L("CMD_MAP_STYLE_AREAS")))
+            Line("  " .. UQ.L("CMD_MAP_OBJECTIVE_FRAMES",
+                tostring(status.areaVisible), tostring(status.areaPooled)))
+            Line("  " .. UQ.L("CMD_MAP_COLOURS")
+                .. (status.markersEnabled and UQ.L("CMD_MAP_COLOURS_MARKERS") or ""))
             -- Marker counts, read together with the hover counters below: a
             -- non-zero count with nothing on screen means the client's gossip
             -- icon file did not resolve, which is the one unverified thing
             -- about both pools.
-            Line("  giver \"!\" markers:   " .. tostring(status.giverVisible)
-                .. " visible / " .. tostring(status.giverPooled) .. " pooled")
+            Line("  " .. UQ.L("CMD_MAP_GIVER_MARKERS",
+                tostring(status.giverVisible), tostring(status.giverPooled)))
             -- Invisible by construction (Map/WorldMapPins.lua): this is the
             -- route's hit test, not something the player can see. A zero here
             -- with a drawn route means the path is unhoverable.
-            Line("  patrol hover targets: " .. tostring(status.patrolVisible)
-                .. " visible / " .. tostring(status.patrolPooled) .. " pooled")
+            Line("  " .. UQ.L("CMD_MAP_PATROL_TARGETS",
+                tostring(status.patrolVisible), tostring(status.patrolPooled)))
             -- A width above the floor means the pool bound widened the spacing
             -- and the stamps were grown to keep the stroke continuous. Read it
             -- when a route looks heavier than it should.
-            Line("  patrol line stamps:  " .. tostring(status.patrolStrokes)
-                .. " visible at " .. tostring(status.patrolStrokeWidth) .. "px")
-            Line("  turn-in \"?\" markers: " .. tostring(status.turnInVisible)
-                .. " visible / " .. tostring(status.turnInPooled) .. " pooled"
-                .. (status.inProgressTurnIns and "" or " (ready-to-hand-in only)"))
+            Line("  " .. UQ.L("CMD_MAP_PATROL_STROKES",
+                tostring(status.patrolStrokes), tostring(status.patrolStrokeWidth)))
+            Line("  " .. UQ.L("CMD_MAP_TURNIN_MARKERS",
+                tostring(status.turnInVisible), tostring(status.turnInPooled))
+                .. (status.inProgressTurnIns and ""
+                    or (" " .. UQ.L("CMD_MAP_TURNIN_READY_ONLY"))))
             -- Item-use objective targets left off the map because the bags
             -- could not be read, not because the item is missing. This is the
             -- answer to "I am carrying the quest item and its target still is
             -- not shown": non-zero blames the container API, and /uq status
             -- will show bagScan alongside it.
-            Line("  item-use unresolved: " .. tostring(status.itemUseUnknown)
-                .. (bagLine and (" (bags: " .. bagLine .. ")") or ""))
+            Line("  " .. UQ.L("CMD_MAP_ITEM_USE_UNRESOLVED", tostring(status.itemUseUnknown))
+                .. (bagLine and (" " .. UQ.L("CMD_MAP_BAGS", bagLine)) or ""))
             -- Zero here after a session spent hovering areas is the symptom of
             -- the recorded "custom map child receives no mouse" failure, not of
             -- an empty quest log.
-            Line("  area hovers seen:    " .. tostring(status.areaHovers))
+            Line("  " .. UQ.L("CMD_MAP_AREA_HOVERS", tostring(status.areaHovers)))
             -- Zero here after shift-clicking a "!" is the symptom of the open
             -- worldMapPinInteraction question, not of QuestHistory failing to
             -- mark the quest done -- OnClick may simply never have reached
             -- this smaller pin at all.
-            Line("  giver hovers/clicks: " .. tostring(status.giverHovers)
-                .. " / " .. tostring(status.giverClicks))
+            Line("  " .. UQ.L("CMD_MAP_GIVER_HOVERS_CLICKS",
+                tostring(status.giverHovers), tostring(status.giverClicks)))
             -- The "?" pins take no clicks, so hovers are all they can report.
             -- Read against area hovers: the turn-in pin usually sits on top of
             -- a green area tile, so zero here with area hovers rising means
             -- the tile is still winning the mouse.
-            Line("  turn-in hovers:      " .. tostring(status.turnInHovers))
+            Line("  " .. UQ.L("CMD_MAP_TURNIN_HOVERS", tostring(status.turnInHovers)))
             -- Rising after a shift-click means the overlay did rebuild, so a
             -- marker still on screen is a stale fullscreen-map paint rather
             -- than a stale quest layer.
-            Line("  overlay rebuilds:    " .. tostring(status.rebuilds))
+            Line("  " .. UQ.L("CMD_MAP_OVERLAY_REBUILDS", tostring(status.rebuilds)))
         elseif status.renderEnabled then
-            Line("  quest areas:         unavailable")
-            Line("  marker colours:      yellow objectives / green turn-ins")
+            Line("  " .. UQ.L("CMD_MAP_AREAS_UNAVAILABLE"))
+            Line("  " .. UQ.L("CMD_MAP_MARKER_COLOURS"))
         end
     end
 end
@@ -360,7 +394,7 @@ local function ShowMinimap(target)
     local pins = UQ:GetModule("MinimapPins")
     local config = UQ:GetModule("Config")
     if not pins or not config then
-        Line("minimap pin module is not loaded")
+        Line(UQ.L("CMD_MODULE_MISSING_MINIMAP"))
         return
     end
 
@@ -368,7 +402,11 @@ local function ShowMinimap(target)
         config:Set("minimapPins", target == "on")
         pins.dirty = true
         pins:Refresh()
-        Line("minimap quest pins " .. target)
+        if target == "on" then
+            Line(UQ.L("CMD_MINIMAP_PINS_ON"))
+        else
+            Line(UQ.L("CMD_MINIMAP_PINS_OFF"))
+        end
         return
     end
 
@@ -383,9 +421,9 @@ local function ShowMinimap(target)
         pins.dirty = true
         pins:Refresh()
         if target == "indoors on" then
-            Line("minimap markers are withheld indoors")
+            Line(UQ.L("CMD_MINIMAP_INDOORS_WITHHELD"))
         else
-            Line("minimap markers are drawn indoors, at a scale this client cannot confirm")
+            Line(UQ.L("CMD_MINIMAP_INDOORS_DRAWN"))
         end
         return
     end
@@ -396,120 +434,120 @@ local function ShowMinimap(target)
         local yards = tonumber(argument)
         if argument == "" then
             local status = pins:GetStatus()
-            Line("minimap scale at zoom " .. tostring(status.zoom) .. ": "
-                .. tostring(status.span) .. " yards across (" .. tostring(status.spanEvidence) .. ")")
-            Line("  /uq minimap span <yards>   set the scale for this zoom step, here")
-            Line("  /uq minimap span reset     go back to the built-in constant")
-            Line("  |cff888888a marker that creeps WITH you means the number is too big|r")
+            Line(UQ.L("CMD_MINIMAP_SPAN_AT_ZOOM", tostring(status.zoom),
+                tostring(status.span), tostring(status.spanEvidence)))
+            Line("  " .. UQ.L("CMD_MINIMAP_SPAN_HELP_SET"))
+            Line("  " .. UQ.L("CMD_MINIMAP_SPAN_HELP_RESET"))
+            Line("  |cff888888" .. UQ.L("CMD_MINIMAP_SPAN_HELP_HINT") .. "|r")
             return
         end
         if argument == "reset" then
             yards = nil
         elseif not yards or yards <= 0 then
-            Line("give a number of yards, or 'reset'")
+            Line(UQ.L("CMD_MINIMAP_SPAN_USAGE"))
             return
         end
         local key, zoom, indoor, span, evidence = pins:SetSpanOverride(yards)
         if not key then
-            Line("the minimap zoom could not be read, so there is nothing to key this to")
+            Line(UQ.L("CMD_MINIMAP_SPAN_NO_ZOOM"))
             return
         end
-        Line("minimap scale at zoom " .. tostring(zoom)
-            .. " (" .. tostring(indoor or "environment unknown") .. "): "
-            .. tostring(span) .. " yards across (" .. tostring(evidence) .. ")")
+        Line(UQ.L("CMD_MINIMAP_SPAN_SET", tostring(zoom),
+            tostring(indoor or UQ.L("CMD_MINIMAP_ENVIRONMENT_UNKNOWN")),
+            tostring(span), tostring(evidence)))
         return
     end
 
     local status = pins:GetStatus()
-    Line("minimap quest pins:")
-    Line("  setting:        " .. (config:Get("minimapPins") and "on" or "off"))
-    Line("  state:          " .. tostring(status.state))
-    Line("  drawn:          " .. tostring(status.objectives) .. " objectives, "
-        .. tostring(status.givers) .. " givers, " .. tostring(status.turnIns) .. " turn-ins")
-    Line("  clamped to edge: " .. tostring(status.clamped) .. " of " .. tostring(status.targets))
-    Line("  minimap width:  " .. tostring(status.width) .. "px at zoom " .. tostring(status.zoom))
-    Line("  scale:          " .. tostring(status.span) .. " yards across ("
-        .. tostring(status.spanEvidence) .. ")")
+    Line(UQ.L("CMD_MINIMAP_TITLE"))
+    Line("  " .. UQ.L("CMD_MINIMAP_SETTING",
+        config:Get("minimapPins") and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF")))
+    Line("  " .. UQ.L("CMD_MINIMAP_STATE", tostring(status.state)))
+    Line("  " .. UQ.L("CMD_MINIMAP_DRAWN", tostring(status.objectives),
+        tostring(status.givers), tostring(status.turnIns)))
+    Line("  " .. UQ.L("CMD_MINIMAP_CLAMPED", tostring(status.clamped), tostring(status.targets)))
+    Line("  " .. UQ.L("CMD_MINIMAP_WIDTH", tostring(status.width), tostring(status.zoom)))
+    Line("  " .. UQ.L("CMD_MINIMAP_SCALE", tostring(status.span),
+        tostring(status.spanEvidence)))
     if status.spanEvidence ~= "measured" then
-        Line("  |cffffcc00only zoom 0 is measured on this client; other steps use Vanilla constants|r")
+        Line("  |cffffcc00" .. UQ.L("CMD_MINIMAP_ONLY_ZOOM_ZERO") .. "|r")
     end
     if status.rotating then
-        Line("  |cffff5555rotateMinimap is on: pins are hidden, this client exposes no player facing|r")
+        Line("  |cffff5555" .. UQ.L("CMD_MINIMAP_ROTATING") .. "|r")
     end
     if status.spanEvidence ~= "playerCalibrated" then
-        Line("  |cff888888/uq minimap span <yards> dials this in where it is wrong|r")
+        Line("  |cff888888" .. UQ.L("CMD_MINIMAP_SPAN_TIP") .. "|r")
     end
     if config:Get("minimapPinsHideIndoors") ~= false then
-        Line("  indoors:        markers withheld (the scale inside cannot be established here)")
+        Line("  " .. UQ.L("CMD_MINIMAP_INDOORS_STATUS_WITHHELD"))
     else
-        Line("  indoors:        markers drawn at the outdoor scale")
+        Line("  " .. UQ.L("CMD_MINIMAP_INDOORS_STATUS_DRAWN"))
     end
     if status.pinFailures and status.pinFailures > 0 then
-        Line("  pin failures:   " .. tostring(status.pinFailures))
+        Line("  " .. UQ.L("CMD_MINIMAP_PIN_FAILURES", tostring(status.pinFailures)))
     end
 end
 
 local function ShowDatabase()
     local database = UQ:GetModule("Database")
     if not database then
-        Line("database module is not loaded")
+        Line(UQ.L("CMD_MODULE_MISSING_DATABASE"))
         return
     end
-    Line("world data: " .. database:GetStatus())
+    Line(UQ.L("CMD_DB_WORLD_DATA", database:GetStatus()))
     if database.available then
-        Line("  titles indexed: " .. database.indexedCount)
+        Line("  " .. UQ.L("CMD_DB_TITLES_INDEXED", tostring(database.indexedCount)))
         local matcher = UQ:GetModule("QuestMatch")
         if matcher then
-            Line("  unmatched titles recorded: " .. matcher:GetUnmatchedCount())
+            Line("  " .. UQ.L("CMD_DB_UNMATCHED", tostring(matcher:GetUnmatchedCount())))
         end
     else
-        Line("  |cffff5555the bundled world data did not load; check the addon install|r")
+        Line("  |cffff5555" .. UQ.L("CMD_DB_NOT_LOADED") .. "|r")
     end
 end
 
 local function ShowTooltip()
     local tooltip = UQ:GetModule("EntityTooltip")
     if not tooltip then
-        Line("entity tooltip module is not loaded")
+        Line(UQ.L("CMD_MODULE_MISSING_TOOLTIP"))
         return
     end
     local status = tooltip:GetStatus()
-    Line("entity-tooltip objective diagnostics:")
+    Line(UQ.L("CMD_TOOLTIP_TITLE"))
     -- See Tooltip/EntityTooltip.lua's diagnostics comment block for how to
     -- read these together -- they split the pipeline into stages so a silent
     -- failure can be narrowed down without a screenshot.
-    Line("  Refresh() calls seen:         " .. tostring(status.refreshCount))
+    Line("  " .. UQ.L("CMD_TOOLTIP_REFRESH_CALLS", tostring(status.refreshCount)))
     if not status.refreshCount or status.refreshCount == 0 then
-        Line("  |cffff5555Refresh has never run -- the poll job or OnShow hook never fired|r")
+        Line("  |cffff5555" .. UQ.L("CMD_TOOLTIP_NEVER_RAN") .. "|r")
     end
-    Line("  objective formats resolved:   " .. tostring(status.patternsResolved)
-        .. " / " .. tostring(status.patternsExpected))
+    Line("  " .. UQ.L("CMD_TOOLTIP_FORMATS_RESOLVED", tostring(status.patternsResolved),
+        tostring(status.patternsExpected)))
     if status.patternsResolved == 0 then
-        Line("  |cffff5555no QUEST_MONSTERS_KILLED-style format string resolved; objective lines cannot be"
-            .. " split into a name and counters|r")
+        Line("  |cffff5555" .. UQ.L("CMD_TOOLTIP_NO_FORMAT") .. "|r")
     end
-    Line("  creature names read:          " .. tostring(status.labelReads))
-    Line("  last tooltip text read:       " .. tostring(status.lastSeenLabel or "<none>"))
+    Line("  " .. UQ.L("CMD_TOOLTIP_NAMES_READ", tostring(status.labelReads)))
+    Line("  " .. UQ.L("CMD_TOOLTIP_LAST_TEXT",
+        tostring(status.lastSeenLabel or UQ.L("COMMON_NONE_ANGLED"))))
     if status.refreshCount and status.refreshCount > 0 and status.labelReads == 0 then
-        Line("  |cffff5555Refresh ran but GameTooltipTextLeft1 never returned text -- identity, not matching|r")
+        Line("  |cffff5555" .. UQ.L("CMD_TOOLTIP_NO_TEXT_RETURNED") .. "|r")
     end
-    Line("  quest-linked mouseovers seen: " .. tostring(status.matches)
-        .. " (" .. tostring(status.directMatches) .. " from the log line, "
-        .. tostring(status.databaseMatches) .. " from world data)")
+    Line("  " .. UQ.L("CMD_TOOLTIP_MOUSEOVERS", tostring(status.matches),
+        tostring(status.directMatches), tostring(status.databaseMatches)))
     if status.labelReads > 0 and status.matches == 0 then
-        Line("  |cffff5555creature names were read but never matched a quest objective|r")
+        Line("  |cffff5555" .. UQ.L("CMD_TOOLTIP_NEVER_MATCHED") .. "|r")
     end
-    Line("  append failures:              " .. tostring(status.appendFailures))
+    Line("  " .. UQ.L("CMD_TOOLTIP_APPEND_FAILURES", tostring(status.appendFailures)))
     if status.matches > 0 and status.appendFailures >= status.matches then
-        Line("  |cffff5555every match failed to append -- GameTooltip resolution or IsShown gating is the problem|r")
+        Line("  |cffff5555" .. UQ.L("CMD_TOOLTIP_ALL_APPENDS_FAILED") .. "|r")
     end
-    Line("  currently hovered unit key:   " .. tostring(status.currentUnit))
+    Line("  " .. UQ.L("CMD_TOOLTIP_CURRENT_UNIT", tostring(status.currentUnit)))
 end
 
 local function ShowMarks(target)
     local marks = UQ:GetModule("QuestMarks")
     if not marks then
-        Line("quest mark module is not loaded")
+        Line(UQ.L("CMD_MODULE_MISSING_MARKS"))
         return
     end
     local config = UQ:GetModule("Config")
@@ -520,13 +558,11 @@ local function ShowMarks(target)
         end
         if target == "off" then
             marks:ClearReachable()
-            Line("quest marks off. Only a marked creature you can still name -- your target or"
-                .. " what you are hovering -- could be cleared; the rest keep their mark until"
-                .. " you look at them again")
+            Line(UQ.L("CMD_MARKS_OFF"))
         else
             marks.refused = false
             marks.stats.unconfirmed = 0
-            Line("quest marks on")
+            Line(UQ.L("CMD_MARKS_ON"))
         end
         return
     end
@@ -541,81 +577,74 @@ local function ShowMarks(target)
     if subCommand == "icon" then
         local index = tonumber(UQ.Trim(rest) or "")
         if not index or index < 1 or index > 8 then
-            Line("|cffff5555icon takes 1-8: 1 star, 2 circle, 3 diamond, 4 triangle, 5 moon,"
-                .. " 6 square, 7 cross, 8 skull|r")
+            Line("|cffff5555" .. UQ.L("CMD_MARKS_ICON_USAGE") .. "|r")
             return
         end
         if config then
             config:Set("questMarkIndex", index)
         end
-        Line("quest creatures will be marked with the " .. marks:MarkName(index))
+        Line(UQ.L("CMD_MARKS_ICON_SET", marks:MarkName(index)))
         return
     end
 
     if subCommand == "group" then
         local mode = string.lower(UQ.Trim(rest) or "")
         if mode ~= "on" and mode ~= "off" then
-            Line("|cffff5555group takes on or off|r")
+            Line("|cffff5555" .. UQ.L("CMD_MARKS_GROUP_USAGE") .. "|r")
             return
         end
         if config then
             config:Set("questMarksInGroup", mode == "on")
         end
         if mode == "on" then
-            Line("|cffffff55quest creatures may be marked while grouped. The server rejected the solo"
-                .. " case; group leader or raid assistant remains the only unverified route. Everyone"
-                .. " sees these marks and they overwrite whatever your group had set|r")
+            Line("|cffffff55" .. UQ.L("CMD_MARKS_GROUP_ON") .. "|r")
         else
-            Line("group quest marks off; solo marks are unavailable on this realm")
+            Line(UQ.L("CMD_MARKS_GROUP_OFF"))
         end
         return
     end
 
     local status = marks:GetStatus()
-    Line("quest marks over creatures:")
+    Line(UQ.L("CMD_MARKS_TITLE"))
     if not status.available then
-        Line("  |cffff5555SetRaidTarget/GetRaidTargetIndex are not callable here; nothing can be"
-            .. " drawn over a creature on this client at all|r")
+        Line("  |cffff5555" .. UQ.L("CMD_MARKS_UNAVAILABLE") .. "|r")
         return
     end
-    Line("  enabled:                 " .. (status.enabled and "yes" or "no")
+    Line("  " .. UQ.L("CMD_MARKS_ENABLED",
+        status.enabled and UQ.L("COMMON_YES") or UQ.L("COMMON_NO"))
         .. "   |cff888888/uq marks on|off|r")
-    Line("  mark used:               " .. marks:MarkName(status.objectiveIndex)
-        .. " for objectives, " .. marks:MarkName(status.turnInIndex) .. " for turn-ins"
+    Line("  " .. UQ.L("CMD_MARKS_MARK_USED", marks:MarkName(status.objectiveIndex),
+        marks:MarkName(status.turnInIndex))
         .. "   |cff888888/uq marks icon 1-8|r")
-    Line("  in a group:              " .. (status.inGroup and "yes" or "no")
+    Line("  " .. UQ.L("CMD_MARKS_IN_GROUP",
+        status.inGroup and UQ.L("COMMON_YES") or UQ.L("COMMON_NO"))
         .. (status.allowedHere and "" or (status.inGroup
-            and "  |cffffff55-- paused; /uq marks group on|r"
-            or "  |cffff5555-- unavailable: this realm ignored every solo write|r")))
-    Line("  marks written:           " .. tostring(status.writes)
-        .. ", confirmed " .. tostring(status.confirmed)
-        .. ", cleared " .. tostring(status.cleared))
-    Line("  last marked:             " .. tostring(status.lastMarked or "<none>")
+            and ("  |cffffff55" .. UQ.L("CMD_MARKS_PAUSED") .. "|r")
+            or ("  |cffff5555" .. UQ.L("CMD_MARKS_SOLO_REFUSED") .. "|r"))))
+    Line("  " .. UQ.L("CMD_MARKS_WRITTEN", tostring(status.writes),
+        tostring(status.confirmed), tostring(status.cleared)))
+    Line("  " .. UQ.L("CMD_MARKS_LAST_MARKED",
+        tostring(status.lastMarked or UQ.L("COMMON_NONE_ANGLED")))
         .. " |cff888888" .. tostring(status.lastKind or "") .. "|r")
 
     -- The one thing GetRaidTargetIndex alone cannot tell you, said out loud:
     -- the write is a server round trip, so "no confirmation yet" and "the
     -- server refused it" look identical for the first few seconds.
     if not status.inGroup then
-        Line("  |cffff5555no persistent 3D quest marker is available while solo. The only remaining"
-            .. " test is as party leader or raid assistant: /uq marks group on|r")
+        Line("  |cffff5555" .. UQ.L("CMD_MARKS_SOLO_NOTE") .. "|r")
     elseif status.refused then
-        Line("  |cffff5555the server never confirmed a single mark, so it is refusing them --"
-            .. " this group role may not be allowed to mark. Stopped trying for this session;"
-            .. " /uq marks on retries|r")
+        Line("  |cffff5555" .. UQ.L("CMD_MARKS_REFUSED_NOTE") .. "|r")
     elseif status.writes > 0 and status.confirmed == 0 then
-        Line("  |cffffff55written but not confirmed yet. SetRaidTarget sends the value to the"
-            .. " server, so a mark takes a round trip to read back -- give it a few seconds|r")
+        Line("  |cffffff55" .. UQ.L("CMD_MARKS_UNCONFIRMED_NOTE") .. "|r")
     elseif status.confirmed > 0 then
-        Line("  |cff888888the server accepts these marks. Hover or target a quest creature and it"
-            .. " gets one|r")
+        Line("  |cff888888" .. UQ.L("CMD_MARKS_ACCEPTED_NOTE") .. "|r")
     end
 end
 
 local function ShowWorldScan(target)
     local scan = UQ:GetModule("WorldFrameScan")
     if not scan then
-        Line("world scan module is not loaded")
+        Line(UQ.L("CMD_MODULE_MISSING_WORLDSCAN"))
         return
     end
 
@@ -623,7 +652,7 @@ local function ShowWorldScan(target)
     if childIndex then
         local detail = scan:Detail(childIndex)
         if not detail then
-            Line("no WorldFrame child at index " .. tostring(childIndex))
+            Line(UQ.L("CMD_WORLDSCAN_NO_CHILD", tostring(childIndex)))
             return
         end
         local index = 1
@@ -644,10 +673,9 @@ local function ShowWorldScan(target)
     -- client crashed twice on it -- the walk itself completed and the dump was
     -- written both times, so what could not survive was the chat flood, not the
     -- inspection. The list is written to SavedVariables and read from there.
-    Line("WorldFrame has " .. tostring(scan.childCount) .. " children; "
-        .. tostring(table.getn(scan.lines)) .. " inventoried.")
-    Line("|cff888888saved to UnrealQuestDB.worldFrameScan -- /reload to flush it to disk, then read"
-        .. " the file. Deliberately not printed here: 26 lines of it crashed this client|r")
+    Line(UQ.L("CMD_WORLDSCAN_SUMMARY", tostring(scan.childCount),
+        tostring(table.getn(scan.lines))))
+    Line("|cff888888" .. UQ.L("CMD_WORLDSCAN_SAVED_NOTE") .. "|r")
 end
 
 -- Resolves a command target against the live model, never the raw quest log.
@@ -656,13 +684,13 @@ end
 local function FindQuest(target)
     local state = UQ:GetModule("QuestState")
     if not state then
-        Line("quest state module is not loaded")
+        Line(UQ.L("CMD_MODULE_MISSING_QUEST_STATE"))
         return nil
     end
 
     target = UQ.Trim(target)
     if not target or target == "" then
-        Line("usage: /uq track <index or title fragment>")
+        Line(UQ.L("CMD_FIND_USAGE"))
         return nil
     end
 
@@ -678,13 +706,13 @@ local function FindQuest(target)
             end
             questIndex = questIndex + 1
         end
-        Line("no quest at log index " .. target .. "; use /uq quests to see available quests")
+        Line(UQ.L("CMD_FIND_NO_INDEX", target))
         return nil
     end
 
     local targetKey = UQ.NameKey(target)
     if not targetKey then
-        Line("enter a quest index or title fragment")
+        Line(UQ.L("CMD_FIND_ENTER_TARGET"))
         return nil
     end
 
@@ -702,11 +730,11 @@ local function FindQuest(target)
         return matches[1]
     end
     if matchCount == 0 then
-        Line("no quest title matches '" .. target .. "'; use /uq quests to see available quests")
+        Line(UQ.L("CMD_FIND_NO_TITLE_MATCH", target))
         return nil
     end
 
-    Line("'" .. target .. "' matches several quests; use its index:")
+    Line(UQ.L("CMD_FIND_AMBIGUOUS", target))
     questIndex = 1
     while questIndex <= matchCount do
         local quest = matches[questIndex]
@@ -719,7 +747,7 @@ end
 local function ChangeTracking(target, action)
     local tracker = UQ:GetModule("Tracker")
     if not tracker then
-        Line("tracker module is not loaded")
+        Line(UQ.L("CMD_MODULE_MISSING_TRACKER"))
         return
     end
 
@@ -732,13 +760,13 @@ local function ChangeTracking(target, action)
     local changed = false
     if action == "track" then
         if wasTracked then
-            Line("already tracking '" .. quest.title .. "'")
+            Line(UQ.L("CMD_TRACK_ALREADY", quest.title))
             return
         end
         changed = tracker:Track(quest)
     elseif action == "untrack" then
         if not wasTracked then
-            Line("'" .. quest.title .. "' is not tracked")
+            Line(UQ.L("CMD_TRACK_NOT_TRACKED", quest.title))
             return
         end
         changed = tracker:Untrack(quest)
@@ -747,13 +775,13 @@ local function ChangeTracking(target, action)
     end
 
     if not changed then
-        Line("UnrealQuest did not update tracking for '" .. quest.title .. "'")
+        Line(UQ.L("CMD_TRACK_UNCHANGED", quest.title))
         return
     end
     if tracker:IsTracked(quest) then
-        Line("tracking '" .. quest.title .. "'")
+        Line(UQ.L("CMD_TRACK_NOW_TRACKING", quest.title))
     else
-        Line("stopped tracking '" .. quest.title .. "'")
+        Line(UQ.L("CMD_TRACK_STOPPED", quest.title))
     end
 end
 
@@ -780,7 +808,7 @@ end
 local function ChangeMapVisibility(target, hide)
     local config = UQ:GetModule("Config")
     if not config then
-        Line("config module is not loaded")
+        Line(UQ.L("CMD_MODULE_MISSING_CONFIG"))
         return
     end
 
@@ -789,7 +817,7 @@ local function ChangeMapVisibility(target, hide)
         return
     end
     if type(quest.questId) ~= "number" then
-        Line("'" .. tostring(quest.title) .. "' has no resolved quest id to hide")
+        Line(UQ.L("CMD_HIDE_NO_QUEST_ID", tostring(quest.title)))
         return
     end
 
@@ -799,13 +827,13 @@ local function ChangeMapVisibility(target, hide)
     -- one back on rather than merely clearing an override that was never set.
     if config:SetSectionEntry("hiddenMapQuests", quest.questId, hide) then
         if hide then
-            Line("hiding map pins for '" .. tostring(quest.title) .. "'")
+            Line(UQ.L("CMD_HIDE_DONE", tostring(quest.title)))
         else
-            Line("restored map pins for '" .. tostring(quest.title) .. "'")
+            Line(UQ.L("CMD_UNHIDE_DONE", tostring(quest.title)))
         end
         MarkMapDirty()
     else
-        Line("could not persist that change for '" .. tostring(quest.title) .. "'")
+        Line(UQ.L("CMD_HIDE_NOT_PERSISTED", tostring(quest.title)))
     end
 end
 
@@ -814,7 +842,7 @@ local function ShowHiddenQuests()
     local pins = UQ:GetModule("WorldMapPins")
     local database = UQ:GetModule("Database")
     if not config or not pins then
-        Line("required modules are not loaded")
+        Line(UQ.L("CMD_MODULE_MISSING_REQUIRED"))
         return
     end
 
@@ -826,18 +854,19 @@ local function ShowHiddenQuests()
     for questId in pairs(defaults) do
         if pins:IsQuestHidden(questId, config) then
             if not any then
-                Line("quests hidden from the map:")
+                Line(UQ.L("CMD_HIDDEN_TITLE"))
                 any = true
             end
             local title = database and database:GetQuestTitle(questId)
-            Line("  " .. tostring(questId) .. "  " .. tostring(title or "?") .. " |cff888888(default)|r")
+            Line("  " .. tostring(questId) .. "  " .. tostring(title or "?")
+                .. " |cff888888" .. UQ.L("CMD_HIDDEN_BY_DEFAULT") .. "|r")
         end
     end
 
     for questId, override in pairs(section) do
         if override == true and defaults[questId] == nil then
             if not any then
-                Line("quests hidden from the map:")
+                Line(UQ.L("CMD_HIDDEN_TITLE"))
                 any = true
             end
             local title = database and database:GetQuestTitle(questId)
@@ -846,7 +875,7 @@ local function ShowHiddenQuests()
     end
 
     if not any then
-        Line("no quests are hidden from the map")
+        Line(UQ.L("CMD_HIDDEN_NONE"))
     end
 end
 
@@ -860,7 +889,7 @@ end
 local function ResetMarkedQuests(target)
     local questHistory = UQ:GetModule("QuestHistory")
     if not questHistory then
-        Line("quest history module is not loaded")
+        Line(UQ.L("CMD_MODULE_MISSING_HISTORY"))
         return
     end
 
@@ -875,17 +904,20 @@ local function ResetMarkedQuests(target)
 
     if total == 0 then
         if not all and questHistory:GetDoneCount() > 0 then
-            Line("no quests were marked done through shift/Ctrl-click since this tracking was added")
-            Line("  there are marked-done quests recorded from before that -- /uq resetmarked all clears those too")
+            Line(UQ.L("CMD_RESETMARKED_NONE_MANUAL"))
+            Line("  " .. UQ.L("CMD_RESETMARKED_TRY_ALL"))
         else
-            Line("no marked-done quests to reset")
+            Line(UQ.L("CMD_RESETMARKED_NONE"))
         end
         return
     end
 
     local database = UQ:GetModule("Database")
-    Line("reset " .. total .. " quest(s) marked done"
-        .. (all and "" or " by hand") .. ":")
+    if all then
+        Line(UQ.LN("CMD_RESETMARKED_DONE_ALL", total))
+    else
+        Line(UQ.LN("CMD_RESETMARKED_DONE_MANUAL", total))
+    end
     local index = 1
     while index <= total do
         local questId = reset[index]
@@ -906,7 +938,7 @@ end
 local function ImportPfQuestHistory(argument)
     local importer = UQ:GetModule("PfQuestImport")
     if not importer then
-        Line("the pfQuest import module is not loaded")
+        Line(UQ.L("CMD_MODULE_MISSING_PFQUEST"))
         return
     end
 
@@ -915,16 +947,16 @@ local function ImportPfQuestHistory(argument)
     if action == "undo" then
         local total = importer:Undo()
         if total == 0 then
-            Line("no quests were imported from pfQuest, so there is nothing to take back")
+            Line(UQ.L("CMD_PFQUEST_UNDO_NOTHING"))
         else
-            Line("took back " .. total .. " quest(s) imported from pfQuest")
-            Line("  quests marked done by this addon itself, or by hand, were left alone")
+            Line(UQ.LN("CMD_PFQUEST_UNDO_DONE", total))
+            Line("  " .. UQ.L("CMD_PFQUEST_UNDO_LEFT_ALONE"))
         end
         return
     end
 
     if action ~= "" and action ~= "import" then
-        Line("unknown option: " .. action .. " -- use /uq pfquest, /uq pfquest import or /uq pfquest undo")
+        Line(UQ.L("CMD_PFQUEST_UNKNOWN_OPTION", action))
         return
     end
 
@@ -932,12 +964,12 @@ local function ImportPfQuestHistory(argument)
         Line(importer:Describe())
         local state = importer:GetState().state
         if state == "ready" then
-            Line("  /uq pfquest import marks those quests done here")
+            Line("  " .. UQ.L("CMD_PFQUEST_HINT_READY"))
         elseif state == "disabled" or state == "unavailable" then
-            Line("  /uq pfquest import switches pfQuest on for one reload, imports, and")
-            Line("  switches it back off -- this client will not let an addon reload for you")
+            Line("  " .. UQ.L("CMD_PFQUEST_HINT_DISABLED_1"))
+            Line("  " .. UQ.L("CMD_PFQUEST_HINT_DISABLED_2"))
         elseif state == "pending" then
-            Line("  type /reload -- the import is waiting for it")
+            Line("  " .. UQ.L("CMD_PFQUEST_HINT_PENDING"))
         end
         return
     end
@@ -954,18 +986,16 @@ local function ImportPfQuestHistory(argument)
 
     local report = importer:Scan()
     if report.alreadyDone > 0 then
-        Line("  " .. report.alreadyDone .. " were already recorded here and were left as they were")
+        Line("  " .. UQ.LN("CMD_PFQUEST_ALREADY_RECORDED", report.alreadyDone))
     end
     local skipped = report.unknown + report.unmatched + report.ambiguous
     if skipped > 0 then
-        Line("  " .. skipped .. " skipped: not in this client's quest data, or a title matching"
-            .. " more than one quest")
+        Line("  " .. UQ.LN("CMD_PFQUEST_SKIPPED", skipped))
     end
     if report.waiting > 0 then
-        Line("  " .. report.waiting .. " could not be resolved yet -- the quest title index is"
-            .. " still building; run this again in a moment")
+        Line("  " .. UQ.LN("CMD_PFQUEST_WAITING", report.waiting))
     end
-    Line("  /uq pfquest undo takes back everything an import added")
+    Line("  " .. UQ.L("CMD_PFQUEST_UNDO_HINT"))
 end
 
 -- Quest tracker window -----------------------------------------------------------
@@ -974,7 +1004,7 @@ local function ShowTracker(argument)
     local tracker = UQ:GetModule("TrackerFrame")
     local config = UQ:GetModule("Config")
     if not tracker or not config then
-        Line("the tracker module is not loaded")
+        Line(UQ.L("CMD_MODULE_MISSING_TRACKER_FRAME"))
         return
     end
 
@@ -987,73 +1017,80 @@ local function ShowTracker(argument)
 
     if command == "on" or command == "show" then
         tracker:SetShown(true)
-        Line("quest tracker shown")
+        Line(UQ.L("CMD_TRACKER_SHOWN"))
         return
     elseif command == "off" or command == "hide" then
         tracker:SetShown(false)
-        Line("quest tracker hidden")
+        Line(UQ.L("CMD_TRACKER_HIDDEN"))
         return
     elseif command == "toggle" then
         tracker:SetShown(not tracker:IsShown())
-        Line("quest tracker " .. (tracker:IsShown() and "shown" or "hidden"))
+        if tracker:IsShown() then
+            Line(UQ.L("CMD_TRACKER_SHOWN"))
+        else
+            Line(UQ.L("CMD_TRACKER_HIDDEN"))
+        end
         return
     elseif command == "reset" then
         tracker:ResetPosition()
         tracker.dirty = true
         tracker:Refresh()
-        Line("quest tracker moved back to its default position")
+        Line(UQ.L("CMD_TRACKER_RESET_DONE"))
         return
     elseif command == "objectives" then
         local mode = string.lower(value)
         if mode ~= "all" and mode ~= "tracked" and mode ~= "none" then
-            Line("usage: /uq tracker objectives all|tracked|none")
+            Line(UQ.L("CMD_TRACKER_OBJECTIVES_USAGE"))
             return
         end
         config:Set("trackerShowObjectives", mode)
         tracker.dirty = true
         tracker:Refresh()
-        Line("tracker objectives: " .. mode)
+        Line(UQ.L("CMD_TRACKER_OBJECTIVES_SET", mode))
         return
     elseif command == "zones" then
         local grouped = not (config:Get("trackerGroupByZone") and true or false)
         config:Set("trackerGroupByZone", grouped)
         tracker.dirty = true
         tracker:Refresh()
-        Line("tracker zone headers " .. (grouped and "on" or "off"))
+        Line(UQ.L("CMD_TRACKER_ZONES_SET",
+            grouped and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF")))
         return
     elseif command == "native" then
         local hide = not (config:Get("trackerHideNativeWatch") and true or false)
         config:Set("trackerHideNativeWatch", hide)
         tracker:ApplyNativeWatchVisibility()
-        Line("native quest watch panel " .. (hide and "hidden" or "shown"))
         if hide then
-            Line("  |cff888888the client re-shows it on its own, so it is hidden again on a timer|r")
+            Line(UQ.L("CMD_TRACKER_NATIVE_HIDDEN"))
+            Line("  |cff888888" .. UQ.L("CMD_TRACKER_NATIVE_TIMER_NOTE") .. "|r")
+        else
+            Line(UQ.L("CMD_TRACKER_NATIVE_SHOWN"))
         end
         return
     elseif command == "width" then
         local width = tonumber(value)
         if not width or width < 110 or width > 600 then
-            Line("usage: /uq tracker width <110-600>")
+            Line(UQ.L("CMD_TRACKER_WIDTH_USAGE"))
             return
         end
         config:Set("trackerWidth", width)
         tracker.dirty = true
         tracker:Refresh()
-        Line("tracker width: " .. width)
+        Line(UQ.L("CMD_TRACKER_WIDTH_SET", tostring(width)))
         return
     elseif command == "height" then
         local height = tonumber(value)
         if not height or (height ~= 0 and (height < 60 or height > 900)) then
-            Line("usage: /uq tracker height <60-900>, or 0 for no limit")
+            Line(UQ.L("CMD_TRACKER_HEIGHT_USAGE"))
             return
         end
         config:Set("trackerHeight", height)
         tracker.dirty = true
         tracker:Refresh()
         if height == 0 then
-            Line("tracker max height: none (grows with the log)")
+            Line(UQ.L("CMD_TRACKER_HEIGHT_NONE"))
         else
-            Line("tracker max height: " .. height .. "px")
+            Line(UQ.L("CMD_TRACKER_HEIGHT_SET", tostring(height)))
         end
         return
     elseif command == "unfold" then
@@ -1062,45 +1099,47 @@ local function ShowTracker(argument)
         config:Set("trackerCollapsed", false)
         tracker.dirty = true
         tracker:Refresh()
-        Line("every folded quest and zone reopened")
+        Line(UQ.L("CMD_TRACKER_UNFOLD_DONE"))
         return
     elseif command == "unhideall" then
         config:ClearSection("trackerHiddenQuests")
         tracker.dirty = true
         tracker:Refresh()
-        Line("every quest untracked out of the tracker is back")
+        Line(UQ.L("CMD_TRACKER_UNHIDEALL_DONE"))
         return
     elseif command ~= "" then
-        Line("unknown tracker command: " .. command)
+        Line(UQ.L("CMD_TRACKER_UNKNOWN", command))
     end
 
     local report = tracker:GetReport()
-    Line("quest tracker window")
+    Line(UQ.L("CMD_TRACKER_TITLE"))
     if not report.created then
-        Line("  |cffff5555the window could not be created on this client|r")
+        Line("  |cffff5555" .. UQ.L("CMD_TRACKER_NOT_CREATED") .. "|r")
         return
     end
-    Line("  " .. (report.enabled and "shown" or "hidden")
-        .. (report.collapsed and ", folded to the title bar" or "")
-        .. " -- " .. tostring(report.lines) .. " rows")
+    Line("  " .. (report.enabled and UQ.L("CMD_TRACKER_STATE_SHOWN")
+            or UQ.L("CMD_TRACKER_STATE_HIDDEN"))
+        .. (report.collapsed and (", " .. UQ.L("CMD_TRACKER_STATE_FOLDED")) or "")
+        .. " -- " .. UQ.LN("CMD_TRACKER_ROWS", report.lines))
     local height = report.height
     if type(height) ~= "number" or height <= 0 then
-        height = "auto"
+        height = UQ.L("CMD_TRACKER_HEIGHT_AUTO")
     else
-        height = string.format("%.0f", height) .. " max"
+        height = UQ.L("CMD_TRACKER_HEIGHT_MAX", string.format("%.0f", height))
     end
     Line("  width=" .. tostring(report.width) .. " height=" .. tostring(height)
         .. " objectives=" .. tostring(report.objectives)
-        .. " zones=" .. (report.groupByZone and "on" or "off"))
-    Line("  position " .. tostring(report.point) .. " "
-        .. string.format("%.0f, %.0f", report.x or 0, report.y or 0)
-        .. " (UIParent) -- drags=" .. tostring(report.drags)
+        .. " zones=" .. (report.groupByZone and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF")))
+    Line("  " .. UQ.L("CMD_TRACKER_POSITION", tostring(report.point),
+        string.format("%.0f, %.0f", report.x or 0, report.y or 0))
+        .. " -- drags=" .. tostring(report.drags)
         .. " failures=" .. tostring(report.dragFailures)
         .. " resizes=" .. tostring(report.resizes))
     Line("  redraws=" .. tostring(report.redraws) .. " row clicks=" .. tostring(report.clicks))
-    Line("  native watch panel " .. (report.hideNativeWatch and "hidden" or "shown"))
+    Line("  " .. (report.hideNativeWatch and UQ.L("CMD_TRACKER_NATIVE_HIDDEN")
+        or UQ.L("CMD_TRACKER_NATIVE_SHOWN")))
     if report.dragFailures > 0 then
-        Line("  |cffff5555StartMoving was refused -- see docs/QUEST-TRACKER.md|r")
+        Line("  |cffff5555" .. UQ.L("CMD_TRACKER_DRAG_REFUSED") .. "|r")
     end
 end
 
@@ -1111,40 +1150,37 @@ end
 -- so every counter reads zero and every report reads like a broken feature.
 -- Say what is actually happening instead.
 local function FeatureDisabledNotice()
-    Line("the main quest + HUD waypoint layer is |cffff5555disabled|r in this build")
-    Line("  the code is still in the addon, but it registers nothing: no driver")
-    Line("  jobs, no click chains on the quest log, no marker frame.")
-    Line("  why: this client has no readable player facing and no camera getter,")
-    Line("  so the marker cannot be made accurate. See docs/HUD-WAYPOINT.md.")
-    Line("  to re-enable: UQ:DeclareFeature(\"mainQuestWaypoint\", true, ...) in")
-    Line("  Core/Namespace.lua, then /reload.")
+    Line(UQ.L("CMD_FEATURE_DISABLED_TITLE",
+        "|cffff5555" .. UQ.L("CMD_STATE_DISABLED") .. "|r"))
+    Line("  " .. UQ.L("CMD_FEATURE_DISABLED_1"))
+    Line("  " .. UQ.L("CMD_FEATURE_DISABLED_2"))
+    Line("  " .. UQ.L("CMD_FEATURE_DISABLED_3"))
 end
 
 local function ShowMainQuest()
     local mainQuest = UQ:GetModule("MainQuest")
     local clicks = UQ:GetModule("QuestClicks")
     if not mainQuest then
-        Line("the main quest module is unavailable")
+        Line(UQ.L("CMD_MODULE_MISSING_MAINQUEST"))
         return
     end
 
     local report = mainQuest:GetReport()
     if not report.titleKey then
-        Line("not following any quest")
-        Line("  click a quest in the quest log or the tracker, or /uq main <index or title>")
+        Line(UQ.L("CMD_MAIN_NOT_FOLLOWING"))
+        Line("  " .. UQ.L("CMD_MAIN_HOW_TO_FOLLOW"))
     else
-        Line("following: |cff" .. UQ.colors.accentHex
-            .. tostring(report.title or report.titleKey) .. "|r")
+        Line(UQ.L("CMD_MAIN_FOLLOWING", "|cff" .. UQ.colors.accentHex
+            .. tostring(report.title or report.titleKey) .. "|r"))
         if report.title then
-            Line("  quest log index " .. tostring(report.index)
-                .. ", level " .. tostring(report.level)
-                .. ", match " .. tostring(report.matchConfidence))
+            Line("  " .. UQ.L("CMD_MAIN_DETAIL", tostring(report.index),
+                tostring(report.level), tostring(report.matchConfidence)))
             if report.isComplete == 1 then
-                Line("  ready to hand in; the waypoint points at the turn-in")
+                Line("  " .. UQ.L("CMD_MAIN_READY_TO_HAND_IN"))
             end
         else
-            Line("  |cffff5555not currently in the quest log|r (remembered as '"
-                .. tostring(report.titleKey) .. "')")
+            Line("  |cffff5555" .. UQ.L("CMD_MAIN_NOT_IN_LOG") .. "|r "
+                .. UQ.L("CMD_MAIN_REMEMBERED_AS", tostring(report.titleKey)))
         end
     end
     Line("  restored=" .. tostring(report.restored)
@@ -1156,18 +1192,17 @@ local function ShowMainQuest()
     -- could not be matched to a quest.
     if clicks then
         local click = clicks:GetReport()
-        Line("  click surfaces: " .. tostring(click.chainedRows) .. " quest log rows chained, "
-            .. tostring(click.watchLinesMapped) .. " tracker lines mapped")
-        Line("  clicks seen: " .. tostring(click.logClicks) .. " quest log, "
-            .. tostring(click.watchClicks) .. " tracker; modifier="
-            .. tostring(click.modifier))
+        Line("  " .. UQ.L("CMD_MAIN_CLICK_SURFACES", tostring(click.chainedRows),
+            tostring(click.watchLinesMapped)))
+        Line("  " .. UQ.L("CMD_MAIN_CLICKS_SEEN", tostring(click.logClicks),
+            tostring(click.watchClicks), tostring(click.modifier)))
     end
 end
 
 local function ChangeMainQuest(target)
     local mainQuest = UQ:GetModule("MainQuest")
     if not mainQuest then
-        Line("the main quest module is unavailable")
+        Line(UQ.L("CMD_MODULE_MISSING_MAINQUEST"))
         return
     end
 
@@ -1178,9 +1213,9 @@ local function ChangeMainQuest(target)
     end
     if string.lower(trimmed) == "clear" or string.lower(trimmed) == "none" then
         if mainQuest:Clear("cleared by command") then
-            Line("stopped following")
+            Line(UQ.L("CMD_MAIN_STOPPED"))
         else
-            Line("not following any quest")
+            Line(UQ.L("CMD_MAIN_NOT_FOLLOWING"))
         end
         return
     end
@@ -1188,7 +1223,7 @@ local function ChangeMainQuest(target)
     local titleKey, questOrReason, titles = mainQuest:ResolveTarget(trimmed)
     if not titleKey then
         if questOrReason == "ambiguous" then
-            Line("'" .. trimmed .. "' matches several quests:")
+            Line(UQ.L("CMD_MAIN_AMBIGUOUS", trimmed))
             local index = 1
             local total = table.getn(titles or {})
             while index <= total do
@@ -1196,16 +1231,16 @@ local function ChangeMainQuest(target)
                 index = index + 1
             end
         elseif questOrReason == "noQuestAtIndex" then
-            Line("no quest at quest log index " .. trimmed)
+            Line(UQ.L("CMD_MAIN_NO_INDEX", trimmed))
         else
-            Line("no quest in the log matches '" .. trimmed .. "'")
+            Line(UQ.L("CMD_MAIN_NO_MATCH", trimmed))
         end
         return
     end
 
     mainQuest:Set(titleKey)
-    Line("following: |cff" .. UQ.colors.accentHex
-        .. tostring(questOrReason.title) .. "|r")
+    Line(UQ.L("CMD_MAIN_FOLLOWING", "|cff" .. UQ.colors.accentHex
+        .. tostring(questOrReason.title) .. "|r"))
 end
 
 -- Waypoint --------------------------------------------------------------------
@@ -1214,12 +1249,12 @@ local function ShowWaypoint()
     local waypoint = UQ:GetModule("Waypoint")
     local heading = UQ:GetModule("PlayerHeading")
     if not waypoint then
-        Line("the waypoint module is unavailable")
+        Line(UQ.L("CMD_MODULE_MISSING_WAYPOINT"))
         return
     end
 
     local report = waypoint:GetReport()
-    Line("HUD waypoint marker")
+    Line(UQ.L("CMD_WAYPOINT_TITLE"))
     Line("  enabled=" .. tostring(report.enabled)
         .. " created=" .. tostring(report.created)
         .. " shown=" .. tostring(report.shown))
@@ -1228,11 +1263,11 @@ local function ShowWaypoint()
 
     if report.shown then
         local yards = report.distanceYards
-        Line("  distance " .. (yards and string.format("%.0f", yards) or "?")
-            .. " yd, clamped=" .. tostring(report.clamped)
-            .. ", area " .. tostring(report.areaId))
+        Line("  " .. UQ.L("CMD_WAYPOINT_DISTANCE",
+            (yards and string.format("%.0f", yards) or "?"),
+            tostring(report.clamped), tostring(report.areaId)))
     elseif report.hiddenReason then
-        Line("  hidden: " .. tostring(report.hiddenReason))
+        Line("  " .. UQ.L("CMD_WAYPOINT_HIDDEN", tostring(report.hiddenReason)))
     end
 
     -- Why the marker is not showing, as a tally. "noMainQuest" means nothing
@@ -1244,7 +1279,7 @@ local function ShowWaypoint()
     local any = false
     for reason, count in pairs(counts) do
         if not any then
-            Line("  hidden reasons seen:")
+            Line("  " .. UQ.L("CMD_WAYPOINT_HIDDEN_REASONS"))
             any = true
         end
         Line("    " .. tostring(reason) .. " x" .. tostring(count))
@@ -1252,15 +1287,17 @@ local function ShowWaypoint()
 
     if heading then
         local headingReport = heading:GetReport()
-        Line("  facing: " .. (headingReport.facing
-                and string.format("%.2f rad", headingReport.facing) or "none")
-            .. " via " .. tostring(headingReport.source or "nothing")
-            .. (headingReport.stale and " (stale)" or ""))
-        Line("  heading samples=" .. tostring(headingReport.samples)
-            .. " movement fixes=" .. tostring(headingReport.movementFixes)
-            .. " client source=" .. tostring(headingReport.clientSource or "none"))
+        Line("  " .. UQ.L("CMD_WAYPOINT_FACING",
+            (headingReport.facing and string.format("%.2f rad", headingReport.facing)
+                or UQ.L("COMMON_NONE")),
+            tostring(headingReport.source or UQ.L("COMMON_NOTHING")))
+            .. (headingReport.stale and (" " .. UQ.L("CMD_WAYPOINT_STALE")) or ""))
+        Line("  " .. UQ.L("CMD_WAYPOINT_HEADING_COUNTS", tostring(headingReport.samples),
+            tostring(headingReport.movementFixes),
+            tostring(headingReport.clientSource or UQ.L("COMMON_NONE"))))
         if not headingReport.facing then
-            Line("  |cffff5555no facing source|r -- run /urp probe facing, turn a full circle, then /urp probe facing stop")
+            Line("  |cffff5555" .. UQ.L("CMD_WAYPOINT_NO_FACING_SOURCE") .. "|r -- "
+                .. UQ.L("CMD_WAYPOINT_NO_FACING_HINT"))
         end
     end
 end
@@ -1271,7 +1308,7 @@ end
 -- find a real anchor for the quest-log Show/Track buttons.
 local function DumpFrame(label, frame, depth)
     if not frame then
-        Line(label .. ": not found")
+        Line(label .. ": " .. UQ.L("COMMON_NOT_FOUND"))
         return
     end
     Line(label .. ": " .. tostring(Client.GetObjectType(frame))
@@ -1309,7 +1346,7 @@ end
 local function ShowQuestLogDump()
     local logFrame = Client.GetNamedObject("QuestLogFrame")
     if not logFrame or not Client.IsObjectShown(logFrame) then
-        Line("open the quest log and select a quest first")
+        Line(UQ.L("CMD_QUESTLOG_DUMP_USAGE"))
         return
     end
     DumpFrame("QuestLogFrame", logFrame, 1)
@@ -1322,14 +1359,14 @@ end
 local function ShowConfig(target)
     local settings = UQ:GetModule("Settings")
     if not settings then
-        Line("the settings module is not loaded")
+        Line(UQ.L("CMD_MODULE_MISSING_SETTINGS"))
         return
     end
 
     if target == "button" or target == "button on" or target == "button off" then
         local report = settings:GetReport()
         if report.host == "unrealui" then
-            Line("unrealUI's own settings button is already beside the minimap and opens this page")
+            Line(UQ.L("CMD_CONFIG_UNREALUI_BUTTON"))
             return
         end
         local enabled = nil
@@ -1339,10 +1376,10 @@ local function ShowConfig(target)
             enabled = false
         end
         if settings:SetMinimapButtonEnabled(enabled) then
-            Line("the settings button beside the minimap is shown ("
-                .. tostring(settings:GetReport().minimapAnchor) .. ")")
+            Line(UQ.L("CMD_CONFIG_BUTTON_SHOWN",
+                tostring(settings:GetReport().minimapAnchor)))
         else
-            Line("the settings button beside the minimap is hidden")
+            Line(UQ.L("CMD_CONFIG_BUTTON_HIDDEN"))
         end
         return
     end
@@ -1350,7 +1387,7 @@ local function ShowConfig(target)
     if not settings:Toggle() then
         local report = settings:GetReport()
         if report.host ~= "unrealui" then
-            Line("the options window could not be opened; every option is still on /uq")
+            Line(UQ.L("CMD_CONFIG_WINDOW_FAILED"))
         end
     end
 end
@@ -1421,12 +1458,12 @@ local function Handler(message)
             config:Set("debug", UQ.debug)
         end
         if UQ.debug then
-            Line("debug output enabled")
+            Line(UQ.L("CMD_DEBUG_ENABLED"))
         else
-            Line("debug output disabled")
+            Line(UQ.L("CMD_DEBUG_DISABLED"))
         end
     else
-        Line("unknown command: " .. command)
+        Line(UQ.L("CMD_UNKNOWN", command))
         ShowHelp()
     end
 end
