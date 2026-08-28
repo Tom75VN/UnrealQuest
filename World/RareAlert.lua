@@ -130,6 +130,13 @@ local RANK_NEARBY_KEYS = {
     [RANK_RARE] = "RARE_NEARBY_RARE",
 }
 
+-- Where the card sits until the player drags it somewhere else: centred under
+-- the top edge, clear of the default minimap and of the native error text.
+-- "/uq rare reset" brings it back here.
+local DEFAULT_POINT = "TOP"
+local DEFAULT_X = 0
+local DEFAULT_Y = -160
+
 local DIRECTION_KEYS = {
     N = "RARE_DIR_N", NE = "RARE_DIR_NE", E = "RARE_DIR_E", SE = "RARE_DIR_SE",
     S = "RARE_DIR_S", SW = "RARE_DIR_SW", W = "RARE_DIR_W", NW = "RARE_DIR_NW",
@@ -140,6 +147,10 @@ local DIRECTION_KEYS = {
 RareAlert.frame = nil
 RareAlert.shownUntil = nil
 RareAlert.areaId = nil
+
+-- Drags of the card the client accepted. A refused one warns the player on the
+-- spot instead of being counted here.
+RareAlert.drags = 0
 
 -- What the shown card is about, so its distance row can be rebuilt without a
 -- full scan. The zone and its yard dimensions are snapshotted here on purpose:
@@ -272,12 +283,87 @@ function RareAlert:EnsureFrame()
     if not frame then
         return nil
     end
-    Client.PositionAlertWindow(frame, "TOP", 0, -160)
+    self.frame = frame
+    self:ApplyStoredPosition()
     Client.SetAlertWindowClose(frame, function()
         RareAlert:Dismiss()
     end)
-    self.frame = frame
+    -- Dragged by anywhere on the card. A refused drag is warned about
+    -- visibly rather than logged: an immovable frame that says nothing is the
+    -- failure this client already produced once for the tracker.
+    Client.SetAlertWindowDrag(frame, function()
+        if Client.StartFrameDrag(frame) then
+            RareAlert.drags = RareAlert.drags + 1
+        else
+            UQ:Warn(UQ.L("RARE_WARN_DRAG_FAILED"))
+        end
+    end, function()
+        Client.StopFrameDrag(frame)
+        RareAlert:CapturePosition()
+    end)
     return frame
+end
+
+-- Position -------------------------------------------------------------------
+--
+-- The player drags the card wherever they want it and it stays there, across
+-- alerts and across sessions. The stored anchor is a point name and two
+-- numbers and nothing else -- always UIParent-relative, because a relative
+-- frame is a live object that cannot be persisted -- and it is read back
+-- through Client.GetFrameAnchor, which undoes the two ways GetPoint lies on
+-- this client (docs/QUEST-TRACKER.md).
+
+function RareAlert:ApplyStoredPosition()
+    local frame = self.frame
+    if not frame then
+        return false
+    end
+    local config = UQ:GetModule("Config")
+    local point = config and config:Get("rareAlertPoint")
+    local relativePoint = config and config:Get("rareAlertRelativePoint")
+    local x = config and config:Get("rareAlertX")
+    local y = config and config:Get("rareAlertY")
+    if type(point) ~= "string" or type(x) ~= "number" or type(y) ~= "number" then
+        return Client.PositionAlertWindow(frame, DEFAULT_POINT, DEFAULT_X, DEFAULT_Y)
+    end
+    return Client.SetFrameAnchor(frame, point, "UIParent",
+        type(relativePoint) == "string" and relativePoint or point, x, y)
+end
+
+function RareAlert:CapturePosition()
+    local frame = self.frame
+    local config = UQ:GetModule("Config")
+    if not frame or not config then
+        return false
+    end
+    -- The relative frame's name is read and deliberately not stored: whatever
+    -- the drag left the card anchored to is normalized to UIParent on the way
+    -- in, which is what makes the stored pair of numbers mean the same thing
+    -- next session.
+    local point, relativeName, relativePoint, x, y = Client.GetFrameAnchor(frame)
+    if type(point) ~= "string" or type(x) ~= "number" or type(y) ~= "number" then
+        return false
+    end
+    config:Set("rareAlertPoint", point)
+    config:Set("rareAlertRelativePoint",
+        type(relativePoint) == "string" and relativePoint or point)
+    config:Set("rareAlertX", x)
+    config:Set("rareAlertY", y)
+    return true
+end
+
+function RareAlert:ResetPosition()
+    local config = UQ:GetModule("Config")
+    if config then
+        config:Set("rareAlertPoint", DEFAULT_POINT)
+        config:Set("rareAlertRelativePoint", DEFAULT_POINT)
+        config:Set("rareAlertX", DEFAULT_X)
+        config:Set("rareAlertY", DEFAULT_Y)
+    end
+    if not self.frame then
+        return true
+    end
+    return self:ApplyStoredPosition()
 end
 
 function RareAlert:Dismiss()

@@ -388,6 +388,12 @@ STRINGS = {
     u"/uq rare sound <kit>          проиграть и сохранить набор SoundEntries",
     u"/uq rare sound <kit>          试听并保存 SoundEntries 音效",
 ),
+"CMD_HELP_RARE_RESET": (
+    u"/uq rare reset                put the card back where it started",
+    u"/uq rare reset                remettre la carte a sa place d'origine",
+    u"/uq rare reset                вернуть карточку на исходное место",
+    u"/uq rare reset                将卡片放回初始位置",
+),
 "CMD_HELP_RARE_TEST": (
     u"/uq rare test                 raise the card on the nearest one",
     u"/uq rare test                 afficher la carte pour le plus proche",

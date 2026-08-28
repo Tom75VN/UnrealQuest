@@ -96,6 +96,7 @@ local HELP_TAIL_KEYS = {
     "CMD_HELP_RARE_RANGE",
     "CMD_HELP_RARE_SOUND",
     "CMD_HELP_RARE_TEST",
+    "CMD_HELP_RARE_RESET",
     "CMD_HELP_MARKS",
     "CMD_HELP_MARKS_ONOFF",
     "CMD_HELP_MARKS_ICON",
@@ -571,6 +572,14 @@ local function ShowRareAlert(target)
         else
             Line(UQ.L("CMD_RARE_TEST_FAILED", tostring(why)))
         end
+        return
+    end
+
+    -- Position only. There is no other state on this card worth a "reset", and
+    -- the alert's own settings each have their own sub-command above.
+    if target == "reset" then
+        alert:ResetPosition()
+        Line(UQ.L("CMD_RARE_POSITION_RESET"))
         return
     end
 
@@ -1268,6 +1277,11 @@ local function ShowTracker(argument)
         .. " objectives=" .. tostring(report.objectives)
         .. " zones=" .. (report.groupByZone and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF"))
         .. " curzone=" .. (report.currentZoneOnly and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF"))
+        -- Diagnostic tokens, deliberately untranslated: the area the map half
+        -- of that filter is asking about, and how many quests it kept whose
+        -- quest-log header names another zone.
+        .. (report.currentZoneOnly and (" area=" .. tostring(report.currentZoneArea)
+            .. " mapkept=" .. tostring(report.mapKept)) or "")
         .. " unstarted=" .. (report.hideUnstarted and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF")))
     Line("  " .. UQ.L("CMD_TRACKER_POSITION", tostring(report.point),
         string.format("%.0f, %.0f", report.x or 0, report.y or 0))

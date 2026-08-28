@@ -6530,6 +6530,48 @@ function Client.CreateAlertWindow(name)
     frame.unrealQuestBody = Row("GameFontNormalSmall",
         -(ALERT_PADDING + ALERT_ROW_DISTANCE), 0.86, 0.86, 0.86)
 
+    -- The drag surface is the WHOLE card, not a header strip. This is a 260x88
+    -- box with one control on it, so there is no header worth carving out --
+    -- and a card that lands over something the player is reading has to be
+    -- pushable from wherever the cursor already is.
+    --
+    -- Same measured recipe as the tracker window (docs/QUEST-TRACKER.md): a
+    -- Button, parented to the frame it moves, raised by frame LEVEL and never
+    -- by strata -- raising a handle's strata is one of the recorded failed
+    -- drag approaches. SetMovable and the StartMoving warm-up happen inside
+    -- Client.StartFrameDrag, immediately before each drag.
+    local handleOk, handle = pcall(create, "Button", name .. "Drag", frame)
+    if handleOk and handle then
+        if type(handle.SetFrameStrata) == "function" then
+            pcall(handle.SetFrameStrata, handle, "PARENT")
+        end
+        -- +1, while the close button below is created at +12: the handle
+        -- covers the entire card, close button included, so it has to stay
+        -- underneath it or the card could never be dismissed.
+        if type(frame.GetFrameLevel) == "function"
+            and type(handle.SetFrameLevel) == "function" then
+            local levelOk, level = pcall(frame.GetFrameLevel, frame)
+            if levelOk and type(level) == "number" then
+                pcall(handle.SetFrameLevel, handle, level + 1)
+            end
+        end
+        -- Two explicit corners rather than SetAllPoints, the same way the
+        -- tracker handle is anchored: this layer only ever uses SetPoint on a
+        -- frame, and the card's size is fixed, so nothing is gained by the
+        -- shortcut.
+        if type(handle.SetPoint) == "function" then
+            pcall(handle.SetPoint, handle, "TOPLEFT", frame, "TOPLEFT", 0, 0)
+            pcall(handle.SetPoint, handle, "BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
+        end
+        if type(handle.EnableMouse) == "function" then
+            pcall(handle.EnableMouse, handle, true)
+        end
+        if type(handle.RegisterForDrag) == "function" then
+            pcall(handle.RegisterForDrag, handle, "LeftButton")
+        end
+        frame.unrealQuestHandle = handle
+    end
+
     local close = Client.CreateTextButton(frame, name .. "Close",
         ALERT_CLOSE_SIZE, ALERT_CLOSE_SIZE, "x")
     if close then
@@ -6578,9 +6620,24 @@ function Client.SetAlertWindowClose(frame, handler)
     return Client.SetObjectScript(close, "OnClick", handler)
 end
 
--- Anchors the card to a point of UIParent. Nothing about the position is
--- persisted, so there is no stored anchor to go stale and no GetPoint read to
--- be lied to about (docs/QUEST-TRACKER.md, "the two ways GetPoint lies").
+-- Wires the card's drag handle. A refused drag is reported visibly by the
+-- caller, the same rule the tracker follows: a drag that silently does nothing
+-- is the exact failure mode this client already produced once.
+function Client.SetAlertWindowDrag(frame, onStart, onStop)
+    local handle = frame and frame.unrealQuestHandle
+    if not handle then
+        return false
+    end
+    local started = Client.SetObjectScript(handle, "OnDragStart", onStart)
+    local stopped = Client.SetObjectScript(handle, "OnDragStop", onStop)
+    return started and stopped and true or false
+end
+
+-- Anchors the card to a point of UIParent. This places the DEFAULT position;
+-- once the player has dragged the card, World/RareAlert.lua restores it
+-- through Client.SetFrameAnchor from the anchor Client.GetFrameAnchor captured
+-- (which undoes this client's inverted GetPoint Y -- docs/QUEST-TRACKER.md,
+-- "the two ways GetPoint lies").
 function Client.PositionAlertWindow(frame, point, offsetX, offsetY)
     local parent = ResolveObject("UIParent")
     if not frame or not parent or type(frame.SetPoint) ~= "function" then

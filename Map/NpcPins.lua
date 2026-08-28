@@ -8,10 +8,10 @@ is the only layer that reads meta.lua and trainers.lua; this module only
 consumes normalized service locations.
 
 The menu holds two groups divided by a one-pixel rule: the twelve service
-categories, then the five world-node categories (chests, herbs, mines, fishing
-pools, rare mobs) taken from the same bundled meta relations. Nodes are far
-denser than services -- hundreds per zone -- so they are only read out of the
-database while checked, and the pin budget is split per category.
+categories, then dungeon/raid entrances plus five world-node categories
+(chests, herbs, mines, fishing pools, rare mobs). Nodes are far denser than
+services -- hundreds per zone -- so they are only read out of the database
+while checked, and the pin budget is split per category.
 
 The world map and minimap reuse their already-confirmed pooled pin contracts.
 Minimap points outside the current view are hidden rather than clamped: service
@@ -95,11 +95,14 @@ local CATEGORIES = {
       icon = "vendor",
       red = 1.00, green = 0.52, blue = 0.12 },
 
-    -- World nodes. `separator` draws the one-pixel rule that divides them from
-    -- the service rows above; `detail` names what the meta value on this
-    -- relation means, for the tooltip.
+    -- Map locations. `separator` draws the one-pixel rule that divides them
+    -- from the service rows above. Instance pins choose dungeon or raid art
+    -- per record; `detail` names what a node relation value means.
+    { key = "instances", setting = "npcCategoryInstances", labelKey = "NPC_CATEGORY_INSTANCES",
+      icon = "dungeon-entrance", separator = true,
+      red = 0.45, green = 0.75, blue = 1.00 },
     { key = "chests", setting = "npcCategoryChests", labelKey = "NPC_CATEGORY_CHESTS",
-      icon = "chests", separator = true,
+      icon = "chests",
       red = 1.00, green = 0.82, blue = 0.35 },
     { key = "herbs", setting = "npcCategoryHerbs", labelKey = "NPC_CATEGORY_HERBS",
       icon = "herbs", detail = "skill", small = true,
@@ -153,6 +156,12 @@ end
 -- icon. Objects are looked up there; the one UNIT category with per-entity
 -- artwork is Rare/Elite/Boss, which picks its face by rank above.
 local function IconForLocation(location, category)
+    if category.key == "instances" then
+        if location.instanceType == 1 then
+            return "raid-entrance"
+        end
+        return "dungeon-entrance"
+    end
     if location.sourceType == "unit" then
         if category.key ~= "rares" then
             return category.icon
@@ -349,10 +358,7 @@ function NpcPins:BuildTargets(areaId, selected, selectedCount)
     local targets = {}
     local bySpawn = {}
     local used = {}
-    local index = 1
-    local total = table.getn(source)
-    while index <= total do
-        local location = source[index]
+    local function AppendLocation(location)
         if selected[location.category] then
             local key = location.sourceType .. ":" .. tostring(location.sourceId)
                 .. ":" .. tostring(location.x) .. ":" .. tostring(location.y)
@@ -386,7 +392,24 @@ function NpcPins:BuildTargets(areaId, selected, selectedCount)
                 table.insert(target.categories, location.category)
             end
         end
+    end
+
+    local index = 1
+    local total = table.getn(source)
+    while index <= total do
+        AppendLocation(source[index])
         index = index + 1
+    end
+    if selected.instances then
+        local entrances = database:GetInstanceEntrances(areaId)
+        if type(entrances) == "table" then
+            index = 1
+            total = table.getn(entrances)
+            while index <= total do
+                AppendLocation(entrances[index])
+                index = index + 1
+            end
+        end
     end
     return targets
 end

@@ -92,11 +92,12 @@ Use `/uq` in game to view the available commands and diagnostics.
 
 Use the tracker header's spyglass to select or clear service categories; the
 class-trainer row automatically shows only trainers for your character's class.
-Below the divider are the world-node categories -- chests, herbs, mines,
-fishing pools and rare mobs -- with the required gathering skill or the
-creature level shown in each pin's tooltip. Herb and vein pins carry their own
-artwork, so Peacebloom, Silverleaf and Copper Vein are told apart at a glance
-instead of sharing one category icon.
+Below the divider are dungeon entrances and the world-node categories --
+chests, herbs, mines, fishing pools and rare/elite/boss creatures. Dungeon and
+raid entrances use distinct icons; nodes show the required gathering skill or
+creature level in each pin's tooltip. Herb and vein pins carry their own artwork,
+so Peacebloom, Silverleaf and Copper Vein are told apart at a glance instead of
+sharing one category icon.
 
 ## Languages
 
@@ -116,7 +117,7 @@ visible click.
 
 ## Version
 
-Current release: 0.2.0
+Current release: 0.2.1
 
 ## License
 

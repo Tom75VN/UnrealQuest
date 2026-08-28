@@ -29,6 +29,8 @@ Table shapes this adapter depends on:
   meta[key]         service entity IDs -> faction token (A, H or AH)
   trainers[unitId]  { trainerType, trainerClass, trainerRace, trainerSpell,
                       trainerId }; trainerType 0 is a class trainer
+  instances[mapId]  name, type (0 dungeon / 1 raid), min and entrances whose
+                      trigger IDs resolve through areatrigger[id].coords
   waypoint_index[unitId][continentGroup] = { routeId, ... }
   waypoint_routes[routeId].zones[zoneId] = {
                       { x, y, delay, script, orientation, order }, ... }
@@ -96,6 +98,13 @@ Database.areaRankIndex = nil
 Database.rankIndexReady = false
 Database.rankIndexRequested = false
 Database.rankedUnitCount = 0
+
+-- areaId -> { entrance, ... }: every recorded dungeon and raid entrance in
+-- that area, resolved from Database/instances.lua through the areatriggers it
+-- names. Each entrance keeps x/y at [1]/[2] for the proximity reader and also
+-- carries normalized metadata for the finder map layer. Built on demand by
+-- Database:GetInstanceEntrances below.
+Database.instanceEntranceIndex = nil
 
 local db = nil
 local indexCursor = nil
@@ -204,6 +213,7 @@ function Database:OnInit()
     self.available = true
     -- A new data table voids every walk cached against the old one.
     FlushQuestLocationCache()
+    self.instanceEntranceIndex = nil
 
     local resolved = UQ.Client and UQ.Client.GetLocale and UQ.Client.GetLocale()
     if type(resolved) == "string" and resolved ~= "" then
@@ -683,6 +693,164 @@ function Database:GetZoneYards(zoneId)
     return db.minimap[zoneId]
 end
 
+-- Dungeon entrances ---------------------------------------------------------
+--
+-- Database/instances.lua names every Vanilla dungeon and raid and points each
+-- of its entrances at an areatrigger; Database/areatrigger.lua carries that
+-- trigger's coordinate. Resolving the two gives 46 entrance points over 23
+-- areas -- Blackfathom Deeps' door is recorded in both Darkshore and
+-- Ashenvale, and Uldaman's in both Badlands and Loch Modan, which is why this
+-- is indexed per area and not per instance.
+--
+-- Why a map layer wants them: a dungeon's creatures are NOT all absent from
+-- the outdoor data. The reduction kept every spawn that projects onto an
+-- outdoor zone map, and for a dungeon dug under its own zone that is its whole
+-- entrance cave. Measured: Wailing Caverns' seven Deviate species all land
+-- within 160 yards of the Barrens door, Uldaman's Stonevaults within 100 of
+-- the Badlands one, the Scarlet Monastery's casters within 120 of Tirisfal's.
+-- Drawn as Rare/Elite/Boss pins they read as a knot of elites standing outside
+-- a dungeon nobody has entered.
+--
+-- Returns normalized entrance locations for one area, or nil. Every location
+-- keeps x/y at [1]/[2] for IsAtInstanceEntrance and also carries the fields the
+-- finder consumes: category, name, instanceType, sourceId and entranceLabel.
+-- Built on the first ask and kept: both tables it reads are static for the
+-- session. The returned list belongs to the index and must be treated as
+-- read-only.
+function Database:GetInstanceEntrances(areaId)
+    if not self.instanceEntranceIndex then
+        local index = {}
+        self.instanceEntranceIndex = index
+        local instances = db and db.instances
+        if type(instances) == "table" then
+            local mapId, record
+            for mapId, record in pairs(instances) do
+                local entrances = nil
+                if type(record) == "table" then
+                    entrances = record.entrances
+                end
+                if type(entrances) == "table" then
+                    local entranceIndex = 1
+                    local entranceTotal = table.getn(entrances)
+                    while entranceIndex <= entranceTotal do
+                        local entrance = entrances[entranceIndex]
+                        local trigger = nil
+                        if type(entrance) == "table" then
+                            trigger = entrance.trigger
+                        end
+                        local triggerRecord = nil
+                        if type(trigger) == "number" then
+                            triggerRecord = self:GetAreaTrigger(trigger)
+                        end
+                        local coords = nil
+                        if type(triggerRecord) == "table" then
+                            coords = triggerRecord.coords
+                        end
+                        -- Blackwing Lair's internal area trigger has no map
+                        -- coordinate. instances.lua names its exterior access
+                        -- trigger explicitly, so use that point only when the
+                        -- entrance trigger itself cannot be projected.
+                        if (type(coords) ~= "table" or table.getn(coords) == 0)
+                            and type(record.access_trigger) == "number" then
+                            triggerRecord = self:GetAreaTrigger(record.access_trigger)
+                            if type(triggerRecord) == "table" then
+                                coords = triggerRecord.coords
+                            end
+                        end
+                        if type(coords) == "table" then
+                            local coordIndex = 1
+                            local coordTotal = table.getn(coords)
+                            while coordIndex <= coordTotal do
+                                local coordinate = coords[coordIndex]
+                                if type(coordinate) == "table"
+                                    and type(coordinate[1]) == "number"
+                                    and type(coordinate[2]) == "number"
+                                    and type(coordinate[3]) == "number" then
+                                    local bucket = index[coordinate[3]]
+                                    if not bucket then
+                                        bucket = {}
+                                        index[coordinate[3]] = bucket
+                                    end
+                                    local name = record.name
+                                    if type(name) ~= "string" or name == "" then
+                                        name = tostring(mapId)
+                                    end
+                                    local entranceLabel = entrance.label
+                                    local displayName = name
+                                    if type(entranceLabel) == "string"
+                                        and entranceLabel ~= "" then
+                                        displayName = displayName .. " (" .. entranceLabel .. ")"
+                                    end
+                                    table.insert(bucket, {
+                                        coordinate[1], coordinate[2],
+                                        category = "instances",
+                                        x = coordinate[1],
+                                        y = coordinate[2],
+                                        areaId = coordinate[3],
+                                        sourceType = "instance",
+                                        sourceId = mapId,
+                                        name = displayName,
+                                        instanceType = record.type,
+                                        minimumLevel = record.min,
+                                        entranceLabel = entranceLabel,
+                                    })
+                                end
+                                coordIndex = coordIndex + 1
+                            end
+                        end
+                        entranceIndex = entranceIndex + 1
+                    end
+                end
+            end
+        end
+    end
+    if type(areaId) ~= "number" then
+        return nil
+    end
+    return self.instanceEntranceIndex[areaId]
+end
+
+-- How near a door counts as standing at it. 250 yards is a measured
+-- compromise, not a round number picked for looks: below about 200 the
+-- interior rosters keep a tail of pins ringing the entrance (Wailing Caverns'
+-- Deviate Coiler sits 159 yards out, Uldaman's Shadowforge Ruffian 154), and
+-- above about 300 it starts swallowing genuine outdoor camps that happen to
+-- live by a door -- Dustwallow's Firemane elites at Onyxia's lair, Pyrewood
+-- Village's worgen at Shadowfang Keep. At 250 it drops 113 (creature, area)
+-- elite pins, all but a handful of them dungeon interiors.
+local INSTANCE_ENTRANCE_YARDS = 250
+
+-- Whether a point in an area sits on a dungeon or raid door.
+function Database:IsAtInstanceEntrance(areaId, x, y)
+    if type(x) ~= "number" or type(y) ~= "number" then
+        return false
+    end
+    local points = self:GetInstanceEntrances(areaId)
+    if type(points) ~= "table" then
+        return false
+    end
+    local yards = self:GetZoneYards(areaId)
+    if type(yards) ~= "table" or type(yards[1]) ~= "number"
+        or type(yards[2]) ~= "number" then
+        return false
+    end
+    -- Coordinates are percentages of the zone (0-100) on both sides, turned
+    -- into yards exactly as Map/MinimapPins.lua and World/RareAlert.lua do it.
+    local limit = INSTANCE_ENTRANCE_YARDS * INSTANCE_ENTRANCE_YARDS
+    local index = 1
+    local total = table.getn(points)
+    while index <= total do
+        local point = points[index]
+        local dx = (x - point[1]) * yards[1] / 100
+        local dy = (y - point[2]) * yards[2] / 100
+        if dx * dx + dy * dy <= limit then
+            return true
+        end
+        index = index + 1
+    end
+    return false
+end
+
 -- Nearby service NPCs and objects ------------------------------------------
 
 local SERVICE_META_KEYS = {
@@ -882,6 +1050,21 @@ function Database:GetAreaServiceLocations(areaId, playerClassId, playerRaceId, w
                 end
             end
             index = index + 1
+        end
+
+        -- An ordinary elite whose pin lands on a dungeon door is that
+        -- dungeon's own creature, kept by the reduction only because its
+        -- entrance-cave spawn projects onto the outdoor map (see
+        -- Database:GetInstanceEntrances). The player outside cannot reach it,
+        -- and a door draws enough of them to read as a camp that is not there.
+        --
+        -- Rares, rare elites and bosses are drawn whatever they stand next to:
+        -- Baron Bloodbane is 37 yards from Naxxramas' door and genuinely
+        -- outdoors, they arrive one or two to a door rather than in a knot,
+        -- and they are the pins a player turns this row on for.
+        if tonumber(entity.rnk) == 1
+            and self:IsAtInstanceEntrance(areaId, bestX, bestY) then
+            return
         end
 
         local name = self:GetUnitName(rawId)

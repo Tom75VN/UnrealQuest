@@ -972,7 +972,7 @@ for path in toc_files(os.path.join(ADDONS, "unrealQuest", "UnrealQuest.toc")):
 
 check("world data populated", rt.eval("UnrealQuestData ~= nil and UnrealQuestData.quests ~= nil"))
 
-check("namespace created", rt.eval("UnrealQuest ~= nil and UnrealQuest.version == '0.2.0'"))
+check("namespace created", rt.eval("UnrealQuest ~= nil and UnrealQuest.version == '0.2.1'"))
 check("slash command registered", rt.eval("SlashCmdList.UNREALQUEST == nil"),
       "should still be nil before init")
 
@@ -1383,13 +1383,27 @@ missing_icons = sorted(set(
         os.path.join(ADDONS, "unrealQuest", "media", "icons", *(name.split("/") )) + ".tga")))
 check("every node icon the table names ships in media/icons", not missing_icons,
       ", ".join(missing_icons))
-check("the node rows sit under the service rows behind one rule", rt.eval("""(function()
+entrance_icons = ["dungeon-entrance.tga", "raid-entrance.tga"]
+missing_entrance_icons = [name for name in entrance_icons if not os.path.isfile(
+    os.path.join(ADDONS, "unrealQuest", "media", "icons", name))]
+check("the dungeon and raid entrance artwork ships as TGA", not missing_entrance_icons,
+      ", ".join(missing_entrance_icons))
+check("the entrance and node rows sit under the service rows behind one rule", rt.eval("""(function()
+    local entrance = getglobal("UnrealQuestNpcFilterRow13")
+    local entranceIcon = entrance and entrance.unrealQuestIcon
+    if not entrance or not entranceIcon or not entrance:IsShown()
+        or entrance.unrealQuestEntry.separator ~= true
+        or entrance.unrealQuestCheckMark:IsShown() ~= true
+        or entrance.unrealQuestLabel:GetText() ~= UnrealQuest.L('NPC_CATEGORY_INSTANCES')
+        or entranceIcon:GetTexture() ~= "Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\icons\\\\dungeon-entrance" then
+        return false
+    end
     -- "rare-mobs", not "rares": the row covers every ranked creature now, and
     -- its pins wear one of three faces by rank (see Map/NpcPins.lua RANK_ICONS).
     local names = { "chests", "herbs", "mines", "fish", "rare-mobs" }
     local index = 1
     while index <= table.getn(names) do
-        local row = getglobal("UnrealQuestNpcFilterRow" .. tostring(index + 12))
+        local row = getglobal("UnrealQuestNpcFilterRow" .. tostring(index + 13))
         local icon = row and row.unrealQuestIcon
         if not icon or not row:IsShown()
             or icon:GetTexture() ~= "Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\icons\\\\" .. names[index] then
@@ -1397,9 +1411,7 @@ check("the node rows sit under the service rows behind one rule", rt.eval("""(fu
         end
         index = index + 1
     end
-    local first = getglobal("UnrealQuestNpcFilterRow13")
-    return first.unrealQuestEntry.separator == true
-        and getglobal("UnrealQuestNpcFilterRow18") == nil
+    return getglobal("UnrealQuestNpcFilterRow19") == nil
 end)()"""))
 rt.execute("""
     UnrealQuest:GetModule('Config'):Set('npcCategoryRares', true)
@@ -1498,6 +1510,78 @@ check("a roaming creature is drawn once per zone, on a real recorded spawn",
     end
     return match
 end)()"""))
+# Dungeon doors. Database/instances.lua names the areatrigger each dungeon and
+# raid entrance sits on and Database/areatrigger.lua carries its coordinate; the
+# adapter resolves to 46 points over 23 areas. The Barrens holds three --
+# Wailing Caverns, Razorfen Kraul and Razorfen Downs -- and Elwynn Forest none.
+check("dungeon entrances resolve through the areatriggers instances.lua names",
+      rt.eval("""(function()
+    local db = UnrealQuest:GetModule('Database')
+    local points = db:GetInstanceEntrances(17)
+    if type(points) ~= 'table' or table.getn(points) ~= 3 then return false end
+    local wailing = false
+    local index = 1
+    while index <= table.getn(points) do
+        if points[index][1] == 47.7 and points[index][2] == 35
+            and points[index].name == 'Wailing Caverns'
+            and points[index].instanceType == 0
+            and points[index].category == 'instances' then
+            wailing = true
+        end
+        index = index + 1
+    end
+    return wailing and db:GetInstanceEntrances(12) == nil
+        and db:IsAtInstanceEntrance(17, 47.7, 35) == true
+        -- ten percent of the Barrens is 675 yards down from the same door
+        and db:IsAtInstanceEntrance(17, 47.7, 45) == false
+end)()"""))
+check("Blackwing Lair uses the exterior access trigger from instances.lua",
+      rt.eval("""(function()
+    local points = UnrealQuest:GetModule('Database'):GetInstanceEntrances(46)
+    local spire, lair = false, false
+    for _, point in ipairs(points or {}) do
+        if point[1] == 33.2 and point[2] == 24.9 then
+            if point.name == 'Blackrock Spire' and point.instanceType == 0 then spire = true end
+            if point.name == 'Blackwing Lair' and point.instanceType == 1 then lair = true end
+        end
+    end
+    return spire and lair
+end)()"""))
+check("the finder gives dungeon and raid entrances their own map icons",
+      rt.eval("""(function()
+    local pins = UnrealQuest:GetModule('NpcPins')
+    local dungeons = pins:BuildTargets(17, { instances = true }, 1)
+    local raids = pins:BuildTargets(15, { instances = true }, 1)
+    local dungeon, raid = false, false
+    for _, target in ipairs(dungeons) do
+        if target.icon == 'dungeon-entrance' then dungeon = true end
+    end
+    for _, target in ipairs(raids) do
+        if target.icon == 'raid-entrance' and target.name == "Onyxia's Lair" then raid = true end
+    end
+    return dungeon and raid
+end)()"""))
+# A dungeon's creatures are not all absent from the outdoor data: the reduction
+# kept every spawn that projects onto an outdoor zone map, which for Wailing
+# Caverns is its whole entrance cave. Seven Deviate species were drawing a knot
+# of elite pins on a Barrens door the player is standing outside of.
+check("dungeon-interior elites leave the door, the zone's own mobs stay",
+      rt.eval("""(function()
+    local db = UnrealQuest:GetModule('Database')
+    local locations = db:GetAreaServiceLocations(17, 8, 1, { rares = true })
+    local seen = {}
+    local index = 1
+    while index <= table.getn(locations) do
+        local location = locations[index]
+        if location.category == 'rares' then seen[location.sourceId] = true end
+        index = index + 1
+    end
+    -- gone: Deviate Stalker and Deviate Coiler, 79 and 164 yards off the door
+    if seen[3634] or seen[3630] then return false end
+    -- kept: Trigore the Lasher is a rare elite 122 yards off that same door,
+    -- and the Barrens' own elites never came near one
+    return seen[3652] == true and seen[10992] == true
+end)()"""))
 check("its tooltip names the creature's own classification, not the row",
       rt.eval("""(function()
     local db = UnrealQuest:GetModule('Database')
@@ -1531,7 +1615,7 @@ check("its tooltip names the creature's own classification, not the row",
 end)()"""))
 check("the divider is one pixel tall and the menu grew by exactly its block", rt.eval("""(function()
     local menu = UnrealQuestNpcFilterMenu
-    return menu:GetHeight() == 6 * 2 + 17 * 20 + 7
+    return menu:GetHeight() == 6 * 2 + 18 * 20 + 7
 end)()"""), str(rt.eval("UnrealQuestNpcFilterMenu:GetHeight()")))
 rt.execute("""
     UnrealQuestNpcFilterRow1.scripts.OnClick()
@@ -6757,6 +6841,97 @@ check("the option is account-wide, not per character",
       rt.eval("UnrealQuestDB.trackerCurrentZoneOnly ~= nil "
               "and UnrealQuestCharDB.trackerCurrentZoneOnly == nil"))
 
+# The map half of the same filter (Map/QuestZonePresence.lua). "Goretusk Liver
+# Pie" is filed under Westfall in the quest log -- that is where it is taken and
+# handed in -- while the bundled data records objective sources for it in
+# Elwynn Forest (12), Westfall (40) and Redridge Mountains (44). The header
+# comparison alone hid it for exactly the time the player was in Elwynn
+# collecting for it. "Poor Old Blanchy" is the control: also filed under
+# Westfall, and the map has nothing for it in Elwynn either, so it stays out.
+print("  tracker: the current-zone filter follows the map")
+rt.execute("""
+    -- Accepting a quest tracks it, and the mocked client caps the watch list
+    -- at five exactly as the real one does, so this scenario's own quests are
+    -- put back afterwards rather than left to fill it for later blocks.
+    UQ_TEST_WATCH_SNAPSHOT = {}
+    for watched in pairs(UQ_TEST_WATCHES) do
+        UQ_TEST_WATCH_SNAPSHOT[watched] = true
+    end
+    UQ_TEST_LOG = {
+        { "Elwynn Forest", 0, nil, 1, nil, nil },
+        { "Kobold Camp Cleanup", 6, nil, nil, nil, nil,
+          { { "Kobold Vermin slain: 4/10", "monster", nil } } },
+        { "Westfall", 0, nil, 1, nil, nil },
+        { "Goretusk Liver Pie", 10, nil, nil, nil, nil,
+          { { "Goretusk Liver: 0/1", "item", nil } } },
+        { "Poor Old Blanchy", 15, nil, nil, nil, nil,
+          { { "Blanchy watered", "item", nil } } },
+    }
+    UQ_TEST_TRACKER_RESCAN()
+""")
+
+check("a quest filed under another zone stays when this zone's map has points for it",
+      rt.eval("UQ_TEST_TRACKER_HAS('Goretusk') == true"),
+      str(rt.eval("table.concat(UQ_TEST_TRACKER_TITLES(), ' | ')")))
+check("a quest filed under another zone with nothing on this map is still hidden",
+      rt.eval("UQ_TEST_TRACKER_HAS('Blanchy') == false"))
+check("/uq tracker reports the area asked about and how many quests the map kept",
+      rt.eval("(function()"
+              " local r = UnrealQuest:GetModule('TrackerFrame'):GetReport()"
+              " return r.currentZoneArea == 12 and r.mapKept == 1 end)()"))
+
+check("the presence test says yes for every area a quest has objectives in",
+      rt.eval("""(function()
+    local presence = UnrealQuest:GetModule('QuestZonePresence')
+    local quest = { questId = 22, matchConfidence = 'unique', objectives = {} }
+    return presence:HasPoints(quest, 12) == true and presence:HasPoints(quest, 44) == true
+end)()"""))
+check("the presence test says no for an area the quest has nothing in",
+      rt.eval("""(function()
+    local presence = UnrealQuest:GetModule('QuestZonePresence')
+    local quest = { questId = 151, matchConfidence = 'unique', objectives = {} }
+    return presence:HasPoints(quest, 12) == false and presence:HasPoints(quest, 40) == true
+end)()"""))
+# nil, not false: an unmatched quest is a question that cannot be asked, and the
+# tracker must fall back to the header rather than read it as "not here".
+check("the presence test refuses to answer for a quest that matched no record",
+      rt.eval("""(function()
+    local presence = UnrealQuest:GetModule('QuestZonePresence')
+    return presence:HasPoints({ title = 'Nothing At All', objectives = {} }, 12) == nil
+end)()"""))
+check("repeating the question costs no second database walk",
+      rt.eval("""(function()
+    local presence = UnrealQuest:GetModule('QuestZonePresence')
+    local quest = { questId = 22, matchConfidence = 'unique', objectives = {} }
+    presence:HasPoints(quest, 12)
+    local before = presence:GetStatus().computes
+    presence:HasPoints(quest, 12)
+    presence:HasPoints(quest, 12)
+    return presence:GetStatus().computes == before
+end)()"""))
+# Progress is part of the memo key, because it is part of the answer: the map
+# drops a source whose objective is finished, and so must this.
+check("a changed objective is a different question",
+      rt.eval("""(function()
+    local presence = UnrealQuest:GetModule('QuestZonePresence')
+    local quest = { questId = 22, matchConfidence = 'unique',
+        objectives = { { text = 'Goretusk Liver: 0/1', have = 0, need = 1 } } }
+    presence:HasPoints(quest, 12)
+    local before = presence:GetStatus().computes
+    quest.objectives[1].have = 1
+    presence:HasPoints(quest, 12)
+    return presence:GetStatus().computes == before + 1
+end)()"""))
+
+rt.execute("""
+    for watched in pairs(UQ_TEST_WATCHES) do
+        UQ_TEST_WATCHES[watched] = nil
+    end
+    for watched in pairs(UQ_TEST_WATCH_SNAPSHOT) do
+        UQ_TEST_WATCHES[watched] = true
+    end
+""")
+
 print("  tracker: unstarted-quest filter")
 rt.execute("""
     UQ_TEST_LOG = {
@@ -8409,6 +8584,55 @@ check("its close button dismisses it", rt.eval("""(function()
     UnrealQuest.Client.ShowObject(UnrealQuestRareAlert)
     UnrealQuestRareAlertClose:GetScript('OnClick')()
     return UnrealQuestRareAlert:IsShown() == false and alert.shownUntil == nil
+end)()"""))
+
+# The card is dragged by ANYWHERE on it -- there is no header strip on a 260x88
+# box -- so the handle covers the whole frame and has to stay under the close
+# button, or a dragged card could never be dismissed again.
+check("the card's drag handle covers it and stays below the close button",
+      rt.eval("""(function()
+    local handle = UnrealQuestRareAlertDrag
+    if not handle then return false end
+    if handle.dragTokens == nil or handle.dragTokens[1] ~= 'LeftButton' then return false end
+    return handle:GetFrameLevel() < UnrealQuestRareAlertClose:GetFrameLevel()
+end)()"""))
+
+rt.execute("UnrealQuestRareAlertDrag:GetScript('OnDragStart')()")
+check("dragging the card applies SetMovable and runs the measured warm-up pair",
+      rt.eval("""UnrealQuestRareAlert:IsMovable() == true
+        and UnrealQuestRareAlert.startMovingCalls == 2
+        and UnrealQuestRareAlert.stopMovingCalls == 1"""))
+
+rt.execute("""
+    UnrealQuestRareAlert:SetPoint('BOTTOMLEFT', UIParent, 'BOTTOMLEFT', 220, 180)
+    UnrealQuestRareAlertDrag:GetScript('OnDragStop')()
+""")
+check("the dropped card keeps its place, with the inverted GetPoint Y undone",
+      rt.eval("""UnrealQuestRareAlert.moving == false
+        and UnrealQuestDB.rareAlertPoint == 'BOTTOMLEFT'
+        and UnrealQuestDB.rareAlertRelativePoint == 'BOTTOMLEFT'
+        and UnrealQuestDB.rareAlertX == 220
+        and UnrealQuestDB.rareAlertY == 180"""),
+      str(rt.eval("tostring(UnrealQuestDB.rareAlertY)")))
+
+check("a client that refuses to move the card says so instead of going quiet",
+      rt.eval("""(function()
+    UQ_TEST_ALLOW_STARTMOVING = false
+    UnrealQuestRareAlertDrag:GetScript('OnDragStart')()
+    UQ_TEST_ALLOW_STARTMOVING = true
+    local last = UQ_TEST_MESSAGES[table.getn(UQ_TEST_MESSAGES)]
+    return last ~= nil and string.find(last, 'refused to move', 1, true) ~= nil
+end)()"""))
+
+check("/uq rare reset puts the card back at its default anchor",
+      rt.eval("""(function()
+    UnrealQuest:GetModule('RareAlert'):ResetPosition()
+    if UnrealQuestDB.rareAlertPoint ~= 'TOP' or UnrealQuestDB.rareAlertX ~= 0
+        or UnrealQuestDB.rareAlertY ~= -160 then
+        return false
+    end
+    local point, relative = UnrealQuestRareAlert:GetPoint()
+    return point == 'TOP' and relative == 'UIParent'
 end)()"""))
 
 # Zoomed out to a continent there is no view that can project the player, and a

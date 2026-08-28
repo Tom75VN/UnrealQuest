@@ -195,6 +195,10 @@ local function Watch()
     return UQ:GetModule("Tracker")
 end
 
+local function ZonePresence()
+    return UQ:GetModule("QuestZonePresence")
+end
+
 local function Setting(key)
     local config = Config()
     if not config then
@@ -406,19 +410,32 @@ end
 
 -- The current-zone filter ------------------------------------------------------
 --
--- `trackerCurrentZoneOnly` narrows the window to the quests filed under the
--- zone the player is standing in. Both sides of the comparison are localized
--- strings the client produced -- the quest log's own header row (captured onto
--- the quest by Quest/QuestState.lua) and the client's zone name -- so they are
--- matched through UQ.NameKey rather than raw equality, exactly as every other
--- name comparison in this addon is.
+-- `trackerCurrentZoneOnly` narrows the window to the quests the player can
+-- actually work on where they are standing. That is asked in two ways, and a
+-- quest passing either one stays:
 --
--- Once the client names the current zone, every other non-empty header is
--- outside that zone. Quest-log headers can also be profession, class or
--- dungeon groupings; those must be excluded too, otherwise "current zone"
--- quietly becomes "current zone plus every grouping the area database cannot
--- resolve".
-local function CurrentZoneKey()
+--   * the quest log's own header row names the current zone -- the cheap,
+--     always-available answer, and the only one for a quest this client's
+--     absent quest ID API left unmatched;
+--   * or the zone's map draws something for it: an objective dot or tile, a
+--     turn-in marker, a vendor pin (Map/QuestZonePresence.lua).
+--
+-- The second question is the one that matters, because the header names the
+-- zone a quest BELONGS to, not the zone its objectives are in. A quest taken
+-- in Duskwood whose every kill is in Westfall was hidden for exactly the time
+-- the player was in Westfall doing it. Now the map decides: if there is
+-- something to walk to on this zone's map, the quest is in the tracker.
+--
+-- Both sides of the header comparison are localized strings the client
+-- produced -- the quest log's header (captured onto the quest by
+-- Quest/QuestState.lua) and the client's zone name -- so they are matched
+-- through UQ.NameKey rather than raw equality, exactly as every other name
+-- comparison in this addon is.
+--
+-- Returns the normalized zone name and the resolved area ID for the map half.
+-- Either may be nil independently: an unresolvable area only costs the map
+-- question, and an unnamed zone disables the filter entirely.
+local function CurrentZone()
     if not Setting("trackerCurrentZoneOnly") then
         return nil
     end
@@ -436,22 +453,46 @@ local function CurrentZoneKey()
         -- than empty the window on a guess.
         return nil
     end
-    return UQ.NameKey(name)
+    local areaId = nil
+    local presence = ZonePresence()
+    if presence then
+        -- The same name, resolved to the area whose map is asked about below.
+        -- ResolveAreaId refuses ambiguous names, so this stays nil rather than
+        -- guessing a zone, and the filter simply keeps its header-only shape.
+        areaId = presence:ResolveArea(name)
+    end
+    return UQ.NameKey(name), areaId
 end
 
--- True for every named quest-log grouping other than the current zone.
+-- True for a quest that is neither filed under the current zone nor visible on
+-- its map.
 --
--- Both names come from the localized client, so comparing their normalized
--- forms is more faithful to the setting than asking the bundled area table to
--- classify the header first. A missing header remains visible because there is
--- no comparison to make, and a missing current-zone name disables the filter.
-local function IsOtherZone(zone, currentZoneKey)
+-- The header comparison comes first because it is free and needs no database
+-- match: both names come from the localized client, so comparing their
+-- normalized forms is more faithful to the setting than asking the bundled
+-- area table to classify the header. A missing header stays visible because
+-- there is no comparison to make, and a missing current-zone name disables the
+-- filter.
+--
+-- The map is asked only about the quests the header would have hidden, so the
+-- test is a pure widening of the old behaviour -- nothing that used to show
+-- can start disappearing -- and costs nothing at all for a quest already in
+-- the right zone. nil from HasPoints means the map could not be asked (an
+-- unmatched quest, or one deliberately withheld from the map); that is not
+-- evidence of absence, so the header's answer stands.
+local function IsOtherZone(quest, zone, currentZoneKey, currentAreaId)
     if not currentZoneKey or type(zone) ~= "string" or zone == "" then
         return false
     end
     local zoneKey = UQ.NameKey(zone)
     if not zoneKey or zoneKey == currentZoneKey then
         return false
+    end
+    if currentAreaId then
+        local presence = ZonePresence()
+        if presence and presence:HasPoints(quest, currentAreaId) == true then
+            return false
+        end
     end
     return true
 end
@@ -500,7 +541,8 @@ function TrackerFrame:BuildLines()
     local watch = Watch()
     local showObjectives = Setting("trackerShowObjectives") or "all"
     local groupByZone = Setting("trackerGroupByZone") and true or false
-    local currentZoneKey = CurrentZoneKey()
+    local currentZoneKey, currentAreaId = CurrentZone()
+    local mapKept = 0
     local quests = state:GetOrderedQuests()
     local total = table.getn(quests)
     local visibleTotal = 0
@@ -520,8 +562,15 @@ function TrackerFrame:BuildLines()
         -- Untracked-and-hidden or somewhere else: both reach the same lazy
         -- header machinery below, so a zone filtered out entirely writes no
         -- header row either.
+        local elsewhere = IsOtherZone(quest, zone, currentZoneKey, currentAreaId)
+        if currentZoneKey and not elsewhere and zone and UQ.NameKey(zone) ~= currentZoneKey then
+            -- Kept by the map rather than by its header. Counted only for
+            -- /uq tracker, so a player asking why a Duskwood quest is in the
+            -- window while they stand in Westfall gets an answer.
+            mapKept = mapKept + 1
+        end
         local hidden = IsFolded(HIDDEN_QUESTS, quest.title or "")
-            or IsOtherZone(zone, currentZoneKey) or IsUnstartedQuest(quest)
+            or elsewhere or IsUnstartedQuest(quest)
 
         if groupByZone and zone and zone ~= lastZone then
             lastZone = zone
@@ -607,6 +656,8 @@ function TrackerFrame:BuildLines()
         index = index + 1
     end
 
+    self.currentZoneArea = currentAreaId
+    self.mapKept = mapKept
     return lines, visibleTotal, completed
 end
 
@@ -1255,6 +1306,8 @@ function TrackerFrame:GetReport()
         objectives = Setting("trackerShowObjectives"),
         groupByZone = Setting("trackerGroupByZone") and true or false,
         currentZoneOnly = Setting("trackerCurrentZoneOnly") and true or false,
+        currentZoneArea = self.currentZoneArea,
+        mapKept = self.mapKept,
         hideUnstarted = Setting("trackerHideUnstartedQuests") and true or false,
         hideNativeWatch = Setting("trackerHideNativeWatch") and true or false,
         lines = self.totalLines,

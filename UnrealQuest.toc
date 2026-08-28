@@ -2,7 +2,7 @@
 ## Title: |cffffffffUnreal|cfff5ae0a Quest
 ## Notes: Quest helper for the Unreal Azeroth client. A movable quest tracker and service-NPC selector, current-zone world-map pins, minimap pins, quest tracking and entity tooltips. The main quest + HUD waypoint layer ships disabled - see docs/HUD-WAYPOINT.md.
 ## Author: unrealQuest
-## Version: 0.2.0
+## Version: 0.2.1
 ## X-License: MIT. Bundled world data from pfQuest (MIT), sourced from VMaNGOS. See LICENSE.
 ## SavedVariables: UnrealQuestDB
 ## SavedVariablesPerCharacter: UnrealQuestCharDB
@@ -11,6 +11,7 @@ Database\init.lua
 Database\zones.lua
 Database\minimap.lua
 Database\areatrigger.lua
+Database\instances.lua
 Database\units.lua
 Database\objects.lua
 Database\items.lua
@@ -102,6 +103,7 @@ Map\WorldMapPins.lua
 Map\MinimapPins.lua
 Map\NpcPins.lua
 Map\QuestVendorPins.lua
+Map\QuestZonePresence.lua
 World\WorldFrameScan.lua
 World\QuestMarks.lua
 World\RareAlert.lua

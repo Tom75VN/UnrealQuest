@@ -84,6 +84,12 @@ STRINGS.update({
     "окно трекера заданий не удалось создать; трекер недоступен",
     "无法创建任务追踪器窗口；追踪器不可用",
 ),
+"RARE_WARN_DRAG_FAILED": (
+    "the alert card refused to move (StartMoving failed)",
+    "la carte d'alerte a refusé de bouger (échec de StartMoving)",
+    "карточка оповещения отказалась перемещаться (StartMoving не сработал)",
+    "提醒卡片拒绝移动（StartMoving 失败）",
+),
 "TRACKER_WARN_DRAG_FAILED": (
     "the tracker window refused to move (StartMoving failed)",
     "la fenêtre de suivi a refusé de bouger (échec de StartMoving)",
@@ -155,6 +161,7 @@ STRINGS.update({
 "NPC_CATEGORY_SPIRITHEALER": ("Spirit Healer", "Guérisseur des esprits", "Дух-целитель", "灵魂医者"),
 "NPC_CATEGORY_STABLEMASTER": ("Stable Master", "Maître des écuries", "Смотритель стойл", "兽栏管理员"),
 "NPC_CATEGORY_VENDOR": ("Vendor", "Marchand", "Торговец", "商人"),
+"NPC_CATEGORY_INSTANCES": ("Dungeon entrances", "Entrees de donjons", "Входы в подземелья", "地下城入口"),
 "NPC_CATEGORY_CHESTS": ("Chests & Treasures", "Coffres et trésors", "Сундуки и сокровища", "宝箱与财宝"),
 "NPC_CATEGORY_HERBS": ("Herbs & Flowers", "Herbes et fleurs", "Травы и цветы", "草药与花卉"),
 "NPC_CATEGORY_MINES": ("Mines & Ores", "Mines et minerais", "Жилы и руда", "矿脉与矿石"),

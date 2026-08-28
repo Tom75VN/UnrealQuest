@@ -592,6 +592,17 @@ function WorldMapPins:IsQuestHidden(questId, config)
     return IsQuestMapHidden(config, questId)
 end
 
+-- The local resolver above, published for the layers that must draw from the
+-- same set this one does: Map/QuestVendorPins.lua (which already deferred to
+-- this name) and Map/QuestZonePresence.lua, which answers "does the map show
+-- anything for this quest here" and would otherwise have to re-derive what an
+-- ambiguous row is allowed to show. Read-only: the returned table is freshly
+-- built per call, but callers must treat its IDs as candidates rather than as
+-- a proven identity, exactly as the tiles do.
+function WorldMapPins:GetQuestMapIds(quest)
+    return GetQuestMapIds(quest)
+end
+
 -- Quest IDs from one giver that this character could actually pick up now:
 -- not already in the quest log, not recorded done, not excluded by the
 -- quest's own race/class/level/event restrictions, no recorded prerequisite

@@ -985,6 +985,12 @@ STRINGS = {
     u"использование: /uq rare range <20-500>",
     u"用法：/uq rare range <20-500>",
 ),
+"CMD_RARE_POSITION_RESET": (
+    u"alert card moved back to its default position",
+    u"carte d'alerte replacée à sa position par défaut",
+    u"карточка оповещения возвращена на исходное место",
+    u"提醒卡片已移回默认位置",
+),
 "CMD_RARE_SOUND_SET": (
     u"sound kit set to %s -- it just played, or the client does not know it",
     u"kit sonore réglé sur %s — il vient de jouer, ou le client l'ignore",

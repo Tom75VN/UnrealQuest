@@ -188,10 +188,11 @@ local defaults = {
     npcCategoryVendor = false,
     npcCategoryTrainer = false,
 
-    -- World nodes, kept below the service rows in the same menu. These read
-    -- the bundled meta relations chests/fish/herbs/mines/rares rather than a
-    -- service relation, and a single zone can hold hundreds of them, so they
-    -- are only gathered from the database while the row is checked.
+    -- Map locations, kept below the service rows in the same menu. Instance
+    -- entrances come from Database/instances.lua; world nodes read the bundled
+    -- meta relations chests/fish/herbs/mines/rares. A single zone can hold
+    -- hundreds of nodes, so those are only gathered while their row is checked.
+    npcCategoryInstances = true,
     npcCategoryChests = false,
     npcCategoryHerbs = false,
     npcCategoryMines = false,
@@ -256,6 +257,17 @@ local defaults = {
     -- value. So nothing in the addon can verify that this name makes a noise;
     -- "/uq rare sound <kit>" is how the player's ears settle it.
     rareAlertSound = "RaidWarning",
+
+    -- Where the card sits. It is dragged by anywhere on it, so this is a saved
+    -- position and not a constant: same rule as the tracker window below --
+    -- an anchor point name and two numbers, always UIParent-relative, captured
+    -- through Client.GetFrameAnchor, which undoes this client's inverted
+    -- GetPoint Y. The default is centred under the top edge, clear of the
+    -- default minimap and of the native error text.
+    rareAlertPoint = "TOP",
+    rareAlertRelativePoint = "TOP",
+    rareAlertX = 0,
+    rareAlertY = -160,
 
     -- Quest tracker window ---------------------------------------------------
     --
