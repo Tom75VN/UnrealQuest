@@ -16,13 +16,19 @@ UnrealQuest turns questing into exploration instead of guesswork. It is designed
 
 ## Main benefits
 
-- See objectives, available quests and turn-ins directly on the world map with dots, areas, `!` and `?` markers, including patrol paths that remain visible while a moving quest NPC still has a marker.
-- Follow nearby quest creatures and objectives from your minimap without constantly reopening the world map.
-- Watch every quest you need in a movable tracker window, beyond the client's native five-quest limit, grouped by zone with live objective progress.
+- See objectives, available quests and turn-ins directly on the world map with dots or areas, `!` and `?` markers, a different color for each quest and patrol paths that stay visible while a moving quest NPC still has a marker. The `?` turns orange the moment a quest is ready to hand in.
+- Open any zone's map and read its quest points, not only the zone you are standing in.
+- Follow nearby quest creatures and objectives from your minimap without constantly reopening the world map, with a tooltip on every marker.
+- Watch every quest you need in a movable tracker window, beyond the client's native five-quest limit, grouped by zone with live objective progress, quest levels and tracking that survives a reload.
+- Narrow the tracker to the zone you are in, and keep a quest whose objectives are here even when the quest log files it under another zone.
 - Find nearby auctioneers, bankers, flight masters, mailboxes, vendors and class trainers from the quest tracker's NPC finder.
-- Put treasure chests, herbs, mining veins, fishing pools and rare mobs on both maps from the same menu, each herb and vein drawn with its own icon.
+- Put treasure chests, herbs, mining veins, fishing pools, rare, elite and boss creatures and dungeon and raid entrances on both maps from the same menu, each herb, vein and entrance drawn with its own icon, and each ranked creature wearing a silver, gold or red star for its rank.
+- Be warned when you come near a rare, rare elite or boss creature's known spawn, with a movable alert card and a sound you choose.
 - Buy quest items without hunting for the shop: when a quest asks for something a trader sells, the sellers in the zone are marked on both maps with the NPC finder's vendor icon, and the mark clears once you have the item.
 - See live quest progress in creature tooltips and recognize relevant targets through automatic quest marks.
+- Read every marker in one tooltip when several land on the same spot, instead of losing the ones underneath.
+- Track more reliably, with far fewer ambiguously matched quests, no other-faction quest givers and no city guards or dungeon interiors crowding the map.
+- Adjust everything from a standalone settings window that also plugs into unrealUI when it is installed.
 - Import completed-quest history from pfQuest so finished quests do not reappear on the map.
 - Read the whole interface in English, French, Russian or Simplified Chinese, chosen with the flag row in the settings window -- or automatically matched to unrealUI's language when that addon is installed.
 
