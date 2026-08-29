@@ -5004,17 +5004,69 @@ check("static item-use targets are returned from the shared cache", rt.eval("""(
     return db:GetQuestItemUseTargets(6395) == db:GetQuestItemUseTargets(6395)
         and db:GetQuestItemUseTargets(380) == db:GetQuestItemUseTargets(380)
 end)()"""))
-check("the item-use target is kept out of the plain objective locations", rt.eval("""(function()
+check("neither half of an item-use step is an unconditional objective", rt.eval("""(function()
     local db = UnrealQuest:GetModule('Database')
     local locations = db:GetQuestLocations(6395, nil, 85, 200)
     local sawGrave, sawSamuel = false, false
     for _, location in ipairs(locations) do
         if location.sourceType == 'object' and location.sourceId == 178090 then sawGrave = true end
-        -- Samuel Fipps (1919) drops the remains and must still be drawn: he is
-        -- the step the player can actually take.
+        -- Samuel Fipps (1919) drops the remains. He is the step the player can
+        -- take FIRST, not an objective in his own right, so the static walk
+        -- leaves him to the bag-aware pass alongside the grave he leads to.
         if location.sourceType == 'unit' and location.sourceId == 1919 then sawSamuel = true end
     end
-    return sawSamuel and not sawGrave
+    return not sawSamuel and not sawGrave
+end)()"""))
+check("the required item's own sources are recognised", rt.eval("""(function()
+    local db = UnrealQuest:GetModule('Database')
+    local items = db:GetQuestItemUseRequirementItems(6395)
+    if not items[16333] then return false end
+    local found = db:GetQuestItemUseSourceLocations(6395, 16333, 85)
+    if table.getn(found) < 1 then return false end
+    for _, location in ipairs(found) do
+        if location.sourceType ~= 'unit' or location.sourceId ~= 1919 then return false end
+    end
+    -- An item that is a plain loot objective is not a requirement item, so its
+    -- sources stay in the unconditional walk where they belong.
+    return table.getn(db:GetQuestItemUseSourceLocations(6395, 5811, 85)) == 0
+end)()"""))
+# Frostmaw (quest 1136 / creature 4504). obj.I names both the Fresh Carcass
+# (5810) and Frostmaw's Mane (5811); only the Mane is an objective. The Carcass
+# is bait used on the Growless Cave object (19876) and dropped by four Mountain
+# Lion species carrying 72 spawns in Alterac, which is what buried Frostmaw's
+# single summon coordinate.
+check("bait sources leave the quest's own target alone on the map", rt.eval("""(function()
+    local db = UnrealQuest:GetModule('Database')
+    local locations = db:GetQuestLocations(1136, false, 36, 200)
+    local sawFrostmaw, others = 0, 0
+    for _, location in ipairs(locations) do
+        if location.sourceType == 'unit' and location.sourceId == 4504 then
+            sawFrostmaw = sawFrostmaw + 1
+        else
+            others = others + 1
+        end
+    end
+    return sawFrostmaw == 1 and others == 0
+end)()"""))
+check("the bait is still findable while it is not carried", rt.eval("""(function()
+    local db = UnrealQuest:GetModule('Database')
+    local target = UnrealQuest:GetModule('QuestTarget')
+    local bags = UnrealQuest:GetModule('BagItems')
+    UQ_TEST_BAGS = { [0] = {} }
+    bags:Invalidate()
+    UQ_TEST_TICK(1.0, 8)
+    local empty = target:CollectLocations({ questId = 1136 }, 36, false)
+    UQ_TEST_BAGS[0][1] = 5810
+    bags:Invalidate()
+    UQ_TEST_TICK(1.0, 8)
+    local carrying = target:CollectLocations({ questId = 1136 }, 36, false)
+    local sawCave = false
+    for _, location in ipairs(carrying) do
+        if location.sourceType == 'object' and location.sourceId == 19876 then sawCave = true end
+    end
+    -- Empty bags: Frostmaw plus every lion. Carcass in hand: Frostmaw plus the
+    -- one place it is used, and not a lion in sight.
+    return table.getn(empty) > 60 and table.getn(carrying) == 2 and sawCave
 end)()"""))
 check("the turn-in relation is untouched by the exclusion", rt.eval("""(function()
     local db = UnrealQuest:GetModule('Database')
@@ -5114,7 +5166,8 @@ end)()"""))
 
 # End to end on the real record that produced the report: with the quest
 # accepted and the bags empty the map must show Samuel Fipps and nothing else,
-# and Marla's Grave must appear only once the remains are carried.
+# and once the remains are carried it must show Marla's Grave and nothing else
+# -- the step moves, it does not accumulate.
 rt.execute("""
     UQ_TEST_RESTORE_LOG = UQ_TEST_LOG
     UQ_TEST_MAP_FILE = "Tirisfal"
@@ -5131,14 +5184,40 @@ rt.execute("""
     UQ_TEST_TICK(1.0, 10)
     UQ_TEST_AREAS_WITHOUT = UnrealQuest:GetModule('WorldMapPins').areaVisibleCount
     UQ_TEST_BAGS[0][1] = 16333
+    -- The client moves the counter the moment the item is looted, and that is
+    -- what tells the addon the acquisition half of the step is over. A fixture
+    -- that leaves the line at 0/1 would be describing a client that does not
+    -- exist, and would keep Samuel Fipps on the map for ever.
+    UQ_TEST_LOG[2][7][1] = { "Samuel's Remains: 1/1", "item", 1 }
     UnrealQuest:GetModule('BagItems'):Invalidate()
+    UnrealQuest:GetModule('QuestState'):Scan()
     UQ_TEST_TICK(1.0, 10)
     UQ_TEST_AREAS_WITH = UnrealQuest:GetModule('WorldMapPins').areaVisibleCount
 """)
 check("without the remains the map draws only Samuel Fipps", rt.eval(
     "UQ_TEST_AREAS_WITHOUT == 1"))
-check("carrying the remains adds the grave as a second area", rt.eval(
-    "UQ_TEST_AREAS_WITH == 2"))
+check("carrying the remains swaps Samuel Fipps for the grave", rt.eval(
+    "UQ_TEST_AREAS_WITH == 1"))
+check("the one remaining area is the grave, not the creature", rt.eval("""(function()
+    local target = UnrealQuest:GetModule('QuestTarget')
+    local found = target:CollectLocations(
+        { questId = 6395, objectives = UnrealQuest:GetModule('QuestState')
+            :GetOrderedQuests()[1].objectives }, 85, false)
+    if table.getn(found) ~= 1 then return false end
+    return found[1].sourceType == 'object' and found[1].sourceId == 178090
+end)()"""))
+# The bag alone must not be allowed to decide it. A quest that counts the item
+# says so in its own log line, and while that line is unfinished the player
+# still owes some however many are already in the bag.
+check("an unfinished log line for the item outranks a full bag", rt.eval("""(function()
+    local target = UnrealQuest:GetModule('QuestTarget')
+    local owner = { objectives = { { text = "Samuel's Remains: 1/5",
+        objectiveType = 'item', finished = false } } }
+    local found = target:CollectLocations(
+        { questId = 6395, objectiveOwner = owner }, 85, false)
+    if table.getn(found) ~= 1 then return false end
+    return found[1].sourceType == 'unit' and found[1].sourceId == 1919
+end)()"""))
 check("the carried item alone repaints the map", rt.eval(
     "UnrealQuest:GetModule('WorldMapPins').rebuildCount >= 2"))
 check("no item-use target was withheld for an unreadable bag", rt.eval(

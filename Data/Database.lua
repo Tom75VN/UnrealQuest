@@ -131,6 +131,11 @@ local questLocationCacheCount = 0
 -- 4433 bundled quests without a counter of its own.
 local questItemUseTargetCache = {}
 
+-- The other half of the same walk: which obj.I items are only there because
+-- obj.IR needs them used somewhere. Filled by GetQuestItemUseTargets so the
+-- two can never disagree about which items are means rather than objectives.
+local questItemUseRequirementCache = {}
+
 -- And once more for the vendor targets of a quest's item objectives, which are
 -- the same kind of static relation walk asked for on the same map refresh.
 local questVendorTargetCache = {}
@@ -146,6 +151,7 @@ local function FlushQuestLocationCache()
     questLocationCache = {}
     questLocationCacheCount = 0
     questItemUseTargetCache = {}
+    questItemUseRequirementCache = {}
     questVendorTargetCache = {}
 end
 
@@ -1202,9 +1208,11 @@ function Database:GetQuestItemUseTargets(questId)
     if cached then
         return cached
     end
+    local requirementItems = {}
     local relation = self:GetQuestObjectiveSources(questId)
     if type(relation) ~= "table" or type(relation.IR) ~= "table" then
         questItemUseTargetCache[questId] = targets
+        questItemUseRequirementCache[questId] = requirementItems
         return targets
     end
 
@@ -1213,6 +1221,11 @@ function Database:GetQuestItemUseTargets(questId)
     for _, itemId in pairs(relation.IR) do
         local uses = type(itemId) == "number" and requirements[itemId]
         if type(uses) == "table" then
+            -- Recorded only for an item whose use target actually resolves.
+            -- An obj.IR entry the itemreq table does not know about is left
+            -- alone: without a target there is nothing to be a means TO, and
+            -- demoting it would hide a step rather than reclassify one.
+            requirementItems[itemId] = true
             local target
             for target in pairs(uses) do
                 -- The sign is the type tag, so zero is meaningless here and is
@@ -1235,7 +1248,69 @@ function Database:GetQuestItemUseTargets(questId)
     end
 
     questItemUseTargetCache[questId] = targets
+    questItemUseRequirementCache[questId] = requirementItems
     return targets
+end
+
+-- The obj.I items that GetQuestItemUseTargets classified as means rather than
+-- objectives, as a set keyed by item ID. Read-only: callers must not mutate it.
+--
+-- An obj.IR item is something the quest has the player USE, not something the
+-- quest counts. Its own source creatures are therefore not objective targets
+-- either -- they are where the tool is picked up. Quest 1136 (Frostmaw) is the
+-- reference case: obj.I names both the Fresh Carcass and Frostmaw's Mane, but
+-- only the Mane is an objective. The Carcass is bait, dropped by four Mountain
+-- Lion species with 73 spawns in Alterac and 99 in Hillsbrad, so expanding it
+-- like an ordinary item objective buried the quest's actual target -- Frostmaw
+-- himself, one summon coordinate -- under a hundred identical dots.
+--
+-- The bait still has to be findable, so this does not delete those locations:
+-- it moves them onto the same conditional path the use target already takes
+-- (Data/QuestTarget.lua, AppendItemUseLocations), where the live bag decides
+-- which half of the step is on screen.
+function Database:GetQuestItemUseRequirementItems(questId)
+    -- The cache is filled as a side effect of the targets walk, which is the
+    -- only place the classification is made.
+    self:GetQuestItemUseTargets(questId)
+    return questItemUseRequirementCache[questId] or {}
+end
+
+-- Where the items of GetQuestItemUseRequirementItems are obtained, in the same
+-- row shape GetQuestLocations produces. Appended by the map layer only while
+-- the bags say the item is not already carried, so a player holding the bait
+-- stops being shown where to farm more of it.
+function Database:GetQuestItemUseSourceLocations(questId, itemId, areaId, limit)
+    local locations = {}
+    if not db or type(itemId) ~= "number" or type(areaId) ~= "number" then
+        return locations
+    end
+    if not self:GetQuestItemUseRequirementItems(questId)[itemId] then
+        return locations
+    end
+    local item = self:GetItem(itemId)
+    if type(item) ~= "table" then
+        return locations
+    end
+
+    local function AppendSources(sourceType, sources)
+        if type(sources) ~= "table" then
+            return
+        end
+        local sourceId
+        for sourceId in pairs(sources) do
+            local found = self:GetEntityLocations(sourceType, sourceId, areaId, limit)
+            local index = 1
+            local total = table.getn(found)
+            while index <= total and (not limit or table.getn(locations) < limit) do
+                table.insert(locations, found[index])
+                index = index + 1
+            end
+        end
+    end
+
+    AppendSources("unit", item.U)
+    AppendSources("object", item.O)
+    return locations
 end
 
 -- Bought objectives ---------------------------------------------------------
@@ -1354,7 +1429,10 @@ end
 -- Item-use targets (see GetQuestItemUseTargets) are excluded from the
 -- objective pass entirely. They are not unconditional objective sources, and
 -- the map layer adds them back through GetEntityLocations once it knows the
--- required item is carried.
+-- required item is carried. The items those steps consume are excluded on the
+-- same grounds -- see GetQuestItemUseRequirementItems -- and the map layer adds
+-- their sources back through GetQuestItemUseSourceLocations while the bags say
+-- the item is still to be found.
 function Database:GetQuestLocations(questId, isComplete, areaId, limit)
     if not db or type(questId) ~= "number" or type(areaId) ~= "number" then
         return {}
@@ -1396,6 +1474,12 @@ function Database:GetQuestLocations(questId, isComplete, areaId, limit)
     -- Targets of an item-use step, keyed the same way as `visited`. Seeding
     -- them as already-visited is what keeps Marla's Grave out of the obj.O
     -- pass without a second branch in every loop below.
+    --
+    -- The items those steps consume are held back the same way, but they need
+    -- their own set rather than a `visited` seed: what has to be skipped is the
+    -- obj.I entry itself, before it expands into the creatures that drop it.
+    -- See GetQuestItemUseRequirementItems for why bait is not an objective.
+    local requirementItems = {}
     if not isComplete then
         local targets = self:GetQuestItemUseTargets(questId)
         local targetIndex = 1
@@ -1405,6 +1489,7 @@ function Database:GetQuestLocations(questId, isComplete, areaId, limit)
             visited[target.sourceType .. tostring(target.sourceId)] = true
             targetIndex = targetIndex + 1
         end
+        requirementItems = self:GetQuestItemUseRequirementItems(questId)
     end
 
     local function AppendEntity(sourceType, sourceId, record)
@@ -1465,7 +1550,7 @@ function Database:GetQuestLocations(questId, isComplete, areaId, limit)
             if limit and table.getn(locations) >= limit then
                 break
             end
-            local item = self:GetItem(itemId)
+            local item = not requirementItems[itemId] and self:GetItem(itemId)
             if type(item) == "table" then
                 if type(item.U) == "table" then
                     local unitId

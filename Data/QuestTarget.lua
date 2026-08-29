@@ -236,34 +236,120 @@ local function FilterFinishedUnitObjectives(database, quest, locations)
     return filtered
 end
 
--- Item-use objective sources, appended only while the player actually carries
--- the item. Database:GetQuestLocations deliberately leaves these out because
--- they are conditional: the objective does not exist until the item is in the
--- bag, and drawing it early points at a place the player cannot act on.
+-- Both halves of an item-use step, appended according to what the bags say.
+-- Database:GetQuestLocations deliberately leaves the whole step out because it
+-- is conditional, and which half belongs on the map is a question about live
+-- player state that the bundled data cannot answer:
+--
+--   * carrying the item -- draw where it is USED. Drawing it earlier points at
+--     a place the player cannot act on yet (Marla's Last Wish).
+--   * not carrying it -- draw where it is FOUND, and only then. These are
+--     ordinary creatures with ordinary spawn clouds, and leaving them on the
+--     map after the item is in the bag is what buried Frostmaw's single summon
+--     coordinate under a hundred Mountain Lion dots.
+--   * bags unreadable -- draw where it is found. Unknown is not "not carried",
+--     but of the two halves that is the one that cannot strand the player: the
+--     acquisition step is the earlier one, and a quest whose bait source is
+--     missing from the map has no other way to be started.
+--
+-- The bag is overruled in one direction only. An obj.IR item is USUALLY pure
+-- means, but a handful of quests both count an item and have one of it used
+-- somewhere, and for those the quest log says so outright: an unfinished
+-- objective line naming the item is the client stating the player still owes
+-- some. Carrying one of five is still carrying, so the bag alone would hide
+-- the very creatures the remaining four come from. While such a line is
+-- unfinished the sources stay and the use target waits, whatever the bags say.
+--
+-- Marla's Last Wish is the case that shows both halves: its log line reads
+-- "Samuel's Remains: 0/1" while the player hunts Samuel Fipps, and the client
+-- flips it to finished the moment the remains are looted -- at which point the
+-- grave, and only the grave, is what is left to do.
 --
 -- Returns the count placed and the count withheld because the bags could not
--- be read at all -- unknown is not the same as "not carried".
-function QuestTarget:AppendCarriedItemUseLocations(database, quest, areaId, locations)
+-- be read at all.
+function QuestTarget:AppendItemUseLocations(database, quest, areaId, locations)
     local bagItems = BagItems()
     local targets = database:GetQuestItemUseTargets(quest.questId)
     local placed = 0
     local unknown = 0
+
+    -- Item names the live log still wants more of, as name keys. Built once
+    -- per call and only when there is an item-use step to decide.
+    local owedNames = nil
+    local function StillOwed(itemId)
+        if owedNames == nil then
+            owedNames = {}
+            local objectiveMatch = ObjectiveMatch()
+            local owner = quest and (quest.objectiveOwner or quest)
+            local objectives = objectiveMatch and owner and owner.objectives
+            local index = 1
+            local total = objectives and table.getn(objectives) or 0
+            while index <= total do
+                local objective = objectives[index]
+                if objective and not objective.finished then
+                    local name, _, _, kind = objectiveMatch:ParseLine(
+                        objective.text, objective.objectiveType)
+                    -- A kill line names a creature, never the item itself.
+                    if name and kind ~= "unit" then
+                        local key = UQ.NameKey(name)
+                        if key then
+                            owedNames[key] = true
+                        end
+                    end
+                end
+                index = index + 1
+            end
+        end
+        local itemKey = UQ.NameKey(database:GetItemName(itemId))
+        return itemKey ~= nil and owedNames[itemKey] == true
+    end
+
+    -- Asked once per item rather than once per target: one item may be used on
+    -- several things, and its own sources must not be appended once for each.
+    local carriedByItem = {}
+    local function Carries(itemId)
+        local carries = carriedByItem[itemId]
+        if carries == nil then
+            carries = bagItems and bagItems:Carries(itemId)
+            if carries == nil then
+                carries = "unknown"
+            end
+            carriedByItem[itemId] = carries
+        end
+        if carries == "unknown" then
+            return nil
+        end
+        return carries
+    end
+
+    local function AppendFound(found)
+        local foundIndex = 1
+        local foundTotal = table.getn(found)
+        while foundIndex <= foundTotal do
+            table.insert(locations, found[foundIndex])
+            placed = placed + 1
+            foundIndex = foundIndex + 1
+        end
+    end
+
     local index = 1
     local total = table.getn(targets)
+    local sourcesDone = {}
     while index <= total do
         local target = targets[index]
-        local carries = bagItems and bagItems:Carries(target.itemId)
-        if carries == nil then
-            unknown = unknown + 1
-        elseif carries then
-            local found = database:GetEntityLocations(
-                target.sourceType, target.sourceId, areaId)
-            local foundIndex = 1
-            local foundTotal = table.getn(found)
-            while foundIndex <= foundTotal do
-                table.insert(locations, found[foundIndex])
-                placed = placed + 1
-                foundIndex = foundIndex + 1
+        local carries = Carries(target.itemId) and not StillOwed(target.itemId)
+        if carries then
+            AppendFound(database:GetEntityLocations(
+                target.sourceType, target.sourceId, areaId))
+        else
+            if carries == nil then
+                unknown = unknown + 1
+            end
+            -- Where to get it, once per item however many targets it has.
+            if not sourcesDone[target.itemId] then
+                sourcesDone[target.itemId] = true
+                AppendFound(database:GetQuestItemUseSourceLocations(
+                    quest.questId, target.itemId, areaId))
             end
         end
         index = index + 1
@@ -300,7 +386,7 @@ function QuestTarget:CollectLocations(quest, areaId, complete)
             end
             locations = copy
         end
-        local _, withheld = self:AppendCarriedItemUseLocations(
+        local _, withheld = self:AppendItemUseLocations(
             database, quest, areaId, locations)
         unknown = withheld
     end
