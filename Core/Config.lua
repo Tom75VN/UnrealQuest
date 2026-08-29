@@ -60,6 +60,10 @@ local SECTION_LIMITS = {
     questHistory = 6000,
     questHistoryManual = 6000,
     questHistoryImported = 6000,
+    -- Temporary review collection: one "unitId:areaId" entry for each
+    -- Rare/Elite/Boss pin the player explicitly removes from a dungeon
+    -- approach. Kept account-wide so every character contributes to one list.
+    rareApproachIgnores = 2000,
 }
 
 local function SectionLimit(name)
@@ -233,20 +237,12 @@ local defaults = {
     -- yards of a spawn point recorded for this creature".
     rareAlert = true,
 
-    -- Yards. 150 is a bit under a third of the minimap's measured 466.6-yard
-    -- zoom-0 span, so the creature's own minimap dot is well on screen when
-    -- the card lands. World/RareAlert.lua clamps this to 20-500.
-    rareAlertRange = 150,
+    -- Yards. The settings slider and World/RareAlert.lua both use 20-500.
+    -- 120 warns early without reaching as far into neighbouring city blocks.
+    rareAlertRange = 120,
 
-    -- ONE switch, and it covers every rank the bundled data carries: rare,
-    -- rare elite, boss and ordinary elite alike (chosen by the user
-    -- 2026-08-28). There is deliberately no per-rank filtering -- if the data
-    -- says a creature is ranked and it is near, the player is told.
-    --
-    -- That includes 816 ordinary elites, which is most of the 1182 creatures
-    -- the alert can see. The 180-second per-creature cooldown and the
-    -- one-card-per-pass rule in World/RareAlert.lua are what keep that from
-    -- becoming a stream.
+    -- ONE switch covers the curated rares and rare elites plus open-world
+    -- bosses. Ordinary elites remain map-only; see Database:IsAlertWorthy.
 
     -- Seconds the card stays up on its own. Clamped to 3-60.
     rareAlertSeconds = 12,
@@ -309,11 +305,13 @@ local defaults = {
     -- current zone. See Quest/TrackerFrame.lua.
     trackerCurrentZoneOnly = true,
 
-    -- Hides a quest from the addon tracker while every readable objective
-    -- counter is still 0/N. Off by default: enabling a filter should always
-    -- be an explicit choice, and counterless objectives remain visible because
-    -- the client gives the addon no progress number to judge them by.
-    trackerHideUnstartedQuests = false,
+    -- Automatically folds a quest's objectives while every readable counter
+    -- is still 0/N. The historical key is retained so existing preferences
+    -- survive this behaviour change. On by default so a newly accepted quest
+    -- takes one title row until its first measurable progress; counterless
+    -- objectives remain expanded because the client gives the addon no progress
+    -- number to judge them by.
+    trackerHideUnstartedQuests = true,
 
     -- The native five-quest panel is redundant while this window is up, and is
     -- restored the moment either this setting or trackerEnabled is turned off.

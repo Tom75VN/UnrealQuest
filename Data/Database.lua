@@ -528,6 +528,59 @@ function Database:GetUnit(unitId)
     return db.units[unitId]
 end
 
+-- Whether every active Vanilla 1.12.1 spawn of this creature is on a dungeon
+-- or raid map. Database/instance_only_units.lua is generated from the source
+-- VMaNGOS creature.map values; a creature with any outdoor or uncertain spawn
+-- is deliberately absent. This provenance test replaces all entrance-radius
+-- guesses for both alerts and Rare/Elite/Boss map pins.
+function Database:IsInstanceOnlyUnit(unitId)
+    if not db or type(db.instance_only_units) ~= "table"
+        or type(unitId) ~= "number" then
+        return false
+    end
+    return type(db.instance_only_units[unitId]) == "table"
+end
+
+-- Area-specific entrance-cave creatures promoted from the player's reviewed
+-- map-pin collection. The stored coordinate is provenance for later audits;
+-- membership is the runtime decision. Unlike IsInstanceOnlyUnit, this must
+-- keep the outdoor area in the key because the same creature may be valid in
+-- another zone.
+function Database:IsDungeonApproachUnit(unitId, areaId)
+    if not db or type(db.dungeon_approach_units) ~= "table"
+        or type(unitId) ~= "number" or type(areaId) ~= "number" then
+        return false
+    end
+    local area = db.dungeon_approach_units[areaId]
+    return type(area) == "table" and type(area[unitId]) == "table"
+end
+
+-- Temporary player-reviewed dungeon-approach collection. The key is scoped
+-- to an area because a creature ID may also have legitimate outdoor spawns in
+-- another zone. The value records the representative map coordinate for the
+-- later data review, but membership alone decides runtime suppression.
+function Database:IsManuallyIgnoredRankedUnit(unitId, areaId)
+    if type(unitId) ~= "number" or type(areaId) ~= "number" then
+        return false
+    end
+    local config = UQ:GetModule("Config")
+    local section = config and config:GetSection("rareApproachIgnores")
+    if type(section) ~= "table" then
+        return false
+    end
+    local key = tostring(unitId) .. ":" .. tostring(areaId)
+    return section[key] ~= nil
+end
+
+-- One shared answer for the map and alert. Source-confirmed instance-only
+-- creatures are global; bundled and newly reviewed approach creatures are
+-- area-specific.
+function Database:IsRankedUnitSuppressed(unitId, areaId)
+    return self:IsInstanceOnlyUnit(unitId)
+        or self:IsDungeonApproachUnit(unitId, areaId)
+        or self:IsManuallyIgnoredRankedUnit(unitId, areaId)
+end
+
 function Database:GetUnitName(unitId)
     local names = LocaleTable("units")
     if type(names) ~= "table" then
@@ -685,6 +738,29 @@ function Database:GetZoneTransform(zoneId)
     return db.zones[zoneId]
 end
 
+-- The area a subzone is placed onto, or nil for an area the table files under
+-- nothing.
+--
+-- Database/zones.lua is keyed by the SUBZONE's own area ID and its first field
+-- is the parent: [9] Northshire Valley -> 12 Elwynn Forest, [154] Deathknell
+-- -> 85 Tirisfal Glades, [113] Gold Coast Quarry -> 40 Westfall. Top-level
+-- zones are simply absent from it (Elwynn Forest, Tirisfal Glades, Ironforge),
+-- and the five city maps that carry no parent record 0 rather than an area, so
+-- 0 is rejected here alongside a missing row.
+--
+-- Coverage is partial by nature: 526 of the 1081 named areas have a row, so a
+-- cave or an inn the client can still name ("Brill Town Hall", area 2118)
+-- resolves to nothing here. Callers must handle nil rather than assume a
+-- parent exists for every place the player can stand.
+function Database:GetParentZoneId(zoneId)
+    local transform = self:GetZoneTransform(zoneId)
+    local parentId = transform and transform[1]
+    if type(parentId) ~= "number" or parentId <= 0 or parentId == zoneId then
+        return nil
+    end
+    return parentId
+end
+
 -- Zone width and height in yards, needed for minimap-relative distance work.
 function Database:GetZoneYards(zoneId)
     if not db or type(db.minimap) ~= "table" then
@@ -702,18 +778,9 @@ end
 -- Ashenvale, and Uldaman's in both Badlands and Loch Modan, which is why this
 -- is indexed per area and not per instance.
 --
--- Why a map layer wants them: a dungeon's creatures are NOT all absent from
--- the outdoor data. The reduction kept every spawn that projects onto an
--- outdoor zone map, and for a dungeon dug under its own zone that is its whole
--- entrance cave. Measured: Wailing Caverns' seven Deviate species all land
--- within 160 yards of the Barrens door, Uldaman's Stonevaults within 100 of
--- the Badlands one, the Scarlet Monastery's casters within 120 of Tirisfal's.
--- Drawn as Rare/Elite/Boss pins they read as a knot of elites standing outside
--- a dungeon nobody has entered.
---
 -- Returns normalized entrance locations for one area, or nil. Every location
--- keeps x/y at [1]/[2] for IsAtInstanceEntrance and also carries the fields the
--- finder consumes: category, name, instanceType, sourceId and entranceLabel.
+-- keeps x/y at [1]/[2] and also carries the fields the finder consumes:
+-- category, name, instanceType, sourceId and entranceLabel.
 -- Built on the first ask and kept: both tables it reads are static for the
 -- session. The returned list belongs to the index and must be treated as
 -- read-only.
@@ -808,47 +875,6 @@ function Database:GetInstanceEntrances(areaId)
         return nil
     end
     return self.instanceEntranceIndex[areaId]
-end
-
--- How near a door counts as standing at it. 250 yards is a measured
--- compromise, not a round number picked for looks: below about 200 the
--- interior rosters keep a tail of pins ringing the entrance (Wailing Caverns'
--- Deviate Coiler sits 159 yards out, Uldaman's Shadowforge Ruffian 154), and
--- above about 300 it starts swallowing genuine outdoor camps that happen to
--- live by a door -- Dustwallow's Firemane elites at Onyxia's lair, Pyrewood
--- Village's worgen at Shadowfang Keep. At 250 it drops 113 (creature, area)
--- elite pins, all but a handful of them dungeon interiors.
-local INSTANCE_ENTRANCE_YARDS = 250
-
--- Whether a point in an area sits on a dungeon or raid door.
-function Database:IsAtInstanceEntrance(areaId, x, y)
-    if type(x) ~= "number" or type(y) ~= "number" then
-        return false
-    end
-    local points = self:GetInstanceEntrances(areaId)
-    if type(points) ~= "table" then
-        return false
-    end
-    local yards = self:GetZoneYards(areaId)
-    if type(yards) ~= "table" or type(yards[1]) ~= "number"
-        or type(yards[2]) ~= "number" then
-        return false
-    end
-    -- Coordinates are percentages of the zone (0-100) on both sides, turned
-    -- into yards exactly as Map/MinimapPins.lua and World/RareAlert.lua do it.
-    local limit = INSTANCE_ENTRANCE_YARDS * INSTANCE_ENTRANCE_YARDS
-    local index = 1
-    local total = table.getn(points)
-    while index <= total do
-        local point = points[index]
-        local dx = (x - point[1]) * yards[1] / 100
-        local dy = (y - point[2]) * yards[2] / 100
-        if dx * dx + dy * dy <= limit then
-            return true
-        end
-        index = index + 1
-    end
-    return false
 end
 
 -- Nearby service NPCs and objects ------------------------------------------
@@ -1011,6 +1037,9 @@ function Database:GetAreaServiceLocations(areaId, playerClassId, playerRaceId, w
         if type(rawId) ~= "number" or rawId < 0 then
             return
         end
+        if self:IsInstanceOnlyUnit(rawId) then
+            return
+        end
         local entity = self:GetUnit(rawId)
         if type(entity) ~= "table" or type(entity.coords) ~= "table" then
             return
@@ -1050,21 +1079,6 @@ function Database:GetAreaServiceLocations(areaId, playerClassId, playerRaceId, w
                 end
             end
             index = index + 1
-        end
-
-        -- An ordinary elite whose pin lands on a dungeon door is that
-        -- dungeon's own creature, kept by the reduction only because its
-        -- entrance-cave spawn projects onto the outdoor map (see
-        -- Database:GetInstanceEntrances). The player outside cannot reach it,
-        -- and a door draws enough of them to read as a camp that is not there.
-        --
-        -- Rares, rare elites and bosses are drawn whatever they stand next to:
-        -- Baron Bloodbane is 37 yards from Naxxramas' door and genuinely
-        -- outdoors, they arrive one or two to a door rather than in a knot,
-        -- and they are the pins a player turns this row on for.
-        if tonumber(entity.rnk) == 1
-            and self:IsAtInstanceEntrance(areaId, bestX, bestY) then
-            return
         end
 
         local name = self:GetUnitName(rawId)
@@ -1770,7 +1784,7 @@ end
 -- purpose -- drawing an ordinary elite on a map the player chose to open is
 -- fine, playing a sound at them for one is not.
 function Database:IsAlertWorthy(unitId)
-    if not self:IsMob(unitId) then
+    if self:IsInstanceOnlyUnit(unitId) or not self:IsMob(unitId) then
         return false
     end
     if IsCuratedRare(unitId) then
@@ -1806,7 +1820,8 @@ function Database:GetRankedMobRelation()
     for unitId, record in pairs(units) do
         if type(record) == "table" then
             local rank = tonumber(record.rnk)
-            if rank and KNOWN_RANK[rank] and IsMobRecord(unitId, record) then
+            if rank and KNOWN_RANK[rank] and IsMobRecord(unitId, record)
+                and not self:IsInstanceOnlyUnit(unitId) then
                 local level = type(curated) == "table" and tonumber(curated[unitId]) or nil
                 if not level then
                     local _, _, first = string.find(tostring(record.lvl or ""), "^(%d+)")
@@ -1868,7 +1883,8 @@ function Database:IndexRankChunk()
 
         if type(record) == "table" and type(record.coords) == "table" then
             local rank = tonumber(record.rnk)
-            if rank and KNOWN_RANK[rank] and IsMobRecord(unitId, record) then
+            if rank and KNOWN_RANK[rank] and IsMobRecord(unitId, record)
+                and not self:IsInstanceOnlyUnit(unitId) then
                 -- One entry per (creature, area), not per spawn point: a rare
                 -- with four recorded spawns in one zone is one creature the
                 -- player can be near, and the alert names the creature.

@@ -225,8 +225,18 @@ local function NewPage(parent)
         page.y = page.y - (pixels or ROW_GAP)
     end
 
-    page.Heading = function(text)
-        local region = page.Add(Client.CreateSettingsHeading(page.parent, text, 0, page.y))
+    -- `marginTop` moves one title down inside its existing reserved band. The
+    -- page is already at the fixed height shared by both non-scrolling hosts,
+    -- so this creates visual separation without growing the complete page.
+    page.Heading = function(text, marginTop)
+        local inset = type(marginTop) == "number" and marginTop or 0
+        if inset < 0 then
+            inset = 0
+        elseif inset > HEADING_ADVANCE then
+            inset = HEADING_ADVANCE
+        end
+        local region = page.Add(Client.CreateSettingsHeading(page.parent, text,
+            0, page.y - inset))
         page.y = page.y - HEADING_ADVANCE
         return region
     end
@@ -514,57 +524,42 @@ function Settings:BuildPage(parent)
         page.Gap(7)
     end
 
-    -- The rare alert, its one-line explanation and the two tracker filters are
-    -- stacked in the opacity slider's right column. The cursor is put back to
-    -- the top of the row afterwards, so the group shares one compact band.
+    -- The tracker opacity and rare-alert range sliders share one row. The
+    -- alert switch and two tracker filters use the two compact rows beneath.
     --
     -- The page is within a PIXEL of the fixed 428px content box both hosts
     -- hand it (the smoke test measures it), and neither host scrolls, so a new
     -- heading plus a row of its own would have pushed its own controls off the
     -- bottom -- silently, which is what the height check exists to prevent. A
-    -- A checkbox is 18px and the reserved one-line note is 17px, so the three
-    -- switches plus the note need a 71px row. The page still remains inside
-    -- the fixed content box both hosts provide (guarded below and in smoke).
-    --
-    -- The alert is first in the column now, with a grey explanation immediately
-    -- below it, so it reads as its own feature rather than as a subordinate
-    -- tracker switch. Its placement in this shared row remains a height
-    -- constraint, not a claim that it is a tracker option.
+    -- The sliders need 52px here and the two checkbox rows need 36px. The world
+    -- map heading below is enough separation without another 16px rule, keeping
+    -- the complete page inside the fixed content box (guarded below and in smoke).
     --
     -- The rare alert is ONE switch on purpose: it covers rares, rare elites
     -- and bosses, and there is no per-rank filtering to expose.
     --
-    -- The alert's range and sound kit are deliberately NOT on this page.
-    -- Range is a number a player sets once, and the sound has to be AUDITIONED
-    -- to be chosen at all -- an unknown SoundEntries kit name is silent rather
-    -- than an error on this client -- so both live on "/uq rare", which plays
-    -- the kit as it stores it.
+    -- The sound kit remains on "/uq rare" because it has to be AUDITIONED: an
+    -- unknown SoundEntries kit name is silent rather than an error here.
     local rowTop = page.y
-    local alertRowAdvance = CHECKBOX_ADVANCE * 3 + BODY_LINE_HEIGHT + 4
-    page.Checkbox("rareAlert", UQ.L("SETTINGS_RARE_ALERT"),
-        nil, { left = 250, width = TEXT_WIDTH - 250, advance = CHECKBOX_ADVANCE })
-    local rareAlertNote = page.Body(UQ.L("SETTINGS_RARE_ALERT_NOTE",
-        Setting("rareAlertRange") or 150), 250 + NOTE_INDENT, 1)
-    page.Sync(function()
-        Client.SetSettingsBodyText(rareAlertNote, UQ.L("SETTINGS_RARE_ALERT_NOTE",
-            Setting("rareAlertRange") or 150))
-    end)
-    page.Checkbox("trackerCurrentZoneOnly", UQ.L("SETTINGS_TRACKER_CURRENT_ZONE"),
-        nil, { left = 250, width = TEXT_WIDTH - 250, advance = CHECKBOX_ADVANCE })
-    page.Checkbox("trackerHideUnstartedQuests", UQ.L("SETTINGS_TRACKER_HIDE_UNSTARTED"),
-        nil, { left = 250, width = TEXT_WIDTH - 250, advance = 0 })
-    page.y = rowTop
-
     page.Slider("trackerBackgroundOpacity", UQ.L("SETTINGS_TRACKER_OPACITY"), 0, 100, 1,
         function(value)
             local tracker = UQ:GetModule("TrackerFrame")
             if tracker then
                 tracker:ApplyBackgroundOpacity(value)
             end
-        end, { width = 160, advance = alertRowAdvance })
+        end, { width = 160, advance = 0 })
+    page.y = rowTop
+    page.Slider("rareAlertRange", UQ.L("SETTINGS_RARE_ALERT_RANGE"), 20, 500, 1,
+        nil, { left = 250, width = 160, advance = 52 })
 
-    page.Rule()
-    page.Heading(UQ.L("SETTINGS_HEADING_WORLD_MAP"))
+    page.Checkbox("rareAlert", UQ.L("SETTINGS_RARE_ALERT"),
+        nil, { width = 230, advance = 0 })
+    page.Checkbox("trackerCurrentZoneOnly", UQ.L("SETTINGS_TRACKER_CURRENT_ZONE"),
+        nil, { left = 250, width = TEXT_WIDTH - 250, advance = CHECKBOX_ADVANCE })
+    page.Checkbox("trackerHideUnstartedQuests", UQ.L("SETTINGS_TRACKER_HIDE_UNSTARTED"),
+        nil, { width = 230, advance = CHECKBOX_ADVANCE })
+
+    page.Heading(UQ.L("SETTINGS_HEADING_WORLD_MAP"), 7)
 
     -- Two presentations of one scene, and neither is the absence of the other,
     -- so the choice is a radio rather than a checkbox naming one of them.

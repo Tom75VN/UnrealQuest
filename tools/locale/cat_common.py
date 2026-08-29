@@ -169,6 +169,24 @@ STRINGS.update({
 "NPC_CATEGORY_RARES": ("Rare/Elite/Boss", "Rare/Elite/Boss", "Редкие/элитные/боссы", "稀有/精英/首领"),
 "NPC_DETAIL_SKILL": ("(skill %s)", "(compétence %s)", "(навык %s)", "（技能 %s）"),
 "NPC_DETAIL_LEVEL": ("(level %s)", "(niveau %s)", "(уровень %s)", "（等级 %s）"),
+"NPC_RARE_REMOVE_HINT": (
+    "Right-click to remove from the map and alerts",
+    "Clic droit pour retirer de la carte et des alertes",
+    "Щелкните правой кнопкой, чтобы убрать с карты и из оповещений",
+    "右键点击以从地图和提醒中移除",
+),
+"NPC_RARE_REMOVE_ACTION": (
+    "Remove from map and alerts",
+    "Retirer de la carte et des alertes",
+    "Убрать с карты и из оповещений",
+    "从地图和提醒中移除",
+),
+"NPC_RARE_REMOVED": (
+    "%s removed from the map and proximity alerts",
+    "%s retire de la carte et des alertes de proximite",
+    "%s убран с карты и из оповещений о приближении",
+    "%s 已从地图和接近提醒中移除",
+),
 
 # --- raid marks --------------------------------------------------------------
 "MARK_STAR": ("star", "étoile", "звезда", "星星"),
@@ -380,10 +398,10 @@ STRINGS.update({
     "翻译任务文本",
 ),
 "SETTINGS_TRACKER_HIDE_UNSTARTED": (
-    "Hide quests until progress starts",
-    "Masquer les quetes sans progression",
-    "Скрывать задания без прогресса",
-    "隐藏尚无进度的任务",
+    "Auto-collapse quests until progress starts",
+    "Replier automatiquement les quetes sans progression",
+    "Автоматически сворачивать задания без прогресса",
+    "自动折叠尚无进度的任务",
 ),
 "SETTINGS_MINIMAP_CLAMP": (
     "Clamp off-view minimap markers to the edge",
@@ -749,10 +767,10 @@ STRINGS.update({
     u"Оповещение об элитных",
     u"精英怪提醒",
 ),
-"SETTINGS_RARE_ALERT_NOTE": (
-    u"Alert within %s yd of elite mobs.",
-    u"Alerte a %s m des elites.",
-    u"Оповещение в %s м от элитных.",
-    u"距精英怪 %s 码时提醒。",
+"SETTINGS_RARE_ALERT_RANGE": (
+    u"Alert distance (yards)",
+    u"Distance d'alerte (metres)",
+    u"Дистанция оповещения (м)",
+    u"提醒距离（码）",
 ),
 })

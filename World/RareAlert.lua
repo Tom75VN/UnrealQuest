@@ -60,7 +60,7 @@ local RareAlert = UQ:NewModule("RareAlert")
 
 -- One second. The card is worth a small delay and the player cannot outrun the
 -- alert range in one tick: sprint speed is well under 20 yards a second and the
--- default range is 150.
+-- default range is 120.
 local POLL_INTERVAL = 1.0
 
 -- The distance on a shown card is rewritten this often, so it counts down as
@@ -76,10 +76,9 @@ local POLL_INTERVAL = 1.0
 -- nothing here re-resolves the map twenty times a second.
 local LIVE_INTERVAL = 0.05
 
--- Yards. 150 puts the card up while the spawn is still well ahead -- a bit
--- under a third of the minimap's measured 466.6-yard zoom-0 span, so the
--- creature's own minimap dot is comfortably on screen when the alert lands.
-local DEFAULT_RANGE = 150
+-- Yards. The settings slider exposes the full 20-500 range; 120 warns early
+-- without reaching as far into neighbouring city blocks.
+local DEFAULT_RANGE = 120
 local MIN_RANGE = 20
 local MAX_RANGE = 500
 
@@ -108,6 +107,18 @@ local RANK_ELITE = 1
 local RANK_RARE_ELITE = 2
 local RANK_BOSS = 3
 local RANK_RARE = 4
+
+-- The six playable-faction capitals in the bundled Vanilla area table. The
+-- alert is intentionally silent across the whole city, independent of which
+-- ranked spawn happens to project near it. Map pins are not affected.
+local CAPITAL_CITY_AREAS = {
+    [1497] = true, -- Undercity
+    [1519] = true, -- Stormwind City
+    [1537] = true, -- Ironforge
+    [1637] = true, -- Orgrimmar
+    [1638] = true, -- Thunder Bluff
+    [1657] = true, -- Darnassus
+}
 
 -- KEYS, not text: this table is built at file load, before Core/Locale.lua has
 -- resolved the language.
@@ -160,7 +171,6 @@ RareAlert.shownEntry = nil
 RareAlert.shownOthers = 0
 RareAlert.shownYardsX = nil
 RareAlert.shownYardsY = nil
-RareAlert.shownAreaId = nil
 
 -- unitId -> true while that creature is inside the forget radius. Reset on
 -- leaving the area, because the same creature in a different zone is a
@@ -224,12 +234,29 @@ end
 --
 -- There is no per-rank setting. One switch turns the alert on or off and that
 -- is the whole of the choice (the user's call, 2026-08-28).
-function RareAlert:IsWanted(entry)
+function RareAlert:IsWanted(entry, areaId)
     if not entry or not entry.rank or not RANK_NAME_KEYS[entry.rank] then
         return false
     end
     local database = UQ:GetModule("Database")
-    return database and database:IsAlertWorthy(entry.unitId) == true
+    return database
+        and not database:IsRankedUnitSuppressed(entry.unitId, areaId)
+        and database:IsAlertWorthy(entry.unitId) == true
+end
+
+function RareAlert:IsCapitalCityArea(areaId)
+    return CAPITAL_CITY_AREAS[areaId] == true
+end
+
+-- A map-pin review action can happen while this creature's alert card is
+-- already visible. Suppression applies immediately rather than waiting for the
+-- next poll, and the saved area-specific rule prevents it from returning.
+function RareAlert:OnRankedUnitIgnored(unitId, areaId)
+    self.inRange[unitId] = nil
+    if self.areaId == areaId and self.shownEntry
+        and self.shownEntry.unitId == unitId then
+        self:Dismiss()
+    end
 end
 
 -- Geometry -------------------------------------------------------------------
@@ -533,18 +560,27 @@ function RareAlert:Poll()
         return
     end
 
-    database:StartRankIndex()
-    if not database:IsRankIndexReady() then
-        self.state = "indexing"
-        return
-    end
-
     local areaId, report, how = mapContext:GetCurrentZoneView()
     if not areaId then
         -- The map is on a continent or another zone, so the player cannot be
         -- projected and no distance here would be a real one.
         self.state = how or "noZoneView"
         self:LeaveArea()
+        return
+    end
+
+    if self:IsCapitalCityArea(areaId) then
+        self.state = "capitalCity"
+        self.stats.candidates = 0
+        self:Dismiss()
+        self:LeaveArea()
+        self.areaId = areaId
+        return
+    end
+
+    database:StartRankIndex()
+    if not database:IsRankIndexReady() then
+        self.state = "indexing"
         return
     end
 
@@ -584,7 +620,7 @@ function RareAlert:Poll()
     local total = table.getn(bucket)
     while index <= total do
         local entry = bucket[index]
-        if self:IsWanted(entry) then
+        if self:IsWanted(entry, areaId) then
             local distance, dx, dy = self:NearestPoint(entry, playerYardX, playerYardY,
                 yards[1], yards[2])
             if distance and distance <= forget then
@@ -617,7 +653,6 @@ function RareAlert:Poll()
         -- leave the creature eligible to re-alert on every following pass.
         self.inRange[best.unitId] = true
         self.shownYardsX, self.shownYardsY = yards[1], yards[2]
-        self.shownAreaId = areaId
         self:Show(best, math.floor(bestDistance + 0.5), bestDX, bestDY, arrivals - 1)
     end
 end
@@ -642,6 +677,11 @@ function RareAlert:Test()
     if not areaId then
         return nil, how or "noZoneView"
     end
+    if self:IsCapitalCityArea(areaId) then
+        self.state = "capitalCity"
+        self:Dismiss()
+        return nil, "capitalCity"
+    end
     local yards = report.zoneYards
     if type(yards) ~= "table" or type(yards[1]) ~= "number" or type(yards[2]) ~= "number" then
         return nil, "noZoneSize"
@@ -658,7 +698,7 @@ function RareAlert:Test()
     local total = table.getn(bucket)
     while index <= total do
         local entry = bucket[index]
-        if self:IsWanted(entry) then
+        if self:IsWanted(entry, areaId) then
             local distance, dx, dy = self:NearestPoint(entry, playerYardX, playerYardY,
                 yards[1], yards[2])
             if distance and (not bestDistance or distance < bestDistance) then
@@ -678,7 +718,6 @@ function RareAlert:Test()
     -- this creature last alerted is put back exactly as it was.
     local previous = self.alertedAt[best.unitId]
     self.shownYardsX, self.shownYardsY = yards[1], yards[2]
-    self.shownAreaId = areaId
     self:Show(best, math.floor(bestDistance + 0.5), bestDX, bestDY, 0)
     self.alertedAt[best.unitId] = previous
     local name = database:GetUnitName(best.unitId)

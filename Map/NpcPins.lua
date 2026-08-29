@@ -30,6 +30,11 @@ local MINIMAP_INDEX_OFFSET = 10000
 local WORLD_PIN_SIZE = 15
 local MINIMAP_PIN_SIZE = 14
 
+-- The review collection has been promoted into bundled data. Keep its code in
+-- place for another review pass, but register no right-click token and show no
+-- tooltip hint while the temporary surface is disabled.
+local REVIEW_REMOVAL_ENABLED = false
+
 -- Grows a hovered Rare/Elite/Boss pin so the one under the mouse reads as
 -- distinct from the rest of the row, the same 1.5x the quest layer's giver
 -- and turn-in markers use (Map/WorldMapPins.lua, GIVER_TURNIN_HOVER_SCALE).
@@ -252,6 +257,7 @@ end
 function NpcPins:HideAll()
     self.worldVisible = HidePoolFrom(self.worldPool, 1)
     self.minimapVisible = HidePoolFrom(self.minimapPool, 1)
+    self:HidePatrolRoute(nil)
 end
 
 function NpcPins:GetMenuEntries()
@@ -359,6 +365,10 @@ function NpcPins:BuildTargets(areaId, selected, selectedCount)
     local bySpawn = {}
     local used = {}
     local function AppendLocation(location)
+        if location.category == "rares" and location.sourceType == "unit"
+            and database:IsRankedUnitSuppressed(location.sourceId, areaId) then
+            return
+        end
         if selected[location.category] then
             local key = location.sourceType .. ":" .. tostring(location.sourceId)
                 .. ":" .. tostring(location.x) .. ":" .. tostring(location.y)
@@ -369,7 +379,10 @@ function NpcPins:BuildTargets(areaId, selected, selectedCount)
                 target = {
                     x = location.x,
                     y = location.y,
+                    areaId = areaId,
                     name = location.name,
+                    sourceType = location.sourceType,
+                    sourceId = location.sourceId,
                     categories = {},
                     categorySeen = {},
                     details = {},
@@ -414,7 +427,7 @@ function NpcPins:BuildTargets(areaId, selected, selectedCount)
     return targets
 end
 
-function NpcPins:TooltipLines(target)
+function NpcPins:TooltipLines(target, showRemoveHint)
     local lines = {
         { text = target.name, r = UQ.colors.accent[1], g = UQ.colors.accent[2],
           b = UQ.colors.accent[3] },
@@ -451,7 +464,59 @@ function NpcPins:TooltipLines(target)
         end
         index = index + 1
     end
+    if REVIEW_REMOVAL_ENABLED and showRemoveHint and target.rankLabelKey then
+        table.insert(lines, {
+            text = UQ.L("NPC_RARE_REMOVE_HINT"),
+            r = 0.55, g = 0.55, b = 0.55,
+        })
+    end
     return lines
+end
+
+-- Records one reviewed creature-area pair for later promotion into bundled
+-- data. The current finder has one representative pin per creature per area,
+-- so the temporary exclusion deliberately means "this creature in this zone"
+-- rather than pretending the medoid pin identifies only one raw spawn.
+function NpcPins:IgnoreReviewedTarget(target, pin)
+    if not target or target.sourceType ~= "unit"
+        or type(target.sourceId) ~= "number" or type(target.areaId) ~= "number"
+        or not target.rankLabelKey then
+        return false
+    end
+    local config = Config()
+    if not config then
+        return false
+    end
+    local key = tostring(target.sourceId) .. ":" .. tostring(target.areaId)
+    local evidence = tostring(target.x or 0) .. "," .. tostring(target.y or 0)
+    if not config:SetSectionEntry("rareApproachIgnores", key, evidence) then
+        return false
+    end
+
+    Client.HideMapTooltip(pin)
+    self:SetHoveredMobPin(nil)
+    self.dirty = true
+    self:Refresh()
+
+    local alert = UQ:GetModule("RareAlert")
+    if alert and type(alert.OnRankedUnitIgnored) == "function" then
+        alert:OnRankedUnitIgnored(target.sourceId, target.areaId)
+    end
+    UQ:Print(UQ.L("NPC_RARE_REMOVED", tostring(target.name)))
+    return true
+end
+
+function NpcPins:ShowRemoveMenu(pin)
+    local target = pin and pin.unrealQuestNpcTarget
+    if not target or not target.rankLabelKey then
+        return false
+    end
+    Client.HideMapTooltip(pin)
+    return Client.ShowMapPinActionMenu(pin, {
+        { text = UQ.L("NPC_RARE_REMOVE_ACTION") },
+    }, function()
+        NpcPins:IgnoreReviewedTarget(target, pin)
+    end)
 end
 
 local function ClampUnit(value)
@@ -595,6 +660,62 @@ function NpcPins:ClearHoveredMobPin(pin)
     self:SetHoveredMobPin(nil)
 end
 
+-- A wandering NPC's route, while the mouse is on its world-map pin.
+--
+-- 28 of the bundled service NPCs move -- Antonio Perelli walks half of Elwynn,
+-- Xan'tish crosses Durotar into Orgrimmar -- and so do 65 of the ranked
+-- creature-zone pairs this layer draws, 47 of them further from their recorded
+-- spawn than the proximity alert's own range. For both, the pin marks one
+-- point on a path, and the path is what the player actually has to walk.
+--
+-- Hover-only, unlike the quest layer's own routes: these pins are a lookup
+-- surface a player sweeps across, and a permanent line under every one of them
+-- would be map clutter rather than an answer. Object nodes -- herbs, veins,
+-- chests -- are never asked about: only a creature can have a route.
+--
+-- The drawing itself belongs to Map/WorldMapPins.lua, which owns the stroke
+-- pools, the stamp geometry and the route data adapter; this layer only names
+-- the creature under the cursor.
+function NpcPins:PatrolUnitId(pin)
+    local target = pin and pin.unrealQuestNpcTarget
+    if type(target) ~= "table" or target.sourceType ~= "unit"
+        or type(target.sourceId) ~= "number" then
+        return nil
+    end
+    return target.sourceId
+end
+
+function NpcPins:ShowPatrolRoute(pin)
+    local pins = UQ:GetModule("WorldMapPins")
+    local unitId = self:PatrolUnitId(pin)
+    -- Remembered so the pins can be taken off the map without the client ever
+    -- delivering an OnLeave -- a category switched off, the layer hidden --
+    -- and still leave nothing behind. A pin with no creature (an object node)
+    -- clears just as a leave does: the route belongs to the LAST pin hovered,
+    -- and that is now this one.
+    self.patrolHoverUnitId = unitId
+    if pins then
+        pins:SetHoverPatrolUnit(unitId)
+    end
+end
+
+-- `pin` is optional: without one this drops whatever route this layer last
+-- asked for, which is what the hide paths need. Either way another layer's
+-- route is never cleared -- the ID has to match.
+function NpcPins:HidePatrolRoute(pin)
+    local pins = UQ:GetModule("WorldMapPins")
+    local unitId = self:PatrolUnitId(pin) or self.patrolHoverUnitId
+    if type(unitId) ~= "number" then
+        return
+    end
+    if self.patrolHoverUnitId == unitId then
+        self.patrolHoverUnitId = nil
+    end
+    if pins then
+        pins:ClearHoverPatrolUnit(unitId)
+    end
+end
+
 function NpcPins:GetWorldPin(index)
     local pin = self.worldPool[index]
     if pin then
@@ -605,21 +726,32 @@ function NpcPins:GetWorldPin(index)
         self.worldPool[index] = pin
         Client.SetWorldMapPinSize(pin, WORLD_PIN_SIZE, WORLD_PIN_SIZE)
         Client.RaiseWorldMapPin(pin, 6)
+        local onClick = nil
+        if REVIEW_REMOVAL_ENABLED then
+            onClick = function(first)
+                if Client.ResolveClickButton(first) == "RightButton" then
+                    NpcPins:ShowRemoveMenu(pin)
+                end
+            end
+        end
         Client.SetWorldMapPinHandlers(pin,
             function()
                 if pin.unrealQuestNpcTarget then
                     Client.ShowMapTooltip(pin,
-                        NpcPins:TooltipLines(pin.unrealQuestNpcTarget))
+                        NpcPins:TooltipLines(pin.unrealQuestNpcTarget, true))
                 end
                 if pin.unrealQuestNpcTarget and pin.unrealQuestNpcTarget.rankLabelKey then
                     NpcPins:SetHoveredMobPin(pin)
                 end
+                NpcPins:ShowPatrolRoute(pin)
             end,
             function()
                 NpcPins:ClearHoveredMobPin(pin)
+                NpcPins:HidePatrolRoute(pin)
                 Client.HideMapTooltip(pin)
             end,
-            nil)
+            onClick,
+            REVIEW_REMOVAL_ENABLED)
     end
     return pin
 end

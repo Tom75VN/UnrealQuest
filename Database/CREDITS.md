@@ -24,6 +24,21 @@ The optimized layout is locale-independent:
 `creature_movement_special` and `script_waypoint` are intentionally excluded because
 they describe triggered/scripted/escort movement rather than normal permanent patrols.
 
+## Instance-only creature provenance
+
+`instance_only_units.lua` was extracted from VMaNGOS
+`db-sqlite-6958f26` at the Vanilla 1.12.1 state. It records a creature only
+when every active spawn's `creature.map` value is one of the dungeon or raid
+maps shipped in `instances.lua`; creatures with outdoor or uncertain spawns
+are excluded.
+
+`dungeon_approach_units.lua` is the complementary area-specific review layer.
+Its creature IDs and representative coordinates come from the bundled
+VMaNGOS/pfQuest data above; the classification was reviewed from UnrealQuest's
+Rare/Elite/Boss world-map pins in game on 2026-08-29. It covers entrance-cave
+records that project onto an outdoor zone even though the source creature is
+not globally instance-only.
+
 ## Patrol scope
 
 Battleground and instance patrols are intentionally not shipped in the optimized

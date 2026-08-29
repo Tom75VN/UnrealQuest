@@ -109,6 +109,213 @@ function MapContext:ResolveAreaId(name)
     return nil, "ambiguous"
 end
 
+-- Is this name one of the zone names the CLIENT itself lists for the player's
+-- continent?
+--
+-- This is the measured discriminator between "the player is standing in a zone"
+-- and "the player is standing in a room the client is calling a zone". Probe
+-- zoneindoor, 2026-08-29, Echo Ridge Mine in Elwynn Forest:
+--
+--            zoneText        realZoneText    subZoneText       in GetMapZones
+--   outside  Elwynn Forest   Elwynn Forest   Echo Ridge Mine   yes
+--   inside   Echo Ridge Mine Echo Ridge Mine (empty)           no
+--
+-- Note what happens to the subzone indoors: it goes EMPTY and the room is
+-- promoted to the zone, which is the opposite of the shape a "zone and subzone
+-- name the same place" test assumes. Membership in the client's own zone list
+-- is what actually separates the two rows, and it does not care which of the
+-- two name calls produced the string.
+--
+-- Returns true, false, or nil for "the list could not be read" -- nil is not
+-- false, and a caller must not conclude "indoors" from it.
+function MapContext:IsListedZoneName(name)
+    if type(name) ~= "string" or name == "" then
+        return nil
+    end
+    local continent = Client.GetCurrentMapContinent()
+    if type(continent) ~= "number" then
+        return nil
+    end
+    local list = Client.GetMapZoneNames(continent)
+    if type(list) ~= "table" then
+        return nil
+    end
+    local total = table.getn(list)
+    if total == 0 then
+        return nil
+    end
+    local key = UQ.NameKey(name)
+    local index = 1
+    while index <= total do
+        if UQ.NameKey(list[index]) == key then
+            return true
+        end
+        index = index + 1
+    end
+    return false
+end
+
+-- Does this area have a map of its own?
+--
+-- The SECOND, client-independent half of the indoor test above, and the reason
+-- an unreadable zone list can no longer empty the tracker. Database/minimap.lua
+-- carries a yard span for exactly the areas this client draws a zone map for:
+-- Elwynn Forest (12) has one; Echo Ridge Mine (34) and Northshire Valley (9),
+-- both real areas the client will happily name as the zone, do not.
+-- ResolveAreaId already leans on that span to break name collisions -- this is
+-- the same fact asked as a question about one area.
+--
+-- It answers what IsListedZoneName answers, from a completely different
+-- source: static bundled data rather than a client call that is documented to
+-- come back empty until the map subsystem has been touched this session. So
+-- when the client will not hand over its zone list, GetStandingZone can still
+-- tell a room from a zone instead of filtering the tracker on a room name.
+--
+-- Returns true, false, or nil for "the question could not be asked" -- no
+-- database, or a name that resolved to no area at all.
+function MapContext:HasOwnMap(areaId)
+    local database = Database()
+    if type(areaId) ~= "number" or not database or not database.available then
+        return nil
+    end
+    return database:GetZoneYards(areaId) ~= nil
+end
+
+-- The outermost zone an area sits inside, for a caller holding an area that
+-- came from where the player is STANDING rather than from a map view.
+--
+-- Walking Database/zones.lua's parent link turns Northshire Valley back into
+-- Elwynn Forest and Deathknell back into Tirisfal Glades. It does NOT rescue
+-- every indoor case -- probe zoneindoor measured Echo Ridge Mine resolving to
+-- area 34, which has no parent row at all -- so this is one route among
+-- several in GetStandingZone below, never the answer on its own.
+--
+-- Returns the enclosing area ID and its localized name, or nil when the area is
+-- already top level or the table files it under nothing. The walk is bounded
+-- because zones.lua is data: a cycle in it must not hang a caller that runs on
+-- the tracker's 0.4s refresh.
+local MAX_PARENT_DEPTH = 4
+
+function MapContext:ResolveEnclosingArea(areaId)
+    local database = Database()
+    if type(areaId) ~= "number" or not database or not database.available then
+        return nil
+    end
+    local currentId = areaId
+    local resolvedId, resolvedName = nil, nil
+    local depth = 0
+    while depth < MAX_PARENT_DEPTH do
+        local parentId = database:GetParentZoneId(currentId)
+        if not parentId then
+            break
+        end
+        local parentName = database:GetZoneName(parentId)
+        if type(parentName) == "string" and parentName ~= "" then
+            resolvedId, resolvedName = parentId, parentName
+        end
+        currentId = parentId
+        depth = depth + 1
+    end
+    if not resolvedId or not resolvedName then
+        return nil
+    end
+    return resolvedId, resolvedName
+end
+
+-- Which zone is the player STANDING in -- answered so that walking through a
+-- door does not change it.
+--
+-- This is deliberately not GetCurrentZoneView. That question is about the map
+-- view that is open, and the tracker's current-zone filter has to keep working
+-- with the map closed. This one starts from the player's own position and only
+-- reaches for the map when the position's answer is provably a room.
+--
+-- Returns the zone name, its area ID and how it was reached, or nil plus a
+-- reason. Routes, in order:
+--
+--   "standing"   the position name is one of the continent's listed zones.
+--                The ordinary outdoor answer.
+--   "standingSpan" the client would not list its zones, but the bundled table
+--                gives the resolved area a map of its own, which only a real
+--                zone has. The same conclusion as "standing" reached from the
+--                static data, and it updates the memory too.
+--   "parent"     Database/zones.lua files the room's area under a zone. Static
+--                data and exact, but absent for most caves and every inn.
+--   "remembered" the last proven-zone answer this session. Walking indoors does
+--                not change which zone the building is in, so the name from one
+--                tick before the door is the answer. Fails only for a player
+--                who logged in or reloaded already inside.
+--   "mapZone"    the viewed map's own zone name, measured holding "Elwynn
+--                Forest" throughout the Echo Ridge Mine sample. Last because it
+--                follows a player who deliberately browses another zone's map,
+--                which the three routes above cannot do.
+--
+-- nil means every route declined, and the caller must degrade to not filtering
+-- rather than to filtering on a guess.
+function MapContext:GetStandingZone()
+    local name = Client.GetRealZoneText()
+    if not name then
+        name = Client.GetZoneText()
+    end
+    if type(name) ~= "string" or name == "" then
+        return nil, nil, "noName"
+    end
+
+    local areaId = self:ResolveAreaId(name)
+
+    -- Two independent readings of the same question, because either source can
+    -- decline. The client's zone list is the measured discriminator, but it is
+    -- documented to be empty until the map subsystem has been touched this
+    -- session -- and a session that never touched it used to fall straight
+    -- through to "unlistable", i.e. to filtering the tracker on whatever the
+    -- client called the room, with the memory below never populated either
+    -- because only a listed name writes it. HasOwnMap answers from the bundled
+    -- table instead, so the fallthrough now survives only a name that resolves
+    -- to no area at all.
+    local how = nil
+    local listed = self:IsListedZoneName(name)
+    if listed == true then
+        how = "standing"
+    elseif listed == nil then
+        local ownMap = self:HasOwnMap(areaId)
+        if ownMap == true then
+            listed, how = true, "standingSpan"
+        elseif ownMap == false then
+            listed = false
+        end
+    end
+
+    if listed ~= false then
+        -- true, or nil for "neither source would answer" -- with no way to tell
+        -- indoors from outdoors, the name is used exactly as it was before this
+        -- route existed. Only a proven zone updates the memory.
+        if listed == true then
+            self.standingZoneName = name
+            self.standingZoneArea = areaId
+        end
+        return name, areaId, how or "unlistable"
+    end
+
+    if areaId then
+        local parentId, parentName = self:ResolveEnclosingArea(areaId)
+        if parentId and parentName then
+            return parentName, parentId, "parent"
+        end
+    end
+
+    if self.standingZoneName then
+        return self.standingZoneName, self.standingZoneArea, "remembered"
+    end
+
+    local report = self:InspectPrimed()
+    if report and type(report.zoneIndex) == "number" and report.zoneIndex > 0
+        and type(report.mapZoneName) == "string" and report.mapZoneName ~= "" then
+        return report.mapZoneName, report.areaIdFromMapZone, "mapZone"
+    end
+
+    return nil, nil, "indoorUnresolved"
+end
+
 -- Snapshot of everything the client will tell us about the current map, with
 -- the database-side resolution attempts alongside. Purely observational.
 function MapContext:Inspect()

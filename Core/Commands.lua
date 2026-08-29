@@ -683,9 +683,10 @@ local function ShowTooltip()
     if status.labelReads > 0 and status.matches == 0 then
         Line("  |cffff5555" .. UQ.L("CMD_TOOLTIP_NEVER_MATCHED") .. "|r")
     end
-    Line("  " .. UQ.L("CMD_TOOLTIP_APPEND_FAILURES", tostring(status.appendFailures)))
-    if status.matches > 0 and status.appendFailures >= status.matches then
-        Line("  |cffff5555" .. UQ.L("CMD_TOOLTIP_ALL_APPENDS_FAILED") .. "|r")
+    Line("  " .. UQ.L("CMD_TOOLTIP_PRESENTATION_FAILURES",
+        tostring(status.presentationFailures)))
+    if status.matches > 0 and status.presentationFailures >= status.matches then
+        Line("  |cffff5555" .. UQ.L("CMD_TOOLTIP_ALL_PRESENTATIONS_FAILED") .. "|r")
     end
     Line("  " .. UQ.L("CMD_TOOLTIP_CURRENT_UNIT", tostring(status.currentUnit)))
 end
@@ -1277,11 +1278,20 @@ local function ShowTracker(argument)
         .. " objectives=" .. tostring(report.objectives)
         .. " zones=" .. (report.groupByZone and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF"))
         .. " curzone=" .. (report.currentZoneOnly and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF"))
-        -- Diagnostic tokens, deliberately untranslated: the area the map half
-        -- of that filter is asking about, and how many quests it kept whose
-        -- quest-log header names another zone.
-        .. (report.currentZoneOnly and (" area=" .. tostring(report.currentZoneArea)
-            .. " mapkept=" .. tostring(report.mapKept)) or "")
+        -- Diagnostic tokens, deliberately untranslated: the zone the filter
+        -- settled on, which of MapContext:GetStandingZone's routes produced it
+        -- (standing / standingSpan / parent / remembered / mapZone /
+        -- unlistable), the area the map half is asking about, how many quests
+        -- it kept whose quest-log header names another zone, and whether the
+        -- filter was dropped entirely because it would have emptied the window
+        -- (Quest/TrackerFrame.lua, "The filter may narrow the window, never
+        -- empty it"). zonedrop=true is the signal that the zone the addon
+        -- settled on is wrong, not that the player has nothing to do here.
+        .. (report.currentZoneOnly and (" zone=" .. tostring(report.currentZoneName)
+            .. " via=" .. tostring(report.currentZoneHow)
+            .. " area=" .. tostring(report.currentZoneArea)
+            .. " mapkept=" .. tostring(report.mapKept)
+            .. " zonedrop=" .. tostring(report.zoneFilterDropped)) or "")
         .. " unstarted=" .. (report.hideUnstarted and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF")))
     Line("  " .. UQ.L("CMD_TRACKER_POSITION", tostring(report.point),
         string.format("%.0f, %.0f", report.x or 0, report.y or 0))

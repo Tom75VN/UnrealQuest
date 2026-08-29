@@ -203,6 +203,21 @@ local PATROL_LINE_HOVER_GREEN = 0.98
 local PATROL_LINE_HOVER_BLUE = 0.98
 local PATROL_LINE_HOVER_ALPHA = 1
 
+-- The route of ONE creature, drawn because the mouse is on something that
+-- names it: a service, vendor or rare pin owned by another layer
+-- (Map/NpcPins.lua, Map/QuestVendorPins.lua). It gets a pool of its own rather
+-- than joining the scene above because it must appear and disappear with the
+-- cursor, and re-fitting the whole scene's spacing on every OnEnter would
+-- restamp up to MAX_PATROL_STROKES textures to add one route. One creature is
+-- also a far smaller path than a zone's worth of them -- the widest bundled
+-- single-unit route is 634 waypoints -- so this bound is the same guard
+-- against a pathological record the scene's is, not a routine cap.
+--
+-- Hit targets are deliberately NOT laid along it: the pin under the cursor is
+-- already answering the hover, and invisible Buttons over the route would
+-- take the mouse away from whatever the player moves onto next.
+local MAX_HOVER_PATROL_STROKES = 900
+
 local MAX_TURNIN_MARKERS = 100
 -- Same collision reasoning as GIVER_INDEX_OFFSET, one band further out: the
 -- giver pins own 2001..2100 under MAX_GIVER_MARKERS.
@@ -292,6 +307,12 @@ WorldMapPins.strokeUnitIds = {}
 WorldMapPins.strokeX = {}
 WorldMapPins.strokeY = {}
 WorldMapPins.strokeFaded = {}
+-- The hovered creature's own route (see MAX_HOVER_PATROL_STROKES). Same kind
+-- of stamps on the same shared layer, kept apart from the scene above so a
+-- hover neither restamps it nor survives it.
+WorldMapPins.hoverStrokePool = {}
+WorldMapPins.hoverStrokeX = {}
+WorldMapPins.hoverStrokeY = {}
 WorldMapPins.turnInPool = {}
 WorldMapPins.renderEnabled = true
 WorldMapPins.visibleCount = 0
@@ -304,6 +325,18 @@ WorldMapPins.strokeVisibleCount = 0
 -- hover or a canvas resize cannot silently reset a widened line back to the
 -- floor and reopen the gaps.
 WorldMapPins.strokeWidth = PATROL_LINE_WIDTH
+WorldMapPins.hoverStrokeVisibleCount = 0
+WorldMapPins.hoverStrokeWidth = PATROL_LINE_WIDTH
+-- The creature another layer's hovered pin names, and the units the scene
+-- already draws a route for. The second answers whether the first needs a
+-- stroke of its own or merely the scene's own highlight.
+WorldMapPins.hoverPatrolUnitId = nil
+WorldMapPins.patrolSceneUnitIds = {}
+-- unitId -> the quests whose objective that roaming creature is, for the pass
+-- that dims everything unrelated to a hovered quest. A route drawn for an
+-- objective has no "!" or "?" to be recognised through, so the link the fade
+-- needs is recorded when the route is collected.
+WorldMapPins.objectivePatrolQuests = {}
 WorldMapPins.turnInVisibleCount = 0
 WorldMapPins.dirty = true
 WorldMapPins.lastSignature = nil
@@ -316,6 +349,11 @@ WorldMapPins.focusTurnInPin = nil
 WorldMapPins.hoverMarkerPin = nil
 WorldMapPins.hoverPatrolMarker = nil
 WorldMapPins.hoverPatrolTarget = nil
+-- The exact creature source carried by the objective dot under the cursor.
+-- Area tiles reduce several locations into one cell and deliberately leave
+-- this nil; only a dot can identify one source honestly enough to highlight
+-- that creature's already-visible patrol.
+WorldMapPins.hoverObjectivePatrolUnitId = nil
 WorldMapPins.hoverCount = 0
 WorldMapPins.lastHoverKey = nil
 WorldMapPins.giverClickCount = 0
@@ -376,6 +414,7 @@ local function HideAllPools()
     WorldMapPins.giverVisibleCount = HidePoolFrom(WorldMapPins.giverPool, 1)
     WorldMapPins.patrolVisibleCount = HidePoolFrom(WorldMapPins.patrolPool, 1)
     WorldMapPins.strokeVisibleCount = HidePoolFrom(WorldMapPins.strokePool, 1)
+    WorldMapPins.hoverStrokeVisibleCount = HidePoolFrom(WorldMapPins.hoverStrokePool, 1)
     WorldMapPins.turnInVisibleCount = HidePoolFrom(WorldMapPins.turnInPool, 1)
 end
 
@@ -581,6 +620,62 @@ local function CollectQuestMapLocations(quest, areaId, complete, config)
         idIndex = idIndex + 1
     end
     return locations, unknown, usedIds
+end
+
+-- The creatures a quest sends the player after that the map can honestly draw
+-- a route for: the ones with exactly ONE recorded location in this zone.
+--
+-- The spawn count is the whole criterion, and it is not a performance guard.
+-- A route belongs to a spawned creature, not to a creature type, so a mob with
+-- forty spawns has forty of them -- 76 Bloodscalp Mystics carry eleven routes
+-- and 445 waypoints between them, which would carpet Stranglethorn with lines
+-- describing ground the objective cloud already covers. With one recorded
+-- location there is no cloud to read: the quest points at a single creature
+-- that is not where the dot says, which is exactly the case a route answers
+-- (Fozruk, Slark, the Kodo Matriarch, the Wandering Protector). 138 bundled
+-- unit-zone pairs across roughly 230 quests are in that state.
+--
+-- Counted from the quest's own drawn locations rather than from the unit
+-- record, so a source whose other spawns were withheld -- a finished creature
+-- objective, an item-use target the player is not carrying -- is counted as
+-- the map actually drew it.
+local function CollectRoamingObjectiveUnits(locations, quest, unitIds, questsByUnit)
+    local counts = {}
+    local index = 1
+    local total = table.getn(locations)
+    while index <= total do
+        local location = locations[index]
+        if location and location.sourceType == "unit"
+            and type(location.sourceId) == "number" then
+            counts[location.sourceId] = (counts[location.sourceId] or 0) + 1
+        end
+        index = index + 1
+    end
+    local unitId, count
+    for unitId, count in pairs(counts) do
+        if count == 1 then
+            unitIds[unitId] = true
+            local quests = questsByUnit[unitId]
+            if not quests then
+                quests = {}
+                questsByUnit[unitId] = quests
+            end
+            -- One creature can be the objective of several quests at once, and
+            -- the fade has to keep its route lit for every one of them.
+            local questIndex = 1
+            local questTotal = table.getn(quests)
+            local held = false
+            while questIndex <= questTotal do
+                if quests[questIndex] == quest then
+                    held = true
+                end
+                questIndex = questIndex + 1
+            end
+            if not held then
+                table.insert(quests, quest)
+            end
+        end
+    end
 end
 
 -- Read-only: callers must not mutate the returned table.
@@ -1221,10 +1316,11 @@ function WorldMapPins:ReapplyVisiblePools()
     -- them back through the map's draw path. Their own offsets are only
     -- invalidated by a canvas that changed size, and that is the one case
     -- that walks the pool.
-    if self.strokeVisibleCount > 0 then
+    if self.strokeVisibleCount > 0 or self.hoverStrokeVisibleCount > 0 then
         Client.ReapplyWorldMapStrokeLayer()
         if resized then
             self:ReapplyPatrolStrokes()
+            self:ReapplyHoverPatrolStrokes()
         end
     end
 end
@@ -1261,8 +1357,13 @@ function WorldMapPins:OnAreaEnter(area)
         return
     end
     self.hoverArea = area
+    self.hoverObjectivePatrolUnitId = area.unrealQuestObjectiveUnitId
     self:SetMarkerSuppressed(area.unrealQuestMarkerPin, true)
     self:ApplyQuestFocus(quest)
+    -- ApplyQuestFocus returns early while crossing dots of the same quest,
+    -- but those dots can name different creatures. Restyle the route for the
+    -- exact dot even when the broader quest focus did not change.
+    self:RefreshPatrolHighlight()
     Client.ShowMapTooltip(area, BuildQuestTooltipLines(database, quest))
     RecordHover(quest)
 end
@@ -1285,7 +1386,9 @@ function WorldMapPins:OnAreaLeave(area)
     -- Same guard, for the same reason: the next tile's OnEnter may arrive
     -- before this OnLeave, and dropping the focus unconditionally would flash
     -- the whole layer back to full opacity between two cells of one quest.
+    self.hoverObjectivePatrolUnitId = hovered and hovered.unrealQuestObjectiveUnitId or nil
     self:ApplyQuestFocus(hovered and hovered.unrealQuestQuest or nil)
+    self:RefreshPatrolHighlight()
     -- Guarded by the tooltip's own owner check, so this cannot pull a tooltip
     -- that a neighbouring tile has already taken over.
     Client.HideMapTooltip(area)
@@ -1329,6 +1432,19 @@ end
 function WorldMapPins:IsPatrolUnitRelatedToQuest(unitId, quest)
     if unitId == nil or not quest then
         return false
+    end
+    -- A roaming objective creature is recognised through the record the
+    -- objective pass left behind, because it owns no marker to be found by.
+    local objectiveQuests = self.objectivePatrolQuests[unitId]
+    if type(objectiveQuests) == "table" then
+        local objectiveIndex = 1
+        local objectiveTotal = table.getn(objectiveQuests)
+        while objectiveIndex <= objectiveTotal do
+            if objectiveQuests[objectiveIndex] == quest then
+                return true
+            end
+            objectiveIndex = objectiveIndex + 1
+        end
     end
     local index = 1
     while index <= self.turnInVisibleCount do
@@ -1691,10 +1807,20 @@ end
 -- match, or the map's current-zone-only join simply does not cover it -- there
 -- is nothing to collect and this reports that honestly rather than guessing
 -- at a location.
-local FLASH_DURATION = 2.2
+local FLASH_DURATION = 5.41
 local FLASH_HZ = 2.5
 local FLASH_MIN_ALPHA = 0.3
 local FLASH_MAX_ALPHA = 1.0
+-- The blink alone is easy to miss among a screen of other pins, so each
+-- target also pulses its own size through the same EaseInOutCubic used for
+-- the giver/turn-in hover emphasis above -- grow, then shrink -- rather than
+-- a raw sine, so the size change itself reads as an eased motion instead of a
+-- mechanical wobble. Its own, slower rate (rather than sharing FLASH_HZ) is
+-- what makes each bounce read as a deliberate grow/shrink instead of a jitter
+-- riding on top of the faster blink.
+local FLASH_SCALE_HZ = 1
+local FLASH_MIN_SCALE = 0.85
+local FLASH_MAX_SCALE = 1.4
 -- Normal UnrealQuest marks top out six levels above the shared pin floor
 -- (service, mob and vendor pins). A revealed quest must win every overlap for
 -- the whole flash, whether its target is an objective dot/area or a turn-in
@@ -1737,9 +1863,17 @@ local function RestoreFlashTargets()
     while index <= total do
         local target = targets[index]
         Client.SetWorldMapPinAlpha(target, 1)
-        if target and target.unrealQuestFlashRaised then
-            Client.RaiseWorldMapPin(target, -FLASH_LEVEL_BOOST)
-            target.unrealQuestFlashRaised = nil
+        if target then
+            if target.unrealQuestFlashBaseWidth and target.unrealQuestFlashBaseHeight then
+                Client.SetWorldMapPinSize(target,
+                    target.unrealQuestFlashBaseWidth, target.unrealQuestFlashBaseHeight)
+            end
+            target.unrealQuestFlashBaseWidth = nil
+            target.unrealQuestFlashBaseHeight = nil
+            if target.unrealQuestFlashRaised then
+                Client.RaiseWorldMapPin(target, -FLASH_LEVEL_BOOST)
+                target.unrealQuestFlashRaised = nil
+            end
         end
         index = index + 1
     end
@@ -1751,8 +1885,12 @@ local function RaiseFlashTargets(targets)
     local total = table.getn(targets)
     while index <= total do
         local target = targets[index]
-        if target and Client.RaiseWorldMapPin(target, FLASH_LEVEL_BOOST) then
-            target.unrealQuestFlashRaised = true
+        if target then
+            if Client.RaiseWorldMapPin(target, FLASH_LEVEL_BOOST) then
+                target.unrealQuestFlashRaised = true
+            end
+            target.unrealQuestFlashBaseWidth = target.unrealQuestPixelWidth
+            target.unrealQuestFlashBaseHeight = target.unrealQuestPixelHeight
         end
         index = index + 1
     end
@@ -1761,7 +1899,8 @@ end
 
 -- Pulses every target's whole-frame alpha (Client.SetWorldMapPinAlpha, the
 -- same stock SetAlpha already relied on for the waypoint marker and the
--- turn-in hover dim) for FLASH_DURATION seconds, then hands every target back
+-- turn-in hover dim) and, in step with it, its own eased size around its
+-- current base size for FLASH_DURATION seconds, then hands every target back
 -- to WorldMapPins' OWN redraw by marking the layer dirty rather than trying to
 -- remember or recompute whatever alpha each one should settle back to -- the
 -- next scheduled refresh already knows that.
@@ -1798,10 +1937,25 @@ function WorldMapPins:FlashQuest(questId)
         local phase = elapsed * FLASH_HZ * 2 * math.pi
         local alpha = FLASH_MIN_ALPHA
             + (FLASH_MAX_ALPHA - FLASH_MIN_ALPHA) * (0.5 + 0.5 * math.sin(phase))
+        local cycle = elapsed * FLASH_SCALE_HZ
+        cycle = cycle - math.floor(cycle)
+        local eased
+        if cycle < 0.5 then
+            eased = EaseInOutCubic(cycle * 2)
+        else
+            eased = EaseInOutCubic((1 - cycle) * 2)
+        end
+        local scale = FLASH_MIN_SCALE + (FLASH_MAX_SCALE - FLASH_MIN_SCALE) * eased
         local index = 1
         local total = table.getn(targets)
         while index <= total do
-            Client.SetWorldMapPinAlpha(targets[index], alpha)
+            local target = targets[index]
+            Client.SetWorldMapPinAlpha(target, alpha)
+            if target and target.unrealQuestFlashBaseWidth and target.unrealQuestFlashBaseHeight then
+                Client.SetWorldMapPinSize(target,
+                    target.unrealQuestFlashBaseWidth * scale,
+                    target.unrealQuestFlashBaseHeight * scale)
+            end
             index = index + 1
         end
     end)
@@ -2332,6 +2486,18 @@ function WorldMapPins:HighlightedPatrolUnitId()
     if unitId == nil and self.hoverPatrolTarget then
         unitId = self.hoverPatrolTarget.unrealQuestPatrolUnitId
     end
+    -- An objective dot identifies its source creature exactly. When that
+    -- creature owns one of the objective patrols already in the scene, the
+    -- dot and route read as one hover selection.
+    if unitId == nil then
+        unitId = self.hoverObjectivePatrolUnitId
+    end
+    -- A pin owned by another layer names its creature the same way: when the
+    -- scene already draws that route, hovering the pin lights it in place
+    -- instead of stamping a second copy over it (see SetHoverPatrolUnit).
+    if unitId == nil then
+        unitId = self.hoverPatrolUnitId
+    end
     return unitId
 end
 
@@ -2731,6 +2897,146 @@ function WorldMapPins:ReapplyPatrolStrokes()
     end
 end
 
+-- The hovered creature's route ------------------------------------------------
+--
+-- Same stamps as the scene's, on the same shared layer, from a pool of their
+-- own: see MAX_HOVER_PATROL_STROKES. Always drawn in the hover colour, because
+-- this route exists only while something under the cursor names it, and never
+-- faded, because the focus pass describes a quest and this answers a pin.
+function WorldMapPins:GetHoverPatrolStroke(index)
+    local stroke = self.hoverStrokePool[index]
+    if stroke then
+        return stroke
+    end
+    stroke = Client.CreateWorldMapStroke()
+    if stroke then
+        self.hoverStrokePool[index] = stroke
+    end
+    return stroke
+end
+
+local function SetHoverPatrolStrokeStyle(pins, index)
+    local stroke = pins.hoverStrokePool[index]
+    if not stroke then
+        return
+    end
+    Client.SetWorldMapStrokeColor(stroke,
+        PATROL_LINE_HOVER_RED, PATROL_LINE_HOVER_GREEN, PATROL_LINE_HOVER_BLUE,
+        PATROL_LINE_HOVER_ALPHA)
+    Client.SetWorldMapStrokeSize(stroke,
+        (pins.hoverStrokeWidth or PATROL_LINE_WIDTH) + PATROL_LINE_HOVER_BOOST)
+end
+
+-- Redraws whatever the current hover asks for and hides the rest of the pool,
+-- so this one call covers "a pin was entered", "a pin was left" and "the scene
+-- underneath was rebuilt". Nothing is drawn when the scene already carries the
+-- route: RefreshPatrolHighlight lights that one in place instead.
+function WorldMapPins:DrawHoverPatrol()
+    local unitId = self.hoverPatrolUnitId
+    if unitId == nil and self.hoverStrokeVisibleCount <= 0 then
+        -- Nothing hovered and nothing left over: the rebuild that calls this
+        -- must not pay for a view resolution to hide an empty pool.
+        return
+    end
+    local placed = 1
+    local database = Database()
+    local mapContext = MapContext()
+    -- The view is resolved ONCE here and handed to every placement below.
+    -- DatabaseToCurrentMap resolves it itself when it is not given one, which
+    -- would repeat that work for each of up to MAX_HOVER_PATROL_STROKES
+    -- stamps; it is also what makes a hover held while the map moves to
+    -- another zone draw nothing rather than draw the route in the wrong place.
+    local areaId, report = nil, nil
+    if mapContext then
+        areaId, report = mapContext:GetViewedZone()
+    end
+    if type(unitId) == "number" and type(areaId) == "number"
+        and database and mapContext and self.renderEnabled
+        and not self.patrolSceneUnitIds[unitId]
+        and Client.GetWorldMapCanvas() then
+        local segments = self:CollectPatrolSegments(
+            database, { [unitId] = true }, areaId)
+        if table.getn(segments) > 0 then
+            local spacing, pixelsPerUnit = PatrolStrokeSpacing()
+            if spacing and spacing > 0 then
+                spacing = FitPatrolSpacing(segments, spacing, MAX_HOVER_PATROL_STROKES)
+                local width = spacing * pixelsPerUnit
+                if width < PATROL_LINE_WIDTH then
+                    width = PATROL_LINE_WIDTH
+                elseif width > PATROL_LINE_MAX_WIDTH then
+                    width = PATROL_LINE_MAX_WIDTH
+                end
+                self.hoverStrokeWidth = width
+                local drawn = WalkPatrolPath(mapContext, areaId, segments, report,
+                    spacing, MAX_HOVER_PATROL_STROKES,
+                    function(index, mapX, mapY)
+                        local stroke = self:GetHoverPatrolStroke(index)
+                        if not stroke then
+                            return false
+                        end
+                        if not Client.PositionWorldMapStroke(
+                            stroke, mapX, mapY, width + PATROL_LINE_HOVER_BOOST) then
+                            Client.HideObject(stroke)
+                            return false
+                        end
+                        self.hoverStrokeX[index] = mapX
+                        self.hoverStrokeY[index] = mapY
+                        SetHoverPatrolStrokeStyle(self, index)
+                        return true
+                    end)
+                placed = drawn + 1
+            end
+        end
+    end
+    self.hoverStrokeVisibleCount = HidePoolFrom(self.hoverStrokePool, placed)
+end
+
+-- Called by the layers that own the service, vendor and rare pins
+-- (Map/NpcPins.lua, Map/QuestVendorPins.lua) when the mouse enters one. The
+-- creature's route is context for the pin under the cursor, so it lives
+-- exactly as long as that hover and is never left behind by a rebuild.
+function WorldMapPins:SetHoverPatrolUnit(unitId)
+    if type(unitId) ~= "number" then
+        unitId = nil
+    end
+    if self.hoverPatrolUnitId == unitId then
+        return
+    end
+    self.hoverPatrolUnitId = unitId
+    self:DrawHoverPatrol()
+    self:RefreshPatrolHighlight()
+end
+
+-- Leaving a pin must not drop a hover that already belongs to another one:
+-- this client can deliver the next pin's OnEnter before this OnLeave. Same
+-- guard the marker, tile and route hovers above use, for the same reason.
+function WorldMapPins:ClearHoverPatrolUnit(unitId)
+    if type(unitId) == "number" and self.hoverPatrolUnitId ~= unitId then
+        return
+    end
+    self:SetHoverPatrolUnit(nil)
+end
+
+-- The counterpart of ReapplyPatrolStrokes for the hover pool, and needed for
+-- the same one reason: a canvas that changed SIZE invalidates every recorded
+-- offset at once.
+function WorldMapPins:ReapplyHoverPatrolStrokes()
+    if self.hoverStrokeVisibleCount <= 0 then
+        return
+    end
+    local width = (self.hoverStrokeWidth or PATROL_LINE_WIDTH) + PATROL_LINE_HOVER_BOOST
+    local index = 1
+    while index <= self.hoverStrokeVisibleCount do
+        local stroke = self.hoverStrokePool[index]
+        local x, y = self.hoverStrokeX[index], self.hoverStrokeY[index]
+        if stroke and type(x) == "number" and type(y) == "number" then
+            Client.PositionWorldMapStroke(stroke, x, y, width)
+            SetHoverPatrolStrokeStyle(self, index)
+        end
+        index = index + 1
+    end
+end
+
 -- Dots identify their quest through the shared stable palette. Area tiles keep
 -- the older blue/in-progress and green/complete state colours. The alpha this
 -- returns belongs to the tiles; a dot is opaque.
@@ -2871,6 +3177,7 @@ function WorldMapPins:Refresh()
     local heldHoverArea = self.hoverArea
     local heldFocusTurnIn = self.focusTurnInPin
     self.hoverArea = nil
+    self.hoverObjectivePatrolUnitId = nil
     local clearIndex = 1
     local clearTotal = table.getn(self.pool)
     while clearIndex <= clearTotal do
@@ -2891,6 +3198,10 @@ function WorldMapPins:Refresh()
     -- half way through a pass, and the signature above already forced this
     -- rebuild if it changed since the last one.
     local dotsMode = ObjectiveDotsEnabled()
+    -- Roaming objective creatures, filled in by the quest pass below and drawn
+    -- with the marker routes further down. See CollectRoamingObjectiveUnits.
+    local objectivePatrolUnitIds = {}
+    local objectivePatrolQuests = {}
     local quests = questState:GetOrderedQuests()
     local questIndex = 1
     local questTotal = table.getn(quests)
@@ -2923,6 +3234,13 @@ function WorldMapPins:Refresh()
             local complete = quest.isComplete == 1
             itemUseUnknown = itemUseUnknown + unknown
             candidateLocations = candidateLocations + table.getn(locations)
+            -- Only while the quest is still being worked on: once it is
+            -- complete these locations are its turn-in NPC's, and a route for
+            -- that one is the "?" marker's business below.
+            if not complete then
+                CollectRoamingObjectiveUnits(
+                    locations, quest, objectivePatrolUnitIds, objectivePatrolQuests)
+            end
             local components = questTarget:BuildComponents(locations)
             local markerComponent = MARKER_RENDER_ENABLED
                 and questTarget:SelectPrimary(components)
@@ -2958,6 +3276,11 @@ function WorldMapPins:Refresh()
                                 if Client.PositionWorldMapDot(area, dotX, dotY, ObjectiveDotSize()) then
                                     area.unrealQuestQuest = quest
                                     area.unrealQuestMarkerPin = nil
+                                    area.unrealQuestObjectiveUnitId = nil
+                                    if location.sourceType == "unit"
+                                        and type(location.sourceId) == "number" then
+                                        area.unrealQuestObjectiveUnitId = location.sourceId
+                                    end
                                     areaIndex = areaIndex + 1
                                 else
                                     pinFailures = pinFailures + 1
@@ -2991,6 +3314,7 @@ function WorldMapPins:Refresh()
                                     questTarget.CELL_PERCENT, questTarget.CELL_PERCENT) then
                                     area.unrealQuestQuest = quest
                                     area.unrealQuestMarkerPin = nil
+                                    area.unrealQuestObjectiveUnitId = nil
                                     areaIndex = areaIndex + 1
                                 else
                                     pinFailures = pinFailures + 1
@@ -3142,11 +3466,56 @@ function WorldMapPins:Refresh()
     local patrolTargetIndex, patrolFailures = self:DrawPatrolHoverTargets(
         mapContext, areaId, patrolSegments, report)
     pinFailures = pinFailures + patrolFailures
+
+    -- A roaming objective creature's route joins the STROKES only. It gets no
+    -- hit targets, unlike a "!" or "?" route: its line is drawn across the
+    -- quest's own objective cloud, and invisible Buttons laid along it would
+    -- take the hover away from the tiles and dots underneath, which are what
+    -- name the quest. Units the marker passes already drew are removed rather
+    -- than collected twice -- a quest ender that is also somebody's objective
+    -- would otherwise be stamped over itself.
+    local objectiveUnitId
+    for objectiveUnitId in pairs(visiblePatrolUnitIds) do
+        objectivePatrolUnitIds[objectiveUnitId] = nil
+    end
+    local strokeSegments = patrolSegments
+    local objectiveSegments = self:CollectPatrolSegments(
+        database, objectivePatrolUnitIds, areaId)
+    local objectiveSegmentTotal = table.getn(objectiveSegments)
+    if objectiveSegmentTotal > 0 then
+        strokeSegments = {}
+        local copyIndex = 1
+        local copyTotal = table.getn(patrolSegments)
+        while copyIndex <= copyTotal do
+            table.insert(strokeSegments, patrolSegments[copyIndex])
+            copyIndex = copyIndex + 1
+        end
+        copyIndex = 1
+        while copyIndex <= objectiveSegmentTotal do
+            table.insert(strokeSegments, objectiveSegments[copyIndex])
+            copyIndex = copyIndex + 1
+        end
+    end
+    self.objectivePatrolQuests = objectivePatrolQuests
+    -- What the scene ended up carrying, for the hovered-pin route below: a
+    -- creature already drawn here is lit in place rather than stamped again.
+    local sceneUnitIds = {}
+    for objectiveUnitId in pairs(visiblePatrolUnitIds) do
+        sceneUnitIds[objectiveUnitId] = true
+    end
+    for objectiveUnitId in pairs(objectivePatrolUnitIds) do
+        sceneUnitIds[objectiveUnitId] = true
+    end
+    self.patrolSceneUnitIds = sceneUnitIds
+
     -- The visible route over the same collected path. Drawn after the hit
     -- targets so it can read nothing they did not already establish.
     local patrolStrokeIndex, patrolStrokeFailures = self:DrawPatrolStrokes(
-        mapContext, areaId, patrolSegments, report)
+        mapContext, areaId, strokeSegments, report)
     pinFailures = pinFailures + patrolStrokeFailures
+    -- A pin hover held across this rebuild keeps its route: the scene may now
+    -- draw that creature itself, in which case this hides the separate copy.
+    self:DrawHoverPatrol()
 
     self.visibleCount = HidePoolFrom(self.pool, markerIndex)
     self.areaVisibleCount = HidePoolFrom(self.areaPool, areaIndex)

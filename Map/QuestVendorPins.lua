@@ -153,6 +153,7 @@ end
 function QuestVendorPins:HideAll()
     self.worldVisible = HidePoolFrom(self.worldPool, 1)
     self.minimapVisible = HidePoolFrom(self.minimapPool, 1)
+    self:HidePatrolRoute(nil)
 end
 
 -- Which database IDs one live quest row may draw for. A resolved row is its
@@ -360,11 +361,54 @@ function QuestVendorPins:GetWorldPin(index)
                     Client.ShowMapTooltip(pin,
                         QuestVendorPins:TooltipLines(pin.unrealQuestVendorTarget))
                 end
+                QuestVendorPins:ShowPatrolRoute(pin)
             end,
-            function() Client.HideMapTooltip(pin) end,
+            function()
+                QuestVendorPins:HidePatrolRoute(pin)
+                Client.HideMapTooltip(pin)
+            end,
             nil)
     end
     return pin
+end
+
+-- The shopkeeper's route, while the mouse is on its world-map pin. 26 of the
+-- vendors selling a bundled quest item wander -- Kira Songshine's basket walks
+-- most of Goldshire, Xan'tish leaves Durotar for Orgrimmar -- and the pin can
+-- only mark one point of that. Hover-only, and drawn by Map/WorldMapPins.lua,
+-- for the reasons given at NpcPins:PatrolUnitId.
+local function VendorPatrolUnitId(pin)
+    local target = pin and pin.unrealQuestVendorTarget
+    if type(target) ~= "table" or type(target.unitId) ~= "number" then
+        return nil
+    end
+    return target.unitId
+end
+
+function QuestVendorPins:ShowPatrolRoute(pin)
+    local worldMapPins = WorldMapPins()
+    local unitId = VendorPatrolUnitId(pin)
+    -- Remembered for the hide paths, which have no pin to ask: see
+    -- NpcPins:ShowPatrolRoute.
+    self.patrolHoverUnitId = unitId
+    if worldMapPins and worldMapPins.SetHoverPatrolUnit then
+        worldMapPins:SetHoverPatrolUnit(unitId)
+    end
+end
+
+-- `pin` is optional; another layer's route is never cleared.
+function QuestVendorPins:HidePatrolRoute(pin)
+    local worldMapPins = WorldMapPins()
+    local unitId = VendorPatrolUnitId(pin) or self.patrolHoverUnitId
+    if type(unitId) ~= "number" then
+        return
+    end
+    if self.patrolHoverUnitId == unitId then
+        self.patrolHoverUnitId = nil
+    end
+    if worldMapPins and worldMapPins.ClearHoverPatrolUnit then
+        worldMapPins:ClearHoverPatrolUnit(unitId)
+    end
 end
 
 function QuestVendorPins:GetMinimapPin(index)

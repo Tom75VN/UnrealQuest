@@ -382,16 +382,16 @@ STRINGS = {
     "des noms de créature ont été lus mais n'ont jamais correspondu à un objectif",
     "имена существ читались, но ни разу не совпали с целью задания",
     "已读取生物名称，但从未与任务目标匹配"),
-"CMD_TOOLTIP_APPEND_FAILURES": (
-    "append failures:              %s", "échecs d'ajout :              %s",
-    "сбоев добавления:             %s", "追加失败：                    %s"),
-"CMD_TOOLTIP_ALL_APPENDS_FAILED": (
-    "every match failed to append -- GameTooltip resolution or IsShown gating is the problem",
-    "chaque correspondance a échoué à l'ajout -- le problème vient de la résolution de "
-    "GameTooltip ou du filtrage IsShown",
-    "каждое совпадение не удалось добавить -- проблема в разрешении GameTooltip или "
-    "в проверке IsShown",
-    "所有匹配都追加失败 -- 问题出在 GameTooltip 解析或 IsShown 判定"),
+"CMD_TOOLTIP_PRESENTATION_FAILURES": (
+    "panel display failures:       %s", "échecs d'affichage du panneau : %s",
+    "сбоев отображения панели:     %s", "面板显示失败：                %s"),
+"CMD_TOOLTIP_ALL_PRESENTATIONS_FAILED": (
+    "every match failed to show its progress panel -- panel creation or display failed",
+    "chaque correspondance a échoué à afficher son panneau de progression -- la création "
+    "ou l'affichage du panneau a échoué",
+    "для каждого совпадения не удалось показать панель прогресса -- сбой создания или "
+    "отображения панели",
+    "所有匹配都无法显示进度面板 -- 面板创建或显示失败"),
 "CMD_TOOLTIP_CURRENT_UNIT": (
     "currently hovered unit key:   %s", "clé de l'unité survolée :     %s",
     "ключ существа под курсором:   %s", "当前悬停单位键：              %s"),

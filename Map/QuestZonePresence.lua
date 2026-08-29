@@ -112,6 +112,18 @@ function QuestZonePresence:ResolveArea(name)
     return mapContext:ResolveAreaId(name)
 end
 
+-- The zone that encloses an area the player's own position produced, so the
+-- tracker's filter survives the player walking into a mine or an inn. Same
+-- delegation as ResolveArea above: the walk is Map/MapContext.lua's, because
+-- every area lookup in this addon is.
+function QuestZonePresence:ResolveEnclosingArea(areaId)
+    local mapContext = MapContext()
+    if not mapContext then
+        return nil
+    end
+    return mapContext:ResolveEnclosingArea(areaId)
+end
+
 -- Database IDs this live quest row is allowed to draw, taken from the map
 -- layer itself so an ambiguous row's candidate union is the same set here as
 -- it is on the map. The fallback covers the map layer not being loaded yet,

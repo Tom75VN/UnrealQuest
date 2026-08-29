@@ -12,6 +12,8 @@ Database\zones.lua
 Database\minimap.lua
 Database\areatrigger.lua
 Database\instances.lua
+Database\instance_only_units.lua
+Database\dungeon_approach_units.lua
 Database\units.lua
 Database\objects.lua
 Database\items.lua

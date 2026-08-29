@@ -150,7 +150,7 @@ local FIT_SAFETY_CHARS = 1
 local COLOR_ZONE = { 0.45, 0.45, 0.45 }
 local COLOR_OBJECTIVE = { 0.78, 0.78, 0.78 }
 local COLOR_OBJECTIVE_DONE = { 0.35, 0.68, 0.35 }
-local COLOR_COMPLETE = { 0.35, 0.78, 0.35 }
+local COLOR_COMPLETE = { 1, 1, 1 }
 
 -- Appended to every quest tooltip (Client.ShowGameTooltip's line-list shape,
 -- see Compatibility/ClientAPI.lua RenderTooltipLines), so the gesture list is
@@ -214,13 +214,42 @@ local function Store(key, value)
     end
 end
 
-local function IsFolded(section, key)
+-- The player's own answer for `key`: true when they folded it, false when they
+-- unfolded it, nil when they never said anything about it. Presence alone
+-- cannot carry that third state, so an entry is stored as 1 for folded and 0
+-- for unfolded rather than as a bare marker. Sections that only ever record a
+-- fold (zones, hidden quests) simply never write the 0 and read back nil or
+-- true exactly as before.
+local function FoldChoice(section, key)
     local config = Config()
     if not config or type(key) ~= "string" then
-        return false
+        return nil
     end
     local folded = config:GetSection(section)
-    return (folded and folded[key]) ~= nil
+    local value = folded and folded[key]
+    if value == nil then
+        return nil
+    end
+    return value ~= 0
+end
+
+local function IsFolded(section, key)
+    return FoldChoice(section, key) == true
+end
+
+local function SetFolded(section, key, folded)
+    local config = Config()
+    if not config or type(key) ~= "string" then
+        return
+    end
+    config:SetSectionEntry(section, key, folded and 1 or 0)
+end
+
+local function ClearFold(section, key)
+    local config = Config()
+    if config and type(key) == "string" then
+        config:SetSectionEntry(section, key, nil)
+    end
 end
 
 local function ToggleFolded(section, key)
@@ -432,6 +461,55 @@ end
 -- through UQ.NameKey rather than raw equality, exactly as every other name
 -- comparison in this addon is.
 --
+-- Indoors, this client names the ROOM ----------------------------------------
+--
+-- Step into a mine and both zone calls answer with the mine. Probe zoneindoor,
+-- 2026-08-29, walking into Echo Ridge Mine in Elwynn Forest:
+--
+--            zoneText        realZoneText    subZoneText       in GetMapZones
+--   outside  Elwynn Forest   Elwynn Forest   Echo Ridge Mine   yes
+--   inside   Echo Ridge Mine Echo Ridge Mine (empty)           no
+--
+-- Both indoor names resolve UNIQUELY to area 34, a real area holding no quest
+-- data, so the join looked confident and returned nothing: every quest header
+-- was compared against "Echo Ridge Mine", none matched, area 34 had no map
+-- points either, and the window emptied for as long as the player was inside.
+--
+-- Note what the subzone does: indoors it goes EMPTY and the room is promoted
+-- to the zone. So "the zone and the subzone name the same place" -- the shape
+-- a building suggested and the shape this filter first shipped -- never fires
+-- here, and no rescue that rests on it can work. What separates the two rows
+-- is membership in the client's OWN zone list for the continent, and
+-- MapContext:GetStandingZone is that test plus the ordered recovery behind it
+-- (the bundled parent link, the last zone the player was proven to stand in,
+-- the viewed map's zone name). Its `how` is reported by /uq tracker.
+--
+-- When every route declines, the filter is switched off and the whole log is
+-- listed. An unfiltered window is a far smaller wrong than an empty one.
+--
+-- The filter may narrow the window, never empty it --------------------------
+--
+-- Every input above is a hypothesis this client cannot be made to confirm:
+-- which zone the player is standing in, which bundled area that localized name
+-- resolves to, and whether the map draws anything for a quest there. Walking
+-- through a door is the case that keeps finding new ways to make one of them
+-- wrong, and the cost is always the same and always the worst one -- the whole
+-- window goes blank, which reads to the player as the addon having died rather
+-- than as a filter being too strict.
+--
+-- So BuildLines enforces the outcome directly, independently of why: if the
+-- zone filter would hide every quest the player has not hidden themselves, it
+-- is dropped for that build and the entire log is listed. This is deliberately
+-- a guard on the symptom and not on any one cause, because it then also holds
+-- for the causes that have not been found yet -- a room the bundled table does
+-- not know at all, a client call that starts answering differently, a zone
+-- name that resolves to nothing. /uq tracker reports it as zonedrop=true, so a
+-- recurrence shows up as a diagnostic instead of as an empty window.
+
+local function MapContext()
+    return UQ:GetModule("MapContext")
+end
+
 -- Returns the normalized zone name and the resolved area ID for the map half.
 -- Either may be nil independently: an unresolvable area only costs the map
 -- question, and an unnamed zone disables the filter entirely.
@@ -439,27 +517,15 @@ local function CurrentZone()
     if not Setting("trackerCurrentZoneOnly") then
         return nil
     end
-    -- GetRealZoneText first for the reason Map/MapContext.lua gives: standing
-    -- in a building, GetZoneText answers with the building ("Brill Town Hall")
-    -- and would match no quest header at all. GetRealZoneText is DOCUMENTED
-    -- rather than probed on this client, so its wrapper returns nil where it is
-    -- absent and this falls back to the name that is measured.
-    local name = Client.GetRealZoneText()
-    if not name then
-        name = Client.GetZoneText()
-    end
-    if type(name) ~= "string" or name == "" then
-        -- The client will not say where the player is: filter nothing rather
-        -- than empty the window on a guess.
+    local mapContext = MapContext()
+    if not mapContext then
         return nil
     end
-    local areaId = nil
-    local presence = ZonePresence()
-    if presence then
-        -- The same name, resolved to the area whose map is asked about below.
-        -- ResolveAreaId refuses ambiguous names, so this stays nil rather than
-        -- guessing a zone, and the filter simply keeps its header-only shape.
-        areaId = presence:ResolveArea(name)
+    local name, areaId, how = mapContext:GetStandingZone()
+    TrackerFrame.currentZoneName = name
+    TrackerFrame.currentZoneHow = how
+    if type(name) ~= "string" or name == "" then
+        return nil
     end
     return UQ.NameKey(name), areaId
 end
@@ -480,12 +546,46 @@ end
 -- the right zone. nil from HasPoints means the map could not be asked (an
 -- unmatched quest, or one deliberately withheld from the map); that is not
 -- evidence of absence, so the header's answer stands.
+-- The zone a quest log header sits inside, normalized, or false for one that
+-- is already top level. Memoized: the walk is two static table reads, but it
+-- would otherwise run per quest per 0.4s refresh, and the set of headers in a
+-- log is tiny and changes only on accept or turn-in.
+local headerParentKeys = {}
+
+local function HeaderParentKey(zone, zoneKey)
+    local cached = headerParentKeys[zoneKey]
+    if cached ~= nil then
+        return cached
+    end
+    local parentKey = false
+    local presence = ZonePresence()
+    if presence then
+        local areaId = presence:ResolveArea(zone)
+        if areaId then
+            local parentId, parentName = presence:ResolveEnclosingArea(areaId)
+            if parentName then
+                parentKey = UQ.NameKey(parentName) or false
+            end
+        end
+    end
+    headerParentKeys[zoneKey] = parentKey
+    return parentKey
+end
+
 local function IsOtherZone(quest, zone, currentZoneKey, currentAreaId)
     if not currentZoneKey or type(zone) ~= "string" or zone == "" then
         return false
     end
     local zoneKey = UQ.NameKey(zone)
     if not zoneKey or zoneKey == currentZoneKey then
+        return false
+    end
+    -- The header can be a SUBZONE of the zone the player is standing in: probe
+    -- zoneindoor captured a log whose only header was "Northshire Valley" while
+    -- the client's zone was "Elwynn Forest", so the header comparison above
+    -- never matched and those quests were kept, if at all, only by the map
+    -- half. Database/zones.lua files 9 under 12, which settles it directly.
+    if HeaderParentKey(zone, zoneKey) == currentZoneKey then
         return false
     end
     if currentAreaId then
@@ -497,11 +597,12 @@ local function IsOtherZone(quest, zone, currentZoneKey, currentAreaId)
     return true
 end
 
--- True only when the live quest model proves that every objective is still at
--- zero. A counterless line is undecidable and stays visible; otherwise talk,
--- exploration or server-specific objectives could disappear merely because
--- their text has no N/M suffix for QuestState to parse.
-local function IsUnstartedQuest(quest)
+-- True only when the option asks for automatic folding and the live quest
+-- model proves that every objective is still at zero. A counterless line is
+-- undecidable and stays expanded; otherwise talk, exploration or
+-- server-specific objectives could be folded merely because their text has no
+-- N/M suffix for QuestState to parse.
+local function ShouldAutoCollapseQuest(quest)
     if not Setting("trackerHideUnstartedQuests") or quest.isComplete == 1 then
         return false
     end
@@ -528,6 +629,141 @@ local function IsUnstartedQuest(quest)
     return true
 end
 
+-- How far along a quest is, as one number: every readable counter plus every
+-- objective the client calls finished. Only used to notice that it went up, so
+-- the absolute value means nothing and a counterless objective contributing 0
+-- is fine -- its `finished` flag still moves the total when it completes.
+local function ProgressMark(quest)
+    local objectives = quest.objectives or {}
+    local total = table.getn(objectives)
+    local mark = 0
+    local index = 1
+    while index <= total do
+        local objective = objectives[index]
+        if objective then
+            if type(objective.have) == "number" then
+                mark = mark + objective.have
+            end
+            if objective.finished then
+                mark = mark + 1
+            end
+        end
+        index = index + 1
+    end
+    if quest.isComplete == 1 then
+        mark = mark + 1
+    end
+    return mark
+end
+
+-- A fold lasts until the quest tells the player something new. Killing a mob,
+-- looting a quest item or finishing an objective drops the stored fold, so the
+-- row that just changed opens and shows what changed -- which is the whole
+-- point of a tracker. A quest already carrying progress the first time it is
+-- seen (a fresh login, a /reload) is unfolded on the same grounds: a started
+-- quest is never left closed by a fold whose reason nobody can still see.
+--
+-- Marks are kept in memory only, per quest title, and are dropped when the
+-- quest leaves the log (ForgetMissingMarks). Persisting them would freeze this
+-- decision across sessions, and the fold sections are the only thing that
+-- needs to survive a logout. Dropping them makes a quest abandoned and taken
+-- again a first sight, which is what it is.
+local progressMarks = {}
+
+local function ForgetFoldOnProgress(quest)
+    local title = quest.title
+    if type(title) ~= "string" or title == "" then
+        return
+    end
+    local mark = ProgressMark(quest)
+    local previous = progressMarks[title]
+    progressMarks[title] = mark
+    if previous == nil then
+        -- First sight this session: a quest that is already under way clears
+        -- the fold, one that has not started keeps whatever the player chose.
+        if mark > 0 and FoldChoice(COLLAPSED_QUESTS, title) ~= nil then
+            ClearFold(COLLAPSED_QUESTS, title)
+        end
+        return
+    end
+    if mark > previous then
+        ClearFold(COLLAPSED_QUESTS, title)
+    end
+end
+
+local function ForgetMissingMarks(seen)
+    local stale = nil
+    for title in pairs(progressMarks) do
+        if not seen[title] then
+            stale = stale or {}
+            table.insert(stale, title)
+        end
+    end
+    if not stale then
+        return
+    end
+    local index = 1
+    local total = table.getn(stale)
+    while index <= total do
+        progressMarks[stale[index]] = nil
+        index = index + 1
+    end
+end
+
+-- Stable partition that moves every complete quest after every quest still in
+-- progress, so the window reads as "what is left to do" first and "ready to
+-- turn in" last -- without duplicating a zone header. The raw quest log
+-- already lists one zone's quests contiguously (that contiguous run is what
+-- a header is drawn for in the first place), so the partition runs within
+-- each contiguous same-zone run rather than across the whole list: a complete
+-- quest sinks to the bottom of its OWN zone's block, and the zone order
+-- itself never changes. With zone grouping off there is only one run -- the
+-- whole list -- so this partitions it globally, same as before headers
+-- existed to protect.
+local function OrderQuestsCompleteLast(quests, groupByZone)
+    local total = table.getn(quests)
+    local ordered = {}
+    local blockIncomplete = {}
+    local blockComplete = {}
+    local blockZone = nil
+    local blockStarted = false
+
+    local function FlushBlock()
+        local index = 1
+        local count = table.getn(blockIncomplete)
+        while index <= count do
+            table.insert(ordered, blockIncomplete[index])
+            index = index + 1
+        end
+        index = 1
+        count = table.getn(blockComplete)
+        while index <= count do
+            table.insert(ordered, blockComplete[index])
+            index = index + 1
+        end
+        blockIncomplete = {}
+        blockComplete = {}
+    end
+
+    local index = 1
+    while index <= total do
+        local quest = quests[index]
+        if groupByZone and blockStarted and quest.zone ~= blockZone then
+            FlushBlock()
+        end
+        blockZone = quest.zone
+        blockStarted = true
+        if quest.isComplete == 1 then
+            table.insert(blockComplete, quest)
+        else
+            table.insert(blockIncomplete, quest)
+        end
+        index = index + 1
+    end
+    FlushBlock()
+    return ordered
+end
+
 -- Turns the model into the flat list of rows the window draws. Everything that
 -- decides what is visible -- folds, tracker filters, the objective setting,
 -- zone grouping -- happens here, so the drawing pass below is pure placement.
@@ -543,8 +779,40 @@ function TrackerFrame:BuildLines()
     local groupByZone = Setting("trackerGroupByZone") and true or false
     local currentZoneKey, currentAreaId = CurrentZone()
     local mapKept = 0
-    local quests = state:GetOrderedQuests()
+    local quests = OrderQuestsCompleteLast(state:GetOrderedQuests(), groupByZone)
     local total = table.getn(quests)
+
+    -- The zone filter is decided in full before a single row is written, so
+    -- that "it would have hidden everything" is knowable while it can still be
+    -- undone. See "The filter may narrow the window, never empty it" above.
+    -- IsOtherZone still runs exactly once per quest per build, as it did when
+    -- it was called inline in the drawing loop below.
+    local elsewhereFlags = {}
+    local zoneFilterDropped = false
+    if currentZoneKey then
+        local candidates = 0
+        local survivors = 0
+        local scan = 1
+        while scan <= total do
+            local quest = quests[scan]
+            local flag = IsOtherZone(quest, quest.zone, currentZoneKey, currentAreaId)
+            elsewhereFlags[scan] = flag
+            -- A quest the player shift-clicked away is not evidence about the
+            -- filter: it would be gone either way. Only the quests the filter
+            -- alone decides about get a vote here.
+            if not IsFolded(HIDDEN_QUESTS, quest.title or "") then
+                candidates = candidates + 1
+                if not flag then
+                    survivors = survivors + 1
+                end
+            end
+            scan = scan + 1
+        end
+        if candidates > 0 and survivors == 0 then
+            zoneFilterDropped = true
+            elsewhereFlags = {}
+        end
+    end
     local visibleTotal = 0
     local completed = 0
     local lastZone = nil
@@ -554,23 +822,32 @@ function TrackerFrame:BuildLines()
     -- would leave an empty "ELWYNN FOREST" label on screen for a zone whose
     -- only quest the player just shift-clicked away.
     local pendingZone = nil
+    local seenTitles = {}
 
     local index = 1
     while index <= total do
         local quest = quests[index]
         local zone = quest.zone
+        -- Runs for every quest in the log, before any filter: a quest hidden
+        -- from this window still advances, and its fold must not survive that
+        -- advance just because the player could not see it happen.
+        ForgetFoldOnProgress(quest)
+        if type(quest.title) == "string" then
+            seenTitles[quest.title] = true
+        end
         -- Untracked-and-hidden or somewhere else: both reach the same lazy
         -- header machinery below, so a zone filtered out entirely writes no
-        -- header row either.
-        local elsewhere = IsOtherZone(quest, zone, currentZoneKey, currentAreaId)
-        if currentZoneKey and not elsewhere and zone and UQ.NameKey(zone) ~= currentZoneKey then
+        -- header row either. Unstarted quests are not part of this filter:
+        -- their title remains visible and only their objectives auto-fold.
+        local elsewhere = elsewhereFlags[index] and true or false
+        if currentZoneKey and not zoneFilterDropped and not elsewhere and zone
+            and UQ.NameKey(zone) ~= currentZoneKey then
             -- Kept by the map rather than by its header. Counted only for
             -- /uq tracker, so a player asking why a Duskwood quest is in the
             -- window while they stand in Westfall gets an answer.
             mapKept = mapKept + 1
         end
-        local hidden = IsFolded(HIDDEN_QUESTS, quest.title or "")
-            or elsewhere or IsUnstartedQuest(quest)
+        local hidden = IsFolded(HIDDEN_QUESTS, quest.title or "") or elsewhere
 
         if groupByZone and zone and zone ~= lastZone then
             lastZone = zone
@@ -595,12 +872,12 @@ function TrackerFrame:BuildLines()
         end
 
         if not zoneFolded then
-            local red, green, blue
-            if quest.isComplete == 1 then
-                red, green, blue = COLOR_COMPLETE[1], COLOR_COMPLETE[2], COLOR_COMPLETE[3]
-            else
-                red, green, blue = Client.GetQuestLevelColor(quest.level)
-            end
+            -- Level-difficulty colour throughout, complete or not: it is the
+            -- player's answer to "is this worth my time", and a quest does
+            -- not stop being that level's quest the moment it is turned in.
+            -- The complete state is carried by the icon below instead of by
+            -- overwriting this colour to white.
+            local red, green, blue = Client.GetQuestLevelColor(quest.level)
             local tracked = false
             if watch then
                 tracked = watch:IsTracked(quest) and true or false
@@ -615,15 +892,33 @@ function TrackerFrame:BuildLines()
                 key = quest.title,
                 tracked = tracked,
             }
-            line.questRed, line.questGreen, line.questBlue = UQ.GetQuestColor(quest)
+            -- The dot identifies a quest against its objective dots on both
+            -- maps. A complete quest has none left to match, so it swaps to
+            -- the bundled complete-quest icon instead of the coloured dot
+            -- (Client.SetTrackerRowQuestMark).
+            if quest.isComplete == 1 then
+                line.questRed, line.questGreen, line.questBlue = 1, 1, 1
+                line.questTexture = Client.COMPLETE_QUEST_TEXTURE
+            else
+                line.questRed, line.questGreen, line.questBlue = UQ.GetQuestColor(quest)
+            end
             table.insert(lines, line)
 
-            local questFolded = IsFolded(COLLAPSED_QUESTS, quest.title or "")
-            -- A complete quest is one green title row and nothing else. Its
+            -- The automatic fold only decides for a quest the player has not
+            -- decided for themselves. Reading it as `manual or automatic`
+            -- instead would make the right-click below unusable on exactly the
+            -- rows it folds: unfolding one would be overruled by the automatic
+            -- answer on the very same redraw.
+            local questFolded = FoldChoice(COLLAPSED_QUESTS, quest.title or "")
+            if questFolded == nil then
+                questFolded = ShouldAutoCollapseQuest(quest)
+            end
+            -- A complete quest is one title row and nothing else. Its
             -- objectives are all satisfied by definition, so neither they nor a
             -- separate "ready to turn in" line carry information -- they only
-            -- make the window taller. The green title colour above is the whole
-            -- status signal.
+            -- make the window taller. The complete icon on the row is the
+            -- whole status signal; the title keeps its level-difficulty
+            -- colour.
             if showObjectives ~= "none" and not questFolded and quest.isComplete ~= 1
                 and (showObjectives == "all" or tracked) then
                 local objectives = quest.objectives or {}
@@ -656,8 +951,11 @@ function TrackerFrame:BuildLines()
         index = index + 1
     end
 
+    ForgetMissingMarks(seenTitles)
+
     self.currentZoneArea = currentAreaId
     self.mapKept = mapKept
+    self.zoneFilterDropped = zoneFilterDropped
     return lines, visibleTotal, completed
 end
 
@@ -801,7 +1099,16 @@ local function OnQuestRowClick(row, first)
     TrackerFrame.clicks = TrackerFrame.clicks + 1
     local button = Client.ResolveClickButton(first)
     if button == "RightButton" then
-        ToggleFolded(COLLAPSED_QUESTS, quest.title or "")
+        -- Toggles what the player is actually looking at, which is the
+        -- automatic answer when they have never folded this quest by hand.
+        -- The stored state then decides for this quest until its next
+        -- objective update, which drops it again (ForgetFoldOnProgress).
+        local title = quest.title or ""
+        local folded = FoldChoice(COLLAPSED_QUESTS, title)
+        if folded == nil then
+            folded = ShouldAutoCollapseQuest(quest)
+        end
+        SetFolded(COLLAPSED_QUESTS, title, not folded)
         TrackerFrame.dirty = true
         TrackerFrame:Refresh()
         return
@@ -918,6 +1225,14 @@ function TrackerFrame:Redraw(lines, questCount, completed)
             used[kind] = slot + 1
             local indent = RowIndent(kind)
             local height = RowHeight(kind)
+            -- The dot is set before the row is placed, not with the rest of
+            -- the quest-row wiring below: hiding it also collapses the label's
+            -- left inset, and PlaceTrackerRow is what turns that inset into
+            -- the label width the Fit() calls below measure against.
+            if kind == "quest" then
+                Client.SetTrackerRowQuestMark(row,
+                    line.questRed, line.questGreen, line.questBlue, line.questTexture)
+            end
             Client.PlaceTrackerRow(row, window, indent, top, width, height)
 
             local rowWidth = row.unrealQuestTextWidth or row.unrealQuestWidth or (width - indent)
@@ -933,8 +1248,6 @@ function TrackerFrame:Redraw(lines, questCount, completed)
 
             if kind == "quest" then
                 row.unrealQuestSubject = line.quest
-                Client.SetTrackerRowQuestMark(row,
-                    line.questRed, line.questGreen, line.questBlue)
                 Client.SetTrackerRowProgress(row, nil)
                 if not row.unrealQuestBound then
                     row.unrealQuestBound = true
@@ -1307,7 +1620,10 @@ function TrackerFrame:GetReport()
         groupByZone = Setting("trackerGroupByZone") and true or false,
         currentZoneOnly = Setting("trackerCurrentZoneOnly") and true or false,
         currentZoneArea = self.currentZoneArea,
+        currentZoneName = self.currentZoneName,
+        currentZoneHow = self.currentZoneHow,
         mapKept = self.mapKept,
+        zoneFilterDropped = self.zoneFilterDropped and true or false,
         hideUnstarted = Setting("trackerHideUnstartedQuests") and true or false,
         hideNativeWatch = Setting("trackerHideNativeWatch") and true or false,
         lines = self.totalLines,
