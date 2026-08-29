@@ -873,8 +873,17 @@ UQ_TEST_MAP_ZONE_FILES = {
     ["Thousand Needles"] = "ThousandNeedles",
 }
 UQ_TEST_MAP_ZOOMS = 0
+-- The two-argument form is documented here but has never been probed, so a
+-- test has to be able to ask what happens if this client ignores the zone
+-- argument. Modelled as "it degrades to the one-argument form" -- the
+-- continent is selected and no individual zone is, which is the shape the
+-- documentation gives the one-argument call -- rather than as a no-op,
+-- because a silently ignored argument is far likelier than a silently
+-- ignored call.
+UQ_TEST_MAP_ZONE_ZOOM_DEAD = false
 function SetMapZoom(continent, zone)
     UQ_TEST_MAP_ZOOMS = UQ_TEST_MAP_ZOOMS + 1
+    if UQ_TEST_MAP_ZONE_ZOOM_DEAD then zone = nil end
     UQ_TEST_MAP_CONTINENT = continent
     local list = SelectedZoneList()
     local name = zone and list and list[zone]
@@ -7090,6 +7099,92 @@ check("an incomplete quest is taken to its objectives, not to its turn-in",
     return mapContext:GetViewedZone() == 331
         and last ~= nil and string.find(last, 'Ashenvale', 1, true) ~= nil
         and string.find(last, 'objectives', 1, true) ~= nil
+end)()"""))
+
+rt.execute("""
+    -- Reported as "sometimes the right zone, sometimes the current one". The
+    -- pin pools hold whatever was drawn last, the redraw that reassigns them
+    -- runs on a 0.25s job, and this client leaves a frame's shown state true
+    -- after the fullscreen map closes -- so a leftover lit pin carrying the
+    -- quest id could be sitting in the pool at click time while the map is
+    -- showing an entirely different zone. The reveal used to ask FlashQuest
+    -- first and return the moment it said yes, which meant that leftover
+    -- decided whether the map moved at all.
+    UnrealQuest:GetModule('MapContext'):ReleaseParkedView(true)
+    UQ_TEST_TICK(0.5, 2)
+    local pins = UnrealQuest:GetModule('WorldMapPins')
+    UQTestStalePin = CreateFrame('Button', 'UQTestStalePin', WorldMapButton)
+    UQTestStalePin:SetFrameLevel(120)
+    UQTestStalePin:Show()
+    UQTestStalePin.unrealQuestQuest = { questId = 1088 }
+    pins.areaPool[table.getn(pins.areaPool) + 1] = UQTestStalePin
+    UQ_TEST_STALE_VIEW_BEFORE = UnrealQuest:GetModule('MapContext'):GetViewedZone()
+    UnrealQuestTrackerRowquest1.unrealQuestSubject = {
+        title = 'Gordunni Head Test Quest', questId = 1088, isComplete = 1, index = 994,
+    }
+    UQ_TEST_CTRL_DOWN = true
+    UnrealQuestTrackerRowquest1:GetScript('OnClick')()
+    UQ_TEST_CTRL_DOWN = false
+""")
+check("a leftover lit pin for the quest no longer stops the map being moved -- "
+      "the reported inconsistency", rt.eval("""(function()
+    local mapContext = UnrealQuest:GetModule('MapContext')
+    return UQ_TEST_STALE_VIEW_BEFORE == 12 and mapContext:GetViewedZone() == 406
+end)()"""))
+
+rt.execute("""
+    local pins = UnrealQuest:GetModule('WorldMapPins')
+    pins.areaPool[table.getn(pins.areaPool)] = nil
+    UQTestStalePin:Hide()
+    UnrealQuest:GetModule('MapContext'):ReleaseParkedView(true)
+    UQ_TEST_TICK(0.5, 2)
+""")
+
+rt.execute("""
+    -- SetMapZoom's two-argument form is documented, never probed. If it turns
+    -- out to do nothing here, the reveal must say so rather than announce a
+    -- zone it did not open.
+    UQ_TEST_MAP_ZONE_ZOOM_DEAD = true
+    UnrealQuestTrackerRowquest1.unrealQuestSubject = {
+        title = 'Gordunni Head Test Quest', questId = 1088, isComplete = 1, index = 993,
+    }
+    UQ_TEST_CTRL_DOWN = true
+    UnrealQuestTrackerRowquest1:GetScript('OnClick')()
+    UQ_TEST_CTRL_DOWN = false
+    UQ_TEST_MAP_ZONE_ZOOM_DEAD = false
+""")
+check("a view that refuses to move is reported honestly, never announced as opened",
+      rt.eval("""(function()
+    local mapContext = UnrealQuest:GetModule('MapContext')
+    local last = UQ_TEST_MESSAGES[table.getn(UQ_TEST_MESSAGES)]
+    return mapContext:GetViewedZone() == 12 and mapContext.parkedAreaId == nil
+        and last ~= nil and string.find(last, 'Stonetalon', 1, true) ~= nil
+        and string.find(last, "opened that zone's map", 1, true) == nil
+end)()"""))
+
+check("an empty zone-list read keeps the last good list instead of blanking the "
+      "viewed zone", rt.eval("""(function()
+    local client = UnrealQuest.Client
+    local before = client.GetMapZoneNames(2)
+    if type(before) ~= 'table' then return false end
+    local saved = UQ_TEST_MAP_ZONE_LIST
+    local savedKalimdor = UQ_TEST_MAP_ZONE_LIST_KALIMDOR
+    -- BOTH lists go empty: the documented transient is the client answering
+    -- nothing at all, not one continent answering and the other not.
+    UQ_TEST_MAP_ZONE_LIST = {}
+    UQ_TEST_MAP_ZONE_LIST_KALIMDOR = {}
+    client.InvalidateMapZoneNames()
+    local kept = client.GetMapZoneNames(2)
+    -- Same continent: the documented empty read must not lose the list.
+    local keptOk = type(kept) == 'table' and table.getn(kept) == table.getn(before)
+    -- Another continent: it must NOT be served that list under a new key.
+    UQ_TEST_MAP_CONTINENT = 1
+    local crossed = client.GetMapZoneNames(1)
+    UQ_TEST_MAP_CONTINENT = 2
+    UQ_TEST_MAP_ZONE_LIST = saved
+    UQ_TEST_MAP_ZONE_LIST_KALIMDOR = savedKalimdor
+    client.InvalidateMapZoneNames()
+    return keptOk and crossed == nil
 end)()"""))
 
 rt.execute("""

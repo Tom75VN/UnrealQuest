@@ -246,6 +246,25 @@ end
 -- open map to be the player's own zone. MapContext parks and hands back the
 -- view for exactly that reason; see its "Parked view" section.
 --
+-- ## Order: decide the zone, then redraw, then flash. Never flash first.
+--
+-- The first version of this asked FlashQuest whether the quest was already on
+-- screen and, if it was, returned without touching the view. That made the
+-- whole feature intermittent, and the reason is the pin pools. They hold
+-- whatever was drawn last, the redraw that would reassign them runs on a
+-- 0.25s job, and this client is recorded leaving a frame's shown state true
+-- after the fullscreen map closes (docs/WORLD-MAP-PINS-RECOVERY.md) -- so at
+-- the instant of a click the pools can still be holding lit pins for a zone
+-- that is no longer being viewed at all. A leftover pin from a previous
+-- reveal of the same quest answered "already on screen", the map was left
+-- wherever it was, and the same click on the same quest did the right thing
+-- or the wrong thing depending on whether a 0.25s job had run in between.
+--
+-- So the target zone is now decided from the static data first, the view is
+-- moved (or found already correct), the layer is redrawn for whatever view is
+-- open, and only then is the flash asked to raise something. The flash reports
+-- what is on screen; it no longer decides where the map points.
+--
 -- Still best-effort at every step. Opening the map is never a guaranteed
 -- success (Client.OpenWorldMap), the zone may be one the client will not list,
 -- and a quest with no unambiguous database match or one hidden from the map
@@ -336,17 +355,13 @@ function QuestClicks:RevealOnMap(quest)
         return
     end
     Client.OpenWorldMap()
-    local pins = UQ:GetModule("WorldMapPins")
-    -- Already on screen in the open view: raise it and say nothing. This is
-    -- the ordinary case for a quest being worked on in the zone the player is
-    -- standing in, and it must stay free of any map-view change.
-    if pins and pins:FlashQuest(quest.questId) then
-        return
-    end
 
     local complete = quest.isComplete == 1
     local areaIds = QuestAreaIds(quest, complete)
     if table.getn(areaIds) == 0 then
+        -- The data records no coordinate for this relation, so there is no
+        -- zone to go to and no pin that could exist for it either -- every
+        -- pin this addon draws is built from the same records.
         UQ:Print(UQ.L("REVEAL_NOTHING_KNOWN", tostring(title)))
         return
     end
@@ -355,36 +370,49 @@ function QuestClicks:RevealOnMap(quest)
     local shownArea, how = nil, nil
     if mapContext then
         shownArea, how = mapContext:ShowAreas(areaIds)
+        if how == "switched" then
+            -- Parked before the redraw below, not after: the redraw asks
+            -- MapContext what is being viewed, and the cold-start primer it
+            -- goes through must already know this view was moved on purpose.
+            mapContext:ParkView(shownArea)
+        end
+    end
+
+    -- Redraw for whatever view is open NOW, before anything is flashed. See
+    -- the order note in this file's header: without this the flash reads the
+    -- previous zone's leftovers.
+    local pins = UQ:GetModule("WorldMapPins")
+    local flashed = false
+    if pins then
+        pins.dirty = true
+        pins:Refresh()
+        flashed = pins:FlashQuest(quest.questId) and true or false
     end
 
     if how == "switched" then
-        -- The view now shows another zone, so the layers that measure from
-        -- the player's own position are off until it is handed back.
-        mapContext:ParkView(shownArea)
-        -- The pin layer redraws on its own 0.25s job, and the flash can only
-        -- raise pins that already exist -- so the rebuild is forced here
-        -- rather than pulsing an empty canvas and reporting failure for a
-        -- zone that is about to be full of markers.
-        if pins then
-            pins.dirty = true
-            pins:Refresh()
-            pins:FlashQuest(quest.questId)
-        end
         PrintRevealZoneOpened(complete, title, DescribeAreas({ shownArea }))
         return
     end
 
+    -- Nothing moved, because the map was already showing a zone this quest
+    -- has a recorded location in. A pin was raised there, or the quest is
+    -- hidden from the map and none exists -- either way "wrong zone" would be
+    -- false, so silence or the not-drawn line, never the elsewhere line.
     if how == "alreadyViewed" then
-        -- The map is on the right zone and nothing was drawn for the quest
-        -- anyway: hidden from the map by the player, or matched to a record
-        -- with no coordinate here. Saying "wrong zone" would be false.
-        PrintRevealNotDrawn(complete, title, DescribeAreas({ shownArea }))
+        if not flashed then
+            PrintRevealNotDrawn(complete, title, DescribeAreas({ shownArea }))
+        end
         return
     end
 
-    -- The client would not list the zone -- an instance, a battleground, an
-    -- area with no map of its own. Nothing can be drawn and nothing can be
-    -- shown, but the data still knows where to go, so the player is told.
+    -- The client would not show any of the zones -- an instance, a
+    -- battleground, an area with no map of its own -- or the view refused to
+    -- move. If something is on screen for the quest anyway, raising it was
+    -- the whole request and needs no commentary; otherwise the data still
+    -- knows where to go, so the player is told.
+    if flashed then
+        return
+    end
     local zones = DescribeAreas(areaIds)
     if zones then
         PrintRevealElsewhere(complete, title, zones)

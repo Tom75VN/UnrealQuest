@@ -401,8 +401,15 @@ end
 -- alone and correctly hides the layer.
 function MapContext:InspectPrimed()
     local report = self:Inspect()
+    -- Never while a view this module parked is standing. SetMapToCurrentZone
+    -- is precisely the call that would undo it, the cold signature is
+    -- reachable from a deliberately moved view (a continent layer reports
+    -- zoneIndex 0 and GetMapInfo nil by definition), and priming is a
+    -- once-per-session one-shot -- so letting it fire here would yank the map
+    -- home on some sessions and not others, which is exactly the kind of
+    -- intermittency it was added to remove.
     if (not report.zoneIndex or report.zoneIndex == 0) and not report.mapFile
-        and not self.primeAttempted then
+        and not self.primeAttempted and not self.parkedAreaId then
         self.primeAttempted = true
         if Client.SetMapToCurrentZone() then
             report = self:Inspect()
@@ -572,6 +579,7 @@ function MapContext:ShowAreas(areaIds)
         listIndex = listIndex + 1
     end
 
+    local moved = false
     local continentIndex = 1
     local continentTotal = table.getn(continents)
     while continentIndex <= continentTotal do
@@ -581,6 +589,7 @@ function MapContext:ShowAreas(areaIds)
             readable = Client.SetWorldMapView(continent)
             if readable then
                 selected = continent
+                moved = true
             end
         end
         if readable then
@@ -588,7 +597,17 @@ function MapContext:ShowAreas(areaIds)
             while index <= total do
                 local zoneIndex = self:ZoneIndexForArea(areaIds[index], continent)
                 if zoneIndex and Client.SetWorldMapView(continent, zoneIndex) then
-                    return areaIds[index], "switched"
+                    moved = true
+                    -- Read the view back rather than trust the call. The
+                    -- two-argument SetMapZoom is DOCUMENTED here, never
+                    -- probed, and pcall returning cleanly says only that it
+                    -- did not error. Reporting "opened that zone's map" over
+                    -- a map that never moved is worse than reporting that it
+                    -- could not be opened, so the claim is measured before it
+                    -- is made.
+                    if self:GetViewedZone() == areaIds[index] then
+                        return areaIds[index], "switched"
+                    end
                 end
                 index = index + 1
             end
@@ -596,7 +615,11 @@ function MapContext:ShowAreas(areaIds)
         continentIndex = continentIndex + 1
     end
 
-    if selected ~= startContinent then
+    -- Nothing was reached. Anything this pass moved has to be undone: the
+    -- search may have left the map on a continent layer, where
+    -- GetCurrentMapZone is 0 and the entire pin layer hides itself -- a far
+    -- worse outcome than the lookup simply failing.
+    if moved then
         Client.SetMapToCurrentZone()
     end
     return nil, "notListed"
@@ -681,8 +704,18 @@ function MapContext:ReleaseParkedView(force)
     if not force then
         -- The player navigated the map themselves, or the client moved it:
         -- the view is no longer this module's to hand back.
-        if self:GetViewedZone() ~= self.parkedAreaId then
+        --
+        -- Only a view that resolves to a DIFFERENT area counts. nil means the
+        -- question could not be answered this tick -- the client's zone list
+        -- is documented to come back empty at times -- and reading that as
+        -- "the player took over" would abandon the parked view permanently,
+        -- leaving the map on another zone with nothing left to hand it back.
+        local viewed = self:GetViewedZone()
+        if viewed and viewed ~= self.parkedAreaId then
             ForgetParkedView(self)
+            return false
+        end
+        if not viewed then
             return false
         end
         local now = Client.Now()

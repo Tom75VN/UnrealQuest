@@ -1101,8 +1101,19 @@ end
 -- stale list does not fail loudly -- it names the wrong zone confidently, and
 -- everything downstream then draws another zone's quests. The expiry bounds
 -- that to one interval, and re-reading it costs one table every few seconds.
-local mapZoneNames = {}
-local mapZoneNamesAt = {}
+-- ONE slot, tagged with the continent it was actually read under -- not a
+-- table keyed by continent, which is what this was and why it could hand back
+-- the wrong continent's names.
+--
+-- The distinction is the whole point. The client's reference says the
+-- continent argument is "required; not used" and that the list belongs to the
+-- SELECTED continent, so the argument a caller passes is a statement of
+-- intent, never a key the client honours. Storing the continent the list was
+-- read under, and refusing to serve it under any other, is the only shape in
+-- which the fallback below is safe.
+local mapZoneNames = nil
+local mapZoneNamesContinent = nil
+local mapZoneNamesAt = nil
 local MAP_ZONE_NAME_TTL = 5
 
 function Client.GetMapZoneNames(continent)
@@ -1110,10 +1121,9 @@ function Client.GetMapZoneNames(continent)
         return nil
     end
     local now = Client.Now()
-    local cached = mapZoneNames[continent]
-    if cached and now and mapZoneNamesAt[continent]
-        and now - mapZoneNamesAt[continent] < MAP_ZONE_NAME_TTL then
-        return cached
+    if mapZoneNames and mapZoneNamesContinent == continent
+        and now and mapZoneNamesAt and now - mapZoneNamesAt < MAP_ZONE_NAME_TTL then
+        return mapZoneNames
     end
     local zones = Resolve("GetMapZones")
     if not zones then
@@ -1122,13 +1132,19 @@ function Client.GetMapZoneNames(continent)
     local ok, list = pcall(CollectMapZones, zones, continent)
     if not ok or type(list) ~= "table" or table.getn(list) == 0 then
         -- The documentation is explicit that the list is empty until the map
-        -- subsystem has been touched this session, and MapContext primes
-        -- exactly that with SetMapToCurrentZone. Keep whatever was last read
-        -- rather than treating an empty answer as the truth.
-        return cached
+        -- subsystem has been touched this session. Keep whatever was last
+        -- read rather than treating an empty answer as the truth -- but only
+        -- while it describes the continent being asked about, because an
+        -- empty read right after a continent change is exactly when serving
+        -- the previous continent's names would be worst.
+        if mapZoneNamesContinent == continent then
+            return mapZoneNames
+        end
+        return nil
     end
-    mapZoneNames[continent] = list
-    mapZoneNamesAt[continent] = now
+    mapZoneNames = list
+    mapZoneNamesContinent = continent
+    mapZoneNamesAt = now
     return list
 end
 
@@ -1144,14 +1160,20 @@ function Client.GetMapZoneName(continent, zoneIndex)
     return name
 end
 
--- Drops the cached zone-name lists. Their key is a continent, but the client
--- fills them from whatever continent is SELECTED (its own reference: the
--- argument is "required; not used"), so every call that changes the selection
--- has to invalidate them or the next read hands one continent's names back
--- under another's key -- the exact failure the TTL above exists to bound.
+-- Forces the next read to go back to the client, without throwing away the
+-- last good list.
+--
+-- Discarding it is what an earlier version did, and it turned a documented
+-- transient into a visible fault: an empty GetMapZones read straight after a
+-- view change left GetMapZoneNames with nothing to fall back on, so
+-- MapContext could not name the viewed zone, the whole pin layer hid itself
+-- on a map that had just been moved on purpose, and the parked-view logic
+-- read the resulting nil as "the player navigated away". The list is kept and
+-- only its freshness is dropped; GetMapZoneNames above refuses to serve it
+-- under a different continent, which is the case discarding it was protecting
+-- against.
 function Client.InvalidateMapZoneNames()
-    mapZoneNames = {}
-    mapZoneNamesAt = {}
+    mapZoneNamesAt = nil
 end
 
 -- Selects what the world map is SHOWING. This is the only route this client
