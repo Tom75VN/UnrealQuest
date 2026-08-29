@@ -72,6 +72,12 @@ STRINGS.update({
     "ПКМ: свернуть цели",
     "右键：折叠目标",
 ),
+"TRACKER_ZONE_EMPTY": (
+    "No quests in this zone",
+    "Aucune quête dans cette zone",
+    "В этой зоне нет заданий",
+    "这个区域没有可做的任务",
+),
 "TRACKER_WARN_NO_POSITION": (
     "the tracker window could not report its position; it will reopen where it was",
     "la fenêtre de suivi n'a pas pu indiquer sa position ; elle rouvrira au même endroit",

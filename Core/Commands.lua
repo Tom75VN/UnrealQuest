@@ -1282,16 +1282,18 @@ local function ShowTracker(argument)
         -- settled on, which of MapContext:GetStandingZone's routes produced it
         -- (standing / standingSpan / parent / remembered / mapZone /
         -- unlistable), the area the map half is asking about, how many quests
-        -- it kept whose quest-log header names another zone, and whether the
-        -- filter was dropped entirely because it would have emptied the window
-        -- (Quest/TrackerFrame.lua, "The filter may narrow the window, never
-        -- empty it"). zonedrop=true is the signal that the zone the addon
-        -- settled on is wrong, not that the player has nothing to do here.
+        -- it kept whose quest-log header names another zone, and the two ways
+        -- the filter can hide everything (Quest/TrackerFrame.lua, "The filter
+        -- may narrow the window, never empty it"). zonedrop=true means the
+        -- zone the addon settled on could not be identified and the filter was
+        -- abandoned for that build; zoneempty=true means it was identified and
+        -- the player simply has nothing to do here.
         .. (report.currentZoneOnly and (" zone=" .. tostring(report.currentZoneName)
             .. " via=" .. tostring(report.currentZoneHow)
             .. " area=" .. tostring(report.currentZoneArea)
             .. " mapkept=" .. tostring(report.mapKept)
-            .. " zonedrop=" .. tostring(report.zoneFilterDropped)) or "")
+            .. " zonedrop=" .. tostring(report.zoneFilterDropped)
+            .. " zoneempty=" .. tostring(report.zoneFilterEmpty)) or "")
         .. " unstarted=" .. (report.hideUnstarted and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF")))
     Line("  " .. UQ.L("CMD_TRACKER_POSITION", tostring(report.point),
         string.format("%.0f, %.0f", report.x or 0, report.y or 0))

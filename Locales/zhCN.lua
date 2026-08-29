@@ -519,6 +519,7 @@ UQ.RegisterLocale("zhCN", {
     ["TRACKER_WARN_NO_POSITION"] = "追踪器窗口无法报告其位置；它将在原处重新打开",
     ["TRACKER_WARN_NO_WINDOW"] = "无法创建任务追踪器窗口；追踪器不可用",
     ["TRACKER_WARN_RESIZE_FAILED"] = "追踪器的角落调整柄无法开始调整大小；仍可用 /uq tracker width 和 /uq tracker height 设置尺寸",
+    ["TRACKER_ZONE_EMPTY"] = "这个区域没有可做的任务",
     ["WAYPOINT_DISTANCE_KILOYARDS"] = "%s 千",
     ["WAYPOINT_DISTANCE_YARDS"] = "%s 码",
     ["WORLDSCAN_NO_CHILDREN"] = "WorldFrame 未响应 GetChildren",

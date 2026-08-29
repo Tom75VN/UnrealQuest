@@ -527,6 +527,7 @@ UQ.RegisterLocale("frFR", {
     ["TRACKER_WARN_NO_POSITION"] = "la fenetre de suivi n'a pas pu indiquer sa position ; elle rouvrira au meme endroit",
     ["TRACKER_WARN_NO_WINDOW"] = "la fenetre de suivi de quetes n'a pas pu etre creee ; le suivi est indisponible",
     ["TRACKER_WARN_RESIZE_FAILED"] = "la poignee d'angle du suivi n'a pas pu lancer un redimensionnement ; sa taille reste reglable avec /uq tracker width et /uq tracker height",
+    ["TRACKER_ZONE_EMPTY"] = "Aucune quete dans cette zone",
     ["WAYPOINT_DISTANCE_YARDS"] = "%s m",
     ["WORLDSCAN_NO_CHILDREN"] = "WorldFrame n'a pas repondu a GetChildren",
     ["WORLDSCAN_NO_CHILD_COUNT"] = "WorldFrame n'a pas repondu a GetNumChildren",

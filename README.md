@@ -123,7 +123,7 @@ visible click.
 
 ## Version
 
-Current release: 0.2.1
+Current release: 0.2.3
 
 ## License
 

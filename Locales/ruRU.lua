@@ -567,6 +567,7 @@ UQ.RegisterLocale("ruRU", {
     ["TRACKER_WARN_NO_POSITION"] = "окно трекера не смогло сообщить свою позицию; оно откроется там же, где было",
     ["TRACKER_WARN_NO_WINDOW"] = "окно трекера заданий не удалось создать; трекер недоступен",
     ["TRACKER_WARN_RESIZE_FAILED"] = "угловой захват трекера не смог начать изменение размера; размер всё ещё можно задать через /uq tracker width и /uq tracker height",
+    ["TRACKER_ZONE_EMPTY"] = "В этой зоне нет заданий",
     ["WAYPOINT_DISTANCE_KILOYARDS"] = "%s тыс.",
     ["WAYPOINT_DISTANCE_YARDS"] = "%s м",
     ["WORLDSCAN_NO_CHILDREN"] = "WorldFrame не ответил на GetChildren",

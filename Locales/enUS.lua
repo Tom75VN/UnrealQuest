@@ -536,6 +536,7 @@ UQ.RegisterLocale("enUS", {
     ["TRACKER_WARN_NO_POSITION"] = "the tracker window could not report its position; it will reopen where it was",
     ["TRACKER_WARN_NO_WINDOW"] = "the quest tracker window could not be created; the tracker is unavailable",
     ["TRACKER_WARN_RESIZE_FAILED"] = "the tracker's corner grip could not start a resize; its size can still be set with /uq tracker width and /uq tracker height",
+    ["TRACKER_ZONE_EMPTY"] = "No quests in this zone",
     ["WAYPOINT_DISTANCE_KILOYARDS"] = "%s k",
     ["WAYPOINT_DISTANCE_YARDS"] = "%s yd",
     ["WORLDSCAN_NO_CHILDREN"] = "WorldFrame did not answer GetChildren",

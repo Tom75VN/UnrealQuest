@@ -497,22 +497,53 @@ end
 -- window goes blank, which reads to the player as the addon having died rather
 -- than as a filter being too strict.
 --
--- So BuildLines enforces the outcome directly, independently of why: if the
--- zone filter would hide every quest the player has not hidden themselves, it
--- is dropped for that build and the entire log is listed. This is deliberately
--- a guard on the symptom and not on any one cause, because it then also holds
--- for the causes that have not been found yet -- a room the bundled table does
--- not know at all, a client call that starts answering differently, a zone
--- name that resolves to nothing. /uq tracker reports it as zonedrop=true, so a
--- recurrence shows up as a diagnostic instead of as an empty window.
+-- So BuildLines enforces the outcome directly: the zone filter never leaves an
+-- empty window. But "empty" has two completely different causes, and the first
+-- shape of this guard could not tell them apart -- it listed the WHOLE log
+-- whenever nothing survived, which turned every ordinary walk through a zone
+-- the player has no quests in (a capital, a zone being crossed, a zone whose
+-- quests are all finished elsewhere) into an unfiltered tracker. That is the
+-- filter failing in the loud direction instead of the quiet one, and it is
+-- what this split fixes:
+--
+--   * the zone was IDENTIFIED and simply holds nothing to do -- routes
+--     "standing", "standingSpan" and "parent", each a positive identification
+--     of a real zone rather than a recovery from one that could not be made.
+--     The filter is right, so it stands, and the window says so in one row
+--     (TRACKER_ZONE_EMPTY, appended at the end of BuildLines) instead of
+--     going blank.
+--   * the zone could NOT be identified -- routes "remembered", "mapZone" and
+--     "unlistable", where the name is a guess, a stale memory or a map the
+--     player is merely browsing. Here an empty result is evidence about the
+--     GUESS, not about the zone, so the filter is dropped for that build and
+--     the entire log is listed.
+--
+-- The second half is still deliberately a guard on the symptom rather than on
+-- any one cause, so it keeps holding for causes not yet found -- a room the
+-- bundled table does not know at all, a client call that starts answering
+-- differently, a zone name that resolves to nothing. /uq tracker reports the
+-- two outcomes separately as zonedrop=true and zoneempty=true: the first says
+-- the zone the addon settled on is wrong, the second says the player has
+-- nothing to do where they are standing.
 
 local function MapContext()
     return UQ:GetModule("MapContext")
 end
 
--- Returns the normalized zone name and the resolved area ID for the map half.
--- Either may be nil independently: an unresolvable area only costs the map
--- question, and an unnamed zone disables the filter entirely.
+-- Which of GetStandingZone's routes are a positive identification of a real
+-- zone, as opposed to a recovery from one that could not be made. Only these
+-- three let an empty filter result stand as an answer about the ZONE -- see
+-- "The filter may narrow the window, never empty it" above.
+local PROVEN_ZONE_ROUTES = {
+    standing = true,
+    standingSpan = true,
+    parent = true,
+}
+
+-- Returns the normalized zone name, the resolved area ID for the map half, and
+-- the route the name was reached by. Each may be nil independently: an
+-- unresolvable area only costs the map question, and an unnamed zone disables
+-- the filter entirely.
 local function CurrentZone()
     if not Setting("trackerCurrentZoneOnly") then
         return nil
@@ -527,7 +558,7 @@ local function CurrentZone()
     if type(name) ~= "string" or name == "" then
         return nil
     end
-    return UQ.NameKey(name), areaId
+    return UQ.NameKey(name), areaId, how
 end
 
 -- True for a quest that is neither filed under the current zone nor visible on
@@ -795,7 +826,7 @@ function TrackerFrame:BuildLines()
     -- Refresh compares -- a draw-time-only gate leaves the signature identical
     -- and the window never repaints.
     local progressBars = Setting("trackerProgressBar") and true or false
-    local currentZoneKey, currentAreaId = CurrentZone()
+    local currentZoneKey, currentAreaId, currentZoneHow = CurrentZone()
     local mapKept = 0
     local quests = OrderQuestsCompleteLast(state:GetOrderedQuests(), groupByZone)
     local total = table.getn(quests)
@@ -807,6 +838,7 @@ function TrackerFrame:BuildLines()
     -- it was called inline in the drawing loop below.
     local elsewhereFlags = {}
     local zoneFilterDropped = false
+    local zoneFilterEmpty = false
     if currentZoneKey then
         local candidates = 0
         local survivors = 0
@@ -827,8 +859,16 @@ function TrackerFrame:BuildLines()
             scan = scan + 1
         end
         if candidates > 0 and survivors == 0 then
-            zoneFilterDropped = true
-            elsewhereFlags = {}
+            -- Two outcomes, decided by whether the zone was identified at all
+            -- rather than by how many quests survived. An identified zone that
+            -- holds nothing to do is the filter working, and answering it by
+            -- listing the whole log is the loudest possible way to be wrong.
+            if PROVEN_ZONE_ROUTES[currentZoneHow or ""] then
+                zoneFilterEmpty = true
+            else
+                zoneFilterDropped = true
+                elsewhereFlags = {}
+            end
         end
     end
     local visibleTotal = 0
@@ -972,9 +1012,20 @@ function TrackerFrame:BuildLines()
 
     ForgetMissingMarks(seenTitles)
 
+    -- One row rather than a blank body, so a correctly empty filter still
+    -- reads as a filter and not as the addon having died. Written as an
+    -- objective row because it is a plain indented line with no subject: the
+    -- draw loop's else-branch already clears the row's subject and progress
+    -- bar, so it needs no widget pool of its own.
+    if zoneFilterEmpty and visibleTotal == 0 then
+        AddLine(lines, "objective", UQ.L("TRACKER_ZONE_EMPTY"),
+            COLOR_ZONE[1], COLOR_ZONE[2], COLOR_ZONE[3])
+    end
+
     self.currentZoneArea = currentAreaId
     self.mapKept = mapKept
     self.zoneFilterDropped = zoneFilterDropped
+    self.zoneFilterEmpty = zoneFilterEmpty
     return lines, visibleTotal, completed
 end
 
@@ -1643,6 +1694,7 @@ function TrackerFrame:GetReport()
         currentZoneHow = self.currentZoneHow,
         mapKept = self.mapKept,
         zoneFilterDropped = self.zoneFilterDropped and true or false,
+        zoneFilterEmpty = self.zoneFilterEmpty and true or false,
         hideUnstarted = Setting("trackerHideUnstartedQuests") and true or false,
         hideNativeWatch = Setting("trackerHideNativeWatch") and true or false,
         lines = self.totalLines,

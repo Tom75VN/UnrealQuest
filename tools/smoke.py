@@ -1118,7 +1118,7 @@ for path in toc_files(os.path.join(ADDONS, "unrealQuest", "UnrealQuest.toc")):
 
 check("world data populated", rt.eval("UnrealQuestData ~= nil and UnrealQuestData.quests ~= nil"))
 
-check("namespace created", rt.eval("UnrealQuest ~= nil and UnrealQuest.version == '0.2.1'"))
+check("namespace created", rt.eval("UnrealQuest ~= nil and UnrealQuest.version == '0.2.3'"))
 check("slash command registered", rt.eval("SlashCmdList.UNREALQUEST == nil"),
       "should still be nil before init")
 
@@ -7782,16 +7782,57 @@ check("an unreadable zone list still tells a room from a zone",
 end)()"""))
 
 # The invariant that holds even when every route above is wrong: the zone
-# filter may narrow the window, never empty it. Simulated by handing the
-# tracker a confident answer that is a room -- the failure the routes above
-# exist to prevent, standing in for whichever new shape of it comes next.
-check("a wrong zone answer drops the filter instead of emptying the window",
+# filter may narrow the window, never leave it blank. There are two ways to
+# honour that and the tracker picks between them by asking whether the zone was
+# IDENTIFIED, not by how many quests survived -- listing the whole log whenever
+# nothing matches turns every ordinary walk through a quest-free zone into an
+# unfiltered tracker, which is the filter failing in the loudest direction.
+rt.execute("""
+    function UQ_TEST_TRACKER_NOTICE()
+        local index = 1
+        while getglobal('UnrealQuestTrackerRowobjective' .. index) do
+            local row = getglobal('UnrealQuestTrackerRowobjective' .. index)
+            if row:IsShown() and row.fontString.text
+                and string.find(row.fontString.text, 'No quests', 1, true) then
+                return true
+            end
+            index = index + 1
+        end
+        return false
+    end
+""")
+
+# An identified zone that simply holds nothing to do: the filter is right, so
+# it stands and the window says so in one row.
+check("an identified zone with nothing to do keeps the filter and says so",
       rt.eval("""(function()
     local tracker = UnrealQuest:GetModule('TrackerFrame')
     local mapContext = UnrealQuest:GetModule('MapContext')
     local realStanding = mapContext.GetStandingZone
     mapContext.GetStandingZone = function()
-        return 'Echo Ridge Mine', 34, 'standing'
+        return 'Loch Modan', 38, 'standing'
+    end
+    UQ_TEST_TRACKER_RESCAN()
+    local report = tracker:GetReport()
+    local nothing = UQ_TEST_TRACKER_HAS('Kobold') == false
+        and UQ_TEST_TRACKER_HAS('Blanchy') == false
+    local notice = UQ_TEST_TRACKER_NOTICE()
+    mapContext.GetStandingZone = realStanding
+    UQ_TEST_TRACKER_RESCAN()
+    return report.zoneFilterEmpty == true and report.zoneFilterDropped == false
+        and nothing == true and notice == true
+        and tracker:GetReport().zoneFilterEmpty == false
+end)()"""))
+
+# A zone the routes could only GUESS at: an empty result is evidence about the
+# guess, not about the zone, so the filter is abandoned and the log is listed.
+check("an unidentified zone drops the filter instead of emptying the window",
+      rt.eval("""(function()
+    local tracker = UnrealQuest:GetModule('TrackerFrame')
+    local mapContext = UnrealQuest:GetModule('MapContext')
+    local realStanding = mapContext.GetStandingZone
+    mapContext.GetStandingZone = function()
+        return 'Echo Ridge Mine', 34, 'remembered'
     end
     UQ_TEST_TRACKER_RESCAN()
     local dropped = tracker:GetReport().zoneFilterDropped
@@ -7802,6 +7843,7 @@ check("a wrong zone answer drops the filter instead of emptying the window",
         and UQ_TEST_TRACKER_HAS('Kobold') == true
     return dropped == true and whole == true and narrowsAgain == true
         and tracker:GetReport().zoneFilterDropped == false
+        and UQ_TEST_TRACKER_NOTICE() == false
 end)()"""))
 
 # A quest log header can itself be a subzone: the probe captured a log whose
