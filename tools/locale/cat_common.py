@@ -219,6 +219,38 @@ STRINGS.update({
     "у «%s» нет определённого идентификатора задания, поэтому его нельзя показать на карте",
     "“%s”没有解析出的任务 ID，因此无法在地图上显示",
 ),
+"REVEAL_TURN_IN_ZONE_OPENED": (
+    "'%s': hand it in in %s -- opened that zone's map",
+    "'%s' : à rendre en %s -- la carte de cette zone a été ouverte",
+    "«%s»: сдать в %s -- открыта карта этой зоны",
+    "“%s”：请在 %s 交任务 -- 已打开该区域的地图",
+),
+"REVEAL_OBJECTIVES_ZONE_OPENED": (
+    "'%s': its objectives are in %s -- opened that zone's map",
+    "'%s' : ses objectifs sont en %s -- la carte de cette zone a été ouverte",
+    "«%s»: цели находятся в %s -- открыта карта этой зоны",
+    "“%s”：其目标位于 %s -- 已打开该区域的地图",
+),
+"REVEAL_TURN_IN_NOT_DRAWN": (
+    "'%s': hand it in in %s -- the zone already on the map, but nothing is drawn "
+    "for it there (hidden from the map?)",
+    "'%s' : à rendre en %s -- la zone déjà affichée, mais rien n'y est dessiné "
+    "pour elle (masquée de la carte ?)",
+    "«%s»: сдать в %s -- эта зона уже открыта на карте, но ничего для него "
+    "там не отрисовано (скрыто с карты?)",
+    "“%s”：请在 %s 交任务 -- 地图已显示该区域，但那里没有为它绘制任何标记"
+    "（已从地图隐藏？）",
+),
+"REVEAL_OBJECTIVES_NOT_DRAWN": (
+    "'%s': its objectives are in %s -- the zone already on the map, but nothing is "
+    "drawn for them there (hidden from the map?)",
+    "'%s' : ses objectifs sont en %s -- la zone déjà affichée, mais rien n'y est "
+    "dessiné pour eux (masqués de la carte ?)",
+    "«%s»: цели находятся в %s -- эта зона уже открыта на карте, но "
+    "ничего для них там не отрисовано (скрыто с карты?)",
+    "“%s”：其目标位于 %s -- 地图已显示该区域，但那里没有为它们绘制任何标记"
+    "（已从地图隐藏？）",
+),
 "REVEAL_TURN_IN_ELSEWHERE": (
     "'%s': hand it in in %s -- not the zone currently shown on the map, so nothing "
     "could be flashed there",
@@ -402,6 +434,12 @@ STRINGS.update({
     "Replier automatiquement les quetes sans progression",
     "Автоматически сворачивать задания без прогресса",
     "自动折叠尚无进度的任务",
+),
+"SETTINGS_TRACKER_PROGRESS_BAR": (
+    "Show objective progress bars",
+    "Afficher les barres de progression des objectifs",
+    "Показывать полосы прогресса заданий",
+    "显示目标进度条",
 ),
 "SETTINGS_MINIMAP_CLAMP": (
     "Clamp off-view minimap markers to the edge",

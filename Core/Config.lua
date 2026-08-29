@@ -313,6 +313,10 @@ local defaults = {
     -- number to judge them by.
     trackerHideUnstartedQuests = true,
 
+    -- Draws a filled bar under an objective row whose text carries a
+    -- have/need counter, alongside the numeric text. On by default.
+    trackerProgressBar = true,
+
     -- The native five-quest panel is redundant while this window is up, and is
     -- restored the moment either this setting or trackerEnabled is turned off.
     trackerHideNativeWatch = true,

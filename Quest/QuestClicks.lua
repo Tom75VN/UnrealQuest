@@ -227,34 +227,59 @@ end
 -- (Quest/QuestLogButtons.lua) both call this rather than each having their
 -- own copy, so they cannot silently drift apart.
 --
--- Best-effort. Opens the map (never a guaranteed success -- see
--- Client.OpenWorldMap) and flashes the quest's own pin(s) through
--- Map/WorldMapPins.lua, which only ever flashes a pin that is ALREADY
--- rendered. A quest with no unambiguous database match, in the wrong zone, or
--- hidden from the map by the player has nothing to flash, and that is
--- reported rather than silently doing nothing -- the same honesty rule every
--- other capability in this addon follows.
+-- "There" is the quest's CURRENT relation: its turn-in once it is complete,
+-- its objectives while it is not. Those are routinely in different zones --
+-- the report this is shaped around is quest 1088, whose head drops in
+-- Ashenvale and is handed in at Sun Rock Retreat in the Stonetalon Mountains
+-- -- and the map opening on the zone the player happens to be standing in is
+-- exactly the wrong answer for a player asking where to go next.
+--
+-- So the map is taken to the zone. The world map pin layer already draws
+-- whichever zone the map is SHOWING rather than the zone the player is in
+-- (Map/WorldMapPins.lua, MapContext:GetViewedZone), so once the view moves,
+-- the pins for the relation appear there on their own and the flash has
+-- something to raise. Only the view had to change; nothing about the pin
+-- layer, and no foreign-zone coordinate transform, is involved.
+--
+-- Moving the view is not free: everything that measures from the player's own
+-- position -- minimap pins, the HUD waypoint, the rare alert -- needs the
+-- open map to be the player's own zone. MapContext parks and hands back the
+-- view for exactly that reason; see its "Parked view" section.
+--
+-- Still best-effort at every step. Opening the map is never a guaranteed
+-- success (Client.OpenWorldMap), the zone may be one the client will not list,
+-- and a quest with no unambiguous database match or one hidden from the map
+-- has nothing to flash. Each of those is reported rather than silently doing
+-- nothing -- the same honesty rule every other capability in this addon
+-- follows.
 
--- Names every zone the static data records a location in for this quest's
--- CURRENT relation (finisher if complete, objective otherwise), regardless of
--- which zone the player is standing in or the map is currently viewing.
--- Database:GetQuestAreaIds carries none of GetQuestLocations' current-zone
--- filter, so this can answer "which zone" even when nothing can be drawn.
--- Returns nil when the data names none (an unmatched quest, or one whose
--- bundled record simply has no coordinate for this relation at all -- 174 of
--- 4433 quests have no `end` relation, see Database:GetQuestLocations).
-local function DescribeQuestZones(quest)
+-- Every area the static data records for this quest's current relation
+-- (finisher if complete, objective otherwise), ordered by Database so the
+-- first entry is the zone with the most recorded spawns. Carries none of
+-- GetQuestLocations' current-zone filter, so it answers "which zone" even
+-- when nothing can be drawn in the one on screen. Empty for an unmatched
+-- quest, and for one whose bundled record has no coordinate for this relation
+-- at all -- 174 of 4433 quests have no `end` relation, see
+-- Database:GetQuestLocations.
+local function QuestAreaIds(quest, complete)
     local database = Database()
     if not database or type(quest.questId) ~= "number" then
-        return nil
+        return {}
     end
-    local areaIds = database:GetQuestAreaIds(quest.questId, quest.isComplete == 1)
-    local total = table.getn(areaIds)
-    if total == 0 then
+    return database:GetQuestAreaIds(quest.questId, complete)
+end
+
+-- Names the areas, in the order given, as one comma-separated string. Returns
+-- nil when none of them has a name, so the caller can tell "the data says
+-- nowhere" from "the data says here".
+local function DescribeAreas(areaIds)
+    local database = Database()
+    if not database or type(areaIds) ~= "table" then
         return nil
     end
     local names = {}
     local index = 1
+    local total = table.getn(areaIds)
     while index <= total do
         local name = database:GetZoneName(areaIds[index])
         if type(name) == "string" and name ~= "" then
@@ -268,6 +293,39 @@ local function DescribeQuestZones(quest)
     return table.concat(names, ", ")
 end
 
+-- Each outcome below is two whole sentences -- one for a complete quest, one
+-- for a quest still being worked on -- rather than one sentence with a
+-- fragment slotted into the middle of it, because a language that inflects
+-- around that fragment cannot be built out of one.
+--
+-- Written out as six literal UQ.L calls rather than looked up from a table of
+-- key names: tools/locale/gen_locales.py finds a string's call sites by
+-- scanning for the literal, and a key it cannot see is reported as an unused
+-- catalog entry -- which is exactly the signal that catches a real typo.
+local function PrintRevealZoneOpened(complete, title, zone)
+    if complete then
+        UQ:Print(UQ.L("REVEAL_TURN_IN_ZONE_OPENED", tostring(title), zone))
+    else
+        UQ:Print(UQ.L("REVEAL_OBJECTIVES_ZONE_OPENED", tostring(title), zone))
+    end
+end
+
+local function PrintRevealNotDrawn(complete, title, zone)
+    if complete then
+        UQ:Print(UQ.L("REVEAL_TURN_IN_NOT_DRAWN", tostring(title), zone))
+    else
+        UQ:Print(UQ.L("REVEAL_OBJECTIVES_NOT_DRAWN", tostring(title), zone))
+    end
+end
+
+local function PrintRevealElsewhere(complete, title, zones)
+    if complete then
+        UQ:Print(UQ.L("REVEAL_TURN_IN_ELSEWHERE", tostring(title), zones))
+    else
+        UQ:Print(UQ.L("REVEAL_OBJECTIVES_ELSEWHERE", tostring(title), zones))
+    end
+end
+
 function QuestClicks:RevealOnMap(quest)
     if not quest then
         return
@@ -279,26 +337,57 @@ function QuestClicks:RevealOnMap(quest)
     end
     Client.OpenWorldMap()
     local pins = UQ:GetModule("WorldMapPins")
+    -- Already on screen in the open view: raise it and say nothing. This is
+    -- the ordinary case for a quest being worked on in the zone the player is
+    -- standing in, and it must stay free of any map-view change.
     if pins and pins:FlashQuest(quest.questId) then
         return
     end
-    -- Nothing is currently rendered for it -- most often because its
-    -- objective or turn-in is not in the zone the map is presently viewing,
-    -- the addon's map layer only ever draws in the player's own uniquely
-    -- resolved current area (docs/CLIENT-COMPATIBILITY.md, "Area-ID join
-    -- scope"). A pin cannot be faked into that other zone, but the static
-    -- data can still be asked WHICH zone, so the player is told where to go
-    -- even though nothing was drawn.
-    local zones = DescribeQuestZones(quest)
-    if zones then
-        -- Two whole sentences rather than a shared one with the verb swapped
-        -- in: a language that inflects around it cannot be built from a
-        -- fragment slotted into the middle of another string.
-        if quest.isComplete == 1 then
-            UQ:Print(UQ.L("REVEAL_TURN_IN_ELSEWHERE", tostring(title), zones))
-        else
-            UQ:Print(UQ.L("REVEAL_OBJECTIVES_ELSEWHERE", tostring(title), zones))
+
+    local complete = quest.isComplete == 1
+    local areaIds = QuestAreaIds(quest, complete)
+    if table.getn(areaIds) == 0 then
+        UQ:Print(UQ.L("REVEAL_NOTHING_KNOWN", tostring(title)))
+        return
+    end
+
+    local mapContext = UQ:GetModule("MapContext")
+    local shownArea, how = nil, nil
+    if mapContext then
+        shownArea, how = mapContext:ShowAreas(areaIds)
+    end
+
+    if how == "switched" then
+        -- The view now shows another zone, so the layers that measure from
+        -- the player's own position are off until it is handed back.
+        mapContext:ParkView(shownArea)
+        -- The pin layer redraws on its own 0.25s job, and the flash can only
+        -- raise pins that already exist -- so the rebuild is forced here
+        -- rather than pulsing an empty canvas and reporting failure for a
+        -- zone that is about to be full of markers.
+        if pins then
+            pins.dirty = true
+            pins:Refresh()
+            pins:FlashQuest(quest.questId)
         end
+        PrintRevealZoneOpened(complete, title, DescribeAreas({ shownArea }))
+        return
+    end
+
+    if how == "alreadyViewed" then
+        -- The map is on the right zone and nothing was drawn for the quest
+        -- anyway: hidden from the map by the player, or matched to a record
+        -- with no coordinate here. Saying "wrong zone" would be false.
+        PrintRevealNotDrawn(complete, title, DescribeAreas({ shownArea }))
+        return
+    end
+
+    -- The client would not list the zone -- an instance, a battleground, an
+    -- area with no map of its own. Nothing can be drawn and nothing can be
+    -- shown, but the data still knows where to go, so the player is told.
+    local zones = DescribeAreas(areaIds)
+    if zones then
+        PrintRevealElsewhere(complete, title, zones)
     else
         UQ:Print(UQ.L("REVEAL_NOTHING_KNOWN", tostring(title)))
     end

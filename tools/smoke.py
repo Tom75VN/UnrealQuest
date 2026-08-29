@@ -816,7 +816,8 @@ UQ_TEST_MAP_FILE = "ElwynnForest"
 UQ_TEST_ZONE_NAME = "Elwynn Forest"
 UQ_TEST_SUBZONE_NAME = "Goldshire"
 function GetMapInfo() return UQ_TEST_MAP_FILE, 1, 1 end
-function GetCurrentMapContinent() return 2 end
+UQ_TEST_MAP_CONTINENT = 2
+function GetCurrentMapContinent() return UQ_TEST_MAP_CONTINENT end
 -- The zone list the client loads for the selected continent, and the index
 -- into it: what the map is SHOWING, independent of where the player stands.
 -- UQ_TEST_MAP_ZONE_NAME defaults to the player's zone and is set apart from it
@@ -825,10 +826,25 @@ UQ_TEST_MAP_ZONE_LIST = {
     "Elwynn Forest", "Tirisfal Glades", "The Barrens", "Durotar", "Westfall",
 }
 UQ_TEST_MAP_ZONE_NAME = nil
+-- Kalimdor's list, kept separate because the client's own reference says
+-- GetMapZones IGNORES its argument and answers for the SELECTED continent --
+-- so a zone on the other continent is unreachable until SetMapZoom has been
+-- there, and an addon that loops both continents reading lists without moving
+-- (pfQuest does exactly that) silently reads one continent twice.
+UQ_TEST_MAP_ZONE_LIST_KALIMDOR = {
+    "Ashenvale", "Stonetalon Mountains", "Thousand Needles",
+}
+local function SelectedZoneList()
+    if UQ_TEST_MAP_CONTINENT == 1 then
+        return UQ_TEST_MAP_ZONE_LIST_KALIMDOR
+    end
+    return UQ_TEST_MAP_ZONE_LIST
+end
 local unpackList = unpack or table.unpack
 function GetMapZones(continent)
-    if not UQ_TEST_MAP_ZONE_LIST then return end
-    return unpackList(UQ_TEST_MAP_ZONE_LIST)
+    local list = SelectedZoneList()
+    if not list then return end
+    return unpackList(list)
 end
 -- Documented: GetCurrentMapZone returns 0 specifically when no individual zone
 -- is selected, i.e. the player has zoomed the world map out to a continent.
@@ -838,10 +854,44 @@ UQ_TEST_CONTINENT_VIEW = false
 function GetCurrentMapZone()
     if UQ_TEST_CONTINENT_VIEW then return 0 end
     local wanted = UQ_TEST_MAP_ZONE_NAME or UQ_TEST_ZONE_NAME
-    for index, name in ipairs(UQ_TEST_MAP_ZONE_LIST or {}) do
+    for index, name in ipairs(SelectedZoneList() or {}) do
         if name == wanted then return index end
     end
     return 8
+end
+
+-- The two documented forms of SetMapZoom, modelled with their asymmetry
+-- intact: one argument selects the continent LAYER and leaves no individual
+-- zone selected (GetCurrentMapZone 0 above), two select a zone by 1-based
+-- index into the list GetMapZones has loaded. MapContext:ShowAreas is written
+-- around exactly that -- it reads the list back rather than assuming an index,
+-- and selects a continent first only when it needs a list it does not have.
+UQ_TEST_MAP_ZONE_FILES = {
+    ["Elwynn Forest"] = "ElwynnForest", ["Tirisfal Glades"] = "Tirisfal",
+    ["The Barrens"] = "Barrens", ["Durotar"] = "Durotar", ["Westfall"] = "Westfall",
+    ["Ashenvale"] = "Ashenvale", ["Stonetalon Mountains"] = "StonetalonMountains",
+    ["Thousand Needles"] = "ThousandNeedles",
+}
+UQ_TEST_MAP_ZOOMS = 0
+function SetMapZoom(continent, zone)
+    UQ_TEST_MAP_ZOOMS = UQ_TEST_MAP_ZOOMS + 1
+    UQ_TEST_MAP_CONTINENT = continent
+    local list = SelectedZoneList()
+    local name = zone and list and list[zone]
+    if not name then
+        UQ_TEST_CONTINENT_VIEW = true
+        return
+    end
+    UQ_TEST_CONTINENT_VIEW = false
+    UQ_TEST_MAP_ZONE_NAME = name
+    UQ_TEST_MAP_FILE = UQ_TEST_MAP_ZONE_FILES[name] or name
+end
+function SetMapToCurrentZone()
+    UQ_TEST_MAP_CONTINENT = 2
+    UQ_TEST_CONTINENT_VIEW = false
+    UQ_TEST_MAP_ZONE_NAME = nil
+    local file = UQ_TEST_MAP_ZONE_FILES[UQ_TEST_REAL_ZONE_NAME or UQ_TEST_ZONE_NAME]
+    if file then UQ_TEST_MAP_FILE = file end
 end
 
 -- PlaySound is this client's ONLY audio route: there is no PlaySoundFile among
@@ -6312,6 +6362,16 @@ rt.execute("""
     tracker:Refresh()
 """)
 
+check("a complete quest sinks past OTHER zones too, to the bottom of the window, "
+      "under its own zone header written again there", rt.eval("""
+    UnrealQuestTrackerRowzone1.fontString.text == 'Elwynn Forest'
+        and string.find(UnrealQuestTrackerRowquest1.fontString.text, '[6] Kobold', 1, true) == 1
+        and UnrealQuestTrackerRowzone2.fontString.text == 'Westfall'
+        and string.find(UnrealQuestTrackerRowquest2.fontString.text, 'Blanchy', 1, true) ~= nil
+        and UnrealQuestTrackerRowzone3.fontString.text == 'Elwynn Forest'
+        and string.find(UnrealQuestTrackerRowquest3.fontString.text, 'Sharptalon', 1, true) ~= nil
+"""))
+
 check("the native watch panel is hidden while the tracker is up",
       rt.eval("QuestWatchFrame:IsShown() == false"))
 
@@ -6678,9 +6738,13 @@ check("shift + click untracks and removes the quest from the tracker",
       rt.eval("UnrealQuestDB.trackerHiddenQuests['Kobold Camp Cleanup'] ~= nil"))
 check("shift + click calls the same Tracker:Toggle the quest log's Track/Untrack button "
       "uses, so it also untracks on the client's own watch list", rt.eval("IsQuestWatched(2) == false"))
+# Elwynn Forest's remaining quest is complete, so the whole zone block is now
+# the complete tail at the bottom of the window: Westfall's unfinished quest
+# comes first and Elwynn's header is written again below it.
 check("Elwynn Forest's header survives: Sharptalon's Claw is still visible under it",
-      rt.eval("""UnrealQuestTrackerRowzone1.fontString.text == 'Elwynn Forest'
-        and UnrealQuestTrackerRowquest1.unrealQuestSubject.titleKey == 'sharptalonsclaw'"""))
+      rt.eval("""UnrealQuestTrackerRowzone1.fontString.text == 'Westfall'
+        and UnrealQuestTrackerRowzone2.fontString.text == 'Elwynn Forest'
+        and UnrealQuestTrackerRowquest2.unrealQuestSubject.titleKey == 'sharptalonsclaw'"""))
 
 rt.execute("""
     -- Toggle only hides a quest that WAS tracked (untracking it): a fresh
@@ -6692,11 +6756,15 @@ rt.execute("""
     UnrealQuest:GetModule('TrackerFrame').dirty = true
     UnrealQuest:GetModule('TrackerFrame'):Refresh()
     UQ_TEST_SHIFT_DOWN = true
-    UnrealQuestTrackerRowquest1:GetScript('OnClick')()
+    -- Row 2: complete quests sit at the bottom of the window, so Westfall's
+    -- unfinished Poor Old Blanchy holds row 1 and Sharptalon's Claw row 2.
+    UnrealQuestTrackerRowquest2:GetScript('OnClick')()
     UQ_TEST_SHIFT_DOWN = false
 """)
 check("hiding every quest in a zone drops that zone's header too, rather than leaving it "
-      "empty", rt.eval("UnrealQuestTrackerRowzone1.fontString.text == 'Westfall'"))
+      "empty", rt.eval("""UnrealQuestTrackerRowzone1.fontString.text == 'Westfall'
+        and (UnrealQuestTrackerRowzone2 == nil
+            or UnrealQuestTrackerRowzone2:IsShown() == false)"""))
 
 rt.execute("SlashCmdList.UNREALQUEST('tracker unhideall')")
 check("/uq tracker unhideall brings every untracked-and-hidden quest back", rt.eval("""(function()
@@ -6848,15 +6916,22 @@ check("GetQuestAreaIds names a finisher's zone even outside GetQuestLocations' "
         if record and record['end'] ~= nil then
             local areas = db:GetQuestAreaIds(id, true)
             if table.getn(areas) > 0 then
-                local hasOther, hasTwelve = false, false
+                -- "Out of view" here also has to mean out of REACH: a zone
+                -- the client lists is now opened rather than described, so a
+                -- target in one would exercise the other branch. Anything in
+                -- UQ_TEST_MAP_ZONE_LIST is therefore excluded.
+                local listed = {}
+                for _, name in ipairs(UQ_TEST_MAP_ZONE_LIST) do listed[name] = true end
+                local hasOther, hasTwelve, hasListed = false, false, false
                 for _, areaId in ipairs(areas) do
                     if areaId == 12 then hasTwelve = true
                     else
                         local name = db:GetZoneName(areaId)
+                        if name and listed[name] then hasListed = true end
                         if name then hasOther = true; zoneName = name end
                     end
                 end
-                if hasOther and not hasTwelve then target = id break end
+                if hasOther and not hasTwelve and not hasListed then target = id break end
             end
         end
     end
@@ -6884,6 +6959,149 @@ check("ctrl + click on a complete quest whose turn-in is out of view names the z
     return last ~= nil and string.find(last, 'hand it in', 1, true) ~= nil
         and string.find(last, UQ_TEST_ZONE_HINT_NAME, 1, true) ~= nil
 end)()"""))
+
+check("a complete quest whose turn-in is in a zone the client lists is found for "
+      "the reveal to open", rt.eval("""(function()
+    -- The reported case, in the shape the mock can reach: Westfall (area 40)
+    -- stands in for the Stonetalon Mountains, a zone the player is not in and
+    -- the client does list. Elwynn (12) must not appear at all, so nothing can
+    -- be flashed in the open view and the reveal has to move it.
+    local db = UnrealQuest:GetModule('Database')
+    for id = 1, 9000 do
+        local record = db:GetQuest(id)
+        if record and record['end'] ~= nil then
+            local areas = db:GetQuestAreaIds(id, true)
+            local hasWestfall, hasTwelve = false, false
+            for _, areaId in ipairs(areas) do
+                if areaId == 12 then hasTwelve = true end
+                if areaId == 40 then hasWestfall = true end
+            end
+            if hasWestfall and not hasTwelve then
+                UQ_TEST_REVEAL_TARGET = id
+                return areas[1] == 40 and table.getn(db:GetQuestLocations(id, true, 12, 8)) == 0
+            end
+        end
+    end
+    return false
+end)()"""))
+
+rt.execute("""
+    UQ_TEST_REVEAL_SAVED = { UQ_TEST_MAP_FILE, UQ_TEST_MAP_ZONE_NAME }
+    UnrealQuestTrackerRowquest1.unrealQuestSubject = {
+        title = 'Turn In Elsewhere Test Quest', questId = UQ_TEST_REVEAL_TARGET,
+        isComplete = 1, index = 997,
+    }
+    UQ_TEST_CTRL_DOWN = true
+    UnrealQuestTrackerRowquest1:GetScript('OnClick')()
+    UQ_TEST_CTRL_DOWN = false
+""")
+check("ctrl + click on a complete quest takes the map to the turn-in's zone rather "
+      "than leaving it on the player's own -- the reported bug: quest 1088, looted "
+      "in Ashenvale, handed in in the Stonetalon Mountains", rt.eval("""(function()
+    local mapContext = UnrealQuest:GetModule('MapContext')
+    local last = UQ_TEST_MESSAGES[table.getn(UQ_TEST_MESSAGES)]
+    return mapContext:GetViewedZone() == 40
+        and last ~= nil and string.find(last, 'Westfall', 1, true) ~= nil
+        and string.find(last, "opened that zone's map", 1, true) ~= nil
+end)()"""))
+check("the moved view is remembered, because the layers that measure from the "
+      "player's own position are off while it is elsewhere",
+      rt.eval("UnrealQuest:GetModule('MapContext').parkedAreaId == 40"))
+check("the world map layer redraws for the zone the reveal opened",
+      rt.eval("UnrealQuestDB.mapDiagnostics.areaId == 40"))
+
+rt.execute("""
+    -- The player takes the view over with the zone dropdown. The parked state
+    -- has to be dropped, not acted on: putting the map back now would overrule
+    -- a deliberate choice.
+    UQ_TEST_MAP_FILE = "Tirisfal"
+    UQ_TEST_MAP_ZONE_NAME = "Tirisfal Glades"
+    UQ_TEST_TICK(0.5, 4)
+""")
+check("a view the player moved themselves is released, never overruled",
+      rt.eval("""(function()
+    return UnrealQuest:GetModule('MapContext').parkedAreaId == nil
+        and UQ_TEST_MAP_ZONE_NAME == 'Tirisfal Glades'
+end)()"""))
+
+rt.execute("""
+    -- Park it again and age it into the travelled case: the zone the player
+    -- was standing in when the view was parked is no longer the zone they are
+    -- in, so the map goes back to them.
+    local mapContext = UnrealQuest:GetModule('MapContext')
+    SetMapZoom(2, 5)
+    mapContext:ParkView(40)
+    mapContext.parkedZoneName = 'Somewhere The Player Has Left'
+    UQ_TEST_TICK(0.5, 4)
+""")
+check("travelling hands the view back to the player's own zone", rt.eval("""(function()
+    local mapContext = UnrealQuest:GetModule('MapContext')
+    return mapContext.parkedAreaId == nil and mapContext:GetViewedZone() == 12
+end)()"""))
+
+rt.execute("""
+    -- The report this whole section exists for, with its real ids: quest 1088
+    -- drops Hordanius Brailhand's Head from a unit in Ashenvale (area 331) and
+    -- is handed in at Sun Rock Retreat in the Stonetalon Mountains (area 406).
+    -- Neither is on the continent the mock player is standing on, so reaching
+    -- it costs a continent selection first -- the step GetMapZones' ignored
+    -- argument makes mandatory.
+    UnrealQuestTrackerRowquest1.unrealQuestSubject = {
+        title = 'Gordunni Head Test Quest', questId = 1088, isComplete = 1, index = 996,
+    }
+    UQ_TEST_CTRL_DOWN = true
+    UnrealQuestTrackerRowquest1:GetScript('OnClick')()
+    UQ_TEST_CTRL_DOWN = false
+""")
+check("the reported quest's turn-in and objective zones are the two the report "
+      "names", rt.eval("""(function()
+    local db = UnrealQuest:GetModule('Database')
+    local ending = db:GetQuestAreaIds(1088, true)
+    local objective = db:GetQuestAreaIds(1088, false)
+    return table.getn(ending) == 1 and ending[1] == 406
+        and table.getn(objective) == 1 and objective[1] == 331
+end)()"""))
+check("the reveal crosses the continent boundary to reach the turn-in's zone",
+      rt.eval("""(function()
+    local mapContext = UnrealQuest:GetModule('MapContext')
+    local last = UQ_TEST_MESSAGES[table.getn(UQ_TEST_MESSAGES)]
+    return mapContext:GetViewedZone() == 406 and GetCurrentMapContinent() == 1
+        and mapContext.parkedAreaId == 406
+        and last ~= nil and string.find(last, 'Stonetalon', 1, true) ~= nil
+end)()"""))
+
+rt.execute("""
+    -- Same quest, not yet complete: the objectives are the relation, so the
+    -- map goes to Ashenvale instead -- on the same continent this time, so no
+    -- continent selection is needed at all.
+    UnrealQuest:GetModule('MapContext'):ReleaseParkedView(true)
+    UQ_TEST_MAP_ZOOMS = 0
+    UnrealQuestTrackerRowquest1.unrealQuestSubject = {
+        title = 'Gordunni Head Test Quest', questId = 1088, index = 995,
+    }
+    UQ_TEST_CTRL_DOWN = true
+    UnrealQuestTrackerRowquest1:GetScript('OnClick')()
+    UQ_TEST_CTRL_DOWN = false
+""")
+check("an incomplete quest is taken to its objectives, not to its turn-in",
+      rt.eval("""(function()
+    local mapContext = UnrealQuest:GetModule('MapContext')
+    local last = UQ_TEST_MESSAGES[table.getn(UQ_TEST_MESSAGES)]
+    return mapContext:GetViewedZone() == 331
+        and last ~= nil and string.find(last, 'Ashenvale', 1, true) ~= nil
+        and string.find(last, 'objectives', 1, true) ~= nil
+end)()"""))
+
+rt.execute("""
+    UnrealQuest:GetModule('MapContext'):ReleaseParkedView(true)
+    UQ_TEST_MAP_FILE = UQ_TEST_REVEAL_SAVED[1]
+    UQ_TEST_MAP_ZONE_NAME = UQ_TEST_REVEAL_SAVED[2]
+    UQ_TEST_MAP_CONTINENT = 2
+    UnrealQuest:GetModule('WorldMapPins').dirty = true
+    UQ_TEST_TICK(0.5, 4)
+""")
+check("the map is back on the player's own zone once the reveals are done",
+      rt.eval("UnrealQuest:GetModule('MapContext'):GetViewedZone() == 12"))
 
 rt.execute("""
     UnrealQuest:GetModule('TrackerFrame').dirty = true
@@ -7103,12 +7321,16 @@ check("quest titles use the label's measured width before being shortened", rt.e
         end
         index = index + 1
     end
+    -- Read the row while the quest is still in the log: rows are reused, so
+    -- the removal below hands this one to whichever quest takes its place --
+    -- it is only the last row drawn that keeps its old text after a redraw.
+    local fits = row ~= nil and row.fontString.text == '[9] ' .. title
+        and row.fontString:GetStringWidth() <= row.unrealQuestTextWidth
     table.remove(UQ_TEST_LOG)
     UnrealQuest:GetModule('QuestState'):Scan()
     tracker.dirty = true
     tracker:Refresh()
-    return row ~= nil and row.fontString.text == '[9] ' .. title
-        and row.fontString:GetStringWidth() <= row.unrealQuestTextWidth
+    return fits
 end)()"""))
 
 check("hovering a quest row shows an accent-tinted overlay that exactly covers the row",

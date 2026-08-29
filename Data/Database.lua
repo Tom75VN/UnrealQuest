@@ -1487,15 +1487,22 @@ function Database:GetQuestLocations(questId, isComplete, areaId, limit)
 end
 
 -- Every distinct area a quest's objective or finisher relation has a recorded
--- coordinate in, WITHOUT GetQuestLocations' current-zone filter. This cannot
--- place a pin -- the map layer only ever draws in the player's own uniquely
--- resolved current area -- but it answers a narrower, honestly-answerable
+-- coordinate in, WITHOUT GetQuestLocations' current-zone filter. It answers a
 -- question a pin cannot: which zone(s) does the static data say this quest's
--- objectives or turn-in are actually in, so a caller can at least NAME the
--- zone to travel to when nothing is renderable in the current view. Same
--- relation-walking shape as GetQuestLocations (unit/object/area-trigger direct
--- sources, plus item sources), traversed the same way so the two can never
--- disagree about what "this quest's locations" means.
+-- objectives or turn-in are actually in, whatever the map happens to be
+-- showing. Callers use it both to NAME the zone to travel to and to take the
+-- world map there (Map/MapContext.lua ShowAreas). Same relation-walking shape
+-- as GetQuestLocations (unit/object/area-trigger direct sources, plus item
+-- sources), traversed the same way so the two can never disagree about what
+-- "this quest's locations" means.
+--
+-- Ordered most-recorded-spawns first, then by area id. The walk itself reaches
+-- the relation tables through `pairs`, whose order Lua does not define, so
+-- without this the list came back in a different order run to run -- fine
+-- while the only consumer joined the names into one sentence, not fine now
+-- that the first entry decides which zone the map is taken to. Spawn count is
+-- the tiebreak rather than something arbitrary because a quest whose mobs are
+-- mostly in one zone and stray into a second should open the first.
 function Database:GetQuestAreaIds(questId, isComplete)
     if not db or type(questId) ~= "number" then
         return {}
@@ -1510,7 +1517,7 @@ function Database:GetQuestAreaIds(questId, isComplete)
         return {}
     end
 
-    local seen = {}
+    local counts = {}
     local areaIds = {}
 
     local function AppendAreasFrom(record)
@@ -1521,10 +1528,13 @@ function Database:GetQuestAreaIds(questId, isComplete)
         local total = table.getn(record.coords)
         while index <= total do
             local coordinate = record.coords[index]
-            if type(coordinate) == "table" and type(coordinate[3]) == "number"
-                and not seen[coordinate[3]] then
-                seen[coordinate[3]] = true
-                table.insert(areaIds, coordinate[3])
+            local coordinateArea = type(coordinate) == "table" and coordinate[3]
+            if type(coordinateArea) == "number" then
+                if not counts[coordinateArea] then
+                    counts[coordinateArea] = 0
+                    table.insert(areaIds, coordinateArea)
+                end
+                counts[coordinateArea] = counts[coordinateArea] + 1
             end
             index = index + 1
         end
@@ -1570,6 +1580,13 @@ function Database:GetQuestAreaIds(questId, isComplete)
             end
         end
     end
+
+    table.sort(areaIds, function(left, right)
+        if counts[left] ~= counts[right] then
+            return counts[left] > counts[right]
+        end
+        return left < right
+    end)
 
     return areaIds
 end

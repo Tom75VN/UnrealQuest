@@ -712,55 +712,68 @@ end
 
 -- Stable partition that moves every complete quest after every quest still in
 -- progress, so the window reads as "what is left to do" first and "ready to
--- turn in" last -- without duplicating a zone header. The raw quest log
--- already lists one zone's quests contiguously (that contiguous run is what
--- a header is drawn for in the first place), so the partition runs within
--- each contiguous same-zone run rather than across the whole list: a complete
--- quest sinks to the bottom of its OWN zone's block, and the zone order
--- itself never changes. With zone grouping off there is only one run -- the
--- whole list -- so this partitions it globally, same as before headers
--- existed to protect.
+-- turn in" last. The partition is global: a complete quest sinks to the very
+-- bottom of the window, not merely to the bottom of its own zone's block, and
+-- the relative order inside each half is the raw quest log's own.
+--
+-- With zone grouping on, the complete tail is re-grouped by zone as it is
+-- appended -- zones in the order their first complete quest appears -- so that
+-- one zone's complete quests stay contiguous and the lazy header machinery in
+-- BuildLines still writes a single header for them. The cost is that a zone
+-- holding both kinds is named twice, once above with what is left to do and
+-- once at the bottom with what is ready to turn in; that is the price of the
+-- complete quests actually being at the bottom, which is what the header
+-- ordering exists to serve rather than the other way round.
+--
+-- Removing quests from the middle cannot break the contiguity of the ones that
+-- remain, so the incomplete half keeps the log's own zone runs untouched.
 local function OrderQuestsCompleteLast(quests, groupByZone)
     local total = table.getn(quests)
     local ordered = {}
-    local blockIncomplete = {}
-    local blockComplete = {}
-    local blockZone = nil
-    local blockStarted = false
-
-    local function FlushBlock()
-        local index = 1
-        local count = table.getn(blockIncomplete)
-        while index <= count do
-            table.insert(ordered, blockIncomplete[index])
-            index = index + 1
-        end
-        index = 1
-        count = table.getn(blockComplete)
-        while index <= count do
-            table.insert(ordered, blockComplete[index])
-            index = index + 1
-        end
-        blockIncomplete = {}
-        blockComplete = {}
-    end
+    local complete = {}
 
     local index = 1
     while index <= total do
         local quest = quests[index]
-        if groupByZone and blockStarted and quest.zone ~= blockZone then
-            FlushBlock()
-        end
-        blockZone = quest.zone
-        blockStarted = true
         if quest.isComplete == 1 then
-            table.insert(blockComplete, quest)
+            table.insert(complete, quest)
         else
-            table.insert(blockIncomplete, quest)
+            table.insert(ordered, quest)
         end
         index = index + 1
     end
-    FlushBlock()
+
+    local completeCount = table.getn(complete)
+    if not groupByZone then
+        index = 1
+        while index <= completeCount do
+            table.insert(ordered, complete[index])
+            index = index + 1
+        end
+        return ordered
+    end
+
+    -- One pass per zone, driven by the first complete quest that names it. A
+    -- quest with no zone at all is its own group under the "" key rather than
+    -- being dropped: the draw loop tolerates a nil zone (it writes no header),
+    -- and losing a complete quest here would silently shorten the window.
+    local emitted = {}
+    index = 1
+    while index <= completeCount do
+        local zoneKey = complete[index].zone or ""
+        if not emitted[zoneKey] then
+            emitted[zoneKey] = true
+            local scan = index
+            while scan <= completeCount do
+                local other = complete[scan]
+                if (other.zone or "") == zoneKey then
+                    table.insert(ordered, other)
+                end
+                scan = scan + 1
+            end
+        end
+        index = index + 1
+    end
     return ordered
 end
 
@@ -777,6 +790,11 @@ function TrackerFrame:BuildLines()
     local watch = Watch()
     local showObjectives = Setting("trackerShowObjectives") or "all"
     local groupByZone = Setting("trackerGroupByZone") and true or false
+    -- Decided here rather than at draw time so that turning the bars off
+    -- actually changes the line list, and therefore the redraw signature
+    -- Refresh compares -- a draw-time-only gate leaves the signature identical
+    -- and the window never repaints.
+    local progressBars = Setting("trackerProgressBar") and true or false
     local currentZoneKey, currentAreaId = CurrentZone()
     local mapKept = 0
     local quests = OrderQuestsCompleteLast(state:GetOrderedQuests(), groupByZone)
@@ -928,7 +946,8 @@ function TrackerFrame:BuildLines()
                     local objective = objectives[objectiveIndex]
                     if objective and type(objective.text) == "string" and objective.text ~= "" then
                         local progress = nil
-                        if type(objective.have) == "number" and type(objective.need) == "number"
+                        if progressBars and type(objective.have) == "number"
+                            and type(objective.need) == "number"
                             and objective.need > 0 then
                             progress = objective.have / objective.need
                         end

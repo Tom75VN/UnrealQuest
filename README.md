@@ -17,7 +17,7 @@ UnrealQuest turns questing into exploration instead of guesswork. It is designed
 ## Main benefits
 
 - See objectives, available quests and turn-ins directly on the world map with dots or areas, `!` and `?` markers, a different color for each quest and patrol paths that stay visible while a moving quest NPC still has a marker. The `?` turns orange the moment a quest is ready to hand in.
-- Open any zone's map and read its quest points, not only the zone you are standing in.
+- Open any zone's map and read its quest points, not only the zone you are standing in -- and let "Show" (or ctrl + click in the tracker) take you straight to the zone a quest is handed in or worked on, across continents if needed.
 - Follow nearby quest creatures and objectives from your minimap without constantly reopening the world map, with a tooltip on every marker.
 - Watch every quest you need in a movable tracker window, beyond the client's native five-quest limit, grouped by zone with live objective progress, quest levels and tracking that survives a reload.
 - Narrow the tracker to the zone you are in, and keep a quest whose objectives are here even when the quest log files it under another zone.
@@ -50,7 +50,7 @@ The movable tracker groups quests by zone, shows live objective progress and is 
 
 ### Control tracking from the quest log
 
-Show a quest on the map or add and remove it from the custom tracker without leaving the quest log.
+Show a quest on the map or add and remove it from the custom tracker without leaving the quest log. Show opens the zone you actually have to go to -- where a finished quest is handed in, where an unfinished one's objectives are -- not the zone you happen to be standing in.
 
 ![Show and untrack controls in the quest log](screenshots/quest_log.png)
 

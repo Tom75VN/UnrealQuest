@@ -2,6 +2,8 @@
 
 ## 0.2.1
 
+- Objective rows in the tracker now draw a progress bar under any objective that counts something, alongside the numbers. A checkbox in the tracker settings turns them off.
+- "Show" in the quest log, and Ctrl+click in the tracker, now open the map on the zone you actually have to go to instead of the one you are standing in. For a finished quest that is where it is handed in, for an unfinished one where its objectives are -- so a quest looted in Ashenvale and handed in at Sun Rock Retreat opens the Stonetalon Mountains, crossing to the other continent when it has to. The map is put back on your own zone once you travel, or shortly after, because the minimap pins, the quest arrow and the rare alert all need it there; a zone you pick yourself from the map's own dropdown is left alone. If the client will not show the zone at all, it is still named in chat the way it was before.
 - The quest tracker now marks a completed quest with the complete-quest icon in front of its name instead of turning the title white, and sinks it below the quests you still have to finish in its zone. The title keeps its usual level-difficulty colour. This updates the instant a quest completes, and again on login or /reload.
 - Fixed hovering a quest creature showing two tooltips at once: the client's own tooltip and, under it, a second panel with the quest progress. The creature's name, level and classification are now printed inside the single tooltip that carries the progress, the way a one-line world object already was.
 - Patrol routes on the world map for one-of-a-kind quest targets, and on hover for service, rare and quest-vendor pins.

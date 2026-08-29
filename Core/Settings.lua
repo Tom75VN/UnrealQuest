@@ -556,8 +556,12 @@ function Settings:BuildPage(parent)
         nil, { width = 230, advance = 0 })
     page.Checkbox("trackerCurrentZoneOnly", UQ.L("SETTINGS_TRACKER_CURRENT_ZONE"),
         nil, { left = 250, width = TEXT_WIDTH - 250, advance = CHECKBOX_ADVANCE })
+    local row2Top = page.y
     page.Checkbox("trackerHideUnstartedQuests", UQ.L("SETTINGS_TRACKER_HIDE_UNSTARTED"),
-        nil, { width = 230, advance = CHECKBOX_ADVANCE })
+        nil, { width = 230, advance = 0 })
+    page.y = row2Top
+    page.Checkbox("trackerProgressBar", UQ.L("SETTINGS_TRACKER_PROGRESS_BAR"),
+        nil, { left = 250, width = TEXT_WIDTH - 250, advance = CHECKBOX_ADVANCE })
 
     page.Heading(UQ.L("SETTINGS_HEADING_WORLD_MAP"), 7)
 

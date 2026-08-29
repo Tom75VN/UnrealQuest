@@ -468,6 +468,236 @@ function MapContext:GetViewedZone()
     return report.areaId, report, report.areaIdHow
 end
 
+-- Showing another zone -------------------------------------------------------
+--
+-- Everything above answers "what is the map showing". This answers the
+-- opposite: make it show a named area, so a quest whose turn-in or objectives
+-- are in another zone can be looked at instead of merely described in chat.
+--
+-- The world map layer already draws whichever zone the map is showing
+-- (Map/WorldMapPins.lua, GetViewedZone above), so moving the view is the
+-- whole feature -- no foreign-zone transform is involved and none is assumed.
+
+-- The zone list the client loads is per continent, and the bundled data does
+-- not record which continent an area is on, so the lists themselves are the
+-- only route. 1 Kalimdor, 2 Eastern Kingdoms, per the client's own reference
+-- for SetMapZoom/GetCurrentMapContinent; 0 is the cosmic layer and has no
+-- zones to index into.
+local MAP_CONTINENTS = { 1, 2 }
+
+-- The 1-based index of an area in the zone list the client currently has
+-- loaded, or nil.
+--
+-- Matching goes through ResolveAreaId rather than comparing strings, so the
+-- client's own localized zone name never has to be spelled the same way as
+-- the bundled table's -- the same join every other route in this module rests
+-- on, and the reason this works on a Russian or Chinese client without a
+-- second name table.
+function MapContext:ZoneIndexForArea(areaId, continent)
+    if type(areaId) ~= "number" or type(continent) ~= "number" then
+        return nil
+    end
+    local list = Client.GetMapZoneNames(continent)
+    if type(list) ~= "table" then
+        return nil
+    end
+    local index = 1
+    local total = table.getn(list)
+    while index <= total do
+        if self:ResolveAreaId(list[index]) == areaId then
+            return index
+        end
+        index = index + 1
+    end
+    return nil
+end
+
+-- Takes the world map to the first area in `areaIds` this client can show.
+--
+-- Returns the area now being viewed and how it was reached -- "alreadyViewed"
+-- when the map was already on one of them and nothing was touched, "switched"
+-- when the view was moved -- or nil plus a reason.
+--
+-- Order of business, and each step is there for a reason:
+--
+--   * The zone already in view wins outright. A caller that could draw
+--     nothing here has a problem the map view cannot fix (a quest hidden from
+--     the map, an area with no coordinate), and moving the map would replace
+--     an honest empty answer with a wrong zone.
+--   * The player's own continent is searched first, and its list is read
+--     WITHOUT selecting anything: the map is already on that continent, so
+--     the loaded list is already the right one and the common
+--     same-continent case costs no visible zoom-out at all.
+--   * Only a miss reaches for the other continent, and that one must be
+--     selected before its list can be read -- the client's reference says
+--     GetMapZones ignores its argument and answers for the SELECTED
+--     continent, which is also why pfQuest's own {GetMapZones(cid)} loop over
+--     both continents cannot work here (reference only; not this addon's
+--     source).
+--   * A search that found nothing puts the view back on the player's own
+--     zone. Leaving it parked on a continent layer would hide the entire pin
+--     layer (GetCurrentMapZone 0) as a side effect of a lookup that failed.
+function MapContext:ShowAreas(areaIds)
+    if type(areaIds) ~= "table" then
+        return nil, "noAreas"
+    end
+    local total = table.getn(areaIds)
+    if total == 0 then
+        return nil, "noAreas"
+    end
+
+    local viewed = self:GetViewedZone()
+    if viewed then
+        local index = 1
+        while index <= total do
+            if areaIds[index] == viewed then
+                return viewed, "alreadyViewed"
+            end
+            index = index + 1
+        end
+    end
+
+    local selected = Client.GetCurrentMapContinent()
+    local startContinent = selected
+    local continents = {}
+    if type(selected) == "number" and selected > 0 then
+        table.insert(continents, selected)
+    end
+    local listIndex = 1
+    local listTotal = table.getn(MAP_CONTINENTS)
+    while listIndex <= listTotal do
+        if MAP_CONTINENTS[listIndex] ~= startContinent then
+            table.insert(continents, MAP_CONTINENTS[listIndex])
+        end
+        listIndex = listIndex + 1
+    end
+
+    local continentIndex = 1
+    local continentTotal = table.getn(continents)
+    while continentIndex <= continentTotal do
+        local continent = continents[continentIndex]
+        local readable = true
+        if continent ~= selected then
+            readable = Client.SetWorldMapView(continent)
+            if readable then
+                selected = continent
+            end
+        end
+        if readable then
+            local index = 1
+            while index <= total do
+                local zoneIndex = self:ZoneIndexForArea(areaIds[index], continent)
+                if zoneIndex and Client.SetWorldMapView(continent, zoneIndex) then
+                    return areaIds[index], "switched"
+                end
+                index = index + 1
+            end
+        end
+        continentIndex = continentIndex + 1
+    end
+
+    if selected ~= startContinent then
+        Client.SetMapToCurrentZone()
+    end
+    return nil, "notListed"
+end
+
+-- Parked view ----------------------------------------------------------------
+--
+-- Moving the world map off the player's own zone is not free, and the cost is
+-- structural rather than cosmetic. The minimap pin layer, the HUD waypoint and
+-- the rare-alert proximity test all go through GetCurrentZoneView, which needs
+-- the OPEN map to be the player's own zone -- GetPlayerMapPosition answers for
+-- the viewed map and returns 0, 0 anywhere else, so there is no position left
+-- to measure from while the view is elsewhere. Park the view and those three
+-- go quiet for exactly as long as it stays parked.
+--
+-- So a view this addon moved is remembered and handed back. It is released on
+-- the first of:
+--
+--   * the player's own zone changing -- they travelled, which is the whole
+--     point of having been shown the other zone;
+--   * PARK_SECONDS elapsing, which bounds the outage for a player who read the
+--     map and closed it;
+--
+-- and in both cases only while the view is still exactly where this module
+-- left it. A player who worked the zone dropdown themselves has taken the view
+-- over and is never overruled -- the parked state is simply dropped.
+--
+-- Closing the map would be the better release trigger and is NOT available
+-- here: this client's fullscreen presentation is recorded leaving
+-- WorldMapFrame's shown state true after it closes
+-- (docs/WORLD-MAP-PINS-RECOVERY.md, failed approaches), so there is nothing to
+-- poll. Recorded as an open question in docs/CLIENT-COMPATIBILITY.md.
+local PARK_SECONDS = 45
+
+MapContext.parkedAreaId = nil
+MapContext.parkedAt = nil
+MapContext.parkedZoneName = nil
+
+local function StandingZoneName()
+    local name = Client.GetRealZoneText()
+    if type(name) ~= "string" or name == "" then
+        name = Client.GetZoneText()
+    end
+    if type(name) ~= "string" or name == "" then
+        return nil
+    end
+    return name
+end
+
+function MapContext:ParkView(areaId)
+    if type(areaId) ~= "number" then
+        return false
+    end
+    -- A view of the player's OWN zone is not parked: nothing measured from
+    -- their position is switched off there, so there is nothing to hand back.
+    -- This is the ordinary outcome of revealing a quest while the map happens
+    -- to be zoomed out to a continent -- the view moved, but it moved home.
+    local _, standingArea = self:GetStandingZone()
+    if standingArea == areaId then
+        return false
+    end
+    self.parkedAreaId = areaId
+    self.parkedAt = Client.Now()
+    self.parkedZoneName = StandingZoneName()
+    return true
+end
+
+local function ForgetParkedView(self)
+    self.parkedAreaId = nil
+    self.parkedAt = nil
+    self.parkedZoneName = nil
+end
+
+-- Puts a parked view back on the player's own zone. `force` skips the two
+-- release conditions, for a caller that already knows the player wants their
+-- own zone back.
+function MapContext:ReleaseParkedView(force)
+    if not self.parkedAreaId then
+        return false
+    end
+
+    if not force then
+        -- The player navigated the map themselves, or the client moved it:
+        -- the view is no longer this module's to hand back.
+        if self:GetViewedZone() ~= self.parkedAreaId then
+            ForgetParkedView(self)
+            return false
+        end
+        local now = Client.Now()
+        local expired = now and self.parkedAt and (now - self.parkedAt) >= PARK_SECONDS
+        local name = StandingZoneName()
+        local travelled = self.parkedZoneName and name and name ~= self.parkedZoneName
+        if not expired and not travelled then
+            return false
+        end
+    end
+
+    ForgetParkedView(self)
+    return Client.SetMapToCurrentZone()
+end
+
 -- Whether the player is standing in a named sub-area of the zone the map is
 -- showing -- in practice, inside a building or a cave.
 --
@@ -543,6 +773,20 @@ function MapContext:PlaceOnMinimap(frame, x, y)
     return nil, "pendingVerification"
 end
 
+function MapContext:OnEnable()
+    local driver = UQ:GetModule("Driver")
+    if not driver then
+        return
+    end
+    -- One second is deliberately slack: the job returns on its first line
+    -- unless a view is actually parked, and the two things it watches for --
+    -- the player's zone changing and a 45 second timer -- need no finer
+    -- resolution than that.
+    driver:Schedule("map.parkedview", 1, function()
+        MapContext:ReleaseParkedView()
+    end)
+end
+
 function MapContext:OnInit()
     UQ:DeclareCapability("mapIdentity", "verified",
         "GetZoneText uniquely joins the current player zone to area ID 12; map-file and player UVs are view-dependent")
@@ -559,6 +803,8 @@ function MapContext:OnInit()
         "probe 1.38.0 confirmed in game: children of Minimap render with the world-map contract, the mask does not clip them, and the zoom-0 span is 466.6 yards across a 140px minimap; IsIndoors is absent so the indoor scale cannot be selected; NO pin layer is implemented yet")
     UQ:DeclareCapability("mapZoomLevel", "documented",
         "GetCurrentMapZone is documented to return 0 when no individual zone is selected (continent or world view); used to hide the pin layer on zoom-out since GetPlayerMapPosition alone does not detect it -- the client also projects the player onto a same-continent view")
+    UQ:DeclareCapability("worldMapZoneSelection", "documented",
+        "SetMapZoom is present at runtime (behavior.json mapwindow/context/globals/SetMapZoom) and the client's API reference documents both forms: one argument selects the continent layer, two select a zone by 1-based index into the list GetMapZones loaded for the SELECTED continent. MapContext:ShowAreas uses it to take the map to a quest's turn-in or objective zone; the index is never assumed, it is read back out of the zone list and the resulting view re-read through GetCurrentMapZone")
     UQ:DeclareCapability("mapColdStartPriming", "verified",
         "probe mapcoldstart 2026-08-23: zoneIndex 0/GetMapInfo nil/player 0,0 immediately after /reload, before the world map was ever shown, is the same signature as a genuine continent view; one Client.SetMapToCurrentZone() call resolved it into zoneIndex 14/mapFile Elwynn/a real player position, so GetCurrentZoneView primes it at most once per session on that exact signature")
 end

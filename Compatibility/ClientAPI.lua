@@ -1144,6 +1144,49 @@ function Client.GetMapZoneName(continent, zoneIndex)
     return name
 end
 
+-- Drops the cached zone-name lists. Their key is a continent, but the client
+-- fills them from whatever continent is SELECTED (its own reference: the
+-- argument is "required; not used"), so every call that changes the selection
+-- has to invalidate them or the next read hands one continent's names back
+-- under another's key -- the exact failure the TTL above exists to bound.
+function Client.InvalidateMapZoneNames()
+    mapZoneNames = {}
+    mapZoneNamesAt = {}
+end
+
+-- Selects what the world map is SHOWING. This is the only route this client
+-- offers to a zone the player is not standing in, and Map/MapContext.lua's
+-- ShowAreas is its only caller.
+--
+-- DOCUMENTED, not probed (OFFICIAL_CLIENT_DOCUMENTATION,
+-- global:Mapping:SetMapZoom): the one-argument form sets the layer, with
+-- continent ids matching GetCurrentMapContinent (0 cosmic, 1 Kalimdor,
+-- 2 Eastern Kingdoms), and "the two-argument form selects a zone by 1-based
+-- index into the currently loaded zone list". The same entry is explicit that
+-- the continent must be selected FIRST so GetMapZones matches it before an
+-- index is passed -- which is why this takes the two forms as one call and
+-- the caller drives them in that order rather than guessing an index against
+-- a list belonging to another continent.
+--
+-- pcall returning true says the call did not error, never that the view
+-- moved, so the caller re-reads GetCurrentMapZone instead of trusting this.
+function Client.SetWorldMapView(continent, zoneIndex)
+    if type(continent) ~= "number" then
+        return false
+    end
+    local ok
+    if type(zoneIndex) == "number" and zoneIndex >= 1 then
+        ok = Call2("SetMapZoom", continent, zoneIndex)
+    else
+        ok = Call1("SetMapZoom", continent)
+    end
+    if not ok then
+        return false
+    end
+    Client.InvalidateMapZoneNames()
+    return true
+end
+
 -- Never called defensively on every read: it mutates what the map displays,
 -- so it would fight a player who deliberately zoomed out to a continent.
 -- MapContext:GetCurrentZoneView calls it at most once per session, only on
@@ -1154,7 +1197,13 @@ end
 -- "Elwynn"/a real player position, with WorldMapFrame never shown.
 function Client.SetMapToCurrentZone()
     local ok = Call0("SetMapToCurrentZone")
-    return ok and true or false
+    if not ok then
+        return false
+    end
+    -- Same reason as Client.SetWorldMapView: this can change which continent
+    -- is selected, so the name lists cached per continent stop being trustable.
+    Client.InvalidateMapZoneNames()
+    return true
 end
 
 function Client.GetPlayerMapPosition(unit)
@@ -5075,7 +5124,7 @@ function Client.SetTrackerRowQuestMark(row, red, green, blue, texture)
     -- rows, and this is what was confirmed to true it up.
     local markX = 0
     if texture == Client.COMPLETE_QUEST_TEXTURE then
-        markX = 1
+        markX = 2
     end
     if mark.unrealQuestMarkX ~= markX and type(mark.ClearAllPoints) == "function"
         and type(mark.SetPoint) == "function" then
