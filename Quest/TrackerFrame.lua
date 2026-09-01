@@ -44,7 +44,10 @@ accelerators, never the mechanism.
     its name-string relative frame, and is stored as a point name plus two
     numbers -- never a path, per the SavedVariables backslash hazard.
   * Drag the bottom-right corner to resize the window in both axes.
-  * Left click a quest: selects it in the native Quest Log and opens it.
+  * Left click a quest: follows it. Clicking a manually followed quest returns
+    following to the nearest node; clicking the automatic nearest quest does
+    nothing because following always has one target.
+  * Alt + left click a quest: selects it in the native Quest Log and opens it.
   * Shift + left click a quest: toggles it in UnrealQuest's unlimited tracked
     set (Quest/Tracker.lua:Toggle) -- the same call the quest log's
     Track/Untrack button uses (Quest/QuestLogButtons.lua), so the two surfaces
@@ -100,11 +103,13 @@ local HIDDEN_QUESTS = "trackerHiddenQuests"
 
 local ZONE_ROW_HEIGHT = 13
 local QUEST_ROW_HEIGHT = 13
+local WRAPPED_ROW_TEXT_PADDING = 2
 -- 2px taller than the text itself needs: an objective row's progress bar is
 -- bottom-anchored (Compatibility/ClientAPI.lua's track/fill textures), so the
 -- extra height is what actually reads as a margin-top on the bar -- the gap
 -- between the counter text above it and the bar itself.
 local OBJECTIVE_ROW_HEIGHT = 14
+local OBJECTIVE_ROW_GAP = 1
 -- Quest rows sit almost flush with the zone header above them: the round
 -- quest dot is drawn at the row's own left edge, so a wider indent read as
 -- dead space down the whole left side of the window.
@@ -160,6 +165,7 @@ local COLOR_COMPLETE = { 1, 1, 1 }
 -- here would be English for the whole session. Resolved per tooltip below.
 local SHORTCUT_KEYS = {
     "TRACKER_HINT_LEFT_CLICK",
+    "TRACKER_HINT_ALT_CLICK",
     "TRACKER_HINT_SHIFT_CLICK",
     "TRACKER_HINT_CTRL_CLICK",
     "TRACKER_HINT_RIGHT_CLICK",
@@ -193,6 +199,10 @@ end
 
 local function Watch()
     return UQ:GetModule("Tracker")
+end
+
+local function MainQuest()
+    return UQ:GetModule("MainQuest")
 end
 
 local function ZonePresence()
@@ -701,7 +711,20 @@ end
 -- again a first sight, which is what it is.
 local progressMarks = {}
 
-local function ForgetFoldOnProgress(quest)
+-- The build order's second input. A quest whose mark goes up is stamped with
+-- the next serial, and FloatRecentFirst below floats stamped quests to the top
+-- of the window, newest first, so the quest that just told the player
+-- something is the one under the header rather than wherever the raw quest log
+-- happens to file it. Serials are unique and strictly increasing, so a later
+-- advance always outranks an earlier one.
+--
+-- Kept in memory beside the marks and dropped with them, for the same reason:
+-- a lift is an answer to something the player just did, and restoring it a day
+-- later would answer nothing.
+local advanceSerials = {}
+local advanceCursor = 0
+
+local function NoteProgress(quest)
     local title = quest.title
     if type(title) ~= "string" or title == "" then
         return
@@ -719,6 +742,8 @@ local function ForgetFoldOnProgress(quest)
     end
     if mark > previous then
         ClearFold(COLLAPSED_QUESTS, title)
+        advanceCursor = advanceCursor + 1
+        advanceSerials[title] = advanceCursor
     end
 end
 
@@ -737,8 +762,73 @@ local function ForgetMissingMarks(seen)
     local total = table.getn(stale)
     while index <= total do
         progressMarks[stale[index]] = nil
+        advanceSerials[stale[index]] = nil
         index = index + 1
     end
+end
+
+-- The whole log, before anything is ordered or filtered: a quest hidden from
+-- this window still advances, and both the fold it drops and the serial it
+-- earns have to be recorded before the ordering below reads them. This used to
+-- run inside the drawing loop, which stamped the advance one build after the
+-- order had already been decided, so the row that changed rose only on the
+-- following refresh.
+local function NoteProgressPass(quests)
+    local seen = {}
+    local index = 1
+    local total = table.getn(quests)
+    while index <= total do
+        local quest = quests[index]
+        NoteProgress(quest)
+        if type(quest.title) == "string" then
+            seen[quest.title] = true
+        end
+        index = index + 1
+    end
+    ForgetMissingMarks(seen)
+end
+
+-- Floats every quest that has advanced this session to the top of the list it
+-- is in, most recent first; everything behind them keeps the quest log's own
+-- order. Unstamped quests are the common case on login, where this returns the
+-- list untouched.
+--
+-- With zone grouping on this deliberately breaks the log's zone runs: the
+-- lifted quest carries its own header to the top and its zone is named twice,
+-- the same trade the complete tail below already makes. Being shown what just
+-- changed is the point of the lift; keeping the header count down is not.
+local function FloatRecentFirst(quests)
+    local lifted = {}
+    local rest = {}
+    local index = 1
+    local total = table.getn(quests)
+    while index <= total do
+        local quest = quests[index]
+        if quest.title and advanceSerials[quest.title] then
+            table.insert(lifted, quest)
+        else
+            table.insert(rest, quest)
+        end
+        index = index + 1
+    end
+
+    if table.getn(lifted) == 0 then
+        return quests
+    end
+
+    -- Serials are unique, so the comparison is a total order and table.sort
+    -- has no stability left to lose.
+    table.sort(lifted, function(a, b)
+        return advanceSerials[a.title] > advanceSerials[b.title]
+    end)
+
+    index = 1
+    total = table.getn(rest)
+    while index <= total do
+        table.insert(lifted, rest[index])
+        index = index + 1
+    end
+    return lifted
 end
 
 -- Stable partition that moves every complete quest after every quest still in
@@ -758,7 +848,7 @@ end
 --
 -- Removing quests from the middle cannot break the contiguity of the ones that
 -- remain, so the incomplete half keeps the log's own zone runs untouched.
-local function OrderQuestsCompleteLast(quests, groupByZone)
+local function OrderQuestsCompleteLast(quests, groupByZone, recentFirst)
     local total = table.getn(quests)
     local ordered = {}
     local complete = {}
@@ -772,6 +862,12 @@ local function OrderQuestsCompleteLast(quests, groupByZone)
             table.insert(ordered, quest)
         end
         index = index + 1
+    end
+
+    -- Only the half still in progress is floated. A complete quest belongs at
+    -- the bottom whatever it did last, and completing one moves its mark too.
+    if recentFirst then
+        ordered = FloatRecentFirst(ordered)
     end
 
     local completeCount = table.getn(complete)
@@ -819,6 +915,7 @@ function TrackerFrame:BuildLines()
     end
 
     local watch = Watch()
+    local mainQuest = MainQuest()
     local showObjectives = Setting("trackerShowObjectives") or "all"
     local groupByZone = Setting("trackerGroupByZone") and true or false
     -- Decided here rather than at draw time so that turning the bars off
@@ -826,9 +923,12 @@ function TrackerFrame:BuildLines()
     -- Refresh compares -- a draw-time-only gate leaves the signature identical
     -- and the window never repaints.
     local progressBars = Setting("trackerProgressBar") and true or false
+    local recentFirst = Setting("trackerRecentFirst") and true or false
     local currentZoneKey, currentAreaId, currentZoneHow = CurrentZone()
     local mapKept = 0
-    local quests = OrderQuestsCompleteLast(state:GetOrderedQuests(), groupByZone)
+    local quests = state:GetOrderedQuests()
+    NoteProgressPass(quests)
+    quests = OrderQuestsCompleteLast(quests, groupByZone, recentFirst)
     local total = table.getn(quests)
 
     -- The zone filter is decided in full before a single row is written, so
@@ -880,19 +980,11 @@ function TrackerFrame:BuildLines()
     -- would leave an empty "ELWYNN FOREST" label on screen for a zone whose
     -- only quest the player just shift-clicked away.
     local pendingZone = nil
-    local seenTitles = {}
 
     local index = 1
     while index <= total do
         local quest = quests[index]
         local zone = quest.zone
-        -- Runs for every quest in the log, before any filter: a quest hidden
-        -- from this window still advances, and its fold must not survive that
-        -- advance just because the player could not see it happen.
-        ForgetFoldOnProgress(quest)
-        if type(quest.title) == "string" then
-            seenTitles[quest.title] = true
-        end
         -- Untracked-and-hidden or somewhere else: both reach the same lazy
         -- header machinery below, so a zone filtered out entirely writes no
         -- header row either. Unstarted quests are not part of this filter:
@@ -949,6 +1041,7 @@ function TrackerFrame:BuildLines()
                 quest = quest,
                 key = quest.title,
                 tracked = tracked,
+                following = mainQuest and mainQuest:IsMain(quest.titleKey) or false,
             }
             -- The dot identifies a quest against its objective dots on both
             -- maps. A complete quest has none left to match, so it swaps to
@@ -959,6 +1052,10 @@ function TrackerFrame:BuildLines()
                 line.questTexture = Client.COMPLETE_QUEST_TEXTURE
             else
                 line.questRed, line.questGreen, line.questBlue = UQ.GetQuestColor(quest)
+            end
+            if line.following then
+                line.questRed, line.questGreen, line.questBlue = 1, 1, 1
+                line.questTexture = Client.FOLLOWING_QUEST_TEXTURE
             end
             table.insert(lines, line)
 
@@ -1010,8 +1107,6 @@ function TrackerFrame:BuildLines()
         index = index + 1
     end
 
-    ForgetMissingMarks(seenTitles)
-
     -- One row rather than a blank body, so a correctly empty filter still
     -- reads as a filter and not as the addon having died. Written as an
     -- objective row because it is a plain indented line with no subject: the
@@ -1040,21 +1135,54 @@ local function RowHeight(kind)
     return OBJECTIVE_ROW_HEIGHT
 end
 
+local function MeasuredTrackerRowHeight(kind, row, text)
+    local height = RowHeight(kind)
+    local measuredHeight = Client.MeasureTrackerRowTextHeight(row, text)
+    if type(measuredHeight) == "number"
+        and math.ceil(measuredHeight) + WRAPPED_ROW_TEXT_PADDING > height then
+        height = math.ceil(measuredHeight) + WRAPPED_ROW_TEXT_PADDING
+    end
+    return height
+end
+
 -- Returns the exact content height needed to draw through one line, using the
 -- same row and inter-group spacing as Redraw. RevealQuest uses this to grow a
 -- manually shortened window just far enough to show a quest's complete block.
-local function HeightThroughLine(lines, stopIndex)
+local function HeightThroughLine(lines, stopIndex, window, width)
     local top = Client.TRACKER_HEADER_HEIGHT + BODY_PADDING
     local previousKind = nil
+    local measuredSlots = { quest = 1, objective = 1 }
     local index = 1
     while index <= stopIndex do
-        local kind = lines[index].kind
+        local line = lines[index]
+        local kind = line.kind
         if kind == "quest" and (previousKind == "quest" or previousKind == "objective") then
             top = top + QUEST_GROUP_GAP
         elseif kind == "zone" and previousKind ~= nil then
             top = top + ZONE_GROUP_GAP
+        elseif kind == "objective" and previousKind == "objective" then
+            top = top + OBJECTIVE_ROW_GAP
         end
-        top = top + RowHeight(kind)
+        local height = RowHeight(kind)
+        if (kind == "quest" or kind == "objective")
+            and window and type(width) == "number" then
+            local slot = measuredSlots[kind]
+            local row = Client.GetTrackerRow(window, kind, slot)
+            measuredSlots[kind] = slot + 1
+            if row then
+                local indent = kind == "quest" and QUEST_INDENT or OBJECTIVE_INDENT
+                if kind == "quest" then
+                    Client.SetTrackerRowFollowing(row, line.following)
+                    Client.SetTrackerRowQuestMark(row,
+                        line.questRed, line.questGreen, line.questBlue, line.questTexture)
+                end
+                Client.PlaceTrackerRow(row, window, indent, top, width, height)
+                Client.SetTrackerRowText(row, line.text, line.red, line.green, line.blue)
+                height = MeasuredTrackerRowHeight(kind, row, line.text)
+                Client.HideObject(row)
+            end
+        end
+        top = top + height
         previousKind = kind
         index = index + 1
     end
@@ -1172,7 +1300,7 @@ local function OnQuestRowClick(row, first)
         -- Toggles what the player is actually looking at, which is the
         -- automatic answer when they have never folded this quest by hand.
         -- The stored state then decides for this quest until its next
-        -- objective update, which drops it again (ForgetFoldOnProgress).
+        -- objective update, which drops it again (NoteProgress).
         local title = quest.title or ""
         local folded = FoldChoice(COLLAPSED_QUESTS, title)
         if folded == nil then
@@ -1208,11 +1336,22 @@ local function OnQuestRowClick(row, first)
         RevealQuestOnMap(quest)
         return
     end
-    -- A plain click opens the quest. SelectQuestLogEntry is documented to clear
-    -- the selection rather than error when handed a bad index, and the model's
-    -- index can be one poll interval stale, so a miss is harmless.
-    Client.SelectQuestLogEntry(quest.index)
-    Client.OpenQuestLog()
+    if Client.IsAltKeyDown() then
+        -- SelectQuestLogEntry is documented to clear the selection rather than
+        -- error when handed a bad index, and the model's index can be one poll
+        -- interval stale, so a miss is harmless.
+        Client.SelectQuestLogEntry(quest.index)
+        Client.OpenQuestLog()
+        return
+    end
+    -- Plain left-click owns following only. Keeping Quest Log opening on Alt
+    -- prevents the follow gesture from also covering the screen with a panel.
+    if UQ:IsFeatureEnabled("mainQuestWaypoint") then
+        local clicks = UQ:GetModule("QuestClicks")
+        if clicks then
+            clicks:Select(quest, "trackerWindow")
+        end
+    end
 end
 
 local function OnQuestRowEnter(row)
@@ -1220,10 +1359,18 @@ local function OnQuestRowEnter(row)
     if not quest then
         return
     end
+    local minimapPins = UQ:GetModule("MinimapPins")
+    if minimapPins then
+        minimapPins:SetHoveredQuest(quest)
+    end
     Client.ShowGameTooltip(row, BuildQuestTooltipLines(quest), "ANCHOR_RIGHT")
 end
 
 local function OnQuestRowLeave(row)
+    local minimapPins = UQ:GetModule("MinimapPins")
+    if minimapPins then
+        minimapPins:SetHoveredQuest(nil)
+    end
     Client.HideGameTooltip(row)
 end
 
@@ -1282,17 +1429,12 @@ function TrackerFrame:Redraw(lines, questCount, completed)
             top = top + QUEST_GROUP_GAP
         elseif kind == "zone" and previousKind ~= nil then
             top = top + ZONE_GROUP_GAP
-        end
-        -- The window still resizes exactly as before, but there is no scrolling:
-        -- begin at the first line and stop once the next complete row would pass
-        -- the resized bottom edge.
-        if targetHeight and top + RowHeight(kind) > targetHeight - BODY_PADDING then
-            break
+        elseif kind == "objective" and previousKind == "objective" then
+            top = top + OBJECTIVE_ROW_GAP
         end
         local slot = used[kind] or 1
         local row = Client.GetTrackerRow(window, kind, slot)
         if row then
-            used[kind] = slot + 1
             local indent = RowIndent(kind)
             local height = RowHeight(kind)
             -- The dot is set before the row is placed, not with the rest of
@@ -1300,6 +1442,7 @@ function TrackerFrame:Redraw(lines, questCount, completed)
             -- left inset, and PlaceTrackerRow is what turns that inset into
             -- the label width the Fit() calls below measure against.
             if kind == "quest" then
+                Client.SetTrackerRowFollowing(row, line.following)
                 Client.SetTrackerRowQuestMark(row,
                     line.questRed, line.questGreen, line.questBlue, line.questTexture)
             end
@@ -1307,14 +1450,34 @@ function TrackerFrame:Redraw(lines, questCount, completed)
 
             local rowWidth = row.unrealQuestTextWidth or row.unrealQuestWidth or (width - indent)
             local fitted
-            if kind == "quest" then
-                fitted = FitQuest(line.text, rowWidth, QUEST_CHAR_WIDTH, row)
-            elseif kind == "objective" then
-                fitted = FitObjective(line.text, rowWidth, OBJECTIVE_CHAR_WIDTH, row)
+            if kind == "quest" or kind == "objective" then
+                -- Keep the complete text. The client wraps it at spaces; its
+                -- rendered height below advances every following row.
+                fitted = line.text
             else
                 fitted = Fit(line.text, rowWidth, OBJECTIVE_CHAR_WIDTH)
             end
             Client.SetTrackerRowText(row, fitted, line.red, line.green, line.blue)
+
+            if kind == "quest" or kind == "objective" then
+                height = MeasuredTrackerRowHeight(kind, row, fitted)
+                if height > RowHeight(kind) then
+                    Client.PlaceTrackerRow(row, window, indent, top, width, height)
+                end
+            end
+
+            -- There is no scrolling: stop once this complete, dynamically
+            -- measured row would pass the resized bottom edge.
+            if targetHeight and top + height > targetHeight - BODY_PADDING then
+                Client.HideObject(row)
+                break
+            end
+            used[kind] = slot + 1
+
+            if line.following then
+                followingTop = top - 2
+                followingKey = line.quest and line.quest.titleKey
+            end
 
             if kind == "quest" then
                 row.unrealQuestSubject = line.quest
@@ -1348,6 +1511,10 @@ function TrackerFrame:Redraw(lines, questCount, completed)
             end
 
             top = top + height
+            if followingTop and followingKey and line.quest
+                and line.quest.titleKey == followingKey then
+                followingBottom = top + 2
+            end
             previousKind = kind
         else
             -- The pool refused to grow. Stop rather than spin: every later row
@@ -1360,6 +1527,8 @@ function TrackerFrame:Redraw(lines, questCount, completed)
     Client.HideTrackerRows(window, "zone", used.zone)
     Client.HideTrackerRows(window, "quest", used.quest)
     Client.HideTrackerRows(window, "objective", used.objective)
+    Client.SetTrackerFollowingBlock(window, followingTop, followingBottom,
+        Setting("trackerBackgroundOpacity") or 55)
 
     local height = Client.TRACKER_HEADER_HEIGHT
     if collapsed then
@@ -1398,7 +1567,8 @@ function TrackerFrame:Refresh()
     while index <= total do
         local line = lines[index]
         table.insert(parts, line.kind .. ":" .. tostring(line.text)
-            .. ":" .. tostring(line.tracked) .. ":" .. tostring(line.progress))
+            .. ":" .. tostring(line.tracked) .. ":" .. tostring(line.progress)
+            .. ":" .. tostring(line.following))
         index = index + 1
     end
     local signature = table.concat(parts, "|")
@@ -1440,7 +1610,11 @@ function TrackerFrame:RevealQuest(quest)
 
     local targetHeight = Setting("trackerHeight")
     if type(targetHeight) == "number" and targetHeight > ROW_AREA_CHROME then
-        local requiredHeight = HeightThroughLine(lines, revealIndex)
+        local width = Setting("trackerWidth")
+        if type(width) ~= "number" or width < 110 then
+            width = 170
+        end
+        local requiredHeight = HeightThroughLine(lines, revealIndex, self.window, width)
         if requiredHeight > targetHeight then
             local config = Config()
             if config then
@@ -1689,6 +1863,7 @@ function TrackerFrame:GetReport()
         objectives = Setting("trackerShowObjectives"),
         groupByZone = Setting("trackerGroupByZone") and true or false,
         currentZoneOnly = Setting("trackerCurrentZoneOnly") and true or false,
+        recentFirst = Setting("trackerRecentFirst") and true or false,
         currentZoneArea = self.currentZoneArea,
         currentZoneName = self.currentZoneName,
         currentZoneHow = self.currentZoneHow,
@@ -1828,6 +2003,18 @@ function TrackerFrame:OnEnable()
                 if d then
                     d:Wake("tracker.frame")
                 end
+            end
+        end)
+    end
+
+
+    local mainQuest = MainQuest()
+    if mainQuest then
+        mainQuest:AddListener(function()
+            TrackerFrame.dirty = true
+            local d = UQ:GetModule("Driver")
+            if d then
+                d:Wake("tracker.frame")
             end
         end)
     end

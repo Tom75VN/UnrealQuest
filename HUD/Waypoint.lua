@@ -20,12 +20,26 @@ compatibility database for WorldToScreen returns nothing. See the
 `cameraProjection` capability, which is declared "missing" precisely so this
 does not get "fixed" later by reaching for an API that is not there.
 
-The practical consequence, and it is worth knowing before reading a bug report
-about it: the marker is anchored to the **character's** facing, not the
-camera's. Those agree whenever the camera sits behind the character, which is
-the normal case, and drift apart while the player holds right-mouse and looks
-around independently. There is no vertical projection at all -- without camera
-pitch and target elevation the marker can only sit on a fixed horizon band.
+## Where the facing comes from, and the one limit left
+
+`GetPlayerFacing()` -- the character's rotation in radians, documented on the
+updated client. This layer was gated off from 2026-08-22 to 2026-09-01 for the
+want of exactly that call: the preceding build published no facing by any
+route, so the marker could only be aimed from the direction the player was
+*travelling*, which says nothing while they stand still and turn. HUD/PlayerHeading.lua
+keeps that movement estimator as the fallback and reads the real facing first.
+It also measures the client reading's angle convention against the estimator
+rather than assuming it, because `GetPlayerFacing` is `documented`, not
+`verified`, and a wrong zero axis would produce a marker that looks plausible
+and points nowhere useful. That belongs there, not here: everything this file
+receives from `PlayerHeading:Get` is already in the addon's convention.
+
+The limit that remains is the camera, not the character. The marker is anchored
+to where the **character** faces, and those agree whenever the camera sits
+behind the character -- the normal case -- and drift apart while the player
+holds right-mouse and looks around independently. There is no vertical
+projection at all either: without camera pitch and target elevation the marker
+can only sit on a fixed horizon band.
 
 ## Why the target is the map's own blue area
 
@@ -443,6 +457,11 @@ function Waypoint:GetReport()
         relativeAngle = self.lastRelativeAngle,
         clamped = self.lastClamped,
         facingSource = self.lastFacingSource,
+        -- Built here rather than cached from RefreshMarker: it is a string, and
+        -- building one per tick for a readout nobody reads until /uq waypoint
+        -- runs is the allocation this file's two cadences exist to avoid.
+        facingConvention = GetPlayerHeading()
+            and GetPlayerHeading():ConventionLabel() or nil,
         targetX = self.lastTargetX,
         targetY = self.lastTargetY,
         areaId = self.lastAreaId,
@@ -470,13 +489,26 @@ function Waypoint:RecordDiagnostics()
     if headingModule then
         config:SetSectionEntry("waypointDiagnostics", "headingSamples", headingModule.samples)
         config:SetSectionEntry("waypointDiagnostics", "movementFixes", headingModule.movementFixes)
+        -- Which convention the facing was read in, persisted alongside the
+        -- placement counters: "the marker appears but points the wrong way"
+        -- and "the marker never appears" are different bugs, and only this
+        -- line separates the first from a projection error.
+        config:SetSectionEntry("waypointDiagnostics", "facingConvention",
+            tostring(headingModule:ConventionLabel()))
     end
 end
 
 -- Lifecycle ------------------------------------------------------------------
 
 function Waypoint:OnEnable()
-    if not UQ:IsFeatureEnabled("mainQuestWaypoint") then
+    -- Two gates, and the second one is why this layer is quiet today.
+    -- `mainQuestWaypoint` owns the follow-one-quest layer as a whole and is on;
+    -- `hudWorldMarker` owns this projected marker alone and is off, so the
+    -- navigator can use the same main quest, target and facing without this
+    -- also drawing. Both are checked because either being off means there is
+    -- nothing here to schedule.
+    if not UQ:IsFeatureEnabled("mainQuestWaypoint")
+        or not UQ:IsFeatureEnabled("hudWorldMarker") then
         -- The expensive half of the disable. Without this the driver would run
         -- hud.waypoint at 20Hz forever -- reading the player position, sampling
         -- the heading and re-projecting -- for a marker that is never shown.

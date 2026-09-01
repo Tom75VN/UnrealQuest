@@ -65,6 +65,7 @@ local HELP_KEYS = {
     "CMD_HELP_TRACKER_RESET",
     "CMD_HELP_TRACKER_OBJECTIVES",
     "CMD_HELP_TRACKER_ZONES",
+    "CMD_HELP_TRACKER_RECENT",
     "CMD_HELP_TRACKER_WIDTH",
     "CMD_HELP_TRACKER_HEIGHT",
     "CMD_HELP_TRACKER_UNFOLD",
@@ -76,7 +77,7 @@ local HELP_MAIN_KEYS = {
     "CMD_HELP_MAIN_SET",
     "CMD_HELP_MAIN_REPORT",
     "CMD_HELP_MAIN_CLEAR",
-    "CMD_HELP_WAYPOINT",
+    "CMD_HELP_NAV",
 }
 
 local HELP_TAIL_KEYS = {
@@ -1203,6 +1204,14 @@ local function ShowTracker(argument)
         Line(UQ.L("CMD_TRACKER_ZONES_SET",
             grouped and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF")))
         return
+    elseif command == "recent" then
+        local lift = not (config:Get("trackerRecentFirst") and true or false)
+        config:Set("trackerRecentFirst", lift)
+        tracker.dirty = true
+        tracker:Refresh()
+        Line(UQ.L("CMD_TRACKER_RECENT_SET",
+            lift and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF")))
+        return
     elseif command == "native" then
         local hide = not (config:Get("trackerHideNativeWatch") and true or false)
         config:Set("trackerHideNativeWatch", hide)
@@ -1278,6 +1287,7 @@ local function ShowTracker(argument)
         .. " objectives=" .. tostring(report.objectives)
         .. " zones=" .. (report.groupByZone and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF"))
         .. " curzone=" .. (report.currentZoneOnly and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF"))
+        .. " recent=" .. (report.recentFirst and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF"))
         -- Diagnostic tokens, deliberately untranslated: the zone the filter
         -- settled on, which of MapContext:GetStandingZone's routes produced it
         -- (standing / standingSpan / parent / remembered / mapZone /
@@ -1351,15 +1361,14 @@ local function ShowMainQuest()
     Line("  restored=" .. tostring(report.restored)
         .. " selections=" .. tostring(report.selections))
 
-    -- The click counters are the discriminator when a click "does nothing":
-    -- zero log clicks with a chained row means the native OnClick never
-    -- reached us, which is a different fault from a click that arrived and
-    -- could not be matched to a quest.
+    -- Quest-log selection is intentionally native-only; its Following button
+    -- calls the selection module directly. These counters diagnose only the
+    -- addon-owned surfaces over native tracker FontStrings.
     if clicks then
         local click = clicks:GetReport()
-        Line("  " .. UQ.L("CMD_MAIN_CLICK_SURFACES", tostring(click.chainedRows),
+        Line("  " .. UQ.L("CMD_MAIN_CLICK_SURFACES",
             tostring(click.watchLinesMapped)))
-        Line("  " .. UQ.L("CMD_MAIN_CLICKS_SEEN", tostring(click.logClicks),
+        Line("  " .. UQ.L("CMD_MAIN_CLICKS_SEEN",
             tostring(click.watchClicks), tostring(click.modifier)))
     end
 end
@@ -1377,11 +1386,17 @@ local function ChangeMainQuest(target)
         return
     end
     if string.lower(trimmed) == "clear" or string.lower(trimmed) == "none" then
-        if mainQuest:Clear("cleared by command") then
-            Line(UQ.L("CMD_MAIN_STOPPED"))
-        else
-            Line(UQ.L("CMD_MAIN_NOT_FOLLOWING"))
+        mainQuest:ReturnToAutomatic()
+        local navigator = UQ:GetModule("Navigator")
+        if navigator then
+            navigator:Refresh()
         end
+        local trackerFrame = UQ:GetModule("TrackerFrame")
+        if trackerFrame then
+            trackerFrame.dirty = true
+            trackerFrame:Refresh()
+        end
+        ShowMainQuest()
         return
     end
 
@@ -1410,12 +1425,76 @@ end
 
 -- Waypoint --------------------------------------------------------------------
 
-local function ShowWaypoint()
+local function ShowNavigator()
+    local navigator = UQ:GetModule("Navigator")
+    if not navigator then
+        Line(UQ.L("CMD_MODULE_MISSING_WAYPOINT"))
+        return
+    end
+
+    navigator:ShowDebugMapTarget()
+    local report = navigator:GetReport()
+    Line(UQ.L("CMD_NAV_TITLE"))
+    Line("  enabled=" .. tostring(report.enabled)
+        .. " created=" .. tostring(report.created)
+        .. " shown=" .. tostring(report.shown))
+    Line("  placements=" .. tostring(report.placements)
+        .. " failures=" .. tostring(report.placementFailures)
+        .. " rotations=" .. tostring(report.rotations)
+        .. "/" .. tostring(report.rotationFailures))
+
+    -- The one line that separates "the arrow is wrong" from "the arrow cannot
+    -- exist on this client": the rotated texture quad is documented, not
+    -- probed, so its answer is worth printing rather than assuming.
+    if report.rotationSupported == false then
+        Line("  |cffff5555" .. UQ.L("CMD_NAV_NO_ROTATION") .. "|r")
+    end
+
+    if report.shown then
+        local yards = report.distanceYards
+        local degrees = report.relativeAngle
+            and string.format("%.0f", report.relativeAngle * 180 / math.pi)
+            or "-"
+        Line("  distance=" .. (yards and string.format("%.0f", yards) or "?")
+            .. "yd relative=" .. degrees .. "deg"
+            .. " facing=" .. tostring(report.facingSource or "none")
+            .. " target=" .. tostring(report.targetKind or "none")
+            .. " quest=" .. tostring(report.targetTitle or "none"))
+    elseif report.hiddenReason then
+        Line("  " .. UQ.L("CMD_NAV_HIDDEN", tostring(report.hiddenReason)))
+    end
+    if report.targetX and report.targetY then
+        Line("  origin=" .. tostring(report.targetAreaId) .. ":"
+            .. string.format("%.2f,%.2f", report.targetX, report.targetY)
+            .. " mapMark=" .. tostring(report.debugMapShown))
+    end
+
+    local counts = report.hiddenCounts or {}
+    local reason, count
+    local any = false
+    for reason, count in pairs(counts) do
+        if not any then
+            Line("  " .. UQ.L("CMD_NAV_HIDDEN_REASONS"))
+            any = true
+        end
+        Line("    " .. tostring(reason) .. " x" .. tostring(count))
+    end
+end
+
+local function ShowWaypoint(target)
     local waypoint = UQ:GetModule("Waypoint")
     local heading = UQ:GetModule("PlayerHeading")
     if not waypoint then
         Line(UQ.L("CMD_MODULE_MISSING_WAYPOINT"))
         return
+    end
+
+    -- `/uq waypoint recalibrate` throws away a settled facing convention and
+    -- re-runs the vote. The only reason to need it is a marker that points
+    -- consistently wrong, which means the vote settled on the wrong cell --
+    -- possible if the player spent the whole measurement backpedalling.
+    if target == "recalibrate" and heading then
+        heading:ResetConvention()
     end
 
     local report = waypoint:GetReport()
@@ -1460,6 +1539,18 @@ local function ShowWaypoint()
         Line("  " .. UQ.L("CMD_WAYPOINT_HEADING_COUNTS", tostring(headingReport.samples),
             tostring(headingReport.movementFixes),
             tostring(headingReport.clientSource or UQ.L("COMMON_NONE"))))
+
+        -- Untranslated on purpose, like the enabled=/created= line above: this
+        -- is a measurement to be pasted into the compatibility database, not
+        -- prose. It is the readout that tells a marker aimed the wrong way
+        -- apart from one aimed at the wrong target -- `raw` is what the client
+        -- returned, `facing` above is what it became.
+        if headingReport.clientSource then
+            Line("  convention=" .. tostring(heading:ConventionLabel())
+                .. " votes=" .. tostring(headingReport.conventionSamples)
+                .. " raw=" .. (headingReport.rawFacing
+                    and string.format("%.2f", headingReport.rawFacing) or "nil"))
+        end
         if not headingReport.facing then
             Line("  |cffff5555" .. UQ.L("CMD_WAYPOINT_NO_FACING_SOURCE") .. "|r -- "
                 .. UQ.L("CMD_WAYPOINT_NO_FACING_HINT"))
@@ -1594,9 +1685,16 @@ local function Handler(message)
         else
             FeatureDisabledNotice()
         end
-    elseif command == "waypoint" then
+    elseif command == "nav" or command == "navigator" then
         if UQ:IsFeatureEnabled("mainQuestWaypoint") then
-            ShowWaypoint()
+            ShowNavigator()
+        else
+            FeatureDisabledNotice()
+        end
+    elseif command == "waypoint" then
+        if UQ:IsFeatureEnabled("mainQuestWaypoint")
+            and UQ:IsFeatureEnabled("hudWorldMarker") then
+            ShowWaypoint(UQ.Trim(target) or "")
         else
             FeatureDisabledNotice()
         end

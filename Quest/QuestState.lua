@@ -220,6 +220,15 @@ function QuestState:Scan()
                         end
                     end
 
+                    -- The model is keyed by title, so accepting a follow-up
+                    -- with the same title as the just-completed quest does
+                    -- not create a new table entry. It is nevertheless a new
+                    -- live quest and must take the same path as every other
+                    -- acceptance (including automatic tracking).
+                    if not isNew and previousComplete == 1 and isComplete ~= 1 then
+                        table.insert(added, quest)
+                    end
+
                     if isComplete == 1 and previousComplete ~= 1 then
                         table.insert(completed, quest)
                     end

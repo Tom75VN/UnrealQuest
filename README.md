@@ -20,6 +20,7 @@ UnrealQuest turns questing into exploration instead of guesswork. It is designed
 - Open any zone's map and read its quest points, not only the zone you are standing in -- and let "Show" (or ctrl + click in the tracker) take you straight to the zone a quest is handed in or worked on, across continents if needed.
 - Follow nearby quest creatures and objectives from your minimap without constantly reopening the world map, with a tooltip on every marker.
 - Watch every quest you need in a movable tracker window, beyond the client's native five-quest limit, grouped by zone with live objective progress, quest levels and tracking that survives a reload.
+- Browse the native Quest Log in two full-height pages: the quest list stays on the left and the selected quest's details stay visible on the right. This layout is used standalone and with unrealUI's Classic WoW theme; unrealUI's modern themes keep their own two-pane Quest Log.
 - Narrow the tracker to the zone you are in, and keep a quest whose objectives are here even when the quest log files it under another zone.
 - Find nearby auctioneers, bankers, flight masters, mailboxes, vendors and class trainers from the quest tracker's NPC finder.
 - Put treasure chests, herbs, mining veins, fishing pools, rare, elite and boss creatures and dungeon and raid entrances on both maps from the same menu, each herb, vein and entrance drawn with its own icon, and each ranked creature wearing a silver, gold or red star for its rank.
@@ -123,8 +124,8 @@ visible click.
 
 ## Version
 
-Current release: 0.2.3
+Current release: 0.3.0
 
 ## License
 
-UnrealQuest is released under the MIT License. Bundled world data originates from VMaNGOS and was packaged by pfQuest under the MIT License; see [LICENSE](LICENSE) and [Database/CREDITS.md](Database/CREDITS.md).
+UnrealQuest is released under the MIT License. Bundled world data originates from VMaNGOS and was packaged by pfQuest under the MIT License. The EQL3 parchment artwork retains Daniel Rehn's original 2006 copyright; see [LICENSE](LICENSE) and [Database/CREDITS.md](Database/CREDITS.md).

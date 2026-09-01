@@ -56,6 +56,26 @@ Every write is idempotent and fails closed:
 
 No player-facing string is added: brackets and a number are not translatable,
 which is why the tracker hardcodes the same format.
+
+## The row's colour, on uUI's Modern surface only
+
+The stock quest log tints each row by how hard its quest is. This client
+cannot: GetDifficultyColor does not exist here and no addon-side shim reaches
+the native call site (knowledge.json core.getdifficultycolor_missing), so the
+rows arrive uncoloured, and uUI's Modern theme then paints all of them one
+uniform bright colour on every one of its font passes. This module gives the
+familiar red/orange/yellow/green/grey bands back to the row's own name, in the
+same pass and at the same cadence as the level prefix -- the two are the same
+fact about the same row, and writing them apart would show the list changing
+twice after every refresh.
+
+It is deliberately limited to that surface. The classic and standalone logs
+are left with whatever colour they already carry, since nothing there is
+repainting the rows, and a row that leaves the modern surface (or stops being
+a quest row at all) is handed back the colour it had before the first tint --
+see Client.SetQuestLogRowTitleColor in Compatibility/ClientAPI.lua. The colour
+itself is Client.GetQuestLevelColor, already used by the tracker window and
+the map layer, so all three surfaces cannot disagree about a quest's level.
 ]]
 
 local UQ = UnrealQuest
@@ -189,12 +209,35 @@ local function DecorateRow(row)
     return false
 end
 
+-- Reads the level off the row's own stamped quest log index, the same join
+-- DecorateRow uses. A row that is not a levelled quest row on the modern
+-- surface -- a header, a hidden pooled row, or any row at all while the host
+-- is not modern -- gets its original colour back instead of a band.
+local function ColorRow(row, modern)
+    if not modern or not Client.IsObjectShown(row) then
+        return Client.SetQuestLogRowTitleColor(row)
+    end
+    local questIndex = Client.GetFrameId(row)
+    local title, level, _, isHeader
+    if questIndex then
+        title, level, _, isHeader = Client.GetQuestLogEntry(questIndex)
+    end
+    if not title or isHeader or type(level) ~= "number" or level <= 0 then
+        return Client.SetQuestLogRowTitleColor(row)
+    end
+    local red, green, blue = Client.GetQuestLevelColor(level)
+    return Client.SetQuestLogRowTitleColor(row, red, green, blue)
+end
+
 function QuestLogLevels:Refresh()
     local log = Client.GetNamedObject("QuestLogFrame")
     if not log or not Client.IsObjectShown(log) then
         return
     end
 
+    -- Resolved once per pass, not once per row: it is two frame lookups, and
+    -- every row on screen belongs to the same surface anyway.
+    local modern = Client.HasModernQuestLog()
     local decorated = 0
     local rowIndex = 1
     local misses = 0
@@ -204,6 +247,7 @@ function QuestLogLevels:Refresh()
             misses = misses + 1
         else
             misses = 0
+            ColorRow(row, modern)
             if Client.IsObjectShown(row) and DecorateRow(row) then
                 decorated = decorated + 1
             end

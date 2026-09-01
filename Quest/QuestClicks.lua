@@ -1,33 +1,9 @@
 --[[
 UnrealQuest / Quest/QuestClicks.lua
 
-Clicking a quest -- in the quest log, or in the HUD tracker -- makes it the
-main quest.
-
-The two surfaces need opposite techniques, and getting that backwards is the
-bug this file is shaped to avoid.
-
-## The quest log: chain, never overlay
-
-`QuestLogTitle<N>` rows are real Buttons whose click already means something:
-it selects the quest and fills the detail pane. An addon Button laid over the
-row would take that click and the row would stop working -- exactly the failure
-already recorded on the map, where an area tile at the same frame level
-silently swallowed the giver pin's click.
-
-So the row's own OnClick is chained: the native handler runs first, then
-UnrealQuest's. There is no `hooksecurefunc` on this client at all
-(hooks.no_global_hooksecurefunc), so the chain is built by hand out of
-`GetScript` + `SetScript` in Compatibility/ClientAPI.lua.
-
-Two client facts shape the chaining:
-  * `SetScript(type, nil)` does not detach a script here, so a chain can never
-    be removed once installed. Installation is therefore made idempotent with a
-    marker field rather than by undoing and redoing it.
-  * Clicking a `QuestLogTitle` HEADER row is confirmed in game to do nothing on
-    this client (questlog.header_row_onclick_does_not_collapse). That is a
-    recorded fault in the native handler, so a header row may simply never
-    reach our addition -- which is harmless, because a header is not a quest.
+Quest-log rows keep their native job: selecting a quest and filling the detail
+pane. They deliberately do not change the followed quest. The dedicated
+Following button in Quest/QuestLogButtons.lua owns that action.
 
 ## The HUD tracker: overlay, never chain
 
@@ -54,14 +30,10 @@ local QuestClicks = UQ:NewModule("QuestClicks")
 
 -- Vanilla shows far fewer rows than this; scanning past the end is free
 -- because a missing global simply resolves to nil.
-local MAX_LOG_ROWS = 30
 local MAX_WATCH_LINES = 30
-local CHAIN_MARKER = "unrealQuestMainQuestChained"
 
 QuestClicks.surfaces = {}
 QuestClicks.surfaceQuest = {}
-QuestClicks.chainedRows = 0
-QuestClicks.logClicks = 0
 QuestClicks.watchClicks = 0
 QuestClicks.watchSignature = nil
 QuestClicks.watchLinesMapped = 0
@@ -84,10 +56,9 @@ end
 
 -- Modifier gate --------------------------------------------------------------
 
--- Plain left-click is the default, which is what was asked for, but it does
--- mean browsing the quest log re-points the waypoint on every row you read.
--- `mainQuestClickModifier` turns that into a held-modifier gesture without a
--- code change for anyone who would rather browse freely.
+-- Plain left-click is the tracker default. The quest log uses its explicit
+-- Following button instead, so browsing the detail pane never repoints the
+-- navigator.
 local function ModifierSatisfied()
     local config = Config()
     local modifier = config and config:Get("mainQuestClickModifier")
@@ -196,6 +167,29 @@ end
 
 -- Selection ------------------------------------------------------------------
 
+local function RefreshFollowingSurfaces()
+    local navigator = UQ:GetModule("Navigator")
+    if navigator then
+        navigator:Refresh()
+    end
+    local trackerFrame = UQ:GetModule("TrackerFrame")
+    if trackerFrame then
+        trackerFrame.dirty = true
+        trackerFrame:Refresh()
+    end
+    local questLogButtons = UQ:GetModule("QuestLogButtons")
+    if questLogButtons then
+        questLogButtons:Refresh()
+    end
+end
+
+-- Shared by the modern quest-log decoration. Keeping row identity here means
+-- the highlight and the explicit Following button use the same selected quest
+-- even when a skin rewrites the row text or drops its stamped ID.
+function QuestClicks:GetQuestFromLogRow(row)
+    return QuestFromLogRow(row)
+end
+
 function QuestClicks:Select(quest, origin)
     if not quest or not quest.titleKey then
         return false
@@ -205,19 +199,29 @@ function QuestClicks:Select(quest, origin)
         return false
     end
 
+    local previousKey = mainQuest:Get()
     local wasMain = mainQuest:IsMain(quest.titleKey)
-    mainQuest:Toggle(quest.titleKey)
-    local title = UQ.GetQuestDisplayTitle(quest) or quest.title
+    if wasMain and mainQuest:IsAutomatic() then
+        -- This is already the nearest-node answer. Clicking it cannot remove
+        -- the one following state the navigator must always have.
+        return false, "automaticUnchanged"
+    end
 
     if wasMain then
-        UQ:Print(UQ.L("MAINQUEST_NO_LONGER_FOLLOWING",
-            "|cffffffff" .. tostring(title) .. "|r"))
+        mainQuest:ReturnToAutomatic()
     else
+        mainQuest:Set(quest.titleKey)
+    end
+    RefreshFollowingSurfaces()
+
+    local followed = mainQuest:GetQuest()
+    if followed and (not wasMain or mainQuest:Get() ~= previousKey) then
+        local title = UQ.GetQuestDisplayTitle(followed) or followed.title
         UQ:Print(UQ.L("MAINQUEST_NOW_FOLLOWING",
             "|cff" .. UQ.colors.accentHex .. tostring(title) .. "|r"))
     end
     UQ:Debug("main quest click from " .. tostring(origin))
-    return true
+    return true, wasMain and "automatic" or "manual"
 end
 
 -- Reveal on map ---------------------------------------------------------------
@@ -421,56 +425,6 @@ function QuestClicks:RevealOnMap(quest)
     end
 end
 
--- Quest log ------------------------------------------------------------------
-
-function QuestClicks:InstallLogRow(index)
-    local row = Client.GetNamedObject("QuestLogTitle" .. tostring(index))
-    if not row then
-        return false, "missing"
-    end
-    if Client.IsScriptChained(row, CHAIN_MARKER) then
-        return true, "already"
-    end
-
-    -- The row is captured in the closure rather than read from the implicit
-    -- `this` global at call time: one less client global in the hot path, and
-    -- it cannot be clobbered by an event dispatch between click and handler.
-    local installed = Client.ChainScript(row, "OnClick", function()
-        if not ModifierSatisfied() then
-            return
-        end
-        local quest = QuestFromLogRow(row)
-        if quest then
-            QuestClicks.logClicks = QuestClicks.logClicks + 1
-            QuestClicks:Select(quest, "questLog")
-        end
-    end)
-    if not installed then
-        return false, "chainFailed"
-    end
-
-    Client.MarkScriptChained(row, CHAIN_MARKER)
-    self.chainedRows = self.chainedRows + 1
-    return true, "installed"
-end
-
--- Walks the quest log rows and chains any that are not chained yet. Re-run
--- periodically rather than once: this client is recorded as recreating quest
--- log artwork on show, and a row created later would otherwise never be wired.
-function QuestClicks:InstallLogRows()
-    local index = 1
-    local misses = 0
-    while index <= MAX_LOG_ROWS and misses < 3 do
-        local ok, reason = self:InstallLogRow(index)
-        if not ok and reason == "missing" then
-            misses = misses + 1
-        else
-            misses = 0
-        end
-        index = index + 1
-    end
-end
-
 -- HUD tracker ----------------------------------------------------------------
 
 function QuestClicks:GetSurface(index)
@@ -567,8 +521,6 @@ end
 
 function QuestClicks:GetReport()
     return {
-        chainedRows = self.chainedRows,
-        logClicks = self.logClicks,
         watchClicks = self.watchClicks,
         watchLinesMapped = self.watchLinesMapped,
         modifier = (Config() and Config():Get("mainQuestClickModifier")) or "none",
@@ -580,8 +532,6 @@ function QuestClicks:RecordDiagnostics()
     if not config then
         return
     end
-    config:SetSectionEntry("clickDiagnostics", "chainedRows", self.chainedRows)
-    config:SetSectionEntry("clickDiagnostics", "logClicks", self.logClicks)
     config:SetSectionEntry("clickDiagnostics", "watchClicks", self.watchClicks)
     config:SetSectionEntry("clickDiagnostics", "watchLinesMapped", self.watchLinesMapped)
 end
@@ -594,12 +544,6 @@ function QuestClicks:OnInit()
         -- capabilities, because it establishes nothing about this client.
         return
     end
-    UQ:DeclareCapability("questLogRowClick", "documented",
-        "Frame:GetScript and Frame:SetScript are both in the client API reference, which is the only "
-        .. "route to adding behaviour to a native row here -- this client has no hooksecurefunc. "
-        .. "Unverified in one respect worth knowing: clicking a QuestLogTitle HEADER row is confirmed "
-        .. "in game to do nothing on this client, so whether a QUEST row's OnClick fires at all is "
-        .. "measured by /uq main's click counters rather than assumed")
     UQ:DeclareCapability("questWatchLineClick", "detected",
         "QuestWatchFrame is a confirmed native frame and its lines are FontStrings, which cannot take "
         .. "a click on any client, so an addon-owned Button is anchored over each line. A 14x14 "
@@ -609,15 +553,6 @@ function QuestClicks:OnInit()
 end
 
 function QuestClicks:OnEnable()
-    -- This gate check MUST stay above InstallLogRows, and it is the one gate in
-    -- the addon that is not merely a performance measure.
-    --
-    -- InstallLogRows chains a handler onto every native QuestLogTitle row, and
-    -- SetScript(type, nil) does not detach a script on this client: a chain
-    -- installed once survives for the session and cannot be undone. Disabling
-    -- the layer after installation would therefore leave dead closures running
-    -- on every quest log click for as long as the player stays logged in. The
-    -- only way to have no chain is to never install one.
     if not UQ:IsFeatureEnabled("mainQuestWaypoint") then
         return
     end
@@ -626,14 +561,6 @@ function QuestClicks:OnEnable()
     if not driver then
         return
     end
-
-    self:InstallLogRows()
-
-    -- One second: this is repair work, not a hot path. Rows that already carry
-    -- the chain are skipped by their marker field.
-    driver:Schedule("clicks.logrows", 1, function()
-        QuestClicks:InstallLogRows()
-    end)
 
     driver:Schedule("clicks.watchoverlay", 0.5, function()
         QuestClicks:RefreshWatchOverlay()

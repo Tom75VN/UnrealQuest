@@ -317,6 +317,13 @@ local defaults = {
     -- have/need counter, alongside the numeric text. On by default.
     trackerProgressBar = true,
 
+    -- Lifts a quest to the top of the window the moment one of its objectives
+    -- moves, most recently advanced first, so the kill or the loot that just
+    -- happened is reported at the top instead of wherever the quest log files
+    -- it. Session-scoped: the lift is forgotten on logout, and complete quests
+    -- still sink below every quest still in progress. On by default.
+    trackerRecentFirst = true,
+
     -- The native five-quest panel is redundant while this window is up, and is
     -- restored the moment either this setting or trackerEnabled is turned off.
     trackerHideNativeWatch = true,
@@ -380,6 +387,30 @@ local defaults = {
     -- pitch and target elevation, neither of which this client exposes), so
     -- the marker rides a fixed horizon band.
     waypointHeight = 0.18,
+
+    -- The navigator: the arc-and-arrow direction display that replaced the
+    -- projected world marker. See docs/HUD-NAVIGATOR.md.
+    navigatorEnabled = true,
+
+    -- 20Hz, the same reasoning as waypointInterval: at this rate the arrow
+    -- sweeps as the player turns instead of stepping between positions.
+    navigatorInterval = 0.05,
+
+    -- User multiplier on the navigator's half-size base presentation. The arc
+    -- and arrow scale together so their proportions stay fixed.
+    navigatorScale = 1,
+
+    -- UIParent-relative anchor captured after dragging. GetFrameAnchor undoes
+    -- this client's inverted GetPoint Y before these scalars are persisted.
+    -- The default puts the navigation dial just above centre.
+    navigatorPoint = "TOP",
+    navigatorRelativePoint = "CENTER",
+    navigatorX = 0,
+    navigatorY = 150,
+
+    -- Whether the decorative arc is drawn behind the arrow. It is a reference
+    -- frame, not information -- the arrow alone is still correct without it.
+    navigatorShowArc = true,
 }
 
 local function IsSafeString(value)

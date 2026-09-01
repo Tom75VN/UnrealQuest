@@ -294,6 +294,13 @@ local AREA_RENDER_ENABLED = true
 -- with the hover behaviour that hides them again -- is this one flag.
 local MARKER_RENDER_ENABLED = false
 
+-- `/uq nav` leaves one diagnostic marker at the navigator's exact selected
+-- database coordinate. It is intentionally larger and higher than the normal
+-- quest scene: this is a debug answer about which raw node won, not another
+-- quest-state icon that should blend into the layer it is diagnosing.
+local NAVIGATOR_DEBUG_PIN_SIZE = 18
+local NAVIGATOR_DEBUG_LEVEL_BOOST = 8
+
 WorldMapPins.pool = {}
 WorldMapPins.areaPool = {}
 WorldMapPins.giverPool = {}
@@ -314,6 +321,9 @@ WorldMapPins.hoverStrokePool = {}
 WorldMapPins.hoverStrokeX = {}
 WorldMapPins.hoverStrokeY = {}
 WorldMapPins.turnInPool = {}
+WorldMapPins.navigatorDebugPin = nil
+WorldMapPins.navigatorDebugTarget = nil
+WorldMapPins.navigatorDebugVisible = false
 WorldMapPins.renderEnabled = true
 WorldMapPins.visibleCount = 0
 WorldMapPins.areaVisibleCount = 0
@@ -386,6 +396,10 @@ local function QuestTarget()
     return UQ:GetModule("QuestTarget")
 end
 
+local function ObjectiveMatch()
+    return UQ:GetModule("ObjectiveMatch")
+end
+
 local function MainQuest()
     return UQ:GetModule("MainQuest")
 end
@@ -416,6 +430,10 @@ local function HideAllPools()
     WorldMapPins.strokeVisibleCount = HidePoolFrom(WorldMapPins.strokePool, 1)
     WorldMapPins.hoverStrokeVisibleCount = HidePoolFrom(WorldMapPins.hoverStrokePool, 1)
     WorldMapPins.turnInVisibleCount = HidePoolFrom(WorldMapPins.turnInPool, 1)
+    if WorldMapPins.navigatorDebugPin then
+        Client.HideObject(WorldMapPins.navigatorDebugPin)
+    end
+    WorldMapPins.navigatorDebugVisible = false
 end
 
 -- Stable-tick re-application ------------------------------------------------
@@ -577,6 +595,127 @@ local function GetQuestMapIds(quest)
     return ids
 end
 
+-- A unique roaming target is represented in the bundled unit table by several
+-- sampled patrol coordinates. Drawing every sample as an objective dot makes
+-- one creature look like a pack and, because the route gate sees several
+-- locations, also withholds the path that explains where the creature moves.
+--
+-- The live objective supplies the missing distinction. A source is collapsed
+-- only when every unfinished line it can satisfy for this quest needs exactly
+-- one result, and an item line is a guaranteed drop. The world data must also
+-- attach exactly one drawable route: several routes mean several spawned
+-- creatures, where the full objective cloud remains the honest answer.
+--
+-- The representative is the medoid -- the recorded point nearest the average
+-- of this source's locations -- so the one retained dot is always somewhere
+-- the data actually places the creature. This is the same rule the
+-- Rare/Elite/Boss map row uses for roaming creatures.
+local function CollapseSingleTargetPatrols(quest, areaId, locations)
+    local database = Database()
+    local objectiveMatch = ObjectiveMatch()
+    if not quest or not database or not objectiveMatch
+        or table.getn(locations) < 2 then
+        return locations
+    end
+
+    local groups = {}
+    local index = 1
+    local total = table.getn(locations)
+    while index <= total do
+        local location = locations[index]
+        if location and location.sourceType == "unit"
+            and type(location.sourceId) == "number"
+            and type(location.x) == "number" and type(location.y) == "number" then
+            local group = groups[location.sourceId]
+            if not group then
+                group = { locations = {}, sumX = 0, sumY = 0 }
+                groups[location.sourceId] = group
+            end
+            table.insert(group.locations, location)
+            group.sumX = group.sumX + location.x
+            group.sumY = group.sumY + location.y
+        end
+        index = index + 1
+    end
+
+    local replacements = {}
+    local replacementCount = 0
+    local unitId, group
+    for unitId, group in pairs(groups) do
+        local groupTotal = table.getn(group.locations)
+        if groupTotal > 1 then
+            local unitKey = UQ.NameKey(database:GetUnitName(unitId))
+            local matches = unitKey and objectiveMatch:FindForUnit(unitKey)
+            local singleTarget = false
+            local safe = matches ~= nil
+            local matchIndex = 1
+            local matchTotal = matches and table.getn(matches) or 0
+            while matchIndex <= matchTotal do
+                local objective = matches[matchIndex]
+                if objective.quest == quest and not objective.finished then
+                    singleTarget = true
+                    if objective.need ~= 1
+                        or (objective.fromDatabase
+                            and (type(objective.dropRate) ~= "number"
+                                or objective.dropRate < 100)) then
+                        safe = false
+                    end
+                end
+                matchIndex = matchIndex + 1
+            end
+
+            local routes = safe and singleTarget
+                and database:GetUnitPatrolRoutes(unitId, areaId) or nil
+            local route = routes and table.getn(routes) == 1 and routes[1] or nil
+            if route and type(route.points) == "table"
+                and table.getn(route.points) > 1 then
+                local centreX = group.sumX / groupTotal
+                local centreY = group.sumY / groupTotal
+                local best = nil
+                local bestDistance = nil
+                local pointIndex = 1
+                while pointIndex <= groupTotal do
+                    local point = group.locations[pointIndex]
+                    local dx = point.x - centreX
+                    local dy = point.y - centreY
+                    local distance = dx * dx + dy * dy
+                    if bestDistance == nil or distance < bestDistance then
+                        best = point
+                        bestDistance = distance
+                    end
+                    pointIndex = pointIndex + 1
+                end
+                replacements[unitId] = best
+                replacementCount = replacementCount + 1
+            end
+        end
+    end
+
+    if replacementCount == 0 then
+        return locations
+    end
+
+    local collapsed = {}
+    local inserted = {}
+    index = 1
+    while index <= total do
+        local location = locations[index]
+        local unitId = location and location.sourceType == "unit"
+            and location.sourceId or nil
+        local replacement = unitId and replacements[unitId] or nil
+        if replacement then
+            if not inserted[unitId] then
+                inserted[unitId] = true
+                table.insert(collapsed, replacement)
+            end
+        else
+            table.insert(collapsed, location)
+        end
+        index = index + 1
+    end
+    return collapsed
+end
+
 -- Union and deduplicate the still-needed locations of every drawable
 -- candidate. Ambiguity must not introduce a hidden per-row crop that a
 -- resolved quest no longer has, while a finished live creature objective may
@@ -619,21 +758,17 @@ local function CollectQuestMapLocations(quest, areaId, complete, config)
         end
         idIndex = idIndex + 1
     end
-    return locations, unknown, usedIds
+    return CollapseSingleTargetPatrols(quest, areaId, locations), unknown, usedIds
 end
 
 -- The creatures a quest sends the player after that the map can honestly draw
--- a route for: the ones with exactly ONE recorded location in this zone.
+-- a route for: the ones with exactly ONE drawn location in this zone.
 --
--- The spawn count is the whole criterion, and it is not a performance guard.
--- A route belongs to a spawned creature, not to a creature type, so a mob with
--- forty spawns has forty of them -- 76 Bloodscalp Mystics carry eleven routes
--- and 445 waypoints between them, which would carpet Stranglethorn with lines
--- describing ground the objective cloud already covers. With one recorded
--- location there is no cloud to read: the quest points at a single creature
--- that is not where the dot says, which is exactly the case a route answers
--- (Fozruk, Slark, the Kodo Matriarch, the Wandering Protector). 138 bundled
--- unit-zone pairs across roughly 230 quests are in that state.
+-- Most reach this state because the data records one spawn. The singleton
+-- patrol reduction above also turns a route's sampled coordinates into one
+-- honest representative dot when the live quest proves one kill completes the
+-- step. A creature type with several spawned routes remains a cloud and gets
+-- no route, so the Bloodscalp Mystic case still cannot carpet Stranglethorn.
 --
 -- Counted from the quest's own drawn locations rather than from the unit
 -- record, so a source whose other spawns were withheld -- a finished creature
@@ -1252,6 +1387,73 @@ function WorldMapPins:GetPin(index)
     return pin
 end
 
+function WorldMapPins:GetNavigatorDebugPin()
+    if self.navigatorDebugPin then
+        return self.navigatorDebugPin
+    end
+    local pin = Client.CreateWorldMapPin("NavigatorDebug", 1, 0.15, 0.85)
+    if not pin then
+        return nil
+    end
+    Client.SetWorldMapPinSize(pin, NAVIGATOR_DEBUG_PIN_SIZE,
+        NAVIGATOR_DEBUG_PIN_SIZE)
+    Client.RaiseWorldMapPin(pin, NAVIGATOR_DEBUG_LEVEL_BOOST)
+    Client.SetWorldMapPinLabel(pin, "N")
+    self.navigatorDebugPin = pin
+    return pin
+end
+
+-- Stores the raw point rather than a map-frame offset. The marker therefore
+-- survives opening the map after the command and is shown only when that
+-- point's own area is the map being viewed.
+function WorldMapPins:SetNavigatorDebugTarget(areaId, x, y, kind, title)
+    if type(areaId) ~= "number" or type(x) ~= "number" or type(y) ~= "number"
+        or x < 0 or x > 100 or y < 0 or y > 100 then
+        self.navigatorDebugTarget = nil
+        if self.navigatorDebugPin then
+            Client.HideObject(self.navigatorDebugPin)
+        end
+        self.navigatorDebugVisible = false
+        return false
+    end
+    self.navigatorDebugTarget = {
+        areaId = areaId,
+        x = x,
+        y = y,
+        kind = kind,
+        title = title,
+    }
+    self.dirty = true
+    self:MarkSettling()
+    self:Refresh()
+    return self.navigatorDebugVisible
+end
+
+function WorldMapPins:DrawNavigatorDebugTarget(mapContext, areaId, report)
+    local target = self.navigatorDebugTarget
+    if not target or target.areaId ~= areaId then
+        if self.navigatorDebugPin then
+            Client.HideObject(self.navigatorDebugPin)
+        end
+        self.navigatorDebugVisible = false
+        return false
+    end
+    local x, y = mapContext:DatabaseToCurrentMap(
+        areaId, target.x, target.y, report)
+    local pin = x and y and self:GetNavigatorDebugPin()
+    if not pin then
+        self.navigatorDebugVisible = false
+        return false
+    end
+    Client.SetWorldMapPinColor(pin, 1, 0.15, 0.85)
+    self.navigatorDebugVisible = mapContext:PlaceOnWorldMap(pin, x, y)
+        and true or false
+    if not self.navigatorDebugVisible then
+        Client.HideObject(pin)
+    end
+    return self.navigatorDebugVisible
+end
+
 -- Area tiles carry the same once-per-frame mouse scripts as the giver pins,
 -- attached at creation for the same reason (Core/Driver.lua records freshly
 -- allocated per-tick closures as a measured stuttering hazard). The quest a
@@ -1279,8 +1481,8 @@ function WorldMapPins:GetArea(index)
     return area
 end
 
--- Forces every visible marker in all five pools back through the map's draw
--- path, at the cadence described at SETTLE_SECONDS above. A canvas that
+-- Forces every visible production pool and the optional navigator debug pin
+-- back through the map's draw path, at the cadence described at SETTLE_SECONDS above. A canvas that
 -- changed size forces a pass on its own: the placement is a fraction of the
 -- canvas, so a resize invalidates every point at once.
 function WorldMapPins:ReapplyVisiblePools()
@@ -1311,6 +1513,9 @@ function WorldMapPins:ReapplyVisiblePools()
     Client.ReapplyWorldMapPins(self.giverPool, self.giverVisibleCount)
     Client.ReapplyWorldMapPins(self.patrolPool, self.patrolVisibleCount)
     Client.ReapplyWorldMapPins(self.turnInPool, self.turnInVisibleCount)
+    if self.navigatorDebugVisible and self.navigatorDebugPin then
+        Client.ReapplyWorldMapPin(self.navigatorDebugPin)
+    end
     -- The stamps cost nothing here in the ordinary case: they hang off one
     -- layer frame, so re-anchoring and re-showing that frame carries all of
     -- them back through the map's draw path. Their own offsets are only
@@ -3523,6 +3728,7 @@ function WorldMapPins:Refresh()
     self.patrolVisibleCount = HidePoolFrom(self.patrolPool, patrolTargetIndex)
     self.strokeVisibleCount = HidePoolFrom(self.strokePool, patrolStrokeIndex)
     self.turnInVisibleCount = HidePoolFrom(self.turnInPool, turnInMarkerIndex)
+    self:DrawNavigatorDebugTarget(mapContext, areaId, report)
 
     -- Pooled markers change owner between rebuilds, so a focus held across one
     -- describes the wrong frames. Cleared here, then re-applied against the
@@ -3716,6 +3922,7 @@ function WorldMapPins:GetStatus()
         giverHovers = self.giverHoverCount or 0,
         giverClicks = self.giverClickCount or 0,
         turnInHovers = self.turnInHoverCount or 0,
+        navigatorDebugVisible = self.navigatorDebugVisible,
         rebuilds = self.rebuildCount or 0,
         itemUseUnknown = self.itemUseUnknown or 0,
         capped = self.visibleCount >= MAX_MARKERS

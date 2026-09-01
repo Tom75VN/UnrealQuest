@@ -1,8 +1,9 @@
 --[[
 UnrealQuest / Quest/MainQuest.lua
 
-The "main quest": the one quest the player is currently doing, and the one the
-HUD waypoint points at.
+The "main quest": the one quest the player is currently following, and the one
+the HUD navigator points at. Without a manual choice it follows the quest that
+owns the nearest drawable node, updating as the player moves.
 
 This is a selection layer over the quest model, nothing more. It owns no
 locations, no widgets and no client calls beyond the quest log the model
@@ -27,21 +28,26 @@ Three constraints shape it:
    therefore only ever cleared from a complete snapshot, the same rule
    Quest/QuestState.lua and Quest/Tracker.lua already apply to removals.
 
-3. **The selection outlives a reload.** The native watch list does not survive
-   one here, which is why Tracker re-applies it; the main quest is stored the
-   same way and restored the same way, on the driver rather than once, because
-   the quest log may not be populated when the addon enables.
+3. **The selection outlives a reload, but only where there is one.** The
+   native watch list does not survive one here, which is why Tracker re-applies
+   it; the main quest is stored the same way and restored the same way, on the
+   driver rather than once, because the quest log may not be populated when the
+   addon enables. What is stored is the player's CHOICE, not its consequence:
+   automatic following remembers that it is automatic and nothing else, so the
+   quest it lands on is found again rather than restored.
 ]]
 
 local UQ = UnrealQuest
 local MainQuest = UQ:NewModule("MainQuest")
 
 local STORE_KEY = "mainQuestTitleKey"
+local AUTO_STORE_KEY = "mainQuestAutomatic"
 -- At the default 0.5s poll this is ten seconds of waiting for the quest
 -- log to populate before an absent quest is believed to be absent.
 local MAX_RESTORE_ATTEMPTS = 20
 
 MainQuest.titleKey = nil
+MainQuest.automatic = false
 MainQuest.restored = false
 MainQuest.listeners = {}
 MainQuest.selectionCount = 0
@@ -87,6 +93,10 @@ function MainQuest:Get()
     return self.titleKey
 end
 
+function MainQuest:IsAutomatic()
+    return self.automatic and true or false
+end
+
 function MainQuest:IsMain(titleKey)
     return titleKey ~= nil and titleKey == self.titleKey
 end
@@ -115,30 +125,64 @@ function MainQuest:Persist()
     -- writer mangles. Cleared selection stores the empty string rather than
     -- nil: Config:Get falls back to the default for a nil, which would make
     -- "cleared" indistinguishable from "never set".
-    config:Set(STORE_KEY, self.titleKey or "")
+    --
+    -- Only a MANUAL selection is a fact worth remembering. In automatic mode
+    -- the quest is derived from whichever drawable node happened to be nearest
+    -- when the session ended, and writing that down turns a derived answer into
+    -- a stored one: the next login restores it as the followed quest before the
+    -- navigator has evaluated anything, and the player sees the addon go back
+    -- to the quest they unfollowed. Automatic therefore persists the mode and
+    -- no key, and the nearest node is found again from scratch.
+    if self.automatic then
+        config:Set(STORE_KEY, "")
+    else
+        config:Set(STORE_KEY, self.titleKey or "")
+    end
+    config:Set(AUTO_STORE_KEY, self.automatic and true or false)
 end
 
--- Sets the main quest, or clears it when the same quest is selected again.
---
--- Re-selecting to clear is the whole reason plain left-click on a quest log
--- row is safe to use for this: without it the only way to stop following a
--- quest would be a slash command, and with it the gesture is its own toggle.
+-- Selects a manual quest, or returns to nearest-node following when the same
+-- manual quest is selected again. Automatic following itself cannot be
+-- switched off by clicking its current quest: there must always be one quest
+-- matching the navigator's nearest node.
 function MainQuest:Toggle(titleKey)
     if titleKey and titleKey == self.titleKey then
-        return self:Clear("toggled off")
+        if self.automatic then
+            return true, "automaticUnchanged"
+        end
+        return self:ReturnToAutomatic()
     end
     return self:Set(titleKey)
+end
+
+function MainQuest:ReturnToAutomatic()
+    if self.automatic then
+        return false, "alreadyAutomatic"
+    end
+    self.automatic = true
+    -- The manual key goes with the manual mode. Keeping it would leave every
+    -- surface drawing the just-unfollowed quest as still followed until the
+    -- navigator happened to land on a different nearest node -- and where it
+    -- never does, the gesture would look like it did nothing at all. Nil here
+    -- lasts until the next navigator pass, which calls SetDefault precisely
+    -- because there is no selection; the click paths refresh the navigator
+    -- immediately, so in practice the gap is not drawn.
+    self.titleKey = nil
+    self:Persist()
+    self:Notify("MAIN_QUEST_CHANGED")
+    return true, "automatic"
 end
 
 function MainQuest:Set(titleKey)
     if type(titleKey) ~= "string" or titleKey == "" then
         return false, "invalidKey"
     end
-    if titleKey == self.titleKey then
+    if titleKey == self.titleKey and not self.automatic then
         return true, "unchanged"
     end
 
     self.titleKey = titleKey
+    self.automatic = false
     self.selectionCount = self.selectionCount + 1
     self:Persist()
     self:Notify("MAIN_QUEST_CHANGED")
@@ -159,12 +203,53 @@ function MainQuest:Set(titleKey)
     return true, "set"
 end
 
+-- Establishes the initial followed quest without overriding a player choice.
+-- The navigator calls this only after it has found the nearest drawable node,
+-- so a fresh character immediately follows something useful while an explicit
+-- click (or a restored selection) remains authoritative across later ticks.
+-- Unlike Set, the automatic default never changes the tracked set: following
+-- the nearest node must not silently opt a quest into the watch list.
+function MainQuest:SetDefault(titleKey)
+    if self.titleKey then
+        return false, "alreadyFollowing"
+    end
+    if type(titleKey) ~= "string" or titleKey == "" then
+        return false, "invalidKey"
+    end
+
+    self.titleKey = titleKey
+    self.automatic = true
+    self:Persist()
+    self:Notify("MAIN_QUEST_CHANGED")
+    return true, "default"
+end
+
+-- Keeps automatic following attached to the nearest drawable node as the
+-- player moves. An explicit click switches this mode off in Set, so this can
+-- never replace a player-selected quest.
+function MainQuest:UpdateDefault(titleKey)
+    if not self.automatic then
+        return false, "manual"
+    end
+    if type(titleKey) ~= "string" or titleKey == "" then
+        return false, "invalidKey"
+    end
+    if titleKey == self.titleKey then
+        return true, "unchanged"
+    end
+    self.titleKey = titleKey
+    self:Persist()
+    self:Notify("MAIN_QUEST_CHANGED")
+    return true, "updatedDefault"
+end
+
 function MainQuest:Clear(reason)
     if not self.titleKey then
         return false, "noSelection"
     end
     UQ:Debug("main quest cleared: " .. tostring(reason or "unspecified"))
     self.titleKey = nil
+    self.automatic = false
     self:Persist()
     self:Notify("MAIN_QUEST_CLEARED")
     return true, "cleared"
@@ -290,12 +375,20 @@ function MainQuest:Restore()
         -- Nothing was remembered. That is a finished restoration, not a
         -- pending one: leaving it pending would keep Validate disarmed for the
         -- whole session.
+        --
+        -- The MODE still is remembered: Persist deliberately stores no key
+        -- while following automatically, so an empty key with the automatic
+        -- flag set is a player who chose automatic following, not a player who
+        -- never chose anything. Reading it back as manual would leave the very
+        -- first nearest-node pick behaving like a click.
         self.restored = true
+        self.automatic = config:Get(AUTO_STORE_KEY) and true or false
         return
     end
 
     if questState:GetQuest(stored) then
         self.titleKey = stored
+        self.automatic = config:Get(AUTO_STORE_KEY) and true or false
         self.restored = true
         self:Notify("MAIN_QUEST_CHANGED")
         UQ:Debug("main quest restored: " .. stored)
@@ -320,6 +413,7 @@ end
 function MainQuest:GetReport()
     local report = {
         titleKey = self.titleKey,
+        automatic = self.automatic and true or false,
         restored = self.restored,
         selections = self.selectionCount,
     }

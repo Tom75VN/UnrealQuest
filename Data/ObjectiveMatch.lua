@@ -221,18 +221,36 @@ function ObjectiveMatch:GetQuestLinks(questId)
     return links
 end
 
+-- Returns whether the objective line names something this creature supplies,
+-- and the drop rate the world data records for it when there is one (a
+-- percentage; see Database:GetQuestObjectiveUnitLinks). Several keys can match
+-- one line by substring -- an "Iron Ore" objective also contains "Ore" -- so
+-- the longest match wins, which is the one that actually named the item and
+-- therefore carries its rate.
 local function ObjectiveMatchesLinks(objectiveText, objectiveKeys)
     local textKey = UQ.NameKey(objectiveText)
     if not textKey then
         return false
     end
-    local objectiveKey
-    for objectiveKey in pairs(objectiveKeys) do
+    local bestLength = 0
+    local bestValue = nil
+    local objectiveKey, value
+    for objectiveKey, value in pairs(objectiveKeys) do
         if string.find(textKey, objectiveKey, 1, true) then
-            return true
+            local length = string.len(objectiveKey)
+            if length > bestLength then
+                bestLength = length
+                bestValue = value
+            end
         end
     end
-    return false
+    if bestLength == 0 then
+        return false
+    end
+    if type(bestValue) == "number" then
+        return true, bestValue
+    end
+    return true
 end
 
 -- Matching ------------------------------------------------------------------
@@ -248,8 +266,11 @@ ObjectiveMatch.cacheCount = 0
 
 -- Walks the live quest log for a creature. Returns nil when it satisfies
 -- nothing, or a list of
---   { quest, objectiveIndex, name, have, need, finished, fromDatabase }
--- plus the counts of matches found by each of the two paths.
+--   { quest, objectiveIndex, name, have, need, finished, fromDatabase,
+--     dropRate }
+-- plus the counts of matches found by each of the two paths. `dropRate` is
+-- present only on a world-data item match that has a recorded rate, and is a
+-- percentage rather than a fraction.
 function ObjectiveMatch:Resolve(unitKey)
     local state = UQ:GetModule("QuestState")
     if not state or not unitKey then
@@ -279,6 +300,17 @@ function ObjectiveMatch:Resolve(unitKey)
                         objective.text, objective.objectiveType)
                     local matched = false
                     local fromDatabase = false
+                    local dropRate = nil
+
+                    -- Resolved before the chain below rather than inside it,
+                    -- so that a creature the world data links to this quest
+                    -- but not to THIS line still falls through to the
+                    -- unparsed-line fallback the way it always did.
+                    local linkMatched, linkRate
+                    if objectiveKeys then
+                        linkMatched, linkRate = ObjectiveMatchesLinks(
+                            objective.text, objectiveKeys)
+                    end
 
                     if name and UQ.NameKey(name) == unitKey then
                         -- The kill path: the log line names this very creature.
@@ -292,11 +324,12 @@ function ObjectiveMatch:Resolve(unitKey)
                         -- report the young spider's objective for the adult
                         -- one. The line already named its creature, so that
                         -- answer is final.
-                    elseif objectiveKeys and ObjectiveMatchesLinks(objective.text, objectiveKeys) then
+                    elseif linkMatched then
                         -- The item path: the line names an item or an object,
                         -- and the world data says this creature can supply it.
                         matched = true
                         fromDatabase = true
+                        dropRate = linkRate
                     elseif not name then
                         -- No format string resolved, so the line could not be
                         -- parsed into a name. Fall back to asking whether the
@@ -320,6 +353,7 @@ function ObjectiveMatch:Resolve(unitKey)
                             need = need,
                             finished = objective.finished and true or false,
                             fromDatabase = fromDatabase,
+                            dropRate = dropRate,
                         })
                         if fromDatabase then
                             viaDatabase = viaDatabase + 1

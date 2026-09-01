@@ -478,6 +478,16 @@ end
 -- creature name; item objectives use the item name while still mapping the
 -- creature that drops it. This keeps tooltip matching independent of the raw
 -- generated table shapes and avoids guessing from the formatted quest text.
+--
+-- The mapped value is `true` for a kill objective and, for an item objective,
+-- the drop rate `items[id].U` records for that creature -- a percentage, not a
+-- fraction (`12.69` means 12.69%). Callers must test it for truth rather than
+-- for equality with `true`, and must accept `true` where no rate is recorded.
+-- One name can belong to several creature IDs with different loot tables (the
+-- same "Defias Trapper" appears more than once), and the live tooltip only
+-- ever gives a name, so the best of them is kept: reporting the worst of a
+-- shared name would tell the player a mob is a poor source when the one in
+-- front of them is not.
 function Database:GetQuestObjectiveUnitLinks(questId)
     local relation = self:GetQuestObjectiveSources(questId)
     if type(relation) ~= "table" then
@@ -486,7 +496,7 @@ function Database:GetQuestObjectiveUnitLinks(questId)
 
     local links = {}
 
-    local function LinkUnit(unitId, objectiveName)
+    local function LinkUnit(unitId, objectiveName, dropRate)
         if type(unitId) ~= "number" or type(objectiveName) ~= "string" then
             return
         end
@@ -500,7 +510,19 @@ function Database:GetQuestObjectiveUnitLinks(questId)
             objectives = {}
             links[unitKey] = objectives
         end
-        objectives[objectiveKey] = true
+        local value = true
+        if type(dropRate) == "number" and dropRate > 0 then
+            value = dropRate
+        end
+        local existing = objectives[objectiveKey]
+        if type(existing) == "number" and type(value) == "number"
+            and existing > value then
+            return
+        end
+        if existing ~= nil and type(value) ~= "number" then
+            return
+        end
+        objectives[objectiveKey] = value
     end
 
     if type(relation.U) == "table" then
@@ -516,9 +538,9 @@ function Database:GetQuestObjectiveUnitLinks(questId)
             local item = self:GetItem(itemId)
             local itemName = self:GetItemName(itemId)
             if type(item) == "table" and type(item.U) == "table" then
-                local unitId
-                for unitId in pairs(item.U) do
-                    LinkUnit(unitId, itemName)
+                local unitId, dropRate
+                for unitId, dropRate in pairs(item.U) do
+                    LinkUnit(unitId, itemName, dropRate)
                 end
             end
         end

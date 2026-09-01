@@ -120,6 +120,12 @@ STRINGS = {
     "/uq tracker zones             группировать по зонам или нет",
     "/uq tracker zones             按区域分组，或不分组",
 ),
+"CMD_HELP_TRACKER_RECENT": (
+    "/uq tracker recent            lift the quest that just advanced, or do not",
+    "/uq tracker recent            remonter la quête qui vient d'avancer, ou non",
+    "/uq tracker recent            поднимать задание с новым прогрессом, или нет",
+    "/uq tracker recent            是否将刚有进展的任务置顶",
+),
 "CMD_HELP_TRACKER_WIDTH": (
     "/uq tracker width <110-600>   how wide the window is",
     "/uq tracker width <110-600>   largeur de la fenêtre",
@@ -164,17 +170,16 @@ STRINGS = {
     "/uq main                      报告当前跟随的任务",
 ),
 "CMD_HELP_MAIN_CLEAR": (
-    "/uq main clear                stop following",
-    "/uq main clear                arrêter de suivre",
-    "/uq main clear                прекратить следование",
-    "/uq main clear                停止跟随",
+    "/uq main clear                follow nearest node",
+    "/uq main clear                suivre le noeud le plus proche",
+    "/uq main clear                следовать к ближайшей точке",
+    "/uq main clear                跟随最近节点",
 ),
-"CMD_HELP_WAYPOINT": (
-    "/uq waypoint  HUD waypoint marker diagnostics",
-    "/uq waypoint  diagnostics du repère ATH",
-    "/uq waypoint  диагностика маркера HUD",
-    "/uq waypoint  HUD 路径点标记诊断",
-),
+"CMD_HELP_NAV": (
+    "/uq nav       quest navigator diagnostics",
+    "/uq nav       diagnostics du navigateur de quete",
+    "/uq nav       диагностика навигатора заданий",
+    "/uq nav       任务导航诊断"),
 "CMD_HELP_MAIN_DISABLED": (
     "/uq main, /uq waypoint   disabled in this build",
     "/uq main, /uq waypoint   désactivés dans cette version",

@@ -49,10 +49,16 @@ STRINGS.update({
 
 # --- tracker window ----------------------------------------------------------
 "TRACKER_HINT_LEFT_CLICK": (
-    "Left-Click: open in Quest Log",
-    "Clic gauche : ouvrir dans le journal de quêtes",
-    "ЛКМ: открыть в журнале заданий",
-    "左键：在任务日志中打开",
+    "Left-Click: follow quest",
+    "Clic gauche : suivre la quête",
+    "ЛКМ: следовать за заданием",
+    "左键：跟随任务",
+),
+"TRACKER_HINT_ALT_CLICK": (
+    "Alt-Click: open in Quest Log",
+    "Alt+clic : ouvrir dans le journal de quêtes",
+    "Alt+ЛКМ: открыть в журнале заданий",
+    "Alt+左键：在任务日志中打开",
 ),
 "TRACKER_HINT_SHIFT_CLICK": (
     "Shift-Click: remove from tracker",
@@ -102,6 +108,30 @@ STRINGS.update({
     "окно трекера отказалось перемещаться (StartMoving не сработал)",
     "追踪器窗口拒绝移动（StartMoving 失败）",
 ),
+"NAV_WARN_DRAG_FAILED": (
+    "the navigator refused to move (StartMoving failed)",
+    "le navigateur a refuse de bouger (echec de StartMoving)",
+    "навигатор отказался перемещаться (StartMoving не сработал)",
+    "导航器拒绝移动（StartMoving 失败）",
+),
+"NAV_WARN_NO_HANDLE": (
+    "the navigator drag handle could not be created",
+    "la zone de deplacement du navigateur n'a pas pu etre creee",
+    "не удалось создать область перетаскивания навигатора",
+    "无法创建导航器拖动区域",
+),
+"NAV_WARN_NO_POSITION": (
+    "the navigator's new position could not be saved",
+    "la nouvelle position du navigateur n'a pas pu etre enregistree",
+    "не удалось сохранить новое положение навигатора",
+    "无法保存导航器的新位置",
+),
+"NAV_DISTANCE": (
+    "%s yd",
+    "%s m",
+    "%s м",
+    "%s 码",
+),
 "TRACKER_WARN_NO_HANDLE": (
     "the tracker window has no drag handle; it cannot be moved",
     "la fenêtre de suivi n'a pas de poignée ; elle ne peut pas être déplacée",
@@ -133,6 +163,8 @@ STRINGS.update({
 "QUESTLOG_BUTTON_SHOW": ("Show", "Voir", "Показать", "显示"),
 "QUESTLOG_BUTTON_TRACK": ("Track", "Suivre", "Следить", "追踪"),
 "QUESTLOG_BUTTON_UNTRACK": ("Untrack", "Ne plus suivre", "Не следить", "取消追踪"),
+"QUESTLOG_BUTTON_FOLLOW": ("Follow", "Suivre", "Следовать", "跟随"),
+"QUESTLOG_LEVEL": ("Level %s", "Niveau %s", "Уровень %s", "等级 %s"),
 
 # --- world map ---------------------------------------------------------------
 "MAP_HINT_SHIFT_CLICK_CHOOSE": (
@@ -213,12 +245,7 @@ STRINGS.update({
 
 # --- main quest / reveal on map ----------------------------------------------
 "MAINQUEST_NOW_FOLLOWING": ("following %s", "suivi de %s", "следуем за %s", "正在跟随 %s"),
-"MAINQUEST_NO_LONGER_FOLLOWING": (
-    "no longer following %s",
-    "%s n'est plus suivie",
-    "больше не следуем за %s",
-    "不再跟随 %s",
-),
+"TRACKER_FOLLOWING": ("Following", "Suivi", "Слежение", "跟随中"),
 "REVEAL_NO_QUEST_ID": (
     "'%s' has no resolved quest id, so it cannot be shown on the map",
     "'%s' n'a pas d'identifiant de quête résolu, elle ne peut pas être montrée sur la carte",
@@ -414,6 +441,12 @@ STRINGS.update({
     "Décrire ensemble les marqueurs superposés",
     "Описывать перекрывающиеся маркеры вместе",
     "将重叠的地图标记一并说明",
+),
+"SETTINGS_NAVIGATOR": (
+    "Show quest navigator",
+    "Afficher le navigateur",
+    "Показывать навигатор",
+    "显示任务导航",
 ),
 "SETTINGS_MAP_CLUSTER_NOTE": (
     "Markers whose icons touch cannot be hovered apart; this lists them all.",

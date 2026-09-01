@@ -1,8 +1,8 @@
 ﻿## Interface: 11200
 ## Title: |cffffffffUnreal|cfff5ae0a Quest
-## Notes: Quest helper for the Unreal Azeroth client. A movable quest tracker and service-NPC selector, current-zone world-map pins, minimap pins, quest tracking and entity tooltips. The main quest + HUD waypoint layer ships disabled - see docs/HUD-WAYPOINT.md.
+## Notes: Quest helper for the Unreal Azeroth client. A movable quest tracker and service-NPC selector, current-zone world-map pins, minimap pins, quest tracking and entity tooltips. A quest navigator arc and arrow point the way to the quest you are following - see docs/HUD-NAVIGATOR.md.
 ## Author: unrealQuest
-## Version: 0.2.3
+## Version: 0.3.0
 ## X-License: MIT. Bundled world data from pfQuest (MIT), sourced from VMaNGOS. See LICENSE.
 ## SavedVariables: UnrealQuestDB
 ## SavedVariablesPerCharacter: UnrealQuestCharDB
@@ -93,6 +93,7 @@ Quest\QuestHistory.lua
 Quest\PfQuestImport.lua
 Quest\QuestEligibility.lua
 Quest\Tracker.lua
+Quest\ExtendedQuestLog.lua
 Quest\QuestLogTracking.lua
 Quest\QuestLogLevels.lua
 Quest\QuestLogTranslation.lua
@@ -111,6 +112,7 @@ World\QuestMarks.lua
 World\RareAlert.lua
 HUD\PlayerHeading.lua
 HUD\Waypoint.lua
+HUD\Navigator.lua
 Core\Settings.lua
 Core\Commands.lua
 UnrealQuest.lua

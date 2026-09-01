@@ -697,6 +697,11 @@ STRINGS = {
 "CMD_TRACKER_ZONES_SET": (
     "tracker zone headers %s", "en-têtes de zone du suivi : %s",
     "заголовки зон в трекере: %s", "追踪器区域标题：%s"),
+"CMD_TRACKER_RECENT_SET": (
+    "tracker lifts the quest that just advanced %s",
+    "remontée de la quête qui vient d'avancer : %s",
+    "подъём задания с новым прогрессом: %s",
+    "将刚有进展的任务置顶：%s"),
 "CMD_TRACKER_NATIVE_HIDDEN": (
     "native quest watch panel hidden", "panneau de suivi natif masqué",
     "родная панель слежения скрыта", "原生任务监视面板已隐藏"),
@@ -778,14 +783,34 @@ STRINGS = {
     "код по-прежнему в аддоне, но он ничего не регистрирует: ни заданий драйвера, ни "
     "цепочек кликов в журнале, ни кадра маркера.",
     "代码仍在插件中，但它不注册任何东西：没有驱动任务，没有任务日志点击链，没有标记框体。"),
+"CMD_NAV_TITLE": (
+    "quest navigator:",
+    "navigateur de quete :",
+    "навигатор заданий:",
+    "任务导航："),
+"CMD_NAV_HIDDEN": (
+    "hidden: %s",
+    "masque : %s",
+    "скрыт: %s",
+    "已隐藏：%s"),
+"CMD_NAV_HIDDEN_REASONS": (
+    "reasons it stayed hidden:",
+    "raisons pour lesquelles il est reste masque :",
+    "причины, по которым он оставался скрытым:",
+    "保持隐藏的原因："),
+"CMD_NAV_NO_ROTATION": (
+    "this client refused to rotate a texture, so the arrow cannot turn",
+    "ce client a refuse de faire pivoter une texture, la fleche ne peut donc pas tourner",
+    "этот клиент отказался повернуть текстуру, поэтому стрелка не может вращаться",
+    "此客户端拒绝旋转贴图，因此箭头无法转动"),
 "CMD_FEATURE_DISABLED_2": (
-    "why: this client has no readable player facing and no camera getter, so the marker "
-    "cannot be made accurate. See docs/HUD-WAYPOINT.md.",
-    "pourquoi : ce client n'expose ni orientation du joueur lisible ni accès à la caméra, "
-    "le marqueur ne peut donc pas être précis. Voir docs/HUD-WAYPOINT.md.",
-    "почему: этот клиент не даёт ни читаемого направления игрока, ни доступа к камере, "
-    "поэтому маркер нельзя сделать точным. См. docs/HUD-WAYPOINT.md.",
-    "原因：此客户端既无法读取玩家朝向，也没有摄像机接口，因此标记无法做到准确。"
+    "the layer is on by default, so something switched it off by hand. It needs a readable "
+    "player facing to aim the marker. See docs/HUD-WAYPOINT.md.",
+    "cette couche est active par défaut : elle a donc été désactivée à la main. Elle a besoin "
+    "d'une orientation du joueur lisible pour viser le marqueur. Voir docs/HUD-WAYPOINT.md.",
+    "этот слой включён по умолчанию, значит его отключили вручную. Ему нужно "
+    "читаемое направление игрока, чтобы навести маркер. См. docs/HUD-WAYPOINT.md.",
+    "该模块默认开启，因此它是被手动关闭的。它需要可读取的玩家朝向才能对准标记。"
     "见 docs/HUD-WAYPOINT.md。"),
 "CMD_FEATURE_DISABLED_3": (
     "to re-enable: set the mainQuestWaypoint feature to true in Core/Namespace.lua, "
@@ -825,17 +850,15 @@ STRINGS = {
     "(remembered as '%s')", "(mémorisée sous '%s')",
     "(запомнено как «%s»)", "（记为“%s”）"),
 "CMD_MAIN_CLICK_SURFACES": (
-    "click surfaces: %s quest log rows chained, %s tracker lines mapped",
-    "surfaces de clic : %s lignes du journal chaînées, %s lignes de suivi mappées",
-    "поверхности кликов: %s строк журнала подключено, %s строк трекера сопоставлено",
-    "点击面：已挂接 %s 个任务日志行，已映射 %s 个追踪器行"),
+    "tracker click surface: %s lines mapped",
+    "surface de clic du suivi : %s lignes mappees",
+    "поверхность кликов трекера: сопоставлено строк: %s",
+    "追踪器点击面：已映射 %s 行"),
 "CMD_MAIN_CLICKS_SEEN": (
-    "clicks seen: %s quest log, %s tracker; modifier=%s",
-    "clics observés : %s journal, %s suivi ; modificateur=%s",
-    "кликов замечено: %s в журнале, %s в трекере; модификатор=%s",
-    "观察到的点击：任务日志 %s 次，追踪器 %s 次；修饰键=%s"),
-"CMD_MAIN_STOPPED": (
-    "stopped following", "suivi arrêté", "следование прекращено", "已停止跟随"),
+    "tracker clicks seen: %s; modifier=%s",
+    "clics du suivi observes : %s ; modificateur=%s",
+    "кликов трекера замечено: %s; модификатор=%s",
+    "观察到的追踪器点击：%s 次；修饰键=%s"),
 "CMD_MAIN_AMBIGUOUS": (
     "'%s' matches several quests:", "'%s' correspond à plusieurs quêtes :",
     "«%s» совпадает с несколькими заданиями:", "“%s”匹配多个任务："),

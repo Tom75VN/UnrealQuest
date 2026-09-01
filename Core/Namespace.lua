@@ -19,7 +19,7 @@ UnrealQuest = {}
 local UQ = UnrealQuest
 
 UQ.name = "UnrealQuest"
-UQ.version = "0.2.3"
+UQ.version = "0.3.0"
 
 -- Keep UnrealQuest visually aligned with UnrealUI without creating a runtime
 -- dependency between the two addons. These values mirror UnrealUI's shared
@@ -308,12 +308,30 @@ function UQ:IsFeatureEnabled(key)
     return feature.enabled
 end
 
-UQ:DeclareFeature("mainQuestWaypoint", false,
+UQ:DeclareFeature("hudWorldMarker", false,
+    "the screen-space marker that projects the followed quest's position onto the 3D world "
+    .. "(HUD/Waypoint.lua). Disabled 2026-09-01 and replaced by the navigator, because only HALF of "
+    .. "that projection can be built on this client and the missing half is not the half that was "
+    .. "missing before. The yaw half works now that GetPlayerFacing exists. The vertical half cannot "
+    .. "be built at all, for two independent reasons: there is no camera pitch, position or FOV getter "
+    .. "(cameraProjection is `missing`), and the bundled world data carries no Z at all -- "
+    .. "units[id].coords entries are {x%, y%, areaId, respawn}, so even a complete camera API would "
+    .. "have no target elevation to project. A marker that is right horizontally and fixed on a "
+    .. "horizon band vertically reads as broken rather than as partial. The code is kept and stays "
+    .. "under offline test; re-enable it when the client publishes a camera getter. See "
+    .. "docs/HUD-WAYPOINT.md")
+
+UQ:DeclareFeature("mainQuestWaypoint", true,
     "the follow-one-quest layer: main quest selection, its quest log and tracker click surfaces, the "
-    .. "world marker, the movement heading estimator and the brighter main-quest tiles on the world "
-    .. "map. Disabled 2026-08-22 because the marker cannot be made accurate on this client -- there is "
-    .. "no readable player facing and no camera getter of any kind (input.no_readable_player_facing, "
-    .. "BEHAVIOR_VERIFIED). The code is kept and stays under offline test; see docs/HUD-WAYPOINT.md")
+    .. "navigator, the facing reader with its movement fallback and the brighter main-quest tiles on "
+    .. "the world map. Disabled 2026-08-22 because nothing could be aimed without a readable player "
+    .. "facing; re-enabled 2026-09-01 because the updated client documents GetPlayerFacing() as "
+    .. "returning character rotation in radians, which is exactly the input that was missing. What "
+    .. "the layer SHOWS changed with it: the projected world marker is gated off separately "
+    .. "(hudWorldMarker) and the arc-and-arrow navigator took its place, because a bearing relative "
+    .. "to the player is the whole of what this client can support. The remaining limit is the "
+    .. "camera, not the character: there is still no camera getter, so a free-look player sees a "
+    .. "direction anchored to where the CHARACTER faces. See docs/HUD-NAVIGATOR.md")
 
 -- Logging -------------------------------------------------------------------
 

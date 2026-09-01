@@ -84,18 +84,54 @@ EntityTooltip.lastSeenLabel = nil
 
 -- Lines ---------------------------------------------------------------------
 
+-- How the recorded drop rate is written. The bundled rates run from 0.0065 to
+-- well over 50, so a single precision either drowns a common drop in decimals
+-- or rounds a rare one away to "0%" -- which reads as "this never drops" when
+-- the truth is "this drops, rarely", the one thing the number exists to tell
+-- the player. Precision therefore follows magnitude, and anything under a
+-- hundredth of a percent is written as a bound rather than as a figure.
+local function FormatDropRate(rate)
+    if rate >= 10 then
+        return string.format("%.0f", rate)
+    end
+    if rate >= 1 then
+        return string.format("%.1f", rate)
+    end
+    if rate >= 0.01 then
+        return string.format("%.2f", rate)
+    end
+    return "<0.01"
+end
+
+-- The bracketed drop chance appended to an item objective, in pfQuest's own
+-- shape (Interface/AddOns/pfQuest/map.lua:306): grey brackets around a figure
+-- coloured red-to-green across 0-100%, so a rare drop is legible as rare
+-- before the digits are read. Not localized: it is punctuation and a numeral,
+-- and "%" is the same symbol in all four shipped languages.
+local function DropRateSuffix(matcher, rate)
+    if type(rate) ~= "number" or rate <= 0 then
+        return ""
+    end
+    local r, g, b = matcher:ProgressColor(rate, 100)
+    local color = string.format("%02x%02x%02x", r * 255, g * 255, b * 255)
+    return " |cff555555[|cff" .. color .. FormatDropRate(rate) .. "%|cff555555]|r"
+end
+
 -- pfQuest's own line shape: a grey dash, the objective's name, then the
--- counters coloured by progress.
+-- counters coloured by progress, and -- for an item the world data knows the
+-- loot chance of -- that chance in brackets.
 local function ProgressLine(matcher, result)
+    local dropRate = DropRateSuffix(matcher, result.dropRate)
     if result.name and type(result.have) == "number" and type(result.need) == "number" then
         local r, g, b = matcher:ProgressColor(result.have, result.need)
         return {
-            text = "|cffaaaaaa- |r" .. result.name .. ": " .. result.have .. "/" .. result.need,
+            text = "|cffaaaaaa- |r" .. result.name .. ": " .. result.have .. "/" .. result.need
+                .. dropRate,
             r = r, g = g, b = b,
         }
     end
     if type(result.text) == "string" and result.text ~= "" then
-        return { text = "|cffaaaaaa- |r" .. result.text, r = 1, g = 1, b = 1 }
+        return { text = "|cffaaaaaa- |r" .. result.text .. dropRate, r = 1, g = 1, b = 1 }
     end
     return nil
 end

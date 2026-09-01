@@ -80,6 +80,11 @@ local DEFAULT_DOT_SIZE = 10.8
 local MIN_DOT_SCALE = 50
 local MAX_DOT_SCALE = 150
 local DEFAULT_DOT_SCALE = 100
+-- Tracker hover keeps the quest's own colour and enlarges every visible dot
+-- that belongs to it. The multiplier is applied after the player's dot-size
+-- setting, so the relationship remains equally obvious at every configured
+-- scale rather than becoming a fixed-size second preference.
+local HOVER_DOT_MULTIPLIER = 1.65
 -- The bundled available-quest "!" is 19x32. Keep the existing 12px minimap
 -- height while preserving that source ratio.
 local GIVER_ICON_HEIGHT = 12
@@ -195,6 +200,7 @@ MinimapPins.pinFailures = 0
 MinimapPins.lastState = nil
 MinimapPins.lastDiagnosticKey = nil
 MinimapPins.canvasDeclared = false
+MinimapPins.hoverQuestKey = nil
 
 local function Database()
     return UQ:GetModule("Database")
@@ -303,7 +309,7 @@ function MinimapPins:SetTooltipHandlers(pin)
         nil)
 end
 
-function MinimapPins:GetObjectiveDotSize()
+function MinimapPins:GetObjectiveDotSize(highlighted)
     local config = UQ:GetModule("Config")
     local scale = config and config:Get("minimapObjectiveDotScale")
     if type(scale) ~= "number" then
@@ -313,7 +319,11 @@ function MinimapPins:GetObjectiveDotSize()
     elseif scale > MAX_DOT_SCALE then
         scale = MAX_DOT_SCALE
     end
-    return DEFAULT_DOT_SIZE * scale / 100
+    local size = DEFAULT_DOT_SIZE * scale / 100
+    if highlighted then
+        size = size * HOVER_DOT_MULTIPLIER
+    end
+    return size
 end
 
 function MinimapPins:ApplyObjectiveDotSize()
@@ -323,6 +333,48 @@ function MinimapPins:ApplyObjectiveDotSize()
         Client.SetMinimapPinSize(self.objectivePool[index], size, size)
         index = index + 1
     end
+end
+
+local function QuestKey(quest)
+    if type(quest) ~= "table" then
+        return nil
+    end
+    if type(quest.titleKey) == "string" and quest.titleKey ~= "" then
+        return quest.titleKey
+    end
+    if type(quest.title) == "string" and quest.title ~= "" then
+        return quest.title
+    end
+    return nil
+end
+
+function MinimapPins:IsTargetHighlighted(target)
+    local hoverKey = self.hoverQuestKey
+    if type(hoverKey) ~= "string" or type(target) ~= "table" then
+        return false
+    end
+    local quests = target.quests
+    local index = 1
+    local total = type(quests) == "table" and table.getn(quests) or 0
+    while index <= total do
+        if QuestKey(quests[index]) == hoverKey then
+            return true
+        end
+        index = index + 1
+    end
+    return QuestKey(target.quest) == hoverKey
+end
+
+-- Called by the tracker row's existing hover handlers. This state is
+-- deliberately transient: it is never saved and changes no map content, only
+-- the presentation of objective dots already selected for the minimap scene.
+function MinimapPins:SetHoveredQuest(quest)
+    local key = QuestKey(quest)
+    if self.hoverQuestKey == key then
+        return
+    end
+    self.hoverQuestKey = key
+    self:Refresh()
 end
 
 function MinimapPins:GetObjectivePin(index)
@@ -606,8 +658,16 @@ function MinimapPins:Project(playerX, playerY, widthYards, heightYards, span, wi
 
         local pin, half
         if target.kind == "objective" then
-            half = objectiveDotSize / 2
-            local objectiveLimit = shortest / 2 - half - CLAMP_MARGIN
+            local highlighted = self:IsTargetHighlighted(target)
+            local targetDotSize = objectiveDotSize
+            if highlighted then
+                targetDotSize = self:GetObjectiveDotSize(true)
+            end
+            half = targetDotSize / 2
+            -- Visibility is decided from the configured resting size. A dot
+            -- already visible at the edge must not disappear merely because
+            -- the player hovered its tracker row and made it larger.
+            local objectiveLimit = shortest / 2 - objectiveDotSize / 2 - CLAMP_MARGIN
             if objectiveLimit < 0 then
                 objectiveLimit = 0
             end
@@ -618,14 +678,20 @@ function MinimapPins:Project(playerX, playerY, widthYards, heightYards, span, wi
             if distance <= objectiveLimit then
                 pin = self:GetObjectivePin(objectiveIndex)
                 if pin then
+                    Client.SetMinimapPinSize(pin, targetDotSize, targetDotSize)
                     pin.unrealQuestObjectiveQuests = target.quests
                     pin.unrealQuestGiver = nil
                     pin.unrealQuestAvailableQuestIds = nil
                     pin.unrealQuestTurnIn = nil
-                    Client.SetMinimapPinColor(pin,
-                        target.red or OBJECTIVE_RED,
-                        target.green or OBJECTIVE_GREEN,
-                        target.blue or OBJECTIVE_BLUE)
+                    if highlighted then
+                        local red, green, blue = UQ.GetQuestColor(self.hoverQuestKey)
+                        Client.SetMinimapPinColor(pin, red, green, blue)
+                    else
+                        Client.SetMinimapPinColor(pin,
+                            target.red or OBJECTIVE_RED,
+                            target.green or OBJECTIVE_GREEN,
+                            target.blue or OBJECTIVE_BLUE)
+                    end
                 end
             end
         elseif target.kind == "giver" and giverIndex <= MAX_GIVER_PINS then

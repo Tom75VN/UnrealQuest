@@ -599,7 +599,9 @@ function Settings:BuildPage(parent)
     -- deliberately kept within their half-width columns, preserving the page
     -- height in both fixed, non-scrolling hosts.
     page.Checkbox("mapClusterTooltips", UQ.L("SETTINGS_MAP_CLUSTER"), nil,
-        { advance = CHECKBOX_ADVANCE })
+        { width = 280, advance = 0 })
+    page.Checkbox("navigatorEnabled", UQ.L("SETTINGS_NAVIGATOR"), nil,
+        { left = 300, width = TEXT_WIDTH - 300, advance = CHECKBOX_ADVANCE })
     page.Checkbox("translateQuestTitles", UQ.L("SETTINGS_TRANSLATE_QUEST_TITLES"), nil,
         { width = 230, advance = 0 })
     page.Checkbox("showLowLevelQuests", UQ.L("SETTINGS_LOW_LEVEL_QUESTS"), nil,

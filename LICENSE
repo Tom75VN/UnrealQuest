@@ -22,6 +22,20 @@ SOFTWARE.
 
 
 ================================================================================
+BUNDLED EXTENDED QUEST LOG ARTWORK
+================================================================================
+
+The parchment textures under media/QuestLog/ originate from Extended QuestLog
+3.6.1.
+
+Copyright (c) 2006 Daniel Rehn
+
+The supplied EQL3 package did not include a separate license text. These files
+retain their original copyright and are not represented as original UnrealQuest
+artwork by the MIT license above.
+
+
+================================================================================
 BUNDLED WORLD DATA
 ================================================================================
 
