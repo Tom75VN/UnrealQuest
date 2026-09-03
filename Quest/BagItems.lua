@@ -173,6 +173,28 @@ function BagItems:GetToken()
     return tostring(self.token) .. ":" .. tostring(self.available)
 end
 
+-- Cache key for an ordered list of item IDs a consumer actually depends on.
+-- The broad token above changes whenever any distinct bag item appears or
+-- disappears. Folding that into a world-map signature made ordinary looting
+-- rebuild hundreds of static pins even when none of the loot belonged to an
+-- item-use quest. Callers build and sort their small dependency list when they
+-- rebuild their own scene, then this answers without allocating a set.
+function BagItems:GetTokenFor(itemIds)
+    if type(itemIds) ~= "table" or table.getn(itemIds) == 0 then
+        return "none"
+    end
+    local value = tostring(self.available)
+    local index = 1
+    local total = table.getn(itemIds)
+    while index <= total do
+        local itemId = itemIds[index]
+        value = value .. ":" .. tostring(itemId) .. "="
+            .. (self.carried[itemId] and "1" or "0")
+        index = index + 1
+    end
+    return value
+end
+
 function BagItems:GetStatus()
     local count = 0
     local _

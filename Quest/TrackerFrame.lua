@@ -450,20 +450,20 @@ end
 -- The current-zone filter ------------------------------------------------------
 --
 -- `trackerCurrentZoneOnly` narrows the window to the quests the player can
--- actually work on where they are standing. That is asked in two ways, and a
--- quest passing either one stays:
+-- actually work on where they are standing. That is asked in two ways, in
+-- order of confidence:
 --
---   * the quest log's own header row names the current zone -- the cheap,
---     always-available answer, and the only one for a quest this client's
---     absent quest ID API left unmatched;
---   * or the zone's map draws something for it: an objective dot or tile, a
---     turn-in marker, a vendor pin (Map/QuestZonePresence.lua).
+--   * when the zone's map can answer, its objective dot or tile, turn-in
+--     marker or vendor pin decides (Map/QuestZonePresence.lua);
+--   * otherwise the quest log's own header row is the conservative fallback,
+--     including for a quest this client's absent quest ID API left unmatched.
 --
--- The second question is the one that matters, because the header names the
+-- The map question is the one that matters, because the header names the
 -- zone a quest BELONGS to, not the zone its objectives are in. A quest taken
 -- in Duskwood whose every kill is in Westfall was hidden for exactly the time
--- the player was in Westfall doing it. Now the map decides: if there is
--- something to walk to on this zone's map, the quest is in the tracker.
+-- the player was in Westfall doing it. The reverse is a breadcrumb accepted
+-- in Elwynn whose only remaining step is a Westfall turn-in: its Elwynn header
+-- must not keep it after the map has proved there is nothing to do in Elwynn.
 --
 -- Both sides of the header comparison are localized strings the client
 -- produced -- the quest log's header (captured onto the quest by
@@ -571,22 +571,17 @@ local function CurrentZone()
     return UQ.NameKey(name), areaId, how
 end
 
--- True for a quest that is neither filed under the current zone nor visible on
--- its map.
+-- True for a quest that has no drawable work in the current zone, falling back
+-- to its quest-log header only when the map cannot answer.
 --
--- The header comparison comes first because it is free and needs no database
--- match: both names come from the localized client, so comparing their
--- normalized forms is more faithful to the setting than asking the bundled
--- area table to classify the header. A missing header stays visible because
--- there is no comparison to make, and a missing current-zone name disables the
--- filter.
---
--- The map is asked only about the quests the header would have hidden, so the
--- test is a pure widening of the old behaviour -- nothing that used to show
--- can start disappearing -- and costs nothing at all for a quest already in
--- the right zone. nil from HasPoints means the map could not be asked (an
--- unmatched quest, or one deliberately withheld from the map); that is not
--- evidence of absence, so the header's answer stands.
+-- A definite map answer wins in both directions. This is what makes the option
+-- mean "work available here" rather than "filed here by the quest log": true
+-- keeps a cross-zone objective, while false removes a breadcrumb whose header
+-- names this zone but whose remaining turn-in is elsewhere. nil from HasPoints
+-- means the map could not be asked (an unmatched quest, or one deliberately
+-- withheld from the map), so only then does the localized header comparison
+-- decide. A missing header stays visible because there is no fallback
+-- comparison to make, and a missing current-zone name disables the filter.
 -- The zone a quest log header sits inside, normalized, or false for one that
 -- is already top level. Memoized: the walk is two static table reads, but it
 -- would otherwise run per quest per 0.4s refresh, and the set of headers in a
@@ -614,7 +609,19 @@ local function HeaderParentKey(zone, zoneKey)
 end
 
 local function IsOtherZone(quest, zone, currentZoneKey, currentAreaId)
-    if not currentZoneKey or type(zone) ~= "string" or zone == "" then
+    if not currentZoneKey then
+        return false
+    end
+    if currentAreaId then
+        local presence = ZonePresence()
+        if presence then
+            local hasPoints = presence:HasPoints(quest, currentAreaId)
+            if hasPoints ~= nil then
+                return not hasPoints
+            end
+        end
+    end
+    if type(zone) ~= "string" or zone == "" then
         return false
     end
     local zoneKey = UQ.NameKey(zone)
@@ -628,12 +635,6 @@ local function IsOtherZone(quest, zone, currentZoneKey, currentAreaId)
     -- half. Database/zones.lua files 9 under 12, which settles it directly.
     if HeaderParentKey(zone, zoneKey) == currentZoneKey then
         return false
-    end
-    if currentAreaId then
-        local presence = ZonePresence()
-        if presence and presence:HasPoints(quest, currentAreaId) == true then
-            return false
-        end
     end
     return true
 end
@@ -1416,6 +1417,12 @@ function TrackerFrame:Redraw(lines, questCount, completed)
 
     local top = Client.TRACKER_HEADER_HEIGHT + BODY_PADDING
     local used = { zone = 1, quest = 1, objective = 1 }
+    -- These describe only this redraw. Leaving them implicit made them Lua
+    -- globals, so a redraw containing only the current-zone empty notice
+    -- reused the last followed quest's block and left its gold glow visible.
+    local followingTop = nil
+    local followingBottom = nil
+    local followingKey = nil
     -- Tracks what was drawn immediately before, so a gap can be inserted
     -- between one quest's block and the next without also pushing a quest
     -- away from the zone header that just introduced it.

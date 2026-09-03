@@ -462,9 +462,11 @@ local function ShowMinimap(target)
     -- "/uq minimap span <yards>" or "/uq minimap span reset". The scale of the
     -- minimap cannot be read back from Lua on this client -- nothing on it is
     -- a reference this addon did not draw itself -- so the only instrument is
-    -- a player walking past a pin and seeing whether it stays put. Too large a
-    -- span makes every offset undershoot and the pin creeps along in the
-    -- direction of travel; too small and it slides the other way.
+    -- a player walking past a pin and seeing whether it stays put. The value is
+    -- scoped to the current area as well as the zoom/environment, because a
+    -- Stormwind correction must not disturb the measured Elwynn scale. Too
+    -- large a span makes every offset undershoot and the pin creeps along in
+    -- the direction of travel; too small and it slides the other way.
     if target == "indoors on" or target == "indoors off" then
         config:Set("minimapPinsHideIndoors", target == "indoors on")
         pins.dirty = true

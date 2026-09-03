@@ -2,7 +2,7 @@
 ## Title: |cffffffffUnreal|cfff5ae0a Quest
 ## Notes: Quest helper for the Unreal Azeroth client. A movable quest tracker and service-NPC selector, current-zone world-map pins, minimap pins, quest tracking and entity tooltips. A quest navigator arc and arrow point the way to the quest you are following - see docs/HUD-NAVIGATOR.md.
 ## Author: unrealQuest
-## Version: 0.3.0
+## Version: 0.3.1
 ## X-License: MIT. Bundled world data from pfQuest (MIT), sourced from VMaNGOS. See LICENSE.
 ## SavedVariables: UnrealQuestDB
 ## SavedVariablesPerCharacter: UnrealQuestCharDB

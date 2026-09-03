@@ -17,6 +17,12 @@ What it draws, and what it deliberately does not:
     stays visible -- `minimapPinsClampEdge = false` hides them instead, like
     an out-of-view objective dot, for a less crowded minimap.
 
+Hovering a pin fades every other pin that shares no quest with it to a quarter
+of its own alpha -- the world map's own hover focus, on the surface where the
+pins sit closest together. Nothing is hidden and no colour moves, and the fade reaches
+the service/rare pins and the quest-vendor pins drawn on the same minimap. See
+SetFocusPin.
+
 Content is not decided here. Which giver still has a quest worth taking and
 where a quest is handed in are policy questions the world-map layer already
 answers, so this module calls WorldMapPins:CollectAvailableGivers and
@@ -32,8 +38,9 @@ minimap.zoom_span_zoom0_only_no_indoor_test):
   * the minimap mask does not clip them -- hence CLAMP_MARGIN below, and hence
     the fact that failing to clamp would scatter pins across the rest of the UI;
   * the Vanilla outdoor span of 466.6 yards across the minimap width at zoom 0
-    is correct here; a marker anchored to a world coordinate stayed glued while
-    the player walked.
+    is correct in Elwynn Forest; a marker anchored to a world coordinate stayed
+    glued while the player walked. Other areas may still need their own
+    calibration on this client.
 
 Two limits are structural rather than unfinished, and both are visible in
 `/uq minimap`:
@@ -102,6 +109,13 @@ local CLAMP_MARGIN = 2
 -- what says so. Exact creature positions are never clamped.
 local EDGE_ALPHA = 0.55
 local INSIDE_ALPHA = 1
+-- What a pin unrelated to the hovered quest keeps of its own opacity while
+-- that hover is held. It MULTIPLIES the alpha above rather than replacing it:
+-- "further than this" and "not the quest you are pointing at" are two
+-- different things a pin can be, and a clamped unrelated pin is both -- so a
+-- clamped unrelated pin lands near 0.14 and is the faintest thing this layer
+-- draws.
+local FOCUS_DIM_FACTOR = 0.25
 
 local OBJECTIVE_RED, OBJECTIVE_GREEN, OBJECTIVE_BLUE = UQ.GetQuestColor(nil)
 
@@ -141,8 +155,8 @@ local SPAN_MEASURED_ZOOM = 0
 -- that the pins do not spend seconds describing nothing.
 local PLAYER_POSITION_STALE_SECONDS = 1.5
 
--- Measured spans, keyed by zoom step, dialled in from inside the game with
--- "/uq minimap span <yards>" and kept in SavedVariables.
+-- Measured spans, keyed by area and zoom step, dialled in from inside the game
+-- with "/uq minimap span <yards>" and kept in SavedVariables.
 --
 -- This exists because the constants above cannot be verified from Lua. The
 -- minimap draws no reference this addon can read back, so nothing in here can
@@ -153,14 +167,15 @@ local PLAYER_POSITION_STALE_SECONDS = 1.5
 -- lands on is evidence of the same class as the zoom-0 walk that established
 -- 466.6.
 --
--- Overrides are per zoom step and stored separately for indoors, because this
--- client selects a different zoom step inside (measured: 3 inside Brill Town
--- Hall against 0 outdoors) AND appears to use a different span at that same
--- step. Neither is guessed at here: an unmeasured combination simply falls
--- back to the Vanilla constant it used before.
+-- Overrides are per area and zoom step, and stored separately for indoors.
+-- Zoom 0 was measured in Elwynn, but Stormwind was reported drifting at the
+-- same step on 2026-09-02; treating one calibration as global would trade one
+-- broken zone for another. The old area-less keys remain readable so an
+-- existing player's calibration survives this change, but every new write is
+-- scoped to the current area.
 local SPAN_SECTION = "minimapSpans"
 
-local function SpanOverrideKey(zoom, indoor)
+local function SpanEnvironmentKey(zoom, indoor)
     local prefix = "out"
     if indoor == "indoor" then
         prefix = "in"
@@ -168,13 +183,29 @@ local function SpanOverrideKey(zoom, indoor)
     return prefix .. tostring(zoom)
 end
 
-local function SpanOverride(zoom, indoor)
+local function SpanOverrideKey(areaId, zoom, indoor)
+    if type(areaId) ~= "number" or type(zoom) ~= "number" then
+        return nil
+    end
+    return tostring(areaId) .. ":" .. SpanEnvironmentKey(zoom, indoor)
+end
+
+local function SpanOverride(areaId, zoom, indoor)
     local config = UQ:GetModule("Config")
     if not config or type(zoom) ~= "number" then
         return nil
     end
     local section = config:GetSection(SPAN_SECTION)
-    local value = section and section[SpanOverrideKey(zoom, indoor)]
+    local value = nil
+    local key = SpanOverrideKey(areaId, zoom, indoor)
+    if section and key then
+        value = section[key]
+    end
+    -- Compatibility with calibrations saved before overrides became
+    -- area-scoped. A reset clears this legacy fallback as well.
+    if (type(value) ~= "number" or value <= 0) and section then
+        value = section[SpanEnvironmentKey(zoom, indoor)]
+    end
     if type(value) ~= "number" or value <= 0 then
         return nil
     end
@@ -191,6 +222,7 @@ MinimapPins.targets = {}
 MinimapPins.dirty = true
 MinimapPins.lastAreaId = nil
 MinimapPins.lastBagToken = nil
+MinimapPins.relevantBagItemIds = {}
 MinimapPins.lastPlayerX = nil
 MinimapPins.lastPlayerY = nil
 MinimapPins.playerStaleSince = nil
@@ -201,6 +233,16 @@ MinimapPins.lastState = nil
 MinimapPins.lastDiagnosticKey = nil
 MinimapPins.canvasDeclared = false
 MinimapPins.hoverQuestKey = nil
+-- The pin the cursor is on, and what it makes "related". Hovering a quest pin
+-- fades every pin belonging to no quest that pin carries, so a crowded
+-- minimap answers "which of these is the one I am pointing at" without
+-- hiding anything or repainting a colour. Both sets are reused tables rather
+-- than allocated per hover, for the reason Core/Driver.lua gives about
+-- allocation churn on this client.
+MinimapPins.focusPin = nil
+MinimapPins.focusQuestKeys = {}
+MinimapPins.focusQuestIds = {}
+MinimapPins.focusActive = false
 
 local function Database()
     return UQ:GetModule("Database")
@@ -232,13 +274,28 @@ local function HidePoolFrom(pool, first)
             Client.HideGameTooltip(pool[index])
             MinimapPins.hoverPin = nil
         end
+        -- A pin leaving the scene takes its hover focus with it. Without this
+        -- the fade would outlive the pin that asked for it, and nothing would
+        -- ever arrive to clear it: a hidden frame receives no OnLeave.
+        if pool[index] == MinimapPins.focusPin then
+            MinimapPins:ResolveFocusPin(nil)
+        end
         Client.HideObject(pool[index])
         index = index + 1
     end
     return first - 1
 end
 
+-- Refresh has nine early returns and runs several times a second, so without
+-- this guard a disabled layer -- or a rotating minimap, or an unresolved zone --
+-- walks every pooled pin again on every one of them to hide what is already
+-- hidden. Cleared by Project below, the only path that shows any of them. The
+-- world map layer carries the same guard for the same measured reason.
 function MinimapPins:HideAll()
+    if self.poolsHidden then
+        return
+    end
+    self.poolsHidden = true
     self.objectiveVisible = HidePoolFrom(self.objectivePool, 1)
     self.giverVisible = HidePoolFrom(self.giverPool, 1)
     self.turnInVisible = HidePoolFrom(self.turnInPool, 1)
@@ -287,8 +344,184 @@ function MinimapPins:TooltipLines(pin)
     return nil
 end
 
+-- The identity a quest is compared by on this surface. The tracker hover, the
+-- pin hover focus and the world map's own history all key on titleKey, and
+-- the live title is the fallback for a row that has none yet.
+local function QuestKey(quest)
+    if type(quest) ~= "table" then
+        return nil
+    end
+    if type(quest.titleKey) == "string" and quest.titleKey ~= "" then
+        return quest.titleKey
+    end
+    if type(quest.title) == "string" and quest.title ~= "" then
+        return quest.title
+    end
+    return nil
+end
+
+-- The hover focus ------------------------------------------------------------
+--
+-- A pin is "related" when it shares a quest with the hovered one. Two forms of
+-- quest identity are collected because the three pin kinds do not carry the
+-- same thing: an objective dot and a "?" carry live quest-log rows, while a
+-- "!" carries only the database IDs of quests the player has not taken and
+-- which therefore have no log row to name. Matching on either is what lets one
+-- hover reach every marker of the same quest.
+local function ClearSet(set)
+    for key in pairs(set) do
+        set[key] = nil
+    end
+end
+
+function MinimapPins:AddFocusQuest(quest)
+    local key = QuestKey(quest)
+    if key then
+        self.focusQuestKeys[key] = true
+        self.focusActive = true
+    end
+    local worldMap = WorldMapPins()
+    if not worldMap or not worldMap.GetQuestMapIds or not quest then
+        return
+    end
+    local ids = worldMap:GetQuestMapIds(quest)
+    local index = 1
+    local total = table.getn(ids)
+    while index <= total do
+        self.focusQuestIds[ids[index]] = true
+        self.focusActive = true
+        index = index + 1
+    end
+end
+
+function MinimapPins:AddFocusQuests(quests)
+    if type(quests) ~= "table" then
+        return
+    end
+    local index = 1
+    local total = table.getn(quests)
+    while index <= total do
+        self:AddFocusQuest(quests[index])
+        index = index + 1
+    end
+end
+
+-- Reads whatever the hovered pin happens to carry. Passing nil drops the
+-- focus. Redraws nothing itself: the pool-hiding path calls this while it is
+-- already inside a draw, and a Refresh from there would re-enter it.
+function MinimapPins:ResolveFocusPin(pin)
+    self.focusPin = pin
+    ClearSet(self.focusQuestKeys)
+    ClearSet(self.focusQuestIds)
+    self.focusActive = false
+    if pin then
+        self:AddFocusQuests(pin.unrealQuestObjectiveQuests)
+        local turnIn = pin.unrealQuestTurnIn
+        if turnIn then
+            self:AddFocusQuests(turnIn.quests)
+        end
+        local ids = pin.unrealQuestAvailableQuestIds
+        if type(ids) == "table" then
+            local index = 1
+            local total = table.getn(ids)
+            while index <= total do
+                self.focusQuestIds[ids[index]] = true
+                self.focusActive = true
+                index = index + 1
+            end
+        end
+    end
+    -- The other two layers drawing on the same minimap. Neither is asked to
+    -- decide anything the quest layer has not already decided: the service and
+    -- rare pins carry no quest at all, the vendor pins ask FocusIncludesQuest
+    -- below.
+    local npcPins = UQ:GetModule("NpcPins")
+    if npcPins and npcPins.SetMinimapFocusDim then
+        npcPins:SetMinimapFocusDim(self.focusActive)
+    end
+    local vendorPins = UQ:GetModule("QuestVendorPins")
+    if vendorPins and vendorPins.SetMinimapFocusDim then
+        vendorPins:SetMinimapFocusDim(self.focusActive)
+    end
+end
+
+function MinimapPins:SetFocusPin(pin)
+    if self.focusPin == pin then
+        return
+    end
+    self:ResolveFocusPin(pin)
+    -- Presentation only: no target is rebuilt, the existing scene is re-drawn
+    -- at its new opacities.
+    self:Refresh()
+end
+
+-- Public because the vendor layer draws quest pins on this minimap too and
+-- must reach the same answer rather than keep a second copy of it.
+function MinimapPins:FocusIncludesQuest(quest)
+    if not self.focusActive or type(quest) ~= "table" then
+        return false
+    end
+    local key = QuestKey(quest)
+    if key and self.focusQuestKeys[key] then
+        return true
+    end
+    local worldMap = WorldMapPins()
+    if not worldMap or not worldMap.GetQuestMapIds then
+        return false
+    end
+    local ids = worldMap:GetQuestMapIds(quest)
+    local index = 1
+    local total = table.getn(ids)
+    while index <= total do
+        if self.focusQuestIds[ids[index]] then
+            return true
+        end
+        index = index + 1
+    end
+    return false
+end
+
+-- One target's answer, from whichever of the three shapes it is.
+function MinimapPins:IsTargetInFocus(target)
+    if not self.focusActive or type(target) ~= "table" then
+        return false
+    end
+    if target.quests then
+        local index = 1
+        local total = table.getn(target.quests)
+        while index <= total do
+            if self:FocusIncludesQuest(target.quests[index]) then
+                return true
+            end
+            index = index + 1
+        end
+    end
+    if target.point and type(target.point.quests) == "table" then
+        local index = 1
+        local total = table.getn(target.point.quests)
+        while index <= total do
+            if self:FocusIncludesQuest(target.point.quests[index]) then
+                return true
+            end
+            index = index + 1
+        end
+    end
+    if type(target.questIds) == "table" then
+        local index = 1
+        local total = table.getn(target.questIds)
+        while index <= total do
+            if self.focusQuestIds[target.questIds[index]] then
+                return true
+            end
+            index = index + 1
+        end
+    end
+    return false
+end
+
 function MinimapPins:OnPinEnter(pin)
     self.hoverPin = pin
+    self:SetFocusPin(pin)
     local lines = self:TooltipLines(pin)
     if lines and table.getn(lines) > 0 then
         Client.ShowGameTooltip(pin, lines, "ANCHOR_LEFT")
@@ -298,6 +531,12 @@ end
 function MinimapPins:OnPinLeave(pin)
     if self.hoverPin == pin then
         self.hoverPin = nil
+    end
+    -- The same guard the world map's leave paths carry: this client can
+    -- deliver the next pin's OnEnter before this OnLeave, and an unguarded
+    -- clear would drop a focus that already belongs to it.
+    if self.focusPin == pin then
+        self:SetFocusPin(nil)
     end
     Client.HideGameTooltip(pin)
 end
@@ -333,19 +572,6 @@ function MinimapPins:ApplyObjectiveDotSize()
         Client.SetMinimapPinSize(self.objectivePool[index], size, size)
         index = index + 1
     end
-end
-
-local function QuestKey(quest)
-    if type(quest) ~= "table" then
-        return nil
-    end
-    if type(quest.titleKey) == "string" and quest.titleKey ~= "" then
-        return quest.titleKey
-    end
-    if type(quest.title) == "string" and quest.title ~= "" then
-        return quest.title
-    end
-    return nil
 end
 
 function MinimapPins:IsTargetHighlighted(target)
@@ -462,9 +688,9 @@ end
 -- number is established. A zoom step the table does not cover returns nil
 -- rather than a nearby guess: an unknown step means an unknown scale, and a
 -- pin at an unknown scale is worse than no pin.
-local function SpanForZoom(zoom)
+local function SpanForZoom(zoom, areaId)
     local indoor = Client.GetMinimapIndoorState()
-    local override = SpanOverride(zoom, indoor)
+    local override = SpanOverride(areaId, zoom, indoor)
     if override then
         return override, "playerCalibrated"
     end
@@ -491,14 +717,14 @@ end
 
 -- Shared with Map/NpcPins.lua. Both minimap layers must use the same measured
 -- zoom span rather than maintaining two tables that can drift apart.
-function MinimapPins:GetSpanForZoom(zoom)
-    return SpanForZoom(zoom)
+function MinimapPins:GetSpanForZoom(zoom, areaId)
+    return SpanForZoom(zoom, areaId)
 end
 
--- Records a span the player has dialled in for the zoom step and environment
--- they are standing in right now. Passing nil clears it and returns the layer
--- to the constant. Returns the key it wrote, the value, and the span now in
--- use, so the caller can report exactly what changed.
+-- Records a span the player has dialled in for the current area, zoom step and
+-- environment. Passing nil clears it and returns that area to the constant.
+-- Returns the key it wrote, the value, and the span now in use, so the caller
+-- can report exactly what changed.
 function MinimapPins:SetSpanOverride(yards)
     local config = UQ:GetModule("Config")
     if not config then
@@ -508,16 +734,22 @@ function MinimapPins:SetSpanOverride(yards)
     if type(zoom) ~= "number" then
         return nil
     end
+    local mapContext = MapContext()
+    local areaId = mapContext and mapContext:GetCurrentZoneView()
+    if type(areaId) ~= "number" then
+        return nil
+    end
     local indoor = Client.GetMinimapIndoorState()
-    local key = SpanOverrideKey(zoom, indoor)
+    local key = SpanOverrideKey(areaId, zoom, indoor)
     if yards and yards > 0 then
         config:SetSectionEntry(SPAN_SECTION, key, yards)
     else
         config:SetSectionEntry(SPAN_SECTION, key, nil)
+        config:SetSectionEntry(SPAN_SECTION, SpanEnvironmentKey(zoom, indoor), nil)
     end
     self.dirty = true
     self:Refresh()
-    local span, evidence = SpanForZoom(zoom)
+    local span, evidence = SpanForZoom(zoom, areaId)
     return key, zoom, indoor, span, evidence
 end
 
@@ -537,6 +769,9 @@ function MinimapPins:BuildTargets(areaId, widthYards, heightYards, config)
     end
 
     local quests = questState:GetOrderedQuests()
+    self.relevantBagItemIds = worldMap:GetRelevantBagItemIds(quests)
+    local bagItems = BagItems()
+    self.lastBagToken = bagItems and bagItems:GetTokenFor(self.relevantBagItemIds)
 
     -- Objectives: one dot for every still-needed direct objective coordinate
     -- in the database. That includes creature spawns, objects and exploration
@@ -750,7 +985,11 @@ function MinimapPins:Project(playerX, playerY, widthYards, heightYards, span, wi
                 clamped = clamped + 1
             end
             if pin then
-                Client.SetMinimapPinAlpha(pin, onEdge and EDGE_ALPHA or INSIDE_ALPHA)
+                local alpha = onEdge and EDGE_ALPHA or INSIDE_ALPHA
+                if self.focusActive and not self:IsTargetInFocus(target) then
+                    alpha = alpha * FOCUS_DIM_FACTOR
+                end
+                Client.SetMinimapPinAlpha(pin, alpha)
                 if Client.PositionMinimapPin(pin, offsetX, offsetY) then
                     if target.kind == "objective" then
                         objectiveIndex = objectiveIndex + 1
@@ -771,6 +1010,7 @@ function MinimapPins:Project(playerX, playerY, widthYards, heightYards, span, wi
     self.objectiveVisible = HidePoolFrom(self.objectivePool, objectiveIndex)
     self.giverVisible = HidePoolFrom(self.giverPool, giverIndex)
     self.turnInVisible = HidePoolFrom(self.turnInPool, turnInIndex)
+    self.poolsHidden = false
     self.clampedCount = clamped
     self.pinFailures = failures
 end
@@ -802,13 +1042,6 @@ function MinimapPins:Refresh()
         self.canvasDeclared = true
         UQ:DeclareCapability("minimapCanvas", "detected",
             "Minimap resolved with geometry at runtime; children of it are confirmed to render unclipped")
-    end
-
-    local span, spanEvidence = SpanForZoom(zoom)
-    if not span then
-        self:HideAll()
-        self:Record("unknownZoom", { zoom = tostring(zoom) })
-        return
     end
 
     local mapContext = MapContext()
@@ -849,6 +1082,13 @@ function MinimapPins:Refresh()
         playerX = report.playerX,
         playerY = report.playerY,
     }
+    local span, spanEvidence = SpanForZoom(zoom, areaId)
+    if not span then
+        self:HideAll()
+        identity.zoom = tostring(zoom)
+        self:Record("unknownZoom", identity)
+        return
+    end
     -- Indoors the minimap covers fewer yards at the same zoom step, and this
     -- client exposes no way to learn how many: the zoom CVars are measured
     -- absent, so the layer cannot rescale and would place every pin at the
@@ -965,12 +1205,15 @@ end
 
 function MinimapPins:GetStatus()
     local width, height, zoom = Client.GetMinimapGeometry()
-    local span, spanEvidence = SpanForZoom(zoom)
+    local mapContext = MapContext()
+    local areaId = mapContext and mapContext:GetCurrentZoneView()
+    local span, spanEvidence = SpanForZoom(zoom, areaId)
     local config = UQ:GetModule("Config")
     return {
         enabled = not config or config:Get("minimapPins") and true or false,
         state = self.lastState,
         width = width,
+        areaId = areaId,
         zoom = zoom,
         span = span,
         spanEvidence = spanEvidence,
@@ -988,13 +1231,15 @@ end
 function MinimapPins:OnEnable()
     local state = QuestState()
     if state then
-        state:AddListener(function()
-            MinimapPins.dirty = true
+        state:AddListener(function(event, quest, targetsChanged)
+            if event ~= "QUEST_OBJECTIVES_CHANGED" or targetsChanged then
+                MinimapPins.dirty = true
+            end
         end)
     end
 
     local bagItems = BagItems()
-    self.lastBagToken = bagItems and bagItems:GetToken()
+    self.lastBagToken = bagItems and bagItems:GetTokenFor(self.relevantBagItemIds)
     local driver = UQ:GetModule("Driver")
     if driver then
         driver:Schedule("map.minimappins", REFRESH_INTERVAL, function()
@@ -1003,7 +1248,8 @@ function MinimapPins:OnEnable()
         -- Second job on the same shared driver rather than a second OnUpdate
         -- frame: it only flips a flag, and the refresh above picks it up.
         driver:Schedule("map.minimappins.rebuild", REBUILD_INTERVAL, function()
-            local token = bagItems and bagItems:GetToken()
+            local token = bagItems and bagItems:GetTokenFor(
+                MinimapPins.relevantBagItemIds)
             -- No BagItems module at all means no token to compare, so the
             -- unconditional rebuild this replaced is what runs instead: the
             -- poll must never become weaker than it was when it cannot see

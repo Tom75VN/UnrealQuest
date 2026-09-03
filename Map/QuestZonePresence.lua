@@ -1,8 +1,8 @@
 --[[
 UnrealQuest / Map/QuestZonePresence.lua
 
-"Would this zone's map draw anything at all for this quest?" -- one answer,
-for the tracker's current-zone filter.
+"Does this quest have actionable work in this zone right now?" -- one answer,
+for the tracker's current-zone filter, built from the map's location sources.
 
 The tracker used to decide that from the quest log's own header row alone: a
 quest filed under "Duskwood" is a Duskwood quest, and standing anywhere else
@@ -11,26 +11,28 @@ routinely not the zone its objectives are in -- a quest taken in Duskwood whose
 every kill is in Westfall disappeared from the tracker for exactly the time the
 player was actually doing it.
 
-So the filter asks the map instead, and this module is that question. It is
-deliberately not a second opinion about where a quest is: it calls the very
-collectors the map layers draw from, so a "yes" here means the player really
-can see something for that quest on that zone's map, and a "no" means the map
-is empty of it:
+So the filter asks the same location sources as the map, then narrows them by
+the quest's current state. It is deliberately not a second opinion about where
+a quest is: it reuses the collectors that already know the recorded objective,
+vendor and finisher positions:
 
   * the objective cloud, through Data/QuestTarget.lua's CollectLocations --
     the same call Map/WorldMapPins.lua's tiles and dots come from, so a source
     whose objective is already finished, or an item-use target the player is
     not carrying, is absent here exactly as it is absent on the map;
-  * the turn-in relation, drawn as green tiles for a quest ready to hand in and
-    as the "?" marker for one still in progress (that half follows the
-    showInProgressTurnIns setting, because that is what decides whether the
-    marker exists);
-  * vendor points for bought objective items, when questVendorPins is on,
-    filtered by the same "is the item still wanted" and faction tests
-    Map/QuestVendorPins.lua applies.
+  * the turn-in relation only when the quest is complete, or when the quest has
+    no separate objective relation and talking/delivering to that NPC is the
+    current task;
+  * vendor points for bought objective items while the item is still wanted,
+    independent of whether the optional map pin is visible.
 
-THREE ANSWERS, NOT TWO. true and false mean the map has something / has
-nothing. nil means the question could not be asked at all -- the quest matched
+This is intentionally stricter than "would the map draw a marker?". The map
+may show a future turn-in while a quest is still in progress, but travelling
+there is not yet work the player can do. Display settings therefore do not
+change tracker membership.
+
+THREE ANSWERS, NOT TWO. true and false mean the quest has actionable work / has
+none in this area. nil means the question could not be asked -- the quest matched
 no database record, or every record it could be is hidden from the map (CLUCK!
 and the hiddenMapQuests overrides). An empty map is not evidence about the zone
 in those cases, so the caller must fall back to what it did before rather than
@@ -148,19 +150,6 @@ local function IsMapHidden(config, questId)
     return false
 end
 
-local function ShowsInProgressTurnIns(config)
-    if not config then
-        return true
-    end
-    return config:Get("showInProgressTurnIns") and true or false
-end
-
-local function ShowsVendorPins(config)
-    -- Absent config is the addon still coming up, not a player who turned this
-    -- off; the default is on, so the pins count.
-    return not config or config:Get("questVendorPins") ~= false
-end
-
 -- Everything about the quest that can change what the map draws for it. The
 -- area and the bag token are the cache's other two dimensions and are checked
 -- separately, so they are deliberately not in here.
@@ -246,8 +235,6 @@ function QuestZonePresence:Compute(quest, areaId)
 
     local config = Config()
     local complete = quest.isComplete == 1
-    local turnIns = complete or ShowsInProgressTurnIns(config)
-    local vendors = not complete and ShowsVendorPins(config)
     local drawable = 0
 
     local index = 1
@@ -255,18 +242,28 @@ function QuestZonePresence:Compute(quest, areaId)
         local questId = ids[index]
         if not IsMapHidden(config, questId) then
             drawable = drawable + 1
-            if turnIns and HasTurnInPoint(database, questId, areaId) then
-                return true
-            end
             -- A quest ready to hand in shows its ender and nothing else: its
             -- objective cloud is off the map by then, and it has finished
             -- shopping.
-            if not complete then
-                if HasObjectivePoint(quest, questId, areaId) then
+            if complete then
+                if HasTurnInPoint(database, questId, areaId) then
                     return true
                 end
-                if vendors and HasVendorPoint(database, quest, questId, areaId) then
-                    return true
+            else
+                local objectiveRelation = database:GetQuestObjectiveSources(questId)
+                -- No objective relation means the destination NPC is itself
+                -- the current talk/delivery task, rather than a future turn-in.
+                if type(objectiveRelation) ~= "table" then
+                    if HasTurnInPoint(database, questId, areaId) then
+                        return true
+                    end
+                else
+                    if HasObjectivePoint(quest, questId, areaId) then
+                        return true
+                    end
+                    if HasVendorPoint(database, quest, questId, areaId) then
+                        return true
+                    end
                 end
             end
         end

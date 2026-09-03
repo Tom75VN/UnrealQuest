@@ -19,7 +19,7 @@ UnrealQuest = {}
 local UQ = UnrealQuest
 
 UQ.name = "UnrealQuest"
-UQ.version = "0.3.0"
+UQ.version = "0.3.1"
 
 -- Keep UnrealQuest visually aligned with UnrealUI without creating a runtime
 -- dependency between the two addons. These values mirror UnrealUI's shared
@@ -85,6 +85,83 @@ local COLOR_LIGHTNESS_WEIGHT = 0.8
 -- slot returns to the pool when the quest leaves (see UQ.ReleaseQuestColor).
 local questColorSlot = {}
 local questColorOwner = {}
+
+-- The assignment outlives the session. Without this the palette is re-dealt
+-- from scratch on every login and a quest the player has been following for
+-- days changes colour under them after a /reload -- which is exactly the one
+-- thing the allocator above is built to prevent while the session lasts.
+--
+-- What is stored is the SLOT NUMBER, never the r,g,b triple: the palette is
+-- code and the assignment is state, so editing a colour here must repaint the
+-- quests that hold it rather than resurrect the old value out of a saved file.
+--
+-- The section holds live assignments only. ReleaseQuestColor drops a quest's
+-- entry as it leaves the log, and PruneQuestColors drops whatever a complete
+-- log scan no longer knows about, so the file stays the size of the quest log
+-- instead of growing with every quest the character has ever carried.
+local COLOR_SECTION = "questColorSlots"
+-- The section table this seeded from, not a bare "done" flag: Config rebuilds
+-- the store into a fresh table every time it initialises, so comparing the
+-- table itself re-seeds from a store that was replaced underneath and skips
+-- the walk on every call that follows.
+local colorStoreSeeded = nil
+
+-- Config is a module like any other and may not have run its OnInit yet when
+-- an early caller asks for a colour, so this is resolved per call and simply
+-- answers nil until the store exists. Nothing here is required for correct
+-- colours -- persistence is an accelerator over an allocator that already
+-- works from an empty table.
+local function QuestColorSection()
+    local config = UQ.modules and UQ.modules.Config
+    if not config or not config.GetSection then
+        return nil, nil
+    end
+    local section = config:GetSection(COLOR_SECTION)
+    if not section then
+        return nil, nil
+    end
+    return section, config
+end
+
+-- Seeds the two runtime tables from the saved section, once, on the first
+-- colour request that finds a store. A saved slot is ignored when it is out of
+-- range or already taken (a hand-edited or half-written file): the quest then
+-- allocates a fresh slot and overwrites its entry, rather than two quests
+-- sharing one colour.
+local function LoadQuestColors()
+    local section = QuestColorSection()
+    if not section or section == colorStoreSeeded then
+        return
+    end
+    colorStoreSeeded = section
+    local total = table.getn(UQ.questColors)
+    for key, slot in pairs(section) do
+        if type(key) == "string" and key ~= ""
+            and type(slot) == "number"
+            and slot == math.floor(slot)
+            and slot >= 1 and slot <= total
+            and not questColorSlot[key] and not questColorOwner[slot] then
+            questColorSlot[key] = slot
+            questColorOwner[slot] = key
+        end
+    end
+end
+
+local function RememberQuestColor(key, slot)
+    local section, config = QuestColorSection()
+    if not section then
+        return
+    end
+    config:SetSectionEntry(COLOR_SECTION, key, slot)
+end
+
+local function ForgetQuestColor(key)
+    local section, config = QuestColorSection()
+    if not section then
+        return
+    end
+    config:SetSectionEntry(COLOR_SECTION, key, nil)
+end
 
 local function ColorDistanceSquared(first, second)
     local lightness = (first[4] - second[4]) * COLOR_LIGHTNESS_WEIGHT
@@ -156,12 +233,19 @@ function UQ.GetQuestColor(questOrKey)
         return color[1], color[2], color[3]
     end
 
+    LoadQuestColors()
+
     local slot = questColorSlot[key]
     if not slot then
         slot = AllocateQuestColorSlot()
         if slot then
             questColorOwner[slot] = key
+            RememberQuestColor(key, slot)
         else
+            -- The palette is exhausted, so this slot is shared and derived
+            -- rather than owned. It is reproduced from the title on every
+            -- login already, and saving it would claim an owner the allocator
+            -- must be free to hand to a real quest later.
             slot = HashSlot(key)
         end
         questColorSlot[key] = slot
@@ -181,6 +265,10 @@ function UQ.ReleaseQuestColor(questOrKey)
     if type(key) ~= "string" or key == "" then
         return
     end
+    -- Unconditionally, and before the in-memory check: a saved entry can
+    -- outlive its runtime slot (a duplicate the loader refused to seed), and
+    -- that is precisely the entry a prune has to be able to clear.
+    ForgetQuestColor(key)
     local slot = questColorSlot[key]
     if not slot then
         return
@@ -188,6 +276,41 @@ function UQ.ReleaseQuestColor(questOrKey)
     questColorSlot[key] = nil
     if questColorOwner[slot] == key then
         questColorOwner[slot] = nil
+    end
+end
+
+-- Drops every remembered assignment the quest log no longer contains.
+--
+-- ReleaseQuestColor already handles a quest leaving while the addon watches,
+-- so this only catches what changed while it was not: quests abandoned or
+-- turned in under a previous build, or with the addon disabled. The caller
+-- must pass the live set from a COMPLETE log scan -- a partial scan would read
+-- collapsed headers as an empty log and free every colour on screen.
+function UQ.PruneQuestColors(liveKeys)
+    if type(liveKeys) ~= "table" then
+        return
+    end
+    LoadQuestColors()
+    local stale = {}
+    for key in pairs(questColorSlot) do
+        if not liveKeys[key] then
+            table.insert(stale, key)
+        end
+    end
+    local section = QuestColorSection()
+    if section then
+        for key in pairs(section) do
+            if type(key) == "string" and not liveKeys[key]
+                and not questColorSlot[key] then
+                table.insert(stale, key)
+            end
+        end
+    end
+    local index = 1
+    local total = table.getn(stale)
+    while index <= total do
+        UQ.ReleaseQuestColor(stale[index])
+        index = index + 1
     end
 end
 

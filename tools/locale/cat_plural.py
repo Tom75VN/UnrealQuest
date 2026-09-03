@@ -88,6 +88,14 @@ PLURALS = {
     "OTHER": ("+ %s more markers here", "+ %s autres marqueurs ici",
               "+ ещё %s маркеров здесь", "+ 此处还有 %s 个标记"),
 },
+"MAP_MORE_QUESTS": {
+    "ONE":   ("+ %s more quest here", "+ %s autre quete ici",
+              "+ ещё %s задание здесь", None),
+    "FEW":   (None, None, "+ ещё %s задания здесь", None),
+    "MANY":  (None, None, "+ ещё %s заданий здесь", None),
+    "OTHER": ("+ %s more quests here", "+ %s autres quetes ici",
+              "+ ещё %s заданий здесь", "+ 此处还有 %s 个任务"),
+},
 "CMD_RESETMARKED_DONE_ALL": {
     "ONE":   ("reset %s quest marked done:", "%s quête marquée terminée réinitialisée :",
               "сброшено %s задание, отмеченное выполненным:", None),

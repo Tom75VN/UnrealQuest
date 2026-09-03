@@ -77,22 +77,53 @@ local function QuestFromText(row)
     return best
 end
 
-local function QuestFromRow(row)
+-- The scrolled index first, the row's own text second, the row's stamped ID
+-- only when the first names nothing at all.
+--
+-- The two indices agree only while the list is unscrolled (knowledge record
+-- questlog.row_id_never_follows_the_scroll_offset), so the stale ID is a last
+-- resort and is never allowed to overrule what the row is showing. A header
+-- row matters most here: it holds no quest, and letting it fall through to an
+-- ID that names one puts this row's accent -- and the followed plaque, which
+-- resolves the same way -- on a header as well as on the row the quest really
+-- moved to, which is the doubling a scrolled list showed.
+local function QuestFromRow(row, rowIndex)
     local state = State()
     if not state then
         return nil
     end
-    local questIndex = Client.GetFrameId(row)
-    if questIndex then
-        local title, _, _, isHeader = Client.GetQuestLogEntry(questIndex)
-        if title and not isHeader then
-            local quest = state:GetQuest(UQ.NameKey(title))
-            if quest then
+    local textQuest = QuestFromText(row)
+    local primary, fallback = Client.GetQuestLogRowQuestIndex(row, rowIndex)
+
+    local title, isHeader = nil, nil
+    if primary then
+        -- Kept local: a bare "_" placeholder at this scope would write a global.
+        local resolved, _, _, resolvedHeader = Client.GetQuestLogEntry(primary)
+        title = resolved
+        isHeader = resolvedHeader
+    end
+    if title then
+        if isHeader then
+            return nil
+        end
+        local quest = state:GetQuest(UQ.NameKey(title))
+        if quest and (not textQuest or textQuest == quest) then
+            return quest
+        end
+        return textQuest
+    end
+
+    if fallback then
+        local fallbackTitle, _, _, fallbackHeader =
+            Client.GetQuestLogEntry(fallback)
+        if fallbackTitle and not fallbackHeader then
+            local quest = state:GetQuest(UQ.NameKey(fallbackTitle))
+            if quest and (not textQuest or textQuest == quest) then
                 return quest
             end
         end
     end
-    return QuestFromText(row)
+    return textQuest
 end
 
 function QuestLogTracking:InstallRow(rowIndex)
@@ -105,7 +136,7 @@ function QuestLogTracking:InstallRow(rowIndex)
     end
     local installed = Client.ChainScript(row, "OnClick", function()
         if Client.IsShiftKeyDown() then
-            local quest = QuestFromRow(row)
+            local quest = QuestFromRow(row, rowIndex)
             local tracker = Tracker()
             if quest and tracker then
                 QuestLogTracking.shiftClicks = QuestLogTracking.shiftClicks + 1
@@ -166,7 +197,7 @@ function QuestLogTracking:RefreshMarks()
             misses = 0
             local quest = nil
             if Client.IsObjectShown(row) then
-                quest = QuestFromRow(row)
+                quest = QuestFromRow(row, rowIndex)
             end
             local style = Client.SetQuestLogTrackMark(rowIndex,
                 quest and tracker:IsTracked(quest))

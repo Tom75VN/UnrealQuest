@@ -142,27 +142,56 @@ local function QuestFromText(object)
     return best
 end
 
--- Resolves a quest log row to a quest: by the stamped quest log index when the
--- client provides one, otherwise by the row's text.
-local function QuestFromLogRow(row)
+-- Resolves a quest log row to a quest: by the quest log index the row is
+-- showing when one can be established, otherwise by the row's text.
+--
+-- The scrolled index comes first, and the row's stamped ID is consulted only
+-- when that index names nothing at all -- the two agree only while the list is
+-- unscrolled (knowledge record questlog.row_id_never_follows_the_scroll_offset).
+-- A header row ends the search rather than falling through to its stale ID:
+-- otherwise the followed quest's plaque appears on the header as well as on
+-- the row the quest actually scrolled to.
+local function QuestFromLogRow(row, rowIndex)
     local questState = QuestState()
     if not questState then
         return nil
     end
 
-    local id = Client.GetFrameId(row)
-    if id then
-        local title, _, _, isHeader = Client.GetQuestLogEntry(id)
-        if title and not isHeader then
-            local titleKey = UQ.NameKey(title)
-            local quest = titleKey and questState:GetQuest(titleKey)
-            if quest then
+    local textQuest = QuestFromText(row)
+    local primary, fallback = Client.GetQuestLogRowQuestIndex(row, rowIndex)
+
+    local title, isHeader = nil, nil
+    if primary then
+        -- Kept local: a bare "_" placeholder at this scope would write a global.
+        local resolved, _, _, resolvedHeader = Client.GetQuestLogEntry(primary)
+        title = resolved
+        isHeader = resolvedHeader
+    end
+    if title then
+        if isHeader then
+            return nil
+        end
+        local titleKey = UQ.NameKey(title)
+        local quest = titleKey and questState:GetQuest(titleKey)
+        if quest and (not textQuest or textQuest == quest) then
+            return quest
+        end
+        return textQuest
+    end
+
+    if fallback then
+        local fallbackTitle, _, _, fallbackHeader =
+            Client.GetQuestLogEntry(fallback)
+        if fallbackTitle and not fallbackHeader then
+            local fallbackKey = UQ.NameKey(fallbackTitle)
+            local quest = fallbackKey and questState:GetQuest(fallbackKey)
+            if quest and (not textQuest or textQuest == quest) then
                 return quest
             end
         end
     end
 
-    return QuestFromText(row)
+    return textQuest
 end
 
 -- Selection ------------------------------------------------------------------
@@ -186,8 +215,8 @@ end
 -- Shared by the modern quest-log decoration. Keeping row identity here means
 -- the highlight and the explicit Following button use the same selected quest
 -- even when a skin rewrites the row text or drops its stamped ID.
-function QuestClicks:GetQuestFromLogRow(row)
-    return QuestFromLogRow(row)
+function QuestClicks:GetQuestFromLogRow(row, rowIndex)
+    return QuestFromLogRow(row, rowIndex)
 end
 
 function QuestClicks:Select(quest, origin)

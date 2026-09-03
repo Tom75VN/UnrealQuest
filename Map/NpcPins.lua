@@ -214,6 +214,19 @@ NpcPins.playerClassName = nil
 -- mid-hover cannot silently shrink the pin back to its base size.
 NpcPins.hoveredMobPin = nil
 
+-- Set while the quest layer is holding a hover focus, so every pin this
+-- module draws fades behind the quest the player is pointing at. Nothing here
+-- decides it: a service, node or rare pin belongs to no quest, so the whole
+-- pool is unrelated to any of them and fades as a block. The two surfaces keep
+-- their own flag because their hovers are independent -- the map's focus must
+-- not fade the minimap, or the other way round.
+-- Read by the draw passes as well as written by the setters, so a pin that
+-- becomes visible mid-hover arrives already faded instead of at full opacity.
+local FOCUS_DIM_ALPHA = 0.25
+local FOCUS_FULL_ALPHA = 1
+NpcPins.worldFocusDimmed = false
+NpcPins.minimapFocusDimmed = false
+
 local function Config()
     return UQ:GetModule("Config")
 end
@@ -784,7 +797,42 @@ function NpcPins:GetMinimapPin(index)
     return pin
 end
 
+-- Called by Map/WorldMapPins.lua's one opacity writer. Applied over the whole
+-- pool rather than the visible range: a pooled pin that fell out of the last
+-- draw keeps its alpha, and a faded one handed back out later would return
+-- faded.
+local function ApplyPoolAlpha(pool, alpha)
+    local index = 1
+    local total = table.getn(pool)
+    while index <= total do
+        local pin = pool[index]
+        if pin then
+            Client.SetWorldMapPinAlpha(pin, alpha)
+        end
+        index = index + 1
+    end
+end
+
+function NpcPins:SetWorldFocusDim(dimmed)
+    dimmed = dimmed and true or false
+    if self.worldFocusDimmed == dimmed then
+        return
+    end
+    self.worldFocusDimmed = dimmed
+    ApplyPoolAlpha(self.worldPool, dimmed and FOCUS_DIM_ALPHA or FOCUS_FULL_ALPHA)
+end
+
+function NpcPins:SetMinimapFocusDim(dimmed)
+    dimmed = dimmed and true or false
+    if self.minimapFocusDimmed == dimmed then
+        return
+    end
+    self.minimapFocusDimmed = dimmed
+    ApplyPoolAlpha(self.minimapPool, dimmed and FOCUS_DIM_ALPHA or FOCUS_FULL_ALPHA)
+end
+
 function NpcPins:DrawWorldMap()
+    local alpha = self.worldFocusDimmed and FOCUS_DIM_ALPHA or FOCUS_FULL_ALPHA
     local visible = 0
     local index = 1
     local total = table.getn(self.targets)
@@ -793,6 +841,7 @@ function NpcPins:DrawWorldMap()
         local pin = self:GetWorldPin(visible + 1)
         if pin then
             pin.unrealQuestNpcTarget = target
+            Client.SetWorldMapPinAlpha(pin, alpha)
             local size = WORLD_PIN_SIZE
             if target.small then size = NODE_WORLD_PIN_SIZE end
             self:ApplyPinSize(pin, size, false)
@@ -822,7 +871,7 @@ function NpcPins:DrawMinimap(report, areaId)
     local database = Database()
     local minimapPins = MinimapPins()
     local yards = database and database:GetZoneYards(areaId)
-    local span = minimapPins and minimapPins:GetSpanForZoom(zoom)
+    local span = minimapPins and minimapPins:GetSpanForZoom(zoom, areaId)
     if type(width) ~= "number" or type(height) ~= "number" or type(span) ~= "number"
         or type(yards) ~= "table" or type(yards[1]) ~= "number"
         or type(yards[2]) ~= "number" then
@@ -855,6 +904,8 @@ function NpcPins:DrawMinimap(report, areaId)
             local pin = self:GetMinimapPin(visible + 1)
             if pin then
                 pin.unrealQuestNpcTarget = target
+                Client.SetMinimapPinAlpha(pin,
+                    self.minimapFocusDimmed and FOCUS_DIM_ALPHA or FOCUS_FULL_ALPHA)
                 local size = MINIMAP_PIN_SIZE
                 if target.small then size = NODE_MINIMAP_PIN_SIZE end
                 Client.SetMinimapPinSize(pin, size, size)

@@ -11,6 +11,11 @@ scrolling, quest actions and detail population, while UnrealQuest's existing
 level, translation, tracking and action-button modules continue to decorate
 those same native widgets.
 
+The row count is not EQL3's fixed 27: the rows are spaced by the live row
+height and only as many are installed as end inside the list page. That count
+is also what QUESTS_DISPLAYED is set to, so everything past it is what the
+client's own FauxScrollFrame scrolls -- exactly as the native log behaves.
+
 unrealUI's Modern and Modern WoW themes already replace the Quest Log with a
 two-pane surface of their own. Theme resolution is therefore delayed until
 unrealUI has published its active style, or until the same fifteen-second
@@ -88,11 +93,14 @@ function ExtendedQuestLog:Resolve(force)
     self.applied = applied and true or false
     if self.applied then
         self:StartRewardLayoutJob()
+        local rows = Client.GetExtendedClassicQuestLogRows()
         UQ:DeclareCapability("extendedClassicQuestLog", "unverified",
-            "the native Quest Log was expanded to 27 stock rows on a left parchment page "
-            .. "with its stock detail pane on the EQL3 right page; the generic frame calls "
-            .. "and row-template technique are supported, but the combined layout still needs "
-            .. "one in-game visual confirmation")
+            "the native Quest Log was expanded to " .. tostring(rows or "?")
+            .. " stock rows -- as many as the measured row height fits inside the left "
+            .. "parchment page, so a longer quest list scrolls on the native FauxScrollFrame "
+            .. "instead of running off the page -- with its stock detail pane on the EQL3 "
+            .. "right page; the generic frame calls and row-template technique are supported, "
+            .. "but the combined layout still needs one in-game visual confirmation")
     else
         UQ:DeclareCapability("extendedClassicQuestLog", "missing",
             "the standalone/Classic WoW layout was selected, but one of the native Quest Log "

@@ -140,6 +140,11 @@ local questItemUseRequirementCache = {}
 -- the same kind of static relation walk asked for on the same map refresh.
 local questVendorTargetCache = {}
 
+-- And for the object half of the objective relation: which live objective
+-- line each object the quest puts on the map belongs to. Same static walk over
+-- the same immutable tables, asked for on every map rebuild.
+local questObjectiveObjectLinkCache = {}
+
 -- The map only ever asks about quests in the log, in the player's own area, so
 -- the live key set is a few dozen entries. This bound is a safety net for a
 -- session that somehow accumulates many zones and many quests, not an expected
@@ -153,6 +158,7 @@ local function FlushQuestLocationCache()
     questItemUseTargetCache = {}
     questItemUseRequirementCache = {}
     questVendorTargetCache = {}
+    questObjectiveObjectLinkCache = {}
 end
 
 local function CacheQuestLocations(cacheKey, locations)
@@ -546,6 +552,79 @@ function Database:GetQuestObjectiveUnitLinks(questId)
         end
     end
 
+    return links
+end
+
+-- The object half of GetQuestObjectiveUnitLinks: for every object the
+-- objective relation puts on the map, the normalized names of the live
+-- objective lines that object can satisfy.
+--
+-- Keyed by object ID, not by name as the unit table above is. That one serves
+-- the tooltip, which never has more than a name to go on; this one serves the
+-- map, whose location rows already carry the source ID, so there is no reason
+-- to route the answer through a name several objects share.
+--
+-- A direct obj.O source is named by itself: the client formats a gobject
+-- objective with the object's own name. An object reached through obj.I is
+-- named by the ITEM it holds instead -- the log says "Burning Key: 0/1", never
+-- "Stone of West Binding" -- and that indirection is the reason a quest
+-- sending the player to three containers for three different items could not
+-- tell which of them was already emptied.
+--
+-- The value is `true` rather than a rate: an object either holds the quest
+-- item or it does not, and the bundled per-object chance carries no meaning
+-- the map would draw.
+function Database:GetQuestObjectiveObjectLinks(questId)
+    if type(questId) ~= "number" then
+        return {}
+    end
+    local cached = questObjectiveObjectLinkCache[questId]
+    if cached then
+        return cached
+    end
+
+    local links = {}
+
+    local function LinkObject(objectId, objectiveName)
+        if type(objectId) ~= "number" then
+            return
+        end
+        local objectiveKey = UQ.NameKey(objectiveName)
+        if not objectiveKey then
+            return
+        end
+        local names = links[objectId]
+        if not names then
+            names = {}
+            links[objectId] = names
+        end
+        names[objectiveKey] = true
+    end
+
+    local relation = self:GetQuestObjectiveSources(questId)
+    if type(relation) == "table" then
+        if type(relation.O) == "table" then
+            local _, objectId
+            for _, objectId in pairs(relation.O) do
+                LinkObject(objectId, self:GetObjectName(objectId))
+            end
+        end
+        if type(relation.I) == "table" then
+            local _, itemId
+            for _, itemId in pairs(relation.I) do
+                local item = self:GetItem(itemId)
+                local itemName = self:GetItemName(itemId)
+                if type(item) == "table" and type(item.O) == "table" then
+                    local objectId
+                    for objectId in pairs(item.O) do
+                        LinkObject(objectId, itemName)
+                    end
+                end
+            end
+        end
+    end
+
+    questObjectiveObjectLinkCache[questId] = links
     return links
 end
 

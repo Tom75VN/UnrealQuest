@@ -371,6 +371,7 @@ UQ.RegisterLocale("zhCN", {
     ["MAP_HINT_SHIFT_CLICK_CHOOSE"] = "Shift+点击以选择哪个任务已完成",
     ["MAP_HINT_SHIFT_CLICK_MARK"] = "Shift+点击以标记为已完成",
     ["MAP_MORE_MARKERS_OTHER"] = "+ 此处还有 %s 个标记",
+    ["MAP_MORE_QUESTS_OTHER"] = "+ 此处还有 %s 个任务",
     ["MARKS_WARN_REFUSED"] = "团队标记未被接受 -- 见 /uq marks",
     ["MARK_CIRCLE"] = "圆圈",
     ["MARK_CROSS"] = "十字",

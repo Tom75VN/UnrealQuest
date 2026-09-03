@@ -385,6 +385,8 @@ UQ.RegisterLocale("enUS", {
     ["MAP_HINT_SHIFT_CLICK_MARK"] = "Shift-click to mark as already done",
     ["MAP_MORE_MARKERS_ONE"] = "+ %s more marker here",
     ["MAP_MORE_MARKERS_OTHER"] = "+ %s more markers here",
+    ["MAP_MORE_QUESTS_ONE"] = "+ %s more quest here",
+    ["MAP_MORE_QUESTS_OTHER"] = "+ %s more quests here",
     ["MARKS_WARN_REFUSED"] = "raid marks are not being accepted -- see /uq marks",
     ["MARK_CIRCLE"] = "circle",
     ["MARK_CROSS"] = "cross",

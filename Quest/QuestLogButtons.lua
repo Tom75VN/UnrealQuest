@@ -261,14 +261,14 @@ local function SetRowsFollowing(modern)
             if modern or row.unrealQuestOriginalHeight ~= nil then
                 Client.SetModernQuestLogRowLayout(row, modern)
             end
-            local quest = clicks and clicks:GetQuestFromLogRow(row) or nil
+            local quest = clicks and clicks:GetQuestFromLogRow(row, index) or nil
             local following = quest and mainQuest and mainQuest:IsMain(quest.titleKey)
             local red, green, blue
             if quest then
                 red, green, blue = UQ.GetQuestColor(quest)
             end
             Client.SetQuestLogFollowingRow(row, following and true or false,
-                red, green, blue)
+                red, green, blue, modern)
         end
         index = index + 1
     end
@@ -357,6 +357,12 @@ function QuestLogButtons:Refresh()
         Client.SetModernQuestLogPanelLayout()
     end
     SetRowsFollowing(modern)
+    -- SetRowsFollowing is where the modern row height is applied, so this is
+    -- where the taller rows have to be kept inside the host's list page: the
+    -- host sized its row count for the stock height, and the surplus belongs
+    -- on the scroll bar rather than over the footer buttons. Measured against
+    -- the live rows, so it is inert on a layout that already fits.
+    Client.FitQuestLogRowsToList()
 
     local logFrame = Client.GetNamedObject(PARENT_NAME)
     if not logFrame or not Client.IsObjectShown(logFrame) then

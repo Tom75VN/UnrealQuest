@@ -35,6 +35,47 @@ never the mechanism): the shared driver re-decorates the visible rows on the
 same 0.2s cadence Quest/QuestLogTracking.lua already uses for its track marks,
 and only while QuestLogFrame is shown.
 
+## Which quest a row is showing: the offset, not the stamped ID
+
+The list is a FauxScrollFrame. The row widgets never move; the client refills
+row N from quest log entry N + offset. A row's stamped ID says the same thing
+only for as long as something keeps restamping it, and at the top of an
+unscrolled list the two are identical -- so a join through GetID alone works
+perfectly until the moment the list is first scrolled, and then points every
+row at a quest the player is not looking at. That is exactly what
+USER_CONFIRMED_INGAME as "the level disappears when I scroll": with the index
+naming the wrong quest, the title check below rejects every row and the whole
+visible list goes bare rather than wrong.
+
+So Client.GetQuestLogRowQuestIndex offers both -- the scrolled index first,
+the stamped ID second -- and neither is taken on faith: a candidate is used
+only when the row is already carrying that quest's title. Whichever of the two
+the client keeps correct, the row is decorated from it, and if neither agrees
+with the row the row is left alone. unrealUI's own quest log derives the index
+from the offset the same way on this client, and never from GetID.
+
+## The canary, so a scroll never shows a bare list
+
+That 0.2s is the correctness mechanism, and on its own it is also 0.2s of
+undecorated rows after every rewrite. A click already avoids that: the
+shift-click chain in Quest/QuestLogTracking.lua reapplies the prefix and the
+track mark inside the same click. Scrolling had no such path, and scrolling is
+continuous -- USER_CONFIRMED_INGAME the levels were simply gone from the list
+for as long as the wheel kept turning.
+
+So one row is watched every driver tick: the first row this module decorated,
+together with the exact text it left there. A native rewrite rewrites EVERY
+row, so that one row no longer matching is proof the whole page needs doing
+again -- one GetText per tick, no event, and no assumption about which client
+call did the rewriting. The poll stays exactly as it was underneath it; the
+watch only decides that the next pass happens now instead of within 0.2s.
+
+The other two row presentations are reapplied in the same tick, because the
+rewrite that wiped the prefix also moved every quest to a different row: the
+track mark (Quest/QuestLogTracking.lua) and the followed-quest plaque
+(Quest/QuestLogButtons.lua) would otherwise sit on the wrong quest until their
+own polls came round. That is the same pairing the shift-click chain makes.
+
 ## What the pass refuses to do
 
 Every write is idempotent and fails closed:
@@ -48,10 +89,11 @@ Every write is idempotent and fails closed:
   * A leading colour escape is split off the same way, so a skinned row keeps
     its colour and the bracket lands inside it rather than in front of the
     "|cff..." sequence.
-  * The row's stamped quest log index is verified against the row's own text
-    before anything is written -- if the row does not carry the title the
+  * The quest log index the row is showing is verified against the row's own
+    text before anything is written -- if the row does not carry the title the
     index claims (a stale row mid-refresh, or a skin that rewrote it), the row
-    is skipped rather than stamped with someone else's level.
+    is skipped rather than stamped with someone else's level. See below for
+    why there are two candidate indices and not one.
   * Header rows and any row whose level is not a positive number get nothing.
 
 No player-facing string is added: brackets and a number are not translatable,
@@ -84,9 +126,17 @@ local QuestLogLevels = UQ:NewModule("QuestLogLevels")
 
 local MAX_LOG_ROWS = 30
 local POLL_INTERVAL = 0.2
+-- 0 is every driver tick. The watch itself is one GetText and one string
+-- compare; the full pass it triggers is the same one the poll runs.
+local WATCH_INTERVAL = 0
 
 -- How many rows this pass wrote a prefix onto, for /uq status debugging.
 QuestLogLevels.decorated = 0
+-- The watched row, the exact text the last pass left on it, and how many
+-- native rewrites that watch has caught. See "The canary" above.
+QuestLogLevels.canaryRow = nil
+QuestLogLevels.canaryText = nil
+QuestLogLevels.rewrites = 0
 -- Last exact text this module wrote to each recycled native row. It lets a
 -- language change safely replace its own previous translation while the row's
 -- stamped quest-log index remains the authoritative identity.
@@ -143,39 +193,66 @@ local function RowCarriesTitle(rowText, title)
     return string.find(rowKey, titleKey, 1, true) and true or false
 end
 
-local function DecorateRow(row)
+-- Which quest a row is showing, verified against the row's own text.
+--
+-- Client.GetQuestLogRowQuestIndex offers the scrolled index and the row's
+-- stamped ID, in that order, because the two agree only at the top of an
+-- unscrolled list. Taking either on faith would stamp a row with another
+-- quest's level as soon as the list is scrolled, so the candidate is accepted
+-- only when the row is already carrying that quest's title -- or when this
+-- module wrote the row's current text for that same index itself, which is
+-- how a translated title stays recognizable.
+local function ResolveRowEntry(row, rowIndex, text, bare)
+    local primary, fallback = Client.GetQuestLogRowQuestIndex(row, rowIndex)
+    local previous = QuestLogLevels.renderedRows[row]
+    local candidate = primary
+    local attempt = 1
+    while attempt <= 2 do
+        if candidate then
+            local title, level, _, isHeader = Client.GetQuestLogEntry(candidate)
+            if title and not isHeader then
+                local quest = nil
+                local state = UQ:GetModule("QuestState")
+                if state then
+                    quest = state:GetQuestByTitle(title)
+                end
+                local displayTitle = UQ.GetQuestDisplayTitle(
+                    quest or { title = title }, title) or title
+                local isOwnText = previous and previous.questIndex == candidate
+                    and previous.text == text
+                if isOwnText or RowCarriesTitle(bare, title)
+                    or RowCarriesTitle(bare, displayTitle) then
+                    return candidate, title, level, displayTitle, isOwnText
+                end
+            end
+        end
+        candidate = fallback
+        fallback = nil
+        attempt = attempt + 1
+    end
+    return nil
+end
+
+-- Returns whether the row now reads as "[level] title", and the level the row
+-- resolved to. The caller paints the colour band from that same level, so the
+-- two halves of the row's presentation cannot describe different quests.
+local function DecorateRow(row, rowIndex)
     local text = Client.GetObjectText(row)
     if not text then
         return false
     end
-    local questIndex = Client.GetFrameId(row)
+
+    local lead, rest = SplitLeadIn(text)
+    local bare = StripLevelPrefix(rest)
+    local questIndex, title, level, displayTitle, isOwnText =
+        ResolveRowEntry(row, rowIndex, text, bare)
     if not questIndex then
-        return false
-    end
-    local title, level, _, isHeader = Client.GetQuestLogEntry(questIndex)
-    if not title or isHeader then
         return false
     end
     if type(level) ~= "number" or level <= 0 then
         return false
     end
-
-    local quest = nil
-    local state = UQ:GetModule("QuestState")
-    if state then
-        quest = state:GetQuestByTitle(title)
-    end
-    local displayTitle = UQ.GetQuestDisplayTitle(quest or { title = title }, title) or title
-
-    local lead, rest = SplitLeadIn(text)
-    local bare = StripLevelPrefix(rest)
     local previous = QuestLogLevels.renderedRows[row]
-    local isOwnText = previous and previous.questIndex == questIndex
-        and previous.text == text
-    if not isOwnText and not RowCarriesTitle(bare, title)
-        and not RowCarriesTitle(bare, displayTitle) then
-        return false
-    end
 
     -- Keep only what followed the title (normally a colour reset or a skin's
     -- marker), never the old title itself. For our own previous rendering the
@@ -198,31 +275,25 @@ local function DecorateRow(row)
         QuestLogLevels.renderedRows[row] = {
             questIndex = questIndex, text = text, suffix = suffix,
         }
-        return true
+        return true, level
     end
     if Client.SetNativeObjectText(row, decorated) then
         QuestLogLevels.renderedRows[row] = {
             questIndex = questIndex, text = decorated, suffix = suffix,
         }
-        return true
+        return true, level
     end
-    return false
+    return false, level
 end
 
--- Reads the level off the row's own stamped quest log index, the same join
--- DecorateRow uses. A row that is not a levelled quest row on the modern
--- surface -- a header, a hidden pooled row, or any row at all while the host
--- is not modern -- gets its original colour back instead of a band.
-local function ColorRow(row, modern)
-    if not modern or not Client.IsObjectShown(row) then
-        return Client.SetQuestLogRowTitleColor(row)
-    end
-    local questIndex = Client.GetFrameId(row)
-    local title, level, _, isHeader
-    if questIndex then
-        title, level, _, isHeader = Client.GetQuestLogEntry(questIndex)
-    end
-    if not title or isHeader or type(level) ~= "number" or level <= 0 then
+-- Paints the row from the level DecorateRow already resolved for it, so the
+-- band and the prefix always describe the same quest. A row that is not a
+-- levelled quest row on the modern surface -- a header, a hidden pooled row,
+-- one whose quest could not be resolved, or any row at all while the host is
+-- not modern -- gets its original colour back instead of a band.
+local function ColorRow(row, modern, level)
+    if not modern or not Client.IsObjectShown(row)
+        or type(level) ~= "number" or level <= 0 then
         return Client.SetQuestLogRowTitleColor(row)
     end
     local red, green, blue = Client.GetQuestLevelColor(level)
@@ -239,6 +310,7 @@ function QuestLogLevels:Refresh()
     -- every row on screen belongs to the same surface anyway.
     local modern = Client.HasModernQuestLog()
     local decorated = 0
+    local canaryRow = nil
     local rowIndex = 1
     local misses = 0
     while rowIndex <= MAX_LOG_ROWS and misses < 3 do
@@ -247,14 +319,68 @@ function QuestLogLevels:Refresh()
             misses = misses + 1
         else
             misses = 0
-            ColorRow(row, modern)
-            if Client.IsObjectShown(row) and DecorateRow(row) then
-                decorated = decorated + 1
+            local level = nil
+            if Client.IsObjectShown(row) then
+                local rowDecorated, rowLevel = DecorateRow(row, rowIndex)
+                level = rowLevel
+                if rowDecorated then
+                    decorated = decorated + 1
+                    if not canaryRow then
+                        canaryRow = row
+                    end
+                end
             end
+            ColorRow(row, modern, level)
         end
         rowIndex = rowIndex + 1
     end
     self.decorated = decorated
+
+    -- A decorated row is the sharpest canary there is: the client rewrites it
+    -- to the bare title, which can never equal what was just written here.
+    -- With nothing decorated there is also nothing to lose, so the first row
+    -- is watched instead, purely so a list that becomes decoratable is picked
+    -- up on the next tick rather than the next poll.
+    if not canaryRow then
+        canaryRow = Client.GetNamedObject("QuestLogTitle1")
+    end
+    -- Read back rather than remembering what was written. The two are the same
+    -- string on this client, but a host that normalized it would otherwise
+    -- leave the watch permanently dissatisfied and run a full pass every tick.
+    self.canaryRow = canaryRow
+    self.canaryText = canaryRow and Client.GetObjectText(canaryRow) or nil
+end
+
+-- Cheap enough to run on every tick: it reads one row and returns.
+function QuestLogLevels:Watch()
+    local row = self.canaryRow
+    if not row then
+        return false
+    end
+    local log = Client.GetNamedObject("QuestLogFrame")
+    if not log or not Client.IsObjectShown(log) then
+        return false
+    end
+    if Client.GetObjectText(row) == self.canaryText then
+        return false
+    end
+
+    self.rewrites = self.rewrites + 1
+    self:Refresh()
+
+    -- Same rewrite, same frame: a scroll has just moved every quest onto a
+    -- different row, so the track mark and the followed-quest plaque belong to
+    -- different rows now too. Quest/QuestLogTracking.lua's shift-click chain
+    -- reapplies this same pair for the same reason.
+    local tracking = UQ:GetModule("QuestLogTracking")
+    if tracking then
+        tracking:RefreshMarks()
+    end
+    local buttons = UQ:GetModule("QuestLogButtons")
+    if buttons then
+        buttons:Refresh()
+    end
+    return true
 end
 
 function QuestLogLevels:OnInit()
@@ -273,5 +399,8 @@ function QuestLogLevels:OnEnable()
     self:Refresh()
     driver:Schedule("questlog.levels", POLL_INTERVAL, function()
         QuestLogLevels:Refresh()
+    end)
+    driver:Schedule("questlog.levels.watch", WATCH_INTERVAL, function()
+        QuestLogLevels:Watch()
     end)
 end

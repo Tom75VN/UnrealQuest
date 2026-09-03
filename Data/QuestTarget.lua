@@ -165,14 +165,27 @@ function QuestTarget:SelectPrimary(components)
     return best
 end
 
--- Removes a creature's locations only when the live quest log proves that
--- every objective this creature can satisfy for this quest is finished.
--- ObjectiveMatch already owns the two evidence paths: exact creature names
--- parsed from kill lines, and bundled links from item objectives to their
--- creature sources. An unmatched source stays visible rather than being
--- guessed away; objects and area triggers likewise remain conservative until
--- their own live-line matcher exists.
-local function FilterFinishedUnitObjectives(database, quest, locations)
+-- Removes a source's locations only when the live quest log proves that every
+-- objective that source can satisfy for this quest is finished. A quest whose
+-- three steps sit in three places must lose a place as each step is done --
+-- otherwise the map keeps pointing at a container that has already been
+-- emptied, and so does the waypoint that shares this list.
+--
+-- Creatures go through ObjectiveMatch, which owns the two evidence paths for
+-- them: exact creature names parsed from kill lines, and bundled links from
+-- item objectives to the creatures that drop them.
+--
+-- Objects are matched by ID against the quest's own object links, because a
+-- container's log line names its CONTENTS rather than the container: "Burning
+-- Key: 0/1" is what the client says about the Stone of West Binding. Matching
+-- the object's own name against the line would only ever answer for the
+-- gobject objectives that happen to be named after themselves, which is why
+-- the link table resolves the item indirection first.
+--
+-- An unmatched source stays visible rather than being guessed away, so a
+-- source the bundled data ties to no line at all keeps its dots. Area triggers
+-- stay conservative for want of a live line that names them.
+local function FilterFinishedObjectives(database, quest, locations)
     local objectiveMatch = ObjectiveMatch()
     local objectiveOwner = quest and (quest.objectiveOwner or quest)
     if not objectiveMatch or not objectiveOwner
@@ -180,41 +193,82 @@ local function FilterFinishedUnitObjectives(database, quest, locations)
         return locations
     end
 
-    local sourceFinished = {}
+    -- One memo per source type: a unit ID and an object ID are both plain
+    -- numbers and would otherwise share a slot.
+    local unitFinished = {}
+    local objectFinished = {}
+    -- Both resolved on the first object asked about, so a quest with no object
+    -- source pays for neither.
+    local objectLinks = nil
+    local parsedObjectives = nil
+
+    local function UnitFinished(unitId)
+        local finished = unitFinished[unitId]
+        if finished ~= nil then
+            return finished
+        end
+        finished = false
+        local unitKey = UQ.NameKey(database:GetUnitName(unitId))
+        local matches = unitKey and objectiveMatch:FindForUnit(unitKey)
+        if matches then
+            local matched = false
+            local unfinished = false
+            local matchIndex = 1
+            local matchTotal = table.getn(matches)
+            while matchIndex <= matchTotal do
+                local objective = matches[matchIndex]
+                if objective.quest == objectiveOwner then
+                    matched = true
+                    if not objective.finished then
+                        unfinished = true
+                    end
+                end
+                matchIndex = matchIndex + 1
+            end
+            finished = matched and not unfinished
+        end
+        unitFinished[unitId] = finished
+        return finished
+    end
+
+    local function ObjectFinished(objectId)
+        local finished = objectFinished[objectId]
+        if finished ~= nil then
+            return finished
+        end
+        if objectLinks == nil then
+            objectLinks = database:GetQuestObjectiveObjectLinks(quest.questId)
+            parsedObjectives = objectiveMatch:ParseQuestObjectives(objectiveOwner)
+        end
+        finished = false
+        local objectiveKeys = objectLinks[objectId]
+        if objectiveKeys then
+            local matched, unfinished = objectiveMatch:CountObjectiveKeyMatches(
+                parsedObjectives, objectiveKeys)
+            finished = matched > 0 and unfinished == 0
+        end
+        objectFinished[objectId] = finished
+        return finished
+    end
+
+    local function SourceFinished(location)
+        if not location or type(location.sourceId) ~= "number" then
+            return false
+        end
+        if location.sourceType == "unit" then
+            return UnitFinished(location.sourceId)
+        elseif location.sourceType == "object" then
+            return ObjectFinished(location.sourceId)
+        end
+        return false
+    end
+
     local hidesAny = false
     local index = 1
     local total = table.getn(locations)
     while index <= total do
-        local location = locations[index]
-        if location and location.sourceType == "unit"
-            and type(location.sourceId) == "number" then
-            local finished = sourceFinished[location.sourceId]
-            if finished == nil then
-                finished = false
-                local unitKey = UQ.NameKey(database:GetUnitName(location.sourceId))
-                local matches = unitKey and objectiveMatch:FindForUnit(unitKey)
-                if matches then
-                    local matched = false
-                    local unfinished = false
-                    local matchIndex = 1
-                    local matchTotal = table.getn(matches)
-                    while matchIndex <= matchTotal do
-                        local objective = matches[matchIndex]
-                        if objective.quest == objectiveOwner then
-                            matched = true
-                            if not objective.finished then
-                                unfinished = true
-                            end
-                        end
-                        matchIndex = matchIndex + 1
-                    end
-                    finished = matched and not unfinished
-                end
-                sourceFinished[location.sourceId] = finished
-            end
-            if finished then
-                hidesAny = true
-            end
+        if SourceFinished(locations[index]) then
+            hidesAny = true
         end
         index = index + 1
     end
@@ -227,8 +281,7 @@ local function FilterFinishedUnitObjectives(database, quest, locations)
     index = 1
     while index <= total do
         local location = locations[index]
-        if not location or location.sourceType ~= "unit"
-            or not sourceFinished[location.sourceId] then
+        if not SourceFinished(location) then
             table.insert(filtered, location)
         end
         index = index + 1
@@ -370,7 +423,7 @@ function QuestTarget:CollectLocations(quest, areaId, complete)
     local locations = database:GetQuestLocations(quest.questId, complete, areaId)
     local unknown = 0
     if not complete then
-        locations = FilterFinishedUnitObjectives(database, quest, locations)
+        locations = FilterFinishedObjectives(database, quest, locations)
         -- GetQuestLocations returns a cached, shared list, and appending the
         -- item-use targets to it would write the carried-item state of one
         -- moment into an answer that is supposed to be static. Copy first --

@@ -381,6 +381,8 @@ UQ.RegisterLocale("frFR", {
     ["MAP_HINT_SHIFT_CLICK_MARK"] = "Maj+clic pour marquer comme deja terminee",
     ["MAP_MORE_MARKERS_ONE"] = "+ %s autre marqueur ici",
     ["MAP_MORE_MARKERS_OTHER"] = "+ %s autres marqueurs ici",
+    ["MAP_MORE_QUESTS_ONE"] = "+ %s autre quete ici",
+    ["MAP_MORE_QUESTS_OTHER"] = "+ %s autres quetes ici",
     ["MARKS_WARN_REFUSED"] = "les marques de raid ne sont pas acceptees -- voir /uq marks",
     ["MARK_CIRCLE"] = "cercle",
     ["MARK_CROSS"] = "croix",

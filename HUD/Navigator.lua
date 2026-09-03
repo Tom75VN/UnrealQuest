@@ -75,7 +75,8 @@ consistently rotated by a constant.
 Same split, and the same reason, as the tracker and the retired marker.
 `nav.context` at 4Hz chooses the nearest eligible node from a cached active-quest scene.
 The shared map collector may walk hundreds of spawn locations, so that cache is
-rebuilt immediately on quest changes and otherwise at most once a second.
+rebuilt only when its quest, area, visibility, or relevant quest-item inputs
+change.
 `nav.arrow` at 20Hz does one position read, one facing read and one rotation,
 which is the part that has to keep up with a turning player.
 ]]
@@ -120,6 +121,11 @@ Navigator.scene = nil
 Navigator.sceneDirty = true
 Navigator.sceneBuiltAt = nil
 Navigator.sceneBuilds = 0
+Navigator.relevantBagItemIds = {}
+Navigator.relevantMapQuestIds = {}
+Navigator.hiddenMapQuestStates = {}
+Navigator.lastBagToken = nil
+Navigator.lastShowInProgressTurnIns = nil
 Navigator.hiddenReason = nil
 Navigator.hiddenCounts = {}
 Navigator.placements = 0
@@ -157,6 +163,10 @@ end
 
 local function WorldMapPins()
     return UQ:GetModule("WorldMapPins")
+end
+
+local function BagItems()
+    return UQ:GetModule("BagItems")
 end
 
 local function PlayerHeading()
@@ -322,6 +332,45 @@ function Navigator:BuildTargetScene(areaId)
 
     local turnIns = worldMap:CollectTurnIns(database, quests, areaId, config)
     nodeCount = nodeCount + table.getn(turnIns)
+
+    -- Capture the exact non-quest-model inputs used by the collectors. The old
+    -- one-second expiry rebuilt this entire scene forever to notice these rare
+    -- changes. A small dependency check on each context tick preserves that
+    -- correctness without re-walking hundreds of spawn locations.
+    local relevantMapQuestIds = {}
+    local relevantMapQuestSeen = {}
+    questIndex = 1
+    while questIndex <= questTotal do
+        local questIds = worldMap:GetQuestMapIds(quests[questIndex])
+        local idIndex = 1
+        local idTotal = table.getn(questIds)
+        while idIndex <= idTotal do
+            local questId = questIds[idIndex]
+            if type(questId) == "number" and not relevantMapQuestSeen[questId] then
+                relevantMapQuestSeen[questId] = true
+                table.insert(relevantMapQuestIds, questId)
+            end
+            idIndex = idIndex + 1
+        end
+        questIndex = questIndex + 1
+    end
+    table.sort(relevantMapQuestIds)
+
+    local hiddenMapQuestStates = {}
+    local idIndex = 1
+    local idTotal = table.getn(relevantMapQuestIds)
+    while idIndex <= idTotal do
+        local questId = relevantMapQuestIds[idIndex]
+        hiddenMapQuestStates[questId] = worldMap:IsQuestHidden(questId, config)
+        idIndex = idIndex + 1
+    end
+    self.relevantMapQuestIds = relevantMapQuestIds
+    self.hiddenMapQuestStates = hiddenMapQuestStates
+    self.relevantBagItemIds = worldMap:GetRelevantBagItemIds(quests)
+    local bagItems = BagItems()
+    self.lastBagToken = bagItems and bagItems:GetTokenFor(self.relevantBagItemIds)
+    self.lastShowInProgressTurnIns = config
+        and config:Get("showInProgressTurnIns") and true or false
     self.scene = {
         areaId = areaId,
         groups = groups,
@@ -333,6 +382,34 @@ function Navigator:BuildTargetScene(areaId)
     self.sceneBuiltAt = Client.Now()
     self.sceneBuilds = self.sceneBuilds + 1
     return true
+end
+
+-- Cheap dependency check for the cached spatial scene. Objective-set changes
+-- arrive through QuestState and zone changes are checked separately; this
+-- covers the two inputs that can change without either event: carried
+-- quest-use items and per-quest map visibility.
+function Navigator:SceneDependenciesChanged(worldMap, config)
+    local bagItems = BagItems()
+    local bagToken = bagItems and bagItems:GetTokenFor(self.relevantBagItemIds)
+    if bagToken ~= self.lastBagToken then
+        return true
+    end
+    local showInProgress = config
+        and config:Get("showInProgressTurnIns") and true or false
+    if showInProgress ~= self.lastShowInProgressTurnIns then
+        return true
+    end
+    local index = 1
+    local total = table.getn(self.relevantMapQuestIds)
+    while index <= total do
+        local questId = self.relevantMapQuestIds[index]
+        if worldMap:IsQuestHidden(questId, config)
+            ~= self.hiddenMapQuestStates[questId] then
+            return true
+        end
+        index = index + 1
+    end
+    return false
 end
 
 -- Chooses the nearest exact node from the cached scene. Objectives are the
@@ -456,15 +533,13 @@ function Navigator:RefreshContext()
         return
     end
 
-    -- Candidate collection is the expensive half. Rebuild immediately for a
-    -- quest-model change or zone transition and at most once a second for bag
-    -- and map-visibility changes; choosing the nearest cached coordinate still
-    -- runs at the full 0.25s context cadence.
-    local now = Client.Now()
-    local sceneExpired = type(now) == "number" and type(self.sceneBuiltAt) == "number"
-        and now >= self.sceneBuiltAt + 1
+    -- Candidate collection is the expensive half. Rebuild only when one of its
+    -- exact inputs changes; choosing the nearest cached coordinate still runs
+    -- at the full 0.25s context cadence.
+    local dependenciesChanged = self.scene and self.scene.areaId == areaId
+        and self:SceneDependenciesChanged(WorldMapPins(), config)
     if self.sceneDirty or not self.scene or self.scene.areaId ~= areaId
-        or sceneExpired then
+        or dependenciesChanged then
         local built, sceneWhy = self:BuildTargetScene(areaId)
         if not built then
             self.contextReason = sceneWhy or "questSceneUnavailable"
@@ -814,10 +889,15 @@ function Navigator:OnEnable()
     end
 
     -- Four times a second for the expensive half. The database nodes do not
-    -- move, but which one is nearest changes with the player; this also notices
-    -- quest, objective, zone, bag and map-visibility changes.
+    -- move, but which one is nearest changes with the player. Label whether a
+    -- pass only searched the cache or had to rebuild it, so the driver's
+    -- backwards stall attribution can verify that the timer-only rebuild is
+    -- really gone in a live session.
     driver:Schedule("nav.context", 0.25, function()
+        local buildsBefore = Navigator.sceneBuilds
         Navigator:RefreshContext()
+        driver:Label("nav.context",
+            Navigator.sceneBuilds > buildsBefore and "rebuild" or "select")
     end)
 
     -- Fast, because this has to keep up with a turning player: at 20Hz the
@@ -830,15 +910,21 @@ function Navigator:OnEnable()
         Navigator:RecordDiagnostics()
     end)
 
-    -- Quest additions, removals, completion and objective progress can all
-    -- change the nearest node. Wake immediately when the model notices one;
-    -- polling remains the correctness mechanism when no event fires.
+    -- Quest additions, removals, completion and target-changing objective
+    -- updates can change the nearest node. Wake immediately when the model
+    -- notices one; dependency polling remains the correctness mechanism for
+    -- bag and visibility changes that have no reliable event.
     local questState = QuestState()
     if questState then
-        questState:AddListener(function()
-            Navigator.sceneDirty = true
-            driver:Wake("nav.context")
-            driver:Wake("nav.arrow")
+        questState:AddListener(function(event, quest, targetsChanged)
+            -- Progress counters are rendered by the tracker and tooltips, but
+            -- do not move the static scene the navigator searches. Rebuild
+            -- only when the target identity or completion state changed.
+            if event ~= "QUEST_OBJECTIVES_CHANGED" or targetsChanged then
+                Navigator.sceneDirty = true
+                driver:Wake("nav.context")
+                driver:Wake("nav.arrow")
+            end
         end)
     end
 

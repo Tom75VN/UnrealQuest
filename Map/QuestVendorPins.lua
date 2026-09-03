@@ -79,9 +79,15 @@ QuestVendorPins.dirty = true
 QuestVendorPins.lastAreaId = nil
 QuestVendorPins.lastPlayerAreaId = nil
 QuestVendorPins.lastSignature = nil
+QuestVendorPins.relevantBagItemIds = {}
 QuestVendorPins.lastWorldDrawAt = nil
 QuestVendorPins.worldVisible = 0
 QuestVendorPins.minimapVisible = 0
+-- Whether the quest layer on each surface is holding a hover focus. Which of
+-- these pins that focus keeps bright is decided per pin, at draw time -- see
+-- FocusAlpha.
+QuestVendorPins.worldFocusDimmed = false
+QuestVendorPins.minimapFocusDimmed = false
 
 local function Config()
     return UQ:GetModule("Config")
@@ -222,7 +228,7 @@ function QuestVendorPins:BuildTargets(areaId)
     local questState = QuestState()
     if not database or not database.available or not questState
         or type(areaId) ~= "number" then
-        return {}
+        return {}, {}
     end
 
     local eligibility = QuestEligibility()
@@ -235,6 +241,8 @@ function QuestVendorPins:BuildTargets(areaId)
     local presentation = Presentation()
     local targets = {}
     local bySpawn = {}
+    local relevantBagItemIds = {}
+    local relevantBagItemSeen = {}
     local quests = questState:GetOrderedQuests()
     local questIndex = 1
     local questTotal = table.getn(quests)
@@ -252,6 +260,10 @@ function QuestVendorPins:BuildTargets(areaId)
                 local rowTotal = table.getn(rows)
                 while rowIndex <= rowTotal do
                     local row = rows[rowIndex]
+                    if type(row.itemId) == "number" and not relevantBagItemSeen[row.itemId] then
+                        relevantBagItemSeen[row.itemId] = true
+                        table.insert(relevantBagItemIds, row.itemId)
+                    end
                     local needed, have, need = self:ItemNeeded(quest, row)
                     if needed and (not eligibility
                         or eligibility:MatchesGiverFaction({ faction = row.faction })) then
@@ -288,7 +300,9 @@ function QuestVendorPins:BuildTargets(areaId)
                             if target and not target.entrySeen[entryKey] then
                                 target.entrySeen[entryKey] = true
                                 table.insert(target.entries, {
+                                    quest = quest,
                                     questTitle = UQ.GetQuestDisplayTitle(quest),
+                                    itemId = row.itemId,
                                     itemName = row.itemName,
                                     have = have,
                                     need = need,
@@ -307,7 +321,8 @@ function QuestVendorPins:BuildTargets(areaId)
         end
         questIndex = questIndex + 1
     end
-    return targets
+    table.sort(relevantBagItemIds)
+    return targets, relevantBagItemIds
 end
 
 function QuestVendorPins:TooltipLines(target)
@@ -332,10 +347,18 @@ function QuestVendorPins:TooltipLines(target)
         })
         local text = "- " .. (entry.itemName or UQ.L("COMMON_UNKNOWN"))
         local red, green, blue = 1, 1, 1
-        if type(entry.have) == "number" and type(entry.need) == "number" then
-            text = text .. " " .. tostring(entry.have) .. "/" .. tostring(entry.need)
+        -- Counter-only model updates deliberately do not rebuild this static
+        -- pin scene. Read the live quest record when the tooltip is opened so
+        -- its progress still advances without paying for another map pass.
+        local have, need = entry.have, entry.need
+        if entry.quest then
+            local _, liveHave, liveNeed = self:ItemNeeded(entry.quest, entry)
+            have, need = liveHave, liveNeed
+        end
+        if type(have) == "number" and type(need) == "number" then
+            text = text .. " " .. tostring(have) .. "/" .. tostring(need)
             if objectiveMatch then
-                red, green, blue = objectiveMatch:ProgressColor(entry.have, entry.need)
+                red, green, blue = objectiveMatch:ProgressColor(have, need)
             end
         end
         table.insert(lines, { text = text, r = red, g = green, b = blue })
@@ -438,6 +461,95 @@ function QuestVendorPins:GetMinimapPin(index)
     return pin
 end
 
+-- The quest hover's fade, reaching the one other layer that draws quest pins.
+--
+-- Unlike the service and rare pins, a vendor point is not automatically
+-- unrelated: it is on the map because some quest wants an item sold there, so
+-- it is asked per pin. The question itself is not answered here -- it goes to
+-- Map/WorldMapPins.lua's own focus, so the two layers cannot disagree about
+-- which quest the cursor is on.
+local FOCUS_DIM_ALPHA = 0.25
+local FOCUS_FULL_ALPHA = 1
+
+-- `owner` is whichever layer holds the hover -- the world map's own module or
+-- the minimap's. Both answer FocusIncludesQuest, and neither is passed as a
+-- closure: this runs once per pin per draw pass, and Core/Driver.lua records
+-- per-tick closure allocation as a measured stutter hazard on this client.
+local function TargetHasFocusedQuest(target, owner)
+    local entries = target and target.entries
+    if type(entries) ~= "table" then
+        return false
+    end
+    local index = 1
+    local total = table.getn(entries)
+    while index <= total do
+        local entry = entries[index]
+        if entry and owner:FocusIncludesQuest(entry.quest) then
+            return true
+        end
+        index = index + 1
+    end
+    return false
+end
+
+local function FocusAlpha(target, dimmed, owner)
+    if not dimmed then
+        return FOCUS_FULL_ALPHA
+    end
+    -- A hover is held but the layer that owns it cannot be asked which quest:
+    -- fade rather than guess. Nothing here can claim to be the focused quest.
+    if not owner or not owner.FocusIncludesQuest then
+        return FOCUS_DIM_ALPHA
+    end
+    if TargetHasFocusedQuest(target, owner) then
+        return FOCUS_FULL_ALPHA
+    end
+    return FOCUS_DIM_ALPHA
+end
+
+local function WorldFocusAlpha(target)
+    return FocusAlpha(target, QuestVendorPins.worldFocusDimmed, WorldMapPins())
+end
+
+local function MinimapFocusAlpha(target)
+    return FocusAlpha(target, QuestVendorPins.minimapFocusDimmed, MinimapPins())
+end
+
+-- Both setters only record the state and redraw through the normal path: the
+-- per-pin answer above needs the target each pin currently carries, and the
+-- draw pass is where that is known.
+function QuestVendorPins:SetWorldFocusDim(dimmed)
+    dimmed = dimmed and true or false
+    if self.worldFocusDimmed == dimmed then
+        return
+    end
+    self.worldFocusDimmed = dimmed
+    local index = 1
+    while index <= self.worldVisible do
+        local pin = self.worldPool[index]
+        if pin then
+            Client.SetWorldMapPinAlpha(pin, WorldFocusAlpha(pin.unrealQuestVendorTarget))
+        end
+        index = index + 1
+    end
+end
+
+function QuestVendorPins:SetMinimapFocusDim(dimmed)
+    dimmed = dimmed and true or false
+    if self.minimapFocusDimmed == dimmed then
+        return
+    end
+    self.minimapFocusDimmed = dimmed
+    local index = 1
+    while index <= self.minimapVisible do
+        local pin = self.minimapPool[index]
+        if pin then
+            Client.SetMinimapPinAlpha(pin, MinimapFocusAlpha(pin.unrealQuestVendorTarget))
+        end
+        index = index + 1
+    end
+end
+
 function QuestVendorPins:DrawWorldMap()
     local visible = 0
     local index = 1
@@ -447,6 +559,7 @@ function QuestVendorPins:DrawWorldMap()
         local pin = self:GetWorldPin(visible + 1)
         if pin then
             pin.unrealQuestVendorTarget = target
+            Client.SetWorldMapPinAlpha(pin, WorldFocusAlpha(target))
             Client.SetWorldMapPinSize(pin, WORLD_PIN_SIZE, WORLD_PIN_SIZE)
             if type(target.icon) == "string" then
                 Client.SetWorldMapPinTexture(pin, Client.NPC_SERVICE_ICON_ROOT .. target.icon)
@@ -478,7 +591,7 @@ function QuestVendorPins:DrawMinimap(report, areaId)
     local database = Database()
     local minimapPins = MinimapPins()
     local yards = database and database:GetZoneYards(areaId)
-    local span = minimapPins and minimapPins:GetSpanForZoom(zoom)
+    local span = minimapPins and minimapPins:GetSpanForZoom(zoom, areaId)
     if type(width) ~= "number" or type(height) ~= "number" or type(span) ~= "number"
         or type(yards) ~= "table" or type(yards[1]) ~= "number"
         or type(yards[2]) ~= "number" then
@@ -504,6 +617,7 @@ function QuestVendorPins:DrawMinimap(report, areaId)
             local pin = self:GetMinimapPin(visible + 1)
             if pin then
                 pin.unrealQuestVendorTarget = target
+                Client.SetMinimapPinAlpha(pin, MinimapFocusAlpha(target))
                 Client.SetMinimapPinSize(pin, MINIMAP_PIN_SIZE, MINIMAP_PIN_SIZE)
                 if type(target.icon) == "string" then
                     Client.SetMinimapPinTexture(pin, Client.NPC_SERVICE_ICON_ROOT .. target.icon)
@@ -529,7 +643,8 @@ end
 function QuestVendorPins:Signature()
     local bagItems = BagItems()
     local config = Config()
-    return tostring(self.questStamp) .. "|" .. tostring(bagItems and bagItems:GetToken())
+    return tostring(self.questStamp) .. "|"
+        .. tostring(bagItems and bagItems:GetTokenFor(self.relevantBagItemIds))
         .. "|" .. tostring(UQ.GetLanguage and UQ.GetLanguage())
         .. "|" .. tostring(config and config:Get("translateQuestTitles"))
 end
@@ -561,21 +676,29 @@ function QuestVendorPins:Refresh()
     if self.dirty or self.lastAreaId ~= viewedAreaId
         or self.lastPlayerAreaId ~= playerAreaId
         or self.lastSignature ~= signature then
+        local relevantBagItemIds = nil
         if viewedAreaId then
-            self.targets = self:BuildTargets(viewedAreaId)
+            self.targets, relevantBagItemIds = self:BuildTargets(viewedAreaId)
         else
             self.targets = {}
         end
         if playerAreaId and playerAreaId == viewedAreaId then
             self.minimapTargets = self.targets
         elseif playerAreaId then
-            self.minimapTargets = self:BuildTargets(playerAreaId)
+            local playerTargets, playerBagItemIds = self:BuildTargets(playerAreaId)
+            self.minimapTargets = playerTargets
+            if not relevantBagItemIds then
+                relevantBagItemIds = playerBagItemIds
+            end
         else
             self.minimapTargets = {}
         end
+        self.relevantBagItemIds = relevantBagItemIds or {}
         self.lastAreaId = viewedAreaId
         self.lastPlayerAreaId = playerAreaId
-        self.lastSignature = signature
+        -- BuildTargets established the dependency list, so capture the cache
+        -- key again against that list rather than the stale pre-build one.
+        self.lastSignature = self:Signature()
         self.dirty = false
         self.lastWorldDrawAt = nil
         local config = Config()
@@ -630,11 +753,14 @@ function QuestVendorPins:OnEnable()
     if questState then
         -- An accelerator, not the mechanism: the poll below rebuilds on its
         -- own whenever the view or the bag token moves. This only makes an
-        -- accepted quest or a moved counter show up on the next tick instead
-        -- of the next view change.
-        questState:AddListener(function()
-            QuestVendorPins.questStamp = (QuestVendorPins.questStamp or 0) + 1
-            QuestVendorPins.dirty = true
+        -- accepted quest or a target-changing objective update show up on the
+        -- next tick instead of the next view change. A counter movement that
+        -- does not cross completion changes only the tooltip text.
+        questState:AddListener(function(event, quest, targetsChanged)
+            if event ~= "QUEST_OBJECTIVES_CHANGED" or targetsChanged then
+                QuestVendorPins.questStamp = (QuestVendorPins.questStamp or 0) + 1
+                QuestVendorPins.dirty = true
+            end
         end)
     end
     local driver = UQ:GetModule("Driver")

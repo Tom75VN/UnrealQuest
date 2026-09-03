@@ -76,6 +76,12 @@ local CHARACTER_SECTIONS = {
     questHistory = true,
     questHistoryManual = true,
     questHistoryImported = true,
+    -- Quest title -> palette slot (Core/Namespace.lua). A quest log is a
+    -- character's own, so the colours drawn for it are too: sharing the map
+    -- account-wide would have one alt's quests hold slots the alt actually
+    -- looking at the map never sees, and its own quests pushed into whatever
+    -- the palette had left.
+    questColorSlots = true,
 }
 
 local defaults = {

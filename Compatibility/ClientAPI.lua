@@ -1363,6 +1363,25 @@ local WORLD_MAP_PIN_TEXTURE = "Interface\\Buttons\\WHITE8X8"
 -- addon texture by base name, and the ".tga" spelling silently drew nothing.
 local TRACKER_RESIZE_GRIP_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\resize"
 
+-- Whether the game UI is currently hidden, which on this client is what the
+-- fullscreen world map does. This is not a probe result and is not treated as
+-- one: it is the same observation Core/Driver.lua's parent choice already
+-- rests on -- the driver was moved off UIParent because the fullscreen map
+-- hides it and stopped every periodic job. Used only to bucket a frame-time
+-- census, never to decide what to draw, so a client that hid UIParent for some
+-- other reason would blur a diagnostic and nothing else.
+function Client.IsGameUIHidden()
+    local parent = ResolveObject("UIParent")
+    if not parent or type(parent.IsVisible) ~= "function" then
+        return nil
+    end
+    local ok, visible = pcall(parent.IsVisible, parent)
+    if not ok then
+        return nil
+    end
+    return not visible
+end
+
 function Client.CreateWorldMapPin(index, red, green, blue)
     local canvas = Client.GetWorldMapCanvas()
     local create = Resolve("CreateFrame")
@@ -1377,16 +1396,22 @@ function Client.CreateWorldMapPin(index, red, green, blue)
     end
     if type(frame.SetWidth) == "function" then pcall(frame.SetWidth, frame, 14) end
     if type(frame.SetHeight) == "function" then pcall(frame.SetHeight, frame, 14) end
+    local pinLevel = 120
     if type(canvas.GetFrameLevel) == "function" and type(frame.SetFrameLevel) == "function" then
         local levelOk, level = pcall(canvas.GetFrameLevel, canvas)
         if levelOk and type(level) == "number" then
-            local pinLevel = level + 20
+            pinLevel = level + 20
             if pinLevel < 120 then pinLevel = 120 end
             pcall(frame.SetFrameLevel, frame, pinLevel)
         else
             pcall(frame.SetFrameLevel, frame, 120)
         end
     end
+    -- Pooled objective frames switch between tiles and dots. Keeping their
+    -- constructor level lets that presentation change place a dot above its
+    -- separate border, then restore a tile exactly instead of accumulating
+    -- relative RaiseWorldMapPin calls on every switch.
+    frame.unrealQuestBaseFrameLevel = pinLevel
     if type(frame.CreateTexture) == "function" then
         local textureOk, texture = pcall(frame.CreateTexture, frame, nil, "BACKGROUND")
         if textureOk and texture then
@@ -1764,6 +1789,21 @@ function Client.GetWorldMapPinSnapshot(frame)
     }
 end
 
+local function PixelAlignedOffset(value)
+    if value < 0 then
+        return -math.floor(-value + 0.5)
+    end
+    return math.floor(value + 0.5)
+end
+
+function Client.SetWorldMapPinPixelAligned(frame, enabled)
+    if not frame then
+        return false
+    end
+    frame.unrealQuestPixelAligned = enabled and true or nil
+    return true
+end
+
 function Client.PositionWorldMapPin(frame, x, y)
     local canvas = Client.GetWorldMapCanvas()
     if not frame or not canvas or type(x) ~= "number" or type(y) ~= "number" then
@@ -1779,8 +1819,14 @@ function Client.PositionWorldMapPin(frame, x, y)
         or type(frame.Show) ~= "function" then
         return false
     end
+    local offsetX = x * width
+    local offsetY = -y * height
+    if frame.unrealQuestPixelAligned then
+        offsetX = PixelAlignedOffset(offsetX)
+        offsetY = PixelAlignedOffset(offsetY)
+    end
     pcall(frame.ClearAllPoints, frame)
-    local pointOk = pcall(frame.SetPoint, frame, "CENTER", canvas, "TOPLEFT", x * width, -y * height)
+    local pointOk = pcall(frame.SetPoint, frame, "CENTER", canvas, "TOPLEFT", offsetX, offsetY)
     if not pointOk then
         return false
     end
@@ -1855,8 +1901,14 @@ local function ReapplyOneWorldMapPin(frame, canvas, width, height)
             frame.unrealQuestPixelHeight = pixelHeight
         end
     end
+    local offsetX = x * width
+    local offsetY = -y * height
+    if frame.unrealQuestPixelAligned then
+        offsetX = PixelAlignedOffset(offsetX)
+        offsetY = PixelAlignedOffset(offsetY)
+    end
     frame:ClearAllPoints()
-    frame:SetPoint("CENTER", canvas, "TOPLEFT", x * width, -y * height)
+    frame:SetPoint("CENTER", canvas, "TOPLEFT", offsetX, offsetY)
     -- Same rule as Client.PositionWorldMapPin: a suppressed marker still takes
     -- its point, only the Show is withheld.
     if frame.unrealQuestSuppressed then
@@ -1934,8 +1986,8 @@ function Client.SetWorldMapPinHandlers(frame, onEnter, onLeave, onClick, allowRi
     -- with no registration, so the default is evidently non-empty -- but that
     -- is prior art, not a measurement of this client, and registering the
     -- token we actually rely on costs one guarded call and removes the
-    -- assumption. Only done when a handler is supplied, so the mouse-aware
-    -- but deliberately click-free area tiles keep taking no click tokens.
+    -- assumption. Only done when a handler is supplied, so hover-only patrol
+    -- targets keep taking no click tokens.
     if onClick and type(frame.RegisterForClicks) == "function" then
         if allowRightClick then
             pcall(frame.RegisterForClicks, frame, "LeftButtonUp", "RightButtonUp")
@@ -1949,6 +2001,32 @@ function Client.SetWorldMapPinHandlers(frame, onEnter, onLeave, onClick, allowRi
     return true
 end
 
+-- Decorative borders and followed-quest rings are visual siblings of the
+-- interactive pin they surround. Keeping their mouse disabled lets the
+-- objective dot or turn-in marker continue to own hover and click.
+function Client.SetWorldMapPinMouseEnabled(frame, enabled)
+    if not frame or type(frame.EnableMouse) ~= "function" then
+        return false
+    end
+    local ok = pcall(frame.EnableMouse, frame, enabled and true or false)
+    return ok and true or false
+end
+
+-- Sets a pin's layer relative to the level chosen by CreateWorldMapPin. This
+-- is idempotent for pooled frames that change presentation; RaiseWorldMapPin
+-- remains the additive helper for transient effects such as map flashing.
+function Client.SetWorldMapPinLevelBoost(frame, extraLevels)
+    if not frame or type(frame.SetFrameLevel) ~= "function" then
+        return false
+    end
+    local level = frame.unrealQuestBaseFrameLevel
+    if type(level) ~= "number" then
+        return false
+    end
+    local ok = pcall(frame.SetFrameLevel, frame, level + (extraLevels or 0))
+    return ok and true or false
+end
+
 -- Lifts one pooled map child above its siblings in the hit-test order.
 --
 -- Every pooled child -- quest markers, area tiles and giver "!" pins alike --
@@ -1957,9 +2035,9 @@ end
 -- max(canvasLevel + 20, 120), which the live SavedVariables confirms as 120
 -- for all of them. Two mouse-enabled siblings at the SAME frame level leave
 -- which one receives a click to draw order rather than to intent, and the
--- area tile takes the mouse (it needs OnEnter for its tooltip) while
--- deliberately having no OnClick -- so a click landing on it is delivered to
--- a frame that ignores clicks and the gesture silently does nothing.
+-- area tile takes the mouse for its quest hover/follow gesture. A giver on the
+-- same coordinate must still sit above it or a shift-click meant for the "!"
+-- would instead follow the tile's active quest.
 --
 -- Raising the pin keeps the confirmed ">= 120" half of the rendering contract
 -- in docs/WORLD-MAP-PINS-RECOVERY.md; only the tie against the tiles changes.
@@ -2610,6 +2688,9 @@ Client.LOW_LEVEL_QUEST_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\icons\\
 Client.ACTIVE_QUEST_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\ActiveQuestIcon"
 Client.COMPLETE_QUEST_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\CompleteQuestIcon"
 Client.MINIMAP_OBJECTIVE_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\QuestDot"
+Client.FOLLOWED_QUEST_DOT_BORDER_TEXTURE =
+    "Interface\\AddOns\\unrealQuest\\media\\FollowedQuestDotBorder"
+Client.FOLLOWED_QUEST_CIRCLE_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\quest-circle"
 
 function Client.SetWorldMapPinTexture(frame, path)
     local texture = frame and frame.unrealQuestTexture
@@ -2624,6 +2705,31 @@ function Client.SetWorldMapPinTexture(frame, path)
         pcall(texture.SetVertexColor, texture, 1, 1, 1)
     end
     return true
+end
+
+-- Applies no Lua-side opacity or colour multiplication to an image-backed
+-- pin. The texture's embedded alpha remains the only source of transparency.
+-- Keep the four-component SetVertexColor call: the current client accepts it,
+-- and the explicit alpha component prevents a stale pooled tint from dimming
+-- the image when the frame is reused.
+function Client.SetWorldMapPinFullOpacity(frame)
+    local texture = frame and frame.unrealQuestTexture
+    if not frame or not texture then
+        return false
+    end
+    if type(frame.SetAlpha) ~= "function" or type(texture.SetAlpha) ~= "function"
+        or type(texture.SetVertexColor) ~= "function" then
+        return false
+    end
+    local frameOk = pcall(frame.SetAlpha, frame, 1)
+    local textureOk = pcall(texture.SetAlpha, texture, 1)
+    local colorOk = pcall(texture.SetVertexColor, texture, 1, 1, 1, 1)
+    if frameOk then
+        frame.unrealQuestAlpha = 1
+    else
+        frame.unrealQuestAlpha = nil
+    end
+    return frameOk and textureOk and colorOk and true or false
 end
 
 -- Resizes a pin frame away from the default 14x14 square Client.CreateWorldMapPin
@@ -3331,6 +3437,143 @@ function Client.GetFrameId(frame)
     return value
 end
 
+-- How far the native quest log list is scrolled, in entries.
+--
+-- The list is a FauxScrollFrame: the row widgets never move, and the client
+-- refills row N from quest log entry N + offset on every update. Nothing here
+-- writes to the scroll frame, and the call is guarded like every other: a
+-- client that answers nothing simply leaves the callers on their row IDs.
+--
+-- FauxScrollFrame_GetOffset is named in the unisolated startup-crash record
+-- questlog.header_row_onclick_does_not_collapse, together with installing 27
+-- addon-owned Buttons over the native rows -- which of the two faulted was
+-- never established. It is read here on a frame this addon neither owns nor
+-- modifies, once per refresh pass, exactly as unrealUI's own quest log
+-- (WORKING_SOURCE, this client) and pfQuest both already read it in
+-- production.
+function Client.GetQuestLogScrollOffset()
+    local scroll = ResolveObject("QuestLogListScrollFrame")
+    local fn = Resolve("FauxScrollFrame_GetOffset")
+    if not scroll or not fn then
+        return nil
+    end
+    local ok, value = pcall(fn, scroll)
+    if not ok or type(value) ~= "number" or value < 0 then
+        return nil
+    end
+    return math.floor(value)
+end
+
+-- Trims the visible quest row count to what the list page actually holds.
+--
+-- Measured, never counted. This addon does not own the row anchors on every
+-- host -- unrealUI's modern Quest Log chains its own 23 rows -- but it does
+-- change the row height there (Client.SetModernQuestLogRowLayout), and a
+-- taller row makes a row count that was fitted to the stock height overflow
+-- the page. Rather than model somebody else's layout, each shown row is asked
+-- where it actually ends: the first one ending below the list frame is the
+-- first that must not be drawn, and everything from there down becomes what
+-- the native FauxScrollFrame scrolls instead of covering the footer buttons.
+--
+-- Nothing is trimmed on a short list: the walk stops at the first hidden row,
+-- so a log with fewer quests than rows never lowers QUESTS_DISPLAYED and can
+-- still grow back to the full page. The trim is self-limiting for the same
+-- reason -- once the overflowing rows are hidden, the next pass stops there
+-- and finds nothing to do.
+--
+-- Numbers are inline rather than file-scope constants: this file sits close to
+-- Lua's 200-local limit for a main chunk.
+function Client.FitQuestLogRowsToList()
+    local frame = ResolveObject("QuestLogFrame")
+    local scroll = ResolveObject("QuestLogListScrollFrame")
+    if not frame or not scroll or not Client.IsObjectShown(frame) then
+        return nil
+    end
+    local _, paneBottom = Client.GetObjectCorner(scroll)
+    if type(paneBottom) ~= "number" then
+        return nil
+    end
+
+    local fitting = 0
+    local overflow = nil
+    local index = 1
+    local misses = 0
+    while index <= 30 and misses < 3 and not overflow do
+        local row = ResolveObject("QuestLogTitle" .. tostring(index))
+        if not row then
+            misses = misses + 1
+        else
+            misses = 0
+            if not Client.IsObjectShown(row) then
+                break
+            end
+            local _, bottom = Client.GetObjectCorner(row)
+            if type(bottom) ~= "number" then
+                -- No geometry, no opinion: leave the list exactly as it is.
+                return nil
+            end
+            -- Half a pixel of slack: a row resting exactly on the page edge is
+            -- inside it.
+            if bottom < paneBottom - 0.5 then
+                overflow = index
+            else
+                fitting = index
+            end
+        end
+        index = index + 1
+    end
+    -- A page that cannot hold six rows is a measurement this should not act on.
+    if not overflow or fitting < 6 then
+        return nil
+    end
+
+    index = overflow
+    misses = 0
+    while index <= 30 and misses < 3 do
+        local row = ResolveObject("QuestLogTitle" .. tostring(index))
+        if not row then
+            misses = misses + 1
+        else
+            misses = 0
+            Client.HideObject(row)
+        end
+        index = index + 1
+    end
+
+    -- The stock row-count global, which is also what QuestLog_Update hands
+    -- FauxScrollFrame_Update: lowering it is what makes the scroll bar appear
+    -- for the rows that were just taken off the page.
+    QUESTS_DISPLAYED = fitting
+    frame.unrealQuestFittedRows = fitting
+    Client.RefreshQuestLog()
+    return fitting
+end
+
+-- Which quest log entry a native row is currently showing: the scrolled index
+-- first, the row's own stamped ID second.
+--
+-- Both are returned, and neither is trustworthy on its own. The client fills
+-- the row from the offset, so that is the primary answer; the ID agrees only
+-- while something keeps restamping it, and every caller here verifies the
+-- candidate against the row's own text before acting on it. unrealUI's quest
+-- log derives the index from the offset the same way on this client, and
+-- never from GetID.
+function Client.GetQuestLogRowQuestIndex(row, rowIndex)
+    local id = Client.GetFrameId(row)
+    if type(rowIndex) ~= "number" or rowIndex < 1 then
+        return id
+    end
+    local offset = Client.GetQuestLogScrollOffset()
+    if not offset then
+        return id
+    end
+    local scrolled = rowIndex + offset
+    if scrolled == id then
+        return id
+    end
+    return scrolled, id
+end
+
 function Client.GetObjectText(object)
     if not object or type(object.GetText) ~= "function" then
         return nil
@@ -3815,20 +4058,32 @@ local QUEST_LOG_FOLLOWING_PLAQUE_TEXTURE =
 local QUEST_LOG_QUEST_MARK_OFFSET_X = 10
 local QUEST_LOG_QUEST_DOT_OFFSET_X = 11
 local QUEST_LOG_FOLLOWING_PLAQUE_INSET = 20
+-- uUI Modern only: the whole plaque sits one pixel further right there, by
+-- request. Its list panel keeps a tail after the row for the scroll bar, so
+-- the plaque has that room to move into; the native and Classic WoW rows have
+-- no such tail and keep the plaque flush with the row.
+local QUEST_LOG_FOLLOWING_PLAQUE_MODERN_SHIFT_X = 1
 local QUEST_LOG_TITLE_OFFSET_X = -1
 local QUEST_LOG_TAG_OFFSET_X = -2
 -- The row's own name, in its three template states. Both the offset pass and
 -- the difficulty-colour pass below write to all of them, so a hovered or
 -- disabled row never disagrees with the resting one.
 local QUEST_LOG_TITLE_REGIONS = { "NormalText", "HighlightText", "DisabledText" }
--- uUI Modern normally extends its list panel 26 pixels beyond the native row
--- gutter to contain the scrollbar. The followed plaque ends at the row's
--- right edge; reclaiming 22 pixels leaves the requested four-pixel tail. The
--- detail pane moves and grows by the same amount so the panel-to-panel gap and
--- the Quest Log's overall width do not change.
-local MODERN_QUEST_LOG_LIST_PANEL_TAIL = 4
-local MODERN_QUEST_LOG_DETAIL_OFFSET_X = 13
-local MODERN_QUEST_LOG_DETAIL_WIDTH_GAIN = 22
+-- uUI Modern extends its list panel 26 pixels beyond the native row gutter to
+-- contain the scroll bar, and places its detail pane 35 pixels after the list.
+-- Those two numbers are its own; both are treated as the maximum here.
+--
+-- The followed plaque ends at the row's right edge, so the tail after it is
+-- dead space -- but only as far as the scroll bar allows. The tail is measured
+-- from the bar itself and keeps whatever the bar occupies plus a four-pixel
+-- margin; only the remainder is reclaimed, and the detail pane moves left by
+-- exactly that and grows by the same, so the panel gap and the Quest Log's
+-- overall width never change. A list with no scroll bar therefore still gets
+-- the tight four-pixel tail, and a list that scrolls keeps its bar inside the
+-- panel where it belongs.
+local MODERN_QUEST_LOG_LIST_PANEL_TAIL = 26
+local MODERN_QUEST_LOG_DETAIL_OFFSET_X = 35
+local MODERN_QUEST_LOG_SCROLLBAR_MARGIN = 4
 
 Client.TRACKER_HEADER_HEIGHT = TRACKER_HEADER_HEIGHT
 Client.TRACKER_PADDING = TRACKER_PADDING
@@ -4655,12 +4910,42 @@ function Client.HasModernQuestLog()
         and ResolveObject("UnrealUIQuestLogDetailPanel") ~= nil
 end
 
+-- How far past the list scroll frame the panel has to reach to contain the
+-- native scroll bar, measured from the bar rather than assumed. Falls back to
+-- uUI's own 26-pixel gutter whenever the bar cannot be measured, which is the
+-- answer that keeps it inside; a host with no bar at all gets the bare margin.
+local function ResolveModernQuestLogListTail(listScroll)
+    local bar = ResolveObject("QuestLogListScrollFrameScrollBar")
+    if not bar then
+        return MODERN_QUEST_LOG_SCROLLBAR_MARGIN
+    end
+    local scrollLeft = Client.GetObjectCorner(listScroll)
+    local scrollWidth = Client.GetObjectWidth(listScroll)
+    local barLeft = Client.GetObjectCorner(bar)
+    local barWidth = Client.GetObjectWidth(bar)
+    if type(scrollLeft) ~= "number" or type(scrollWidth) ~= "number"
+        or type(barLeft) ~= "number" or type(barWidth) ~= "number"
+        or scrollWidth <= 0 or barWidth <= 0 then
+        return MODERN_QUEST_LOG_LIST_PANEL_TAIL
+    end
+    local tail = (barLeft + barWidth) - (scrollLeft + scrollWidth)
+        + MODERN_QUEST_LOG_SCROLLBAR_MARGIN
+    if tail < MODERN_QUEST_LOG_SCROLLBAR_MARGIN then
+        tail = MODERN_QUEST_LOG_SCROLLBAR_MARGIN
+    end
+    if tail > MODERN_QUEST_LOG_LIST_PANEL_TAIL then
+        tail = MODERN_QUEST_LOG_LIST_PANEL_TAIL
+    end
+    return tail
+end
+
 -- Tighten only uUI's Modern two-pane surface. The named panels do not exist
 -- in Classic WoW or standalone mode, so neither native layout can enter this
 -- path. uUI anchors its list panel five pixels before the scroll frame and 26
 -- after it; the row (and therefore the followed plaque) ends at the scroll
--- frame's right edge. Leave four pixels there, move the detail pane left by
--- the reclaimed 22, and give that width to its viewport and scroll child.
+-- frame's right edge. Keep exactly as much of that tail as the scroll bar
+-- occupies, move the detail pane left by whatever is reclaimed, and give that
+-- width to its viewport and scroll child.
 function Client.SetModernQuestLogPanelLayout()
     local listPanel = ResolveObject("UnrealUIQuestLogListPanel")
     local detailPanel = ResolveObject("UnrealUIQuestLogDetailPanel")
@@ -4693,21 +4978,21 @@ function Client.SetModernQuestLogPanelLayout()
         end
     end
 
+    local tail = ResolveModernQuestLogListTail(listScroll)
+    local reclaimed = MODERN_QUEST_LOG_LIST_PANEL_TAIL - tail
+
     pcall(listPanel.ClearAllPoints, listPanel)
     local topOk = pcall(listPanel.SetPoint, listPanel,
         "TOPLEFT", listScroll, "TOPLEFT", -5, 5)
     local bottomOk = pcall(listPanel.SetPoint, listPanel,
-        "BOTTOMRIGHT", listScroll, "BOTTOMRIGHT",
-        MODERN_QUEST_LOG_LIST_PANEL_TAIL, -5)
+        "BOTTOMRIGHT", listScroll, "BOTTOMRIGHT", tail, -5)
     pcall(detail.ClearAllPoints, detail)
     local detailOk = pcall(detail.SetPoint, detail,
         "TOPLEFT", listScroll, "TOPRIGHT",
-        MODERN_QUEST_LOG_DETAIL_OFFSET_X, 0)
-    local widthSet = pcall(detail.SetWidth, detail,
-        detailWidth + MODERN_QUEST_LOG_DETAIL_WIDTH_GAIN)
+        MODERN_QUEST_LOG_DETAIL_OFFSET_X - reclaimed, 0)
+    local widthSet = pcall(detail.SetWidth, detail, detailWidth + reclaimed)
     if childWidth then
-        pcall(detailChild.SetWidth, detailChild,
-            childWidth + MODERN_QUEST_LOG_DETAIL_WIDTH_GAIN)
+        pcall(detailChild.SetWidth, detailChild, childWidth + reclaimed)
     end
     if topOk and bottomOk and detailOk and widthSet then
         listPanel.unrealQuestCompactListPanel = true
@@ -4724,11 +5009,33 @@ end
 -- QuestLog_Update and UnrealQuest's existing presentation modules keep all
 -- behavior on the same stock widgets.
 
-local EXTENDED_QUEST_LOG_ROWS = 27
-local EXTENDED_QUEST_LOG_WIDTH = 704
-local EXTENDED_QUEST_LOG_HEIGHT = 512
-local EXTENDED_QUEST_LOG_TEXTURE_ROOT =
-    "Interface\\AddOns\\unrealQuest\\media\\QuestLog\\"
+-- One table rather than a dozen file-scope locals: this file sits close to
+-- Lua's 200-local limit for a main chunk.
+local EXTENDED_QUEST_LOG = {
+    width = 704,
+    height = 512,
+    listWidth = 300,
+    listHeight = 411,
+    listTop = 74,
+    rowLeft = 19,
+    rowTop = 75,
+    -- EQL3's own page budget, kept as an upper bound only: the count actually
+    -- installed is measured against the list page by ResolveExtendedQuestLogRows.
+    maxRows = 27,
+    minRows = 6,
+    defaultRowHeight = 16,
+    minRowHeight = 8,
+    maxRowHeight = 48,
+    textureRoot = "Interface\\AddOns\\unrealQuest\\media\\QuestLog\\",
+    -- How many rows the left page ended up holding. nil until the one-shot
+    -- layout has run.
+    rows = nil,
+}
+
+-- Read for the capability note; never persisted.
+function Client.GetExtendedClassicQuestLogRows()
+    return EXTENDED_QUEST_LOG.rows
+end
 
 -- nil means unrealUI has not finished publishing its active theme yet. Theme
 -- changes are reload-bound there, so once activeThemeStyle exists this answer
@@ -4844,7 +5151,7 @@ local function CreateExtendedQuestLogTexture(parent, name, layer,
         return nil
     end
     if not pcall(texture.SetTexture, texture,
-        EXTENDED_QUEST_LOG_TEXTURE_ROOT .. name) then
+        EXTENDED_QUEST_LOG.textureRoot .. name) then
         return nil
     end
     Client.SetObjectSize(texture, width, height)
@@ -4856,6 +5163,48 @@ local function CreateExtendedQuestLogTexture(parent, name, layer,
         return nil
     end
     return texture
+end
+
+-- The row pitch is measured, never assumed. EQL3 chained its 27 rows with a
+-- one-pixel overlap because a Vanilla QuestLogTitleButtonTemplate row is
+-- exactly 16 pixels tall; this client owns its own Quest Log FrameXML, so the
+-- template height is read back from the live row instead. QUESTLOG_QUEST_HEIGHT
+-- is the second choice because it is what the native QuestLog_Update feeds to
+-- FauxScrollFrame_Update as the scroll step, so it is the client's own idea of
+-- a row.
+local function ResolveExtendedQuestLogRowPitch(firstRow)
+    local height = Client.GetObjectHeight(firstRow)
+    if type(height) ~= "number"
+        or height < EXTENDED_QUEST_LOG.minRowHeight
+        or height > EXTENDED_QUEST_LOG.maxRowHeight then
+        height = nil
+    end
+    if not height then
+        local ok, stock = pcall(getglobal, "QUESTLOG_QUEST_HEIGHT")
+        if ok and type(stock) == "number"
+            and stock >= EXTENDED_QUEST_LOG.minRowHeight
+            and stock <= EXTENDED_QUEST_LOG.maxRowHeight then
+            height = stock
+        end
+    end
+    return height or EXTENDED_QUEST_LOG.defaultRowHeight
+end
+
+-- How many rows the left page can hold without the tail spilling past the list
+-- pane onto the footer buttons. Everything beyond this count is what the
+-- native FauxScrollFrame scrolls: QuestLog_Update reads QUESTS_DISPLAYED for
+-- both, so the drawn block and the scroll extent stay the same number.
+local function ResolveExtendedQuestLogRows(pitch)
+    local available = EXTENDED_QUEST_LOG.listTop
+        + EXTENDED_QUEST_LOG.listHeight - EXTENDED_QUEST_LOG.rowTop
+    local rows = math.floor(available / pitch)
+    if rows > EXTENDED_QUEST_LOG.maxRows then
+        rows = EXTENDED_QUEST_LOG.maxRows
+    end
+    if rows < EXTENDED_QUEST_LOG.minRows then
+        rows = EXTENDED_QUEST_LOG.minRows
+    end
+    return rows
 end
 
 -- Returns nil while the native frame set is not available, false after a
@@ -4908,16 +5257,15 @@ function Client.ApplyExtendedClassicQuestLog()
     end
     frame.unrealQuestExtendedClassicTextures = textures
 
-    Client.SetObjectSize(frame, EXTENDED_QUEST_LOG_WIDTH, EXTENDED_QUEST_LOG_HEIGHT)
-    Client.SetObjectSize(listScroll, 300, 411)
+    Client.SetObjectSize(frame, EXTENDED_QUEST_LOG.width, EXTENDED_QUEST_LOG.height)
+    Client.SetObjectSize(listScroll, EXTENDED_QUEST_LOG.listWidth,
+        EXTENDED_QUEST_LOG.listHeight)
     Client.SetObjectSize(detail, 300, 413)
     Client.SetObjectSize(detailChild, 300, 413)
     if not SetExtendedQuestLogAnchor(listScroll, "TOPLEFT", frame,
-        "TOPLEFT", 20, -74)
+        "TOPLEFT", 20, -EXTENDED_QUEST_LOG.listTop)
         or not SetExtendedQuestLogAnchor(detail, "TOPLEFT", frame,
             "TOPLEFT", 350, -72)
-        or not SetExtendedQuestLogAnchor(firstRow, "TOPLEFT", frame,
-            "TOPLEFT", 19, -75)
         -- Keep the money on its own line after the full guaranteed-item block
         -- and make that complete 28-pixel line part of the scroll extent.
         -- Probe questrewardlayout.live_geometry.v1 measured the inline parent
@@ -4940,9 +5288,21 @@ function Client.ApplyExtendedClassicQuestLog()
     -- WORKING_SOURCE evidence from unrealUI/modules/questlog.lua: this exact
     -- client accepts additional named QuestLogTitleButtonTemplate rows and the
     -- native QuestLog_Update fills them when QUESTS_DISPLAYED is raised.
+    --
+    -- Each row takes its own offset from the frame instead of being chained
+    -- onto the row above it. EQL3 chained its 27 rows with a one-pixel nudge,
+    -- which only lands where the row template is Vanilla's 16 pixels and the
+    -- client applies that offset upwards; knowledge record
+    -- questlog.eql3_chained_rows_leave_the_page is the USER_CONFIRMED_INGAME
+    -- report that it does not hold here -- the tail of a long quest list drew
+    -- over the footer buttons and off the parchment. An absolute offset per
+    -- row cannot accumulate an error, and the count is measured against the
+    -- page, so the block ends inside the list pane whatever a row measures.
+    local pitch = ResolveExtendedQuestLogRowPitch(firstRow)
+    local rows = ResolveExtendedQuestLogRows(pitch)
     local createFrame = Resolve("CreateFrame")
     local rowIndex = 1
-    while rowIndex <= EXTENDED_QUEST_LOG_ROWS do
+    while rowIndex <= rows do
         local name = "QuestLogTitle" .. tostring(rowIndex)
         local row = ResolveObject(name)
         if not row and createFrame then
@@ -4959,20 +5319,21 @@ function Client.ApplyExtendedClassicQuestLog()
         if type(row.SetID) == "function" then
             pcall(row.SetID, row, rowIndex)
         end
-        if rowIndex > 1 then
-            local previous = ResolveObject("QuestLogTitle" .. tostring(rowIndex - 1))
-            if not previous or not SetExtendedQuestLogAnchor(row, "TOPLEFT",
-                previous, "BOTTOMLEFT", 0, 1) then
-                return false
-            end
+        if not SetExtendedQuestLogAnchor(row, "TOPLEFT", frame, "TOPLEFT",
+            EXTENDED_QUEST_LOG.rowLeft,
+            -(EXTENDED_QUEST_LOG.rowTop + (rowIndex - 1) * pitch)) then
+            return false
         end
         rowIndex = rowIndex + 1
     end
 
     -- This is the stock FrameXML row-count global consumed by QuestLog_Update,
     -- not persisted state. The write lives inside the compatibility boundary
-    -- with every other client-facing operation.
-    QUESTS_DISPLAYED = EXTENDED_QUEST_LOG_ROWS
+    -- with every other client-facing operation. It is also what the native
+    -- FauxScrollFrame_Update call inside QuestLog_Update treats as the visible
+    -- window, so the scroll bar appears exactly when the log outgrows the page.
+    QUESTS_DISPLAYED = rows
+    EXTENDED_QUEST_LOG.rows = rows
 
     local close = ResolveObject("QuestLogFrameCloseButton")
     if close then
@@ -5304,6 +5665,7 @@ local function EnsureQuestLogFollowingRow(row)
         end
     end
     row.unrealQuestFollowingBackground = background
+    row.unrealQuestFollowingPlaqueShift = 0
 
     if type(row.CreateTexture) == "function" then
         local dotOk, dot = pcall(row.CreateTexture, row, nil, "OVERLAY")
@@ -5406,10 +5768,34 @@ function Client.SetModernQuestLogObjectiveColors(objectives)
     return true
 end
 
-function Client.SetQuestLogFollowingRow(row, active, red, green, blue)
+-- Slides the plaque, both edges together, so it moves rather than stretches.
+-- Re-anchoring is idempotent and only happens when the offset actually
+-- changes, because this runs on the same poll as the rest of the row.
+local function SetQuestLogFollowingPlaqueShift(row, shift)
+    local plaque = row and row.unrealQuestFollowingBackground
+    if not plaque or row.unrealQuestFollowingPlaqueShift == shift
+        or type(plaque.ClearAllPoints) ~= "function"
+        or type(plaque.SetPoint) ~= "function" then
+        return false
+    end
+    pcall(plaque.ClearAllPoints, plaque)
+    local topOk = pcall(plaque.SetPoint, plaque, "TOPLEFT", row, "TOPLEFT",
+        QUEST_LOG_FOLLOWING_PLAQUE_INSET + shift, 0)
+    local bottomOk = pcall(plaque.SetPoint, plaque, "BOTTOMRIGHT", row,
+        "BOTTOMRIGHT", shift, 0)
+    if not topOk or not bottomOk then
+        return false
+    end
+    row.unrealQuestFollowingPlaqueShift = shift
+    return true
+end
+
+function Client.SetQuestLogFollowingRow(row, active, red, green, blue, modern)
     if not EnsureQuestLogFollowingRow(row) then
         return false
     end
+    SetQuestLogFollowingPlaqueShift(row,
+        modern and QUEST_LOG_FOLLOWING_PLAQUE_MODERN_SHIFT_X or 0)
     local shown = active and true or false
     SetQuestLogTagOffset(row)
     SetQuestLogRowTitleOffset(row,
@@ -8609,8 +8995,10 @@ function Client.CreateNavigator(name, arcWidth, arrowSize)
         return nil
     end
 
+    -- Keep the dial, distance and drag surface below ordinary interface windows.
+    -- SetFrameStrata and PARENT are documented by the client's Frame reference.
     if type(frame.SetFrameStrata) == "function" then
-        pcall(frame.SetFrameStrata, frame, "MEDIUM")
+        pcall(frame.SetFrameStrata, frame, "BACKGROUND")
     end
     if type(frame.EnableMouse) == "function" then
         pcall(frame.EnableMouse, frame, false)
@@ -8631,6 +9019,9 @@ function Client.CreateNavigator(name, arcWidth, arrowSize)
     -- layer below so the arrow always reads over it.
     local okDial, dial = pcall(create, "Frame", name .. "Dial", frame)
     if okDial and dial then
+        if type(dial.SetFrameStrata) == "function" then
+            pcall(dial.SetFrameStrata, dial, "PARENT")
+        end
         pcall(dial.SetPoint, dial, "TOP", frame, "TOP", 0,
             -NAVIGATOR_DIAL_TOP_OFFSET)
         pcall(dial.SetWidth, dial, arcWidth)

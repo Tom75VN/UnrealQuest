@@ -253,6 +253,79 @@ local function ObjectiveMatchesLinks(objectiveText, objectiveKeys)
     return true
 end
 
+-- Live objective lines, parsed once -----------------------------------------
+
+-- The quest's own objective lines reduced to the two forms a source is
+-- matched against: the name the line is ABOUT, when a format string resolved
+-- it, and the whole line's name key for when none did.
+--
+-- Built once per filtering pass rather than once per source. A quest with
+-- three containers and three lines would otherwise parse the same three lines
+-- three times over, on every map rebuild.
+function ObjectiveMatch:ParseQuestObjectives(quest)
+    local parsed = {}
+    local objectives = quest and quest.objectives
+    local index = 1
+    local total = objectives and table.getn(objectives) or 0
+    while index <= total do
+        local objective = objectives[index]
+        if objective then
+            local name = self:ParseLine(objective.text, objective.objectiveType)
+            table.insert(parsed, {
+                nameKey = name and UQ.NameKey(name) or nil,
+                textKey = UQ.NameKey(objective.text),
+                finished = objective.finished and true or false,
+            })
+        end
+        index = index + 1
+    end
+    return parsed
+end
+
+-- How many of those parsed lines a source that supplies any of `objectiveKeys`
+-- satisfies, and how many of those are still unfinished.
+--
+-- A parsed line is matched on its own name and exactly so. The looser
+-- substring test ObjectiveMatchesLinks uses is right there, where the key has
+-- to be found inside a line that was never parsed; here the line already gave
+-- up the thing it is about, and a substring test would let a "Key" objective
+-- claim the "Burning Key" container. Only a line no format string could parse
+-- falls back to the substring test, and then against the whole line, which is
+-- all there is to test against.
+function ObjectiveMatch:CountObjectiveKeyMatches(parsed, objectiveKeys)
+    local matched = 0
+    local unfinished = 0
+    if type(parsed) ~= "table" or type(objectiveKeys) ~= "table" then
+        return matched, unfinished
+    end
+
+    local index = 1
+    local total = table.getn(parsed)
+    while index <= total do
+        local objective = parsed[index]
+        local hit = false
+        if objective.nameKey then
+            hit = objectiveKeys[objective.nameKey] and true or false
+        elseif objective.textKey then
+            local objectiveKey
+            for objectiveKey in pairs(objectiveKeys) do
+                if string.find(objective.textKey, objectiveKey, 1, true) then
+                    hit = true
+                end
+            end
+        end
+        if hit then
+            matched = matched + 1
+            if not objective.finished then
+                unfinished = unfinished + 1
+            end
+        end
+        index = index + 1
+    end
+
+    return matched, unfinished
+end
+
 -- Matching ------------------------------------------------------------------
 
 -- Bumped on every quest model notification, which includes a counter moving:
