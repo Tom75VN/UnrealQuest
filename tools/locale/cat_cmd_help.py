@@ -253,6 +253,18 @@ STRINGS = {
     "/uq pfquest undo              отменить всё, что добавил предыдущий импорт",
     "/uq pfquest undo              撤回之前导入所添加的一切",
 ),
+"CMD_HELP_ANNOUNCE": (
+    u"/uq announce  objective progress reported in party chat",
+    u"/uq announce  progression des objectifs annoncée en chat de groupe",
+    u"/uq announce  прогресс целей в чате группы",
+    u"/uq announce  在小队频道播报目标进度",
+),
+"CMD_HELP_ANNOUNCE_ONOFF": (
+    u"/uq announce on|off           turn the party-chat report on or off",
+    u"/uq announce on|off           activer ou désactiver l'annonce en groupe",
+    u"/uq announce on|off           включить или выключить отчёт в чат группы",
+    u"/uq announce on|off           开启或关闭小队频道播报",
+),
 "CMD_HELP_MARKS": (
     "/uq marks                 quest marks over creatures in the world",
     "/uq marks                 marques de quête sur les créatures du monde",

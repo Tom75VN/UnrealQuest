@@ -23,6 +23,16 @@ pins sit closest together. Nothing is hidden and no colour moves, and the fade r
 the service/rare pins and the quest-vendor pins drawn on the same minimap. See
 SetFocusPin.
 
+Clicking a pin does what clicking the same pin on the world map does, because
+it is the same code: an objective dot or a turn-in "?" follows its quest
+through WorldMapPins:FollowQuest, and a giver "!" is handed to
+WorldMapPins:OnGiverClick so its shift/ctrl "mark done" picker is identical on
+both surfaces. This layer only decides WHICH quest was clicked -- see
+OnPinClick. Whether a click on a child of Minimap reaches an addon at all is
+unmeasured on this client, hence capability minimapPinInteraction and the
+pinClicks counter in `/uq minimap`; the pins were already mouse-enabled for
+their tooltips, so nothing new is taken away from the minimap underneath them.
+
 Content is not decided here. Which giver still has a quest worth taking and
 where a quest is handed in are policy questions the world-map layer already
 answers, so this module calls WorldMapPins:CollectAvailableGivers and
@@ -92,6 +102,31 @@ local DEFAULT_DOT_SCALE = 100
 -- setting, so the relationship remains equally obvious at every configured
 -- scale rather than becoming a fixed-size second preference.
 local HOVER_DOT_MULTIPLIER = 1.65
+-- The followed quest's dots wear the world map's gold rim here too, built the
+-- same way: the same companion texture -- the dot artwork's silhouette in
+-- white pixels, so the tint reaches it -- and the same 4px of extra diameter,
+-- which is a 2px stroke at either surface's default dot size.
+--
+-- The gold itself is the one deliberate difference. The world map's rim sits
+-- on a large, mostly static tile at a comfortable size, where full-saturation
+-- gold (1, 0.86, 0.05) reads as a clean stroke; the minimap draws the same
+-- stroke two pixels wide over moving terrain and a crowd of other dots, and
+-- at that size the saturated gold glares rather than frames. So the minimap
+-- rim keeps the same hue and drops its contrast: darkened, and desaturated by
+-- lifting the blue, which pulls it toward the surrounding art instead of
+-- punching a hole in it. Same mark, same colour family -- one followed quest
+-- still reads as one thing on both maps -- only quieter where it is smaller.
+local GOLD_BORDER_RED = 0.85
+local GOLD_BORDER_GREEN = 0.72
+local GOLD_BORDER_BLUE = 0.28
+local DOT_BORDER_PADDING = 4
+-- One level BELOW the dot it surrounds. Every minimap pin is created at the
+-- same measured level 120, and two siblings there leave which one draws on top
+-- to creation order rather than to intent -- the rim would cover the coloured
+-- centre it exists to frame. The world map settles the same tie by raising the
+-- dot; here only the new pool moves, so nothing already measured changes
+-- level, and 119 is still far above Minimap's own children at 3-4.
+local DOT_BORDER_LEVEL_BOOST = -1
 -- The bundled available-quest "!" is 19x32. Keep the existing 12px minimap
 -- height while preserving that source ratio.
 local GIVER_ICON_HEIGHT = 12
@@ -213,9 +248,14 @@ local function SpanOverride(areaId, zoom, indoor)
 end
 
 MinimapPins.objectivePool = {}
+-- The gold rims, pooled separately from the dots they sit behind: only the
+-- followed quest has any, so one shared pool would need a per-pin "is this one
+-- wearing a rim" flag and a hide pass of its own regardless.
+MinimapPins.objectiveBorderPool = {}
 MinimapPins.giverPool = {}
 MinimapPins.turnInPool = {}
 MinimapPins.objectiveVisible = 0
+MinimapPins.objectiveBorderVisible = 0
 MinimapPins.giverVisible = 0
 MinimapPins.turnInVisible = 0
 MinimapPins.targets = {}
@@ -264,6 +304,10 @@ local function BagItems()
     return UQ:GetModule("BagItems")
 end
 
+local function MainQuest()
+    return UQ:GetModule("MainQuest")
+end
+
 -- Pools ---------------------------------------------------------------------
 
 local function HidePoolFrom(pool, first)
@@ -297,6 +341,7 @@ function MinimapPins:HideAll()
     end
     self.poolsHidden = true
     self.objectiveVisible = HidePoolFrom(self.objectivePool, 1)
+    self.objectiveBorderVisible = HidePoolFrom(self.objectiveBorderPool, 1)
     self.giverVisible = HidePoolFrom(self.giverPool, 1)
     self.turnInVisible = HidePoolFrom(self.turnInPool, 1)
 end
@@ -333,10 +378,11 @@ function MinimapPins:TooltipLines(pin)
         return lines
     end
     if pin.unrealQuestGiver then
-        -- Minimap pins have no click gesture, so the world-map shift-click
-        -- hint would advertise an action this surface deliberately lacks.
+        -- The hint is no longer suppressed here: this "!" answers a
+        -- shift-click exactly as the world map's does, so withholding the
+        -- line would hide an action the pin really has.
         return worldMap:BuildGiverTooltipLines(pin.unrealQuestGiver,
-            pin.unrealQuestAvailableQuestIds or {}, true)
+            pin.unrealQuestAvailableQuestIds or {})
     end
     if pin.unrealQuestTurnIn then
         return worldMap:BuildTurnInTooltipLines(pin.unrealQuestTurnIn)
@@ -541,11 +587,113 @@ function MinimapPins:OnPinLeave(pin)
     Client.HideGameTooltip(pin)
 end
 
-function MinimapPins:SetTooltipHandlers(pin)
-    Client.SetWorldMapPinHandlers(pin,
+-- Which quest a clicked objective dot means. One database position can carry
+-- several quests -- the dot is one creature, and two quests may both want it
+-- -- so the choice has to be made rather than assumed. It mirrors the answer
+-- the pin's own presentation already gives: the quest the player is pointing
+-- at (a tracker hover keeps that dot in its quest's colour) wins, otherwise
+-- the first quest listed, which is the one whose tooltip block is on top.
+local function ObjectiveClickQuest(quests, hoverKey)
+    if type(quests) ~= "table" then
+        return nil
+    end
+    local first = nil
+    local index = 1
+    local total = table.getn(quests)
+    while index <= total do
+        local quest = quests[index]
+        if quest and quest.titleKey then
+            if hoverKey and QuestKey(quest) == hoverKey then
+                return quest
+            end
+            if not first then
+                first = quest
+            end
+        end
+        index = index + 1
+    end
+    return first
+end
+
+-- The turn-in's own answer, the same one the world map's OnTurnInClick uses:
+-- a "?" can stand for several quests and the completed one is what the player
+-- walked there for, so it is preferred over mere list order.
+local function TurnInClickQuest(point)
+    local quests = point and point.quests
+    if type(quests) ~= "table" then
+        return nil
+    end
+    local index = 1
+    local total = table.getn(quests)
+    while index <= total do
+        if quests[index] and quests[index].isComplete == 1 then
+            return quests[index]
+        end
+        index = index + 1
+    end
+    return quests[1]
+end
+
+-- Counts clicks that actually reached a minimap pin, split by the kind of pin
+-- that took them. minimapPinInteraction is unverified for the same reason
+-- worldMapPinInteraction once was -- a click on a child of Minimap has never
+-- been observed on this client -- and hovers are no substitute for the
+-- measurement: the pins' tooltips prove the mouse arrives, not that a click
+-- does. Read against the hover the player reports making:
+--   zero forever  -> Minimap keeps the click; its children only get hovers
+--   non-zero      -> interaction works; look at MainQuest instead
+local function RecordPinClick(kind)
+    MinimapPins.clickCount = (MinimapPins.clickCount or 0) + 1
+    local config = UQ:GetModule("Config")
+    if not config then
+        return
+    end
+    config:SetSectionEntry("minimapDiagnostics", "pinClicks", MinimapPins.clickCount)
+    config:SetSectionEntry("minimapDiagnostics", "lastPinClickKind", kind)
+    config:SetSectionEntry("minimapDiagnostics", "lastPinClickAt", Client.Now() or 0)
+end
+
+-- A click on the minimap is a click on the map: the same pin means the same
+-- thing on both surfaces, so the decision of what a click DOES stays in
+-- WorldMapPins and this layer only says which quest was clicked.
+--
+--   * an objective dot and a turn-in "?" follow their quest, exactly as the
+--     world map's area tiles and "?" pins do;
+--   * a giver "!" is handed to the world map's own click handler, so its
+--     shift/ctrl "mark this quest done" picker behaves identically here.
+--     A plain left click on a "!" follows nothing on either surface -- the
+--     quests it offers are not in the log yet, so there is nothing to follow.
+function MinimapPins:OnPinClick(pin)
+    if not pin then
+        return false
+    end
+    local worldMap = WorldMapPins()
+    if not worldMap then
+        return false
+    end
+    if pin.unrealQuestObjectiveQuests then
+        RecordPinClick("objective")
+        return worldMap:FollowQuest(
+            ObjectiveClickQuest(pin.unrealQuestObjectiveQuests, self.hoverQuestKey),
+            "minimapObjective")
+    end
+    if pin.unrealQuestTurnIn then
+        RecordPinClick("turnIn")
+        return worldMap:FollowQuest(TurnInClickQuest(pin.unrealQuestTurnIn),
+            "minimapTurnIn")
+    end
+    if pin.unrealQuestGiver then
+        RecordPinClick("giver")
+        return worldMap:OnGiverClick(pin)
+    end
+    return false
+end
+
+function MinimapPins:SetPinHandlers(pin)
+    Client.SetMinimapPinHandlers(pin,
         function() MinimapPins:OnPinEnter(pin) end,
         function() MinimapPins:OnPinLeave(pin) end,
-        nil)
+        function() MinimapPins:OnPinClick(pin) end)
 end
 
 function MinimapPins:GetObjectiveDotSize(highlighted)
@@ -572,6 +720,15 @@ function MinimapPins:ApplyObjectiveDotSize()
         Client.SetMinimapPinSize(self.objectivePool[index], size, size)
         index = index + 1
     end
+    -- The rims follow the same setting from the same resting size, so a dot
+    -- and the rim behind it are never a tick out of step while the slider
+    -- moves.
+    local borderSize = size + DOT_BORDER_PADDING
+    index = 1
+    while index <= table.getn(self.objectiveBorderPool) do
+        Client.SetMinimapPinSize(self.objectiveBorderPool[index], borderSize, borderSize)
+        index = index + 1
+    end
 end
 
 function MinimapPins:IsTargetHighlighted(target)
@@ -589,6 +746,27 @@ function MinimapPins:IsTargetHighlighted(target)
         index = index + 1
     end
     return QuestKey(target.quest) == hoverKey
+end
+
+-- Whether any quest on this target is the followed one. A dot can carry
+-- several quests and the rim says "the quest you are following is here", so
+-- one match is enough -- the same rule the world map applies when it decides
+-- which of its dots to rim.
+function MinimapPins:IsTargetFollowed(target, mainQuest)
+    if not mainQuest or type(target) ~= "table" then
+        return false
+    end
+    local quests = target.quests
+    local index = 1
+    local total = type(quests) == "table" and table.getn(quests) or 0
+    while index <= total do
+        local quest = quests[index]
+        if quest and mainQuest:IsMain(quest.titleKey) then
+            return true
+        end
+        index = index + 1
+    end
+    return type(target.quest) == "table" and mainQuest:IsMain(target.quest.titleKey)
 end
 
 -- Called by the tracker row's existing hover handlers. This state is
@@ -613,9 +791,32 @@ function MinimapPins:GetObjectivePin(index)
     if pin then
         self.objectivePool[index] = pin
         Client.SetMinimapPinTexture(pin, Client.MINIMAP_OBJECTIVE_TEXTURE)
-        self:SetTooltipHandlers(pin)
+        self:SetPinHandlers(pin)
     end
     return pin
+end
+
+-- The rim behind one objective dot. It takes no handlers, so it keeps the
+-- mouse-disabled state CreateMinimapPin starts every pin in: the dot on top of
+-- it owns the hover and the click, and a rim that answered either would put
+-- the tooltip on the mark instead of on the objective.
+function MinimapPins:GetObjectiveBorder(index)
+    local border = self.objectiveBorderPool[index]
+    if border then
+        return border
+    end
+    border = Client.CreateMinimapPin("ObjectiveBorder" .. tostring(index),
+        self:GetObjectiveDotSize() + DOT_BORDER_PADDING,
+        GOLD_BORDER_RED, GOLD_BORDER_GREEN, GOLD_BORDER_BLUE)
+    if border then
+        self.objectiveBorderPool[index] = border
+        Client.SetMinimapPinTexture(border, Client.FOLLOWED_QUEST_DOT_BORDER_TEXTURE)
+        Client.SetMinimapPinColor(border,
+            GOLD_BORDER_RED, GOLD_BORDER_GREEN, GOLD_BORDER_BLUE)
+        Client.SetMinimapPinMouseEnabled(border, false)
+        Client.SetMinimapPinLevelBoost(border, DOT_BORDER_LEVEL_BOOST)
+    end
+    return border
 end
 
 function MinimapPins:GetGiverPin(index)
@@ -628,7 +829,7 @@ function MinimapPins:GetGiverPin(index)
         self.giverPool[index] = pin
         Client.SetMinimapPinTexture(pin, Client.AVAILABLE_QUEST_TEXTURE)
         Client.SetMinimapPinSize(pin, GIVER_ICON_WIDTH, GIVER_ICON_HEIGHT)
-        self:SetTooltipHandlers(pin)
+        self:SetPinHandlers(pin)
     end
     return pin
 end
@@ -643,7 +844,7 @@ function MinimapPins:GetTurnInPin(index)
         self.turnInPool[index] = pin
         Client.SetMinimapPinTexture(pin, Client.ACTIVE_QUEST_TEXTURE)
         Client.SetMinimapPinSize(pin, TURNIN_ICON_WIDTH, TURNIN_ICON_HEIGHT)
-        self:SetTooltipHandlers(pin)
+        self:SetPinHandlers(pin)
     end
     return pin
 end
@@ -669,6 +870,7 @@ function MinimapPins:Record(state, extra)
     self.lastDiagnosticKey = key
     config:SetSectionEntry("minimapDiagnostics", "state", state)
     config:SetSectionEntry("minimapDiagnostics", "objectives", self.objectiveVisible)
+    config:SetSectionEntry("minimapDiagnostics", "dotBorders", self.objectiveBorderVisible)
     config:SetSectionEntry("minimapDiagnostics", "givers", self.giverVisible)
     config:SetSectionEntry("minimapDiagnostics", "turnIns", self.turnInVisible)
     config:SetSectionEntry("minimapDiagnostics", "clamped", self.clampedCount)
@@ -878,10 +1080,18 @@ function MinimapPins:Project(playerX, playerY, widthYards, heightYards, span, wi
         shortest = height
     end
     local objectiveIndex = 1
+    local objectiveBorderIndex = 1
     local giverIndex = 1
     local turnInIndex = 1
     local clamped = 0
     local failures = 0
+    -- Read once for the whole pass rather than per dot: the followed quest
+    -- cannot change halfway through a projection, and the world map gates its
+    -- own rim on the same feature.
+    local mainQuest = nil
+    if UQ:IsFeatureEnabled("mainQuestWaypoint") then
+        mainQuest = MainQuest()
+    end
 
     local index = 1
     local total = table.getn(self.targets)
@@ -892,6 +1102,10 @@ function MinimapPins:Project(playerX, playerY, widthYards, heightYards, span, wi
         local distance = math.sqrt(offsetX * offsetX + offsetY * offsetY)
 
         local pin, half
+        -- Non-nil only for a dot that is both drawn and followed; it carries
+        -- the rim's size as well as the answer, because the rim tracks the
+        -- dot's hovered size and not only the configured one.
+        local borderSize
         if target.kind == "objective" then
             local highlighted = self:IsTargetHighlighted(target)
             local targetDotSize = objectiveDotSize
@@ -926,6 +1140,9 @@ function MinimapPins:Project(playerX, playerY, widthYards, heightYards, span, wi
                             target.red or OBJECTIVE_RED,
                             target.green or OBJECTIVE_GREEN,
                             target.blue or OBJECTIVE_BLUE)
+                    end
+                    if self:IsTargetFollowed(target, mainQuest) then
+                        borderSize = targetDotSize + DOT_BORDER_PADDING
                     end
                 end
             end
@@ -992,6 +1209,22 @@ function MinimapPins:Project(playerX, playerY, widthYards, heightYards, span, wi
                 Client.SetMinimapPinAlpha(pin, alpha)
                 if Client.PositionMinimapPin(pin, offsetX, offsetY) then
                     if target.kind == "objective" then
+                        -- The rim rides its dot: same offset, same alpha, and
+                        -- placed only after the dot itself landed, so a dot
+                        -- that failed to position never leaves a bare gold
+                        -- ring behind on the minimap.
+                        if borderSize then
+                            local border = self:GetObjectiveBorder(objectiveBorderIndex)
+                            if border then
+                                Client.SetMinimapPinSize(border, borderSize, borderSize)
+                                Client.SetMinimapPinAlpha(border, alpha)
+                                if Client.PositionMinimapPin(border, offsetX, offsetY) then
+                                    objectiveBorderIndex = objectiveBorderIndex + 1
+                                else
+                                    Client.HideObject(border)
+                                end
+                            end
+                        end
                         objectiveIndex = objectiveIndex + 1
                     elseif target.kind == "giver" then
                         giverIndex = giverIndex + 1
@@ -1008,6 +1241,8 @@ function MinimapPins:Project(playerX, playerY, widthYards, heightYards, span, wi
     end
 
     self.objectiveVisible = HidePoolFrom(self.objectivePool, objectiveIndex)
+    self.objectiveBorderVisible = HidePoolFrom(
+        self.objectiveBorderPool, objectiveBorderIndex)
     self.giverVisible = HidePoolFrom(self.giverPool, giverIndex)
     self.turnInVisible = HidePoolFrom(self.turnInPool, turnInIndex)
     self.poolsHidden = false
@@ -1223,6 +1458,7 @@ function MinimapPins:GetStatus()
         turnIns = self.turnInVisible,
         clamped = self.clampedCount,
         pinFailures = self.pinFailures,
+        pinClicks = self.clickCount or 0,
         rebuilds = self.rebuildCount,
         targets = table.getn(self.targets),
     }

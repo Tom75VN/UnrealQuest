@@ -1,9 +1,18 @@
 # Changelog
 
+## 0.3.2
+
+- Objective progress can now be reported to your party as "[UQ] Kobold Vermin: 4/8" -- the objective's own name and its counter, tagged so it reads as the addon and not as you typing -- one line each time a counter moves, so a group working the same quests can see each other's progress without asking. A line is only ever sent for a quest at least one other group member actually has: the client itself answers that for every party member, and for a raid, or a party member the client will not answer for, other UnrealQuest users in the group fill the gap. Anyone who is neither is left out rather than guessed at, and nothing is said. "Objectives in party chat" in the settings is on by default and turns it off; it is silent while you are solo. "/uq announce" is the same switch plus a report of how sharing is being decided and what has been sent. Only real progress is announced: a counter going up, or an objective with no counter finishing. If the client refuses to let an addon write in chat -- which its own API reference says it will -- the report says so once and then reaches the group's other UnrealQuest users directly instead.
+- Added "Completed objectives only" beneath party reporting in settings. With both options enabled, each objective gets its own message when it reaches its target (for example, Prowler 8/8 and Young Forest Bear 5/5); partial progress stays silent.
+- In a party the quest log now reads "[1] [24] Weapons of Choice": how many other members of the group are on that quest, greyed, in front of the quest's own level. The client draws that same count in the row's left gutter, which is exactly where this addon already writes the level, so the two were printed on top of each other. The count is now part of the row's own text, so it cannot overlap the level and cannot drift from it either -- the two are one string. It is the client's own answer about the real party, so a member who does not run this addon counts the same as one who does, and nothing is asked at all while you are solo.
+- Fixed completion-only party reports being discarded when no other member was detected on the same quest, including Okra 3/3 in Westfall Stew. This mode now requires only a group; every-step reports retain their shared-quest filter.
+- Collected-item progress now stops at the required count in addon displays and party messages: 4/3 is shown as 3/3, and further surplus pickups do not trigger another progress report.
+- Quest links inserted into chat by Shift-click now use only the quest name, without the party count or quest level shown in the quest log.
+
 ## 0.3.1
 
-- Quests can now be set as followed by clicking their dots or marker on the map.
-- Followed quests now appear differently on the map, with their quest dots and turn-in position highlighted with a circle.
+- Quests can now be set as followed by clicking their dots or marker on the map, and on the minimap too: the same pin means the same thing on both, so a dot or a "?" around the player follows its quest without opening the map, and a "!" answers shift-click with the same "mark this quest done" list.
+- Followed quests now appear differently on the map, with their quest dots and turn-in position highlighted with a circle. The quest dots carry the same gold outline on the minimap, so the quest you are following is as easy to pick out of the pins around you as it is on the map.
 - Hovering a mob dot with multiple related quests now shows all related quests in the tooltip.
 - Fixed quest level display remaining visible when scrolling the questlog.
 - Fixed the quest list running off the window in unrealUI's modern theme.

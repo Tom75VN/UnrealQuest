@@ -313,6 +313,14 @@ STRINGS = {
 "CMD_MINIMAP_PIN_FAILURES": (
     "pin failures:   %s", "échecs de repère : %s",
     "сбоев меток:    %s", "标记失败：      %s"),
+"CMD_MINIMAP_PIN_CLICKS": (
+    "pin clicks:     %s", "clics sur repère : %s",
+    "кликов по меткам: %s", "标记点击：      %s"),
+"CMD_MINIMAP_CLICKS_UNPROVEN": (
+    "no pin click has been seen yet -- if clicking one does nothing, the minimap is keeping the click",
+    "aucun clic sur un repère n'a encore été vu -- si cliquer ne fait rien, la minicarte garde le clic",
+    "кликов по меткам ещё не было -- если клик ничего не делает, миникарта забирает его себе",
+    "尚未检测到标记点击——若点击无反应，则说明小地图截留了点击"),
 
 # --- database ----------------------------------------------------------------
 "CMD_DB_WORLD_DATA": (
@@ -935,6 +943,144 @@ STRINGS = {
     u"le module d'alerte rare n'est pas chargé",
     u"модуль оповещения о редких не загружен",
     u"稀有提醒模块未加载",
+),
+"CMD_MODULE_MISSING_ANNOUNCE": (
+    u"the objective announcement module is not loaded",
+    u"le module d'annonce des objectifs n'est pas chargé",
+    u"модуль объявления целей не загружен",
+    u"目标播报模块未加载",
+),
+"CMD_ANNOUNCE_TITLE": (
+    u"objective progress in party chat:",
+    u"progression des objectifs en chat de groupe :",
+    u"прогресс целей в чате группы:",
+    u"小队频道目标进度：",
+),
+"CMD_ANNOUNCE_SETTING": (
+    u"report: %s",
+    u"annonce : %s",
+    u"отчёт: %s",
+    u"播报：%s",
+),
+"CMD_ANNOUNCE_CHANNEL": (
+    u"channel: %s",
+    u"canal : %s",
+    u"канал: %s",
+    u"频道：%s",
+),
+"CMD_ANNOUNCE_SOURCE": (
+    u"shared-quest check: %s",
+    u"vérification de quête commune : %s",
+    u"проверка общего задания: %s",
+    u"共同任务检查：%s",
+),
+"CMD_ANNOUNCE_SOURCE_CLIENT": (
+    u"the client's own, for every party member",
+    u"celle du client, pour chaque membre du groupe",
+    u"самого клиента, для всех участников",
+    u"客户端自带，适用于所有队友",
+),
+"CMD_ANNOUNCE_SOURCE_PEERS": (
+    u"other UnrealQuest members only",
+    u"seulement les membres avec UnrealQuest",
+    u"только участники с UnrealQuest",
+    u"仅限使用 UnrealQuest 的队友",
+),
+"CMD_ANNOUNCE_PEERS": (
+    u"group members running UnrealQuest: %s (%s quests known)",
+    u"membres du groupe avec UnrealQuest : %s (%s quêtes connues)",
+    u"участников с UnrealQuest: %s (известно заданий: %s)",
+    u"使用 UnrealQuest 的队友：%s（已知任务 %s）",
+),
+"CMD_ANNOUNCE_PEER": (
+    u"%s: %s quests",
+    u"%s : %s quêtes",
+    u"%s: заданий: %s",
+    u"%s：%s 个任务",
+),
+"CMD_ANNOUNCE_UNSHARED": (
+    u"%s steps stayed quiet: nobody in the group has that quest",
+    u"%s étapes non annoncées : personne dans le groupe n'a cette quête",
+    u"шагов без объявления: %s -- в группе никто не взял это задание",
+    u"%s 次进度未播报：小队里没人接了那个任务",
+),
+"CMD_ANNOUNCE_RELAYED": (
+    u"%s lines went to UnrealQuest party members, %s arrived from them",
+    u"%s lignes envoyées aux membres avec UnrealQuest, %s reçues d'eux",
+    u"отправлено участникам с UnrealQuest: %s, получено от них: %s",
+    u"向 UnrealQuest 队友发送 %s 条，收到 %s 条",
+),
+"CMD_ANNOUNCE_NO_PEERS": (
+    u"nobody in the group is running UnrealQuest with this option on, so nothing is sent",
+    u"personne dans le groupe n'utilise UnrealQuest avec cette option : rien n'est envoyé",
+    u"в группе никто не включил эту опцию в UnrealQuest, поэтому ничего не отправляется",
+    u"小队中没有其他人开启了 UnrealQuest 的此选项，因此不会发送",
+),
+"CMD_ANNOUNCE_SHARED_NOTE": (
+    u"only a quest another member is known to have is reported; nothing else can be known",
+    u"seule une quête qu'un autre membre a vraiment est annoncée ; le reste est inconnaissable",
+    u"объявляется только задание, которое точно есть у другого участника",
+    u"只播报确知其他队友也接了的任务，其余无法得知",
+),
+"CMD_ANNOUNCE_COMPLETION_NOTE": (
+    u"completed objectives are reported to your group without requiring a shared quest",
+    u"les objectifs termines sont annonces au groupe sans exiger une quete commune",
+    u"выполненные цели объявляются группе даже без общего задания",
+    u"目标完成后会向小队播报，无需队友也接了同一任务",
+),
+"CMD_ANNOUNCE_NO_ADDON_CHANNEL": (
+    u"this client has no SendAddonMessage, so no group member can ever be known to share a quest",
+    u"ce client n'a pas SendAddonMessage : impossible de savoir si un membre partage une quête",
+    u"у клиента нет SendAddonMessage, поэтому нельзя узнать общие задания",
+    u"此客户端没有 SendAddonMessage，无法得知队友是否接了同一任务",
+),
+"CMD_ANNOUNCE_COUNTS": (
+    u"%s lines queued, %s sent, %s refused, %s dropped",
+    u"%s lignes en file, %s envoyées, %s refusées, %s abandonnées",
+    u"в очереди: %s, отправлено: %s, отклонено: %s, потеряно: %s",
+    u"排队 %s 行，已发送 %s，被拒 %s，丢弃 %s",
+),
+"CMD_ANNOUNCE_LAST": (
+    u"last: %s",
+    u"dernière : %s",
+    u"последняя: %s",
+    u"最后一条：%s",
+),
+"CMD_ANNOUNCE_ON": (
+    u"objective progress will be reported in party chat",
+    u"la progression des objectifs sera annoncée en chat de groupe",
+    u"прогресс целей будет объявляться в чате группы",
+    u"目标进度将在小队频道播报",
+),
+"CMD_ANNOUNCE_OFF": (
+    u"objective progress stays out of party chat",
+    u"la progression des objectifs reste hors du chat de groupe",
+    u"прогресс целей не попадёт в чат группы",
+    u"目标进度不会发到小队频道",
+),
+"CMD_ANNOUNCE_SOLO": (
+    u"nothing is sent while you are alone: there is no group channel to write to",
+    u"rien n'est envoyé en solo : il n'y a pas de canal de groupe",
+    u"в одиночку ничего не отправляется: нет канала группы",
+    u"单人时不会发送：没有小队频道",
+),
+"CMD_ANNOUNCE_UNAVAILABLE": (
+    u"this client has no SendChatMessage, so nothing can be posted at all",
+    u"ce client n'a pas SendChatMessage : rien ne peut être publié",
+    u"у этого клиента нет SendChatMessage, отправить нечего",
+    u"此客户端没有 SendChatMessage，无法发送",
+),
+"CMD_ANNOUNCE_BLOCKED": (
+    u"the client refused every attempt, so sending is stopped for this session",
+    u"le client a tout refusé : l'envoi est arrêté pour cette session",
+    u"клиент отклонил все попытки: отправка остановлена на эту сессию",
+    u"客户端拒绝了所有尝试，本次登录已停止发送",
+),
+"CMD_ANNOUNCE_PROTECTED_NOTE": (
+    u"the client's API reference marks SendChatMessage protected; only a real send settles it",
+    u"la référence du client marque SendChatMessage protégée ; seul un envoi réel tranche",
+    u"в справочнике клиента SendChatMessage помечена как защищённая; проверить может только реальная отправка",
+    u"客户端文档将 SendChatMessage 标为受保护，只有实际发送才能确认",
 ),
 "CMD_RARE_TITLE": (
     u"rare / elite proximity alert:",

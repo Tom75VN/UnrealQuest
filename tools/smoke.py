@@ -355,6 +355,13 @@ UQ_TEST_KNOWN_EVENTS = {
     VARIABLES_LOADED = true,
     BAG_UPDATE = true,
     PLAYER_LEVEL_UP = true,
+    -- Accepted here so the peer path can be exercised at all. On the real
+    -- client this registration is unverified, and the case where it is
+    -- rejected or never fires is covered by the tests that assert silence
+    -- while no peer is known -- which is exactly what that client would be.
+    CHAT_MSG_ADDON = true,
+    PARTY_MEMBERS_CHANGED = true,
+    RAID_ROSTER_UPDATE = true,
     -- Deliberately absent: every QUEST_* name, mirroring a client where no
     -- quest event is verified to exist.
 }
@@ -813,6 +820,18 @@ function GetQuestLogLeaderBoard(objectiveIndex, questIndex)
     return objective[1], objective[2], objective[3]
 end
 
+-- Whether a party member is on the quest at a quest log ROW. Modelled exactly
+-- as the client's reference describes it: true when they share it, and NO
+-- value at all otherwise -- not false -- so a caller cannot tell "no" apart
+-- from "the question does not apply", and must not need to.
+UQ_TEST_PARTY_QUESTS = {}
+function IsUnitOnQuest(index, unit)
+    local shared = UQ_TEST_PARTY_QUESTS[unit]
+    if shared and shared[index] then
+        return true
+    end
+end
+
 function GetQuestLogSelection() return UQ_TEST_SELECTION end
 function SelectQuestLogEntry(index) UQ_TEST_SELECTION = index or 0 end
 
@@ -854,9 +873,17 @@ function UnitLevel(unit) return UQ_TEST_LEVEL end
 UQ_TEST_MOUSEOVER_NAME = nil
 UQ_TEST_TARGET_NAME = nil
 UQ_TEST_PLAYER_UNITS = {}
+-- The other members of the group answer with their own names, because
+-- Quest/QuestSync.lua files a peer under the name the roster reports and drops
+-- anything from a sender the roster does not list.
+UQ_TEST_PARTY_NAMES = { "Peerone", "Peertwo", "Peerthree", "Peerfour" }
 function UnitName(unit)
     if unit == "mouseover" then return UQ_TEST_MOUSEOVER_NAME end
     if unit == "target" then return UQ_TEST_TARGET_NAME end
+    local _, _, partyIndex = string.find(unit or "", "^party(%d+)$")
+    if partyIndex then return UQ_TEST_PARTY_NAMES[tonumber(partyIndex)] end
+    local _, _, raidIndex = string.find(unit or "", "^raid(%d+)$")
+    if raidIndex then return UQ_TEST_PARTY_NAMES[tonumber(raidIndex)] end
     return "Tester"
 end
 function UnitExists(unit) return UnitName(unit) ~= nil end
@@ -903,8 +930,34 @@ function GetRaidTargetIndex(unit)
 end
 
 UQ_TEST_PARTY_SIZE = 0
+UQ_TEST_RAID_SIZE = 0
 function GetNumPartyMembers() return UQ_TEST_PARTY_SIZE end
-function GetNumRaidMembers() return 0 end
+function GetNumRaidMembers() return UQ_TEST_RAID_SIZE end
+
+-- Chat. This client's API reference marks SendChatMessage PROTECTED ("addons
+-- cannot call this"), so a client that simply refuses the call is a real
+-- possibility and not a hypothetical -- UQ_TEST_CHAT_ACCEPT models it.
+UQ_TEST_CHAT = {}
+UQ_TEST_CHAT_ACCEPT = true
+function SendChatMessage(message, chatType)
+    if not UQ_TEST_CHAT_ACCEPT then
+        error("SendChatMessage is protected")
+    end
+    table.insert(UQ_TEST_CHAT, { message = message, chatType = chatType })
+end
+
+-- ...and the route the same page says is NOT protected. Nothing here echoes
+-- the message back: a client that sends happily and never delivers is exactly
+-- the unverified case, and tests inject peer traffic with UQ_TEST_FIRE.
+UQ_TEST_ADDON_MESSAGES = {}
+UQ_TEST_ADDON_ACCEPT = true
+function SendAddonMessage(prefix, message, chatType)
+    if not UQ_TEST_ADDON_ACCEPT then
+        error("SendAddonMessage refused")
+    end
+    table.insert(UQ_TEST_ADDON_MESSAGES,
+        { prefix = prefix, message = message, chatType = chatType })
+end
 -- Measured on this client: both return a third numeric id. Race 1 = Human,
 -- class 8 = Mage, giving bitmask bits 2^(id-1) of 1 and 128.
 UQ_TEST_LEVEL = 12
@@ -1078,6 +1131,12 @@ for i = 1, 8 do
     env["QuestLogTitle" .. i .. "Check"] = check
     row:SetScript("OnClick", function()
         UQ_TEST_LOG_SELECTION = row:GetID()
+        -- Model the reported native link copying the displayed row text.
+        UQ_TEST_LOG_LINK_TEXT = row:GetText()
+        if UQ_TEST_LINK_ONLY then
+            if UQ_TEST_LINK_ERROR then error("simulated native click failure") end
+            return
+        end
         if UQ_TEST_SHIFT_DOWN then
             if IsQuestWatched(row:GetID()) then
                 RemoveQuestWatch(row:GetID())
@@ -1171,9 +1230,12 @@ function QuestLog_Update()
     UQ_TEST_REFRESH_NATIVE_QUEST_UI()
 end
 
-function UQ_TEST_FIRE(eventName, a1)
+function UQ_TEST_FIRE(eventName, a1, a2, a3, a4)
     env.event = eventName
     env.arg1 = a1
+    env.arg2 = a2
+    env.arg3 = a3
+    env.arg4 = a4
     for _, frame in ipairs(frames) do
         if frame.events[eventName] and frame.scripts.OnEvent then
             frame.scripts.OnEvent()
@@ -1181,6 +1243,9 @@ function UQ_TEST_FIRE(eventName, a1)
     end
     env.event = nil
     env.arg1 = nil
+    env.arg2 = nil
+    env.arg3 = nil
+    env.arg4 = nil
 end
 
 function UQ_TEST_TICK(seconds, steps)
@@ -1331,7 +1396,7 @@ for path in toc_files(os.path.join(ADDONS, "unrealQuest", "UnrealQuest.toc")):
 
 check("world data populated", rt.eval("UnrealQuestData ~= nil and UnrealQuestData.quests ~= nil"))
 
-check("namespace created", rt.eval("UnrealQuest ~= nil and UnrealQuest.version == '0.3.1'"))
+check("namespace created", rt.eval("UnrealQuest ~= nil and UnrealQuest.version == '0.3.2'"))
 check("slash command registered", rt.eval("SlashCmdList.UNREALQUEST == nil"),
       "should still be nil before init")
 
@@ -1827,6 +1892,8 @@ rt.execute("""
 """)
 check("translated row text remains a safe identity fallback when its ID is absent", rt.eval(
     "UnrealQuest:GetModule('Tracker'):IsTracked(UQ_TEST_TRANSLATION_QUEST)"))
+check("the native shift-click receives the translated quest name without its level", rt.eval(
+    "UQ_TEST_LOG_LINK_TEXT == UQ_TEST_TRANSLATION_TITLE"))
 rt.execute("""
     UnrealQuest:GetModule('Tracker'):Untrack(UQ_TEST_TRANSLATION_QUEST)
     RemoveQuestWatch(0)
@@ -3071,6 +3138,495 @@ rt.execute("""
 """)
 
 
+print("objective progress in party chat")
+# Two rules meet here. A line is only about a quest another group member is
+# KNOWN to have -- which on this client can only be known from their own addon,
+# over a channel whose delivery is itself unverified -- and the visible chat
+# call it would use is documented as protected. Every silence below is one of
+# those, and they have to stay distinguishable from each other.
+rt.execute("""
+    local announce = UnrealQuest:GetModule('ObjectiveAnnounce')
+    announce.announced = 0
+    announce.sent = 0
+    announce.relayed = 0
+    announce.refused = 0
+    announce.dropped = 0
+    announce.unshared = 0
+    announce.received = 0
+    announce.consecutiveRefusals = 0
+    announce.blocked = false
+    announce.queue = {}
+    local sync = UnrealQuest:GetModule('QuestSync')
+    sync:ForgetAllPeers()
+    -- Party reports are on by default, so this run has already advertised
+    -- during an earlier section and is inside the floor between two
+    -- broadcasts. Clear the schedule so this section starts from silence.
+    sync.lastAdvertise = 0
+    sync.nextAdvertise = 0
+    UQ_TEST_CHAT = {}
+    UQ_TEST_ADDON_MESSAGES = {}
+    UQ_TEST_CHAT_ACCEPT = true
+    UQ_TEST_ADDON_ACCEPT = true
+    UQ_TEST_PARTY_SIZE = 3
+    SlashCmdList.UNREALQUEST('announce on')
+    UnrealQuest:GetModule('QuestState'):Scan()
+    UQ_TEST_TICK(0.5, 8)
+    UQ_TEST_CHAT = {}
+""")
+
+check("the player's own quest set is offered to the group", rt.eval("""(function()
+    local index = 1
+    local total = table.getn(UQ_TEST_ADDON_MESSAGES)
+    while index <= total do
+        local sent = UQ_TEST_ADDON_MESSAGES[index]
+        if sent.prefix == "UQuest" and string.find(sent.message, "^S:")
+            and sent.chatType == "PARTY" then
+            return true
+        end
+        index = index + 1
+    end
+    return false
+end)()"""), "a peer cannot know what we are doing unless we say so")
+
+# Nobody is known to share anything yet, so progress stays private -- this is
+# also the shape of a client where CHAT_MSG_ADDON never fires at all.
+rt.execute("""
+    UQ_TEST_LOG[2][7][1][1] = "Kobold Vermin slain: 5/10"
+    UQ_TEST_TICK(0.5, 6)
+""")
+check("progress is not announced while nobody is known to share the quest",
+      rt.eval("""(function()
+    local status = UnrealQuest:GetModule('ObjectiveAnnounce'):GetStatus()
+    return table.getn(UQ_TEST_CHAT) == 0 and status.unshared >= 1
+end)()"""), "an unknown group member is not a sharing one")
+
+# The client can answer this itself, for a party member who has never heard of
+# this addon: IsUnitOnQuest is asked about the quest log ROW, and one true is
+# the whole permission.
+rt.execute("""
+    UQ_TEST_PARTY_QUESTS.party1 = { [2] = true }
+    UQ_TEST_LOG[2][7][1][1] = "Kobold Vermin slain: 6/10"
+    UQ_TEST_TICK(0.5, 6)
+""")
+check("the client's own party check authorises the line on its own", rt.eval("""(function()
+    local last = UQ_TEST_CHAT[table.getn(UQ_TEST_CHAT)]
+    return table.getn(UQ_TEST_CHAT) == 1 and last ~= nil
+        and string.find(last.message, "6/10", 1, true) ~= nil
+end)()"""), "IsUnitOnQuest covers party members who do not run the addon")
+
+rt.execute("""
+    UQ_TEST_PARTY_QUESTS.party1 = nil
+    UQ_TEST_CHAT = {}
+    UQ_TEST_LOG[2][7][1][1] = "Kobold Vermin slain: 7/10"
+    UQ_TEST_TICK(0.5, 6)
+""")
+check("and its absence closes the gate again", rt.eval("table.getn(UQ_TEST_CHAT) == 0"))
+
+# A group member's addon says what it is doing. Its quest set is what makes the
+# next step sayable, and only that step.
+rt.execute("""
+    local sync = UnrealQuest:GetModule('QuestSync')
+    local quest = UnrealQuest:GetModule('QuestState'):GetQuestByTitle('Kobold Camp Cleanup')
+    UQ_TEST_PEER_TOKENS = table.concat(sync:QuestTokens(quest), ",")
+    UQ_TEST_FIRE('CHAT_MSG_ADDON', 'UQuest', 'S:' .. UQ_TEST_PEER_TOKENS, 'PARTY', 'Peerone')
+    UQ_TEST_LOG[2][7][1][1] = "Kobold Vermin slain: 8/10"
+    UQ_TEST_TICK(0.5, 6)
+""")
+check("a step is announced once the group is known to share the quest", rt.eval("""(function()
+    if table.getn(UQ_TEST_CHAT) ~= 1 then return false end
+    local line = UQ_TEST_CHAT[1]
+    -- The objective's own name and its counter, tagged as the addon's -- and
+    -- NOT the quest title, which everyone being told is already on.
+    return line.chatType == "PARTY"
+        and string.find(line.message, "^%[UQ%]") ~= nil
+        and string.find(line.message, "Kobold Vermin", 1, true) ~= nil
+        and string.find(line.message, "8/10", 1, true) ~= nil
+        and string.find(line.message, "Kobold Camp Cleanup", 1, true) == nil
+end)()"""), "the objective's own name and its counter, tagged, with no quest title")
+
+rt.execute("UQ_TEST_TICK(0.5, 8)")
+check("and not once per poll after that", rt.eval("table.getn(UQ_TEST_CHAT) == 1"))
+
+# A counter going DOWN is an item handed in or destroyed. Nobody's progress.
+rt.execute("""
+    UQ_TEST_LOG[2][7][1][1] = "Kobold Vermin slain: 2/10"
+    UQ_TEST_TICK(0.5, 6)
+""")
+check("a counter going backwards is not progress and is not announced",
+      rt.eval("table.getn(UQ_TEST_CHAT) == 1"))
+
+# A peer doing OTHER quests is not a peer doing this one.
+rt.execute("""
+    UQ_TEST_FIRE('CHAT_MSG_ADDON', 'UQuest', 'S:q999999', 'PARTY', 'Peerone')
+    UQ_TEST_LOG[2][7][1][1] = "Kobold Vermin slain: 9/10"
+    UQ_TEST_TICK(0.5, 6)
+""")
+check("a member on different quests does not make this one sayable",
+      rt.eval("table.getn(UQ_TEST_CHAT) == 1"),
+      "the rule is the same quest, not the same group")
+
+# A sender the roster does not list is not a group member, whatever the message
+# says it is.
+rt.execute("""
+    UQ_TEST_FIRE('CHAT_MSG_ADDON', 'UQuest', 'S:' .. UQ_TEST_PEER_TOKENS, 'PARTY', 'Stranger')
+    UQ_TEST_LOG[2][7][1][1] = "Kobold Vermin slain: 10/10"
+    UQ_TEST_TICK(0.5, 6)
+""")
+check("a sender outside the group is ignored", rt.eval("""(function()
+    local status = UnrealQuest:GetModule('QuestSync'):GetStatus()
+    return table.getn(UQ_TEST_CHAT) == 1 and status.peerCount == 1
+end)()"""))
+
+# Back to a sharing peer for the delivery tests.
+rt.execute("""
+    UQ_TEST_FIRE('CHAT_MSG_ADDON', 'UQuest', 'S:' .. UQ_TEST_PEER_TOKENS, 'PARTY', 'Peerone')
+""")
+
+# Solo there is no group channel, so there is nobody to tell -- and no peer
+# either, since the roster is empty.
+rt.execute("""
+    UQ_TEST_SENT_BEFORE = UnrealQuest:GetModule('ObjectiveAnnounce').sent
+    UQ_TEST_LINES_BEFORE = table.getn(UQ_TEST_CHAT)
+    UQ_TEST_PARTY_SIZE = 0
+    UQ_TEST_LOG[2][7][1][1] = "Kobold Vermin slain: 11/20"
+    UQ_TEST_TICK(0.5, 6)
+""")
+check("nothing is said while the player is alone", rt.eval("""(function()
+    local announce = UnrealQuest:GetModule('ObjectiveAnnounce')
+    return table.getn(UQ_TEST_CHAT) == UQ_TEST_LINES_BEFORE
+        and announce.sent == UQ_TEST_SENT_BEFORE
+        and table.getn(announce.queue) == 0
+end)()"""), "no group channel exists, and no other channel is a substitute")
+
+# In a raid "PARTY" is not the group's channel, so the token has to follow.
+rt.execute("""
+    UQ_TEST_RAID_SIZE = 12
+    -- The roster pass runs before the peer speaks, the way a real roster
+    -- change does: PARTY_MEMBERS_CHANGED wakes it, and the member's own
+    -- broadcast follows.
+    UQ_TEST_TICK(0.5, 6)
+    UQ_TEST_FIRE('CHAT_MSG_ADDON', 'UQuest', 'S:' .. UQ_TEST_PEER_TOKENS, 'RAID', 'Peerone')
+    UQ_TEST_LOG[2][7][1][1] = "Kobold Vermin slain: 12/20"
+    UQ_TEST_TICK(0.5, 6)
+""")
+check("in a raid the line goes to the raid channel", rt.eval("""(function()
+    local last = UQ_TEST_CHAT[table.getn(UQ_TEST_CHAT)]
+    return last ~= nil and last.chatType == "RAID"
+        and string.find(last.message, "12/20", 1, true) ~= nil
+end)()"""))
+rt.execute("UQ_TEST_RAID_SIZE = 0; UQ_TEST_PARTY_SIZE = 3")
+
+# The case the whole module is shaped around: the client refusing the visible
+# call, exactly as its API reference says it will. The line must not be lost --
+# it goes to the group members who could have read it anyway.
+rt.execute("""
+    UQ_TEST_CHAT_ACCEPT = false
+    UQ_TEST_ADDON_MESSAGES = {}
+    for step = 1, 6 do
+        UQ_TEST_FIRE('CHAT_MSG_ADDON', 'UQuest', 'S:' .. UQ_TEST_PEER_TOKENS, 'PARTY', 'Peerone')
+        UQ_TEST_LOG[2][7][1][1] = "Kobold Vermin slain: " .. (step + 20) .. "/30"
+        UQ_TEST_TICK(0.5, 4)
+    end
+""")
+check("a client that refuses the visible line is detected and given up on", rt.eval("""(function()
+    local status = UnrealQuest:GetModule('ObjectiveAnnounce'):GetStatus()
+    return status.blocked == true and status.refused <= 3
+end)()"""), "SendChatMessage is documented protected; retrying it forever is not an option")
+
+check("and the progress goes over the addon channel instead", rt.eval("""(function()
+    local status = UnrealQuest:GetModule('ObjectiveAnnounce'):GetStatus()
+    local relayed = false
+    local index = 1
+    local total = table.getn(UQ_TEST_ADDON_MESSAGES)
+    while index <= total do
+        if string.find(UQ_TEST_ADDON_MESSAGES[index].message, "^P:") then
+            relayed = true
+        end
+        index = index + 1
+    end
+    return relayed and status.relayed > 0
+end)()"""), "the members who could have read the chat line all run the addon")
+
+# Giving up on the visible line must not be giving up on the report: every
+# later step has to keep going out over the fallback.
+rt.execute("""
+    UQ_TEST_ADDON_MESSAGES = {}
+    UQ_TEST_LOG[2][7][1][1] = "Kobold Vermin slain: 28/30"
+    UQ_TEST_TICK(0.5, 6)
+""")
+check("and keeps using it for every step after that", rt.eval("""(function()
+    local index = 1
+    local total = table.getn(UQ_TEST_ADDON_MESSAGES)
+    while index <= total do
+        if string.find(UQ_TEST_ADDON_MESSAGES[index].message, "28/30", 1, true) then
+            return true
+        end
+        index = index + 1
+    end
+    return false
+end)()"""), "blocked means the visible line is off the table, not the feature")
+
+# The receiving side of that same relay.
+rt.execute("""
+    UQ_TEST_MESSAGES_BEFORE = table.getn(UQ_TEST_MESSAGES)
+    UQ_TEST_FIRE('CHAT_MSG_ADDON', 'UQuest',
+        'P:' .. string.gsub(UQ_TEST_PEER_TOKENS, ",", ".") .. ':Kobold Camp Cleanup - Kobold Vermin: 3/10',
+        'PARTY', 'Peerone')
+""")
+check("a peer's line is printed under their name", rt.eval("""(function()
+    local last = UQ_TEST_MESSAGES[table.getn(UQ_TEST_MESSAGES)]
+    return last ~= nil and string.find(last, "Peerone", 1, true) ~= nil
+        and string.find(last, "3/10", 1, true) ~= nil
+end)()"""))
+
+rt.execute("""
+    UQ_TEST_MESSAGES_BEFORE = table.getn(UQ_TEST_MESSAGES)
+    UQ_TEST_FIRE('CHAT_MSG_ADDON', 'UQuest', 'P:q999999:Some quest - Something: 1/2',
+        'PARTY', 'Peerone')
+""")
+check("a peer's line about a quest we do not have is not printed",
+      rt.eval("table.getn(UQ_TEST_MESSAGES) == UQ_TEST_MESSAGES_BEFORE"),
+      "the sender's rule, checked again against a set that cannot be stale")
+
+# A peer's text is another player's words and reaches a chat frame.
+rt.execute("""
+    UQ_TEST_FIRE('CHAT_MSG_ADDON', 'UQuest',
+        'P:' .. string.gsub(UQ_TEST_PEER_TOKENS, ",", ".") ..
+        ':|cffff0000|Hitem:1:2:3:4|hFAKE|h|r 4/10',
+        'PARTY', 'Peerone')
+""")
+check("peer text cannot carry client markup into the chat frame", rt.eval("""(function()
+    local last = UQ_TEST_MESSAGES[table.getn(UQ_TEST_MESSAGES)]
+    -- The addon's own prefix is coloured, so the test is that none of the
+    -- PEER's escapes survived: no hyperlink, no colour, no texture.
+    return last ~= nil and string.find(last, "|H", 1, true) == nil
+        and string.find(last, "|cffff0000", 1, true) == nil
+        and string.find(last, "|h", 1, true) == nil
+        and string.find(last, "4/10", 1, true) ~= nil
+end)()"""), "an addon payload is untrusted input")
+
+rt.execute("""
+    SlashCmdList.UNREALQUEST('announce off')
+    local announce = UnrealQuest:GetModule('ObjectiveAnnounce')
+    announce.blocked = false
+    announce.queue = {}
+    UnrealQuest:GetModule('QuestSync'):ForgetAllPeers()
+    UQ_TEST_CHAT_ACCEPT = true
+    UQ_TEST_PARTY_SIZE = 0
+    UQ_TEST_CHAT = {}
+    UQ_TEST_ADDON_MESSAGES = {}
+    UQ_TEST_LOG[2][7][1][1] = "Kobold Vermin slain: 4/10"
+    UnrealQuest:GetModule('QuestState'):Scan()
+    UQ_TEST_TICK(0.5, 4)
+""")
+check("the option is off by default and the switch turns it back off",
+      rt.eval("UnrealQuest:GetModule('ObjectiveAnnounce'):IsEnabled() == false"))
+check("and with it off nothing is offered to the group either",
+      rt.eval("table.getn(UQ_TEST_ADDON_MESSAGES) == 0"),
+      "opting out is symmetric: no reporting, no advertising, no listening")
+
+
+print("completed objectives only in party chat")
+check("completion filtering is opt-in",
+      rt.eval("UnrealQuestDB.announceCompletedQuestsOnly == false"))
+rt.execute("""
+    UQ_TEST_COMPLETION_ROW = table.getn(UQ_TEST_LOG) + 1
+    UQ_TEST_LOG[UQ_TEST_COMPLETION_ROW] = {
+        'Protect the Frontier', 10, nil, nil, nil, nil,
+        { { 'Prowler slain: 6/8', 'monster', nil },
+          { 'Young Forest Bear slain: 3/5', 'monster', nil } }
+    }
+    UQ_TEST_PARTY_SIZE = 1
+    UQ_TEST_PARTY_QUESTS.party1 = { [UQ_TEST_COMPLETION_ROW] = true }
+    SlashCmdList.UNREALQUEST('announce on')
+    UQ_TEST_TICK(0.5, 4)
+    UQ_TEST_CHAT = {}
+    -- Queue a normal step without letting the send job run yet.
+    UQ_TEST_LOG[UQ_TEST_COMPLETION_ROW][7][1][1] = 'Prowler slain: 7/8'
+    UnrealQuest:GetModule('QuestState'):RefreshObjectiveSlice()
+""")
+check("the progress message is pending before the filter changes",
+      rt.eval("table.getn(UnrealQuest:GetModule('ObjectiveAnnounce').queue) == 1"))
+rt.execute("""
+    UnrealQuest:GetModule('Config'):Set('announceCompletedQuestsOnly', true)
+    UQ_TEST_TICK(0.5, 4)
+    UQ_TEST_LOG[UQ_TEST_COMPLETION_ROW][7][2][1] = 'Young Forest Bear slain: 4/5'
+    UQ_TEST_TICK(0.5, 4)
+""")
+check("completion filtering silences queued and new partial progress",
+      rt.eval("table.getn(UQ_TEST_CHAT) == 0"))
+rt.execute("""
+    UQ_TEST_LOG[UQ_TEST_COMPLETION_ROW][7][1][1] = 'Prowler slain: 8/8'
+    UQ_TEST_TICK(0.5, 8)
+""")
+check("Prowler 8/8 is announced once while the bears are still unfinished",
+      rt.eval("""(function()
+    return table.getn(UQ_TEST_CHAT) == 1
+        and UQ_TEST_CHAT[1].chatType == 'PARTY'
+        and UQ_TEST_CHAT[1].message == UnrealQuest.L('ANNOUNCE_OBJECTIVE_LINE', 'Prowler', '8', '8')
+end)()"""))
+rt.execute("""
+    UQ_TEST_LOG[UQ_TEST_COMPLETION_ROW][7][2][1] = 'Young Forest Bear slain: 5/5'
+    UQ_TEST_TICK(0.5, 8)
+    -- The quest-level completion and delayed objective flags add no messages.
+    UQ_TEST_LOG[UQ_TEST_COMPLETION_ROW][6] = 1
+    UQ_TEST_LOG[UQ_TEST_COMPLETION_ROW][7][1][3] = 1
+    UQ_TEST_LOG[UQ_TEST_COMPLETION_ROW][7][2][3] = 1
+    UQ_TEST_TICK(0.5, 8)
+""")
+check("Bear 5/5 gets its own message, with no duplicate or whole-quest message",
+      rt.eval("""(function()
+    return table.getn(UQ_TEST_CHAT) == 2
+        and UQ_TEST_CHAT[2].chatType == 'PARTY'
+        and UQ_TEST_CHAT[2].message == UnrealQuest.L('ANNOUNCE_OBJECTIVE_LINE', 'Young Forest Bear', '5', '5')
+end)()"""))
+rt.execute("""
+    UQ_TEST_CHAT = {}
+    UQ_TEST_LOG[UQ_TEST_COMPLETION_ROW][1] = 'Already Completed Test'
+    UQ_TEST_TICK(0.5, 4)
+    UnrealQuest:GetModule('Config'):Set('announceCompletedQuestsOnly', false)
+    UQ_TEST_TICK(0.5, 2)
+    UnrealQuest:GetModule('Config'):Set('announceCompletedQuestsOnly', true)
+    UQ_TEST_TICK(0.5, 4)
+""")
+check("already-complete objectives and toggling the filter produce no old completion",
+      rt.eval("table.getn(UQ_TEST_CHAT) == 0"))
+rt.execute("""
+    UQ_TEST_LOG[UQ_TEST_COMPLETION_ROW][1] = 'Simultaneous Completion Test'
+    UQ_TEST_LOG[UQ_TEST_COMPLETION_ROW][6] = nil
+    UQ_TEST_LOG[UQ_TEST_COMPLETION_ROW][7] = {
+        { 'Prowler slain: 7/8', 'monster', nil },
+        { 'Young Forest Bear slain: 4/5', 'monster', nil }
+    }
+    UQ_TEST_TICK(0.5, 4)
+    UQ_TEST_LOG[UQ_TEST_COMPLETION_ROW][7][1][1] = 'Prowler slain: 8/8'
+    UQ_TEST_LOG[UQ_TEST_COMPLETION_ROW][7][2][1] = 'Young Forest Bear slain: 5/5'
+    UQ_TEST_TICK(0.5, 8)
+""")
+check("two objectives finishing in one scan are both announced separately",
+      rt.eval("table.getn(UQ_TEST_CHAT) == 2"))
+
+# Ordinary items can arrive in stacks larger than the quest still needs.
+# Exercise both announcement modes through the real quest refresh and queue.
+for completion_only in (False, True):
+    G.UQ_TEST_CAP_COMPLETION_ONLY = completion_only
+    rt.execute("""
+        UnrealQuest:GetModule('Config'):Set('announceCompletedQuestsOnly', UQ_TEST_CAP_COMPLETION_ONLY)
+        UQ_TEST_CHAT = {}
+        UQ_TEST_LOG[UQ_TEST_COMPLETION_ROW][1] = 'Surplus Item Test'
+        UQ_TEST_LOG[UQ_TEST_COMPLETION_ROW][7] = { { 'Spare Parts: 2/3', 'item', nil } }
+        UQ_TEST_TICK(0.5, 4)
+        UQ_TEST_LOG[UQ_TEST_COMPLETION_ROW][7][1][1] = 'Spare Parts: 4/3'
+        UQ_TEST_TICK(0.5, 4)
+    """)
+    check("surplus collection is displayed and announced as 3/3 (completion only=%s)" % completion_only,
+          rt.eval("""(function()
+        local quest = UnrealQuest:GetModule('QuestState'):GetQuestByTitle('Surplus Item Test')
+        local objective = quest.objectives[1]
+        return objective.have == 3 and objective.need == 3 and objective.text == 'Spare Parts: 3/3'
+            and table.getn(UQ_TEST_CHAT) == 1
+            and UQ_TEST_CHAT[1].message == UnrealQuest.L('ANNOUNCE_OBJECTIVE_LINE', 'Spare Parts', '3', '3')
+    end)()"""))
+    rt.execute("""
+        UQ_TEST_CAP_PROGRESS_UPDATES = UnrealQuest:GetModule('WorldMapPins').progressOnlyUpdates
+        UQ_TEST_LOG[UQ_TEST_COMPLETION_ROW][7][1][1] = 'Spare Parts: 12/3'
+        UQ_TEST_TICK(0.5, 4)
+    """)
+    check("extra pickups do not announce or trigger another progress update",
+          rt.eval("table.getn(UQ_TEST_CHAT) == 1 and UnrealQuest:GetModule('WorldMapPins').progressOnlyUpdates "
+                  "== UQ_TEST_CAP_PROGRESS_UPDATES"))
+    rt.execute("""
+        UQ_TEST_LOG[UQ_TEST_COMPLETION_ROW][7][1][1] = 'Spare Parts: 2/3'
+        UQ_TEST_TICK(0.5, 4)
+    """)
+    check("falling below the requirement restores the real remaining progress",
+          rt.eval("""(function()
+        local objective = UnrealQuest:GetModule('QuestState'):GetQuestByTitle('Surplus Item Test').objectives[1]
+        return objective.have == 2 and objective.text == 'Spare Parts: 2/3'
+            and table.getn(UQ_TEST_CHAT) == 1
+    end)()"""))
+rt.execute("""
+    UQ_TEST_LOG[UQ_TEST_COMPLETION_ROW][7][1][1] = 'Spare Parts: 12 / 3 collected'
+    UQ_TEST_TICK(0.5, 4)
+""")
+check("capping preserves the objective name, slash spacing and trailing text",
+      rt.eval("UnrealQuest:GetModule('QuestState'):GetQuestByTitle('Surplus Item Test').objectives[1].text "
+              "== 'Spare Parts: 3 / 3 collected'"))
+
+rt.execute("""
+    UQ_TEST_CHAT = {}
+    UQ_TEST_LOG[UQ_TEST_COMPLETION_ROW][1] = 'Exploration Completion Test'
+    UQ_TEST_LOG[UQ_TEST_COMPLETION_ROW][7] = { { 'Explore the camp', 'event', nil } }
+    UQ_TEST_TICK(0.5, 4)
+    UQ_TEST_LOG[UQ_TEST_COMPLETION_ROW][7][1][3] = 1
+    UQ_TEST_TICK(0.5, 8)
+""")
+check("an objective without a counter announces its finished transition once",
+      rt.eval("table.getn(UQ_TEST_CHAT) == 1 and UQ_TEST_CHAT[1].message "
+              "== UnrealQuest.L('ANNOUNCE_OBJECTIVE_DONE', 'Explore the camp')"))
+rt.execute("""
+    UQ_TEST_CHAT = {}
+    UQ_TEST_LOG[UQ_TEST_COMPLETION_ROW][7][1][3] = nil
+    UQ_TEST_PARTY_QUESTS.party1 = nil
+    UQ_TEST_TICK(0.5, 4)
+    UQ_TEST_LOG[UQ_TEST_COMPLETION_ROW][7][1][3] = 1
+    UQ_TEST_TICK(0.5, 4)
+""")
+check("completion reports do not require a known shared quest",
+      rt.eval("table.getn(UQ_TEST_CHAT) == 1"))
+rt.execute("""
+    UQ_TEST_CHAT = {}
+    UQ_TEST_LOG[UQ_TEST_COMPLETION_ROW][1] = 'Westfall Stew'
+    UQ_TEST_LOG[UQ_TEST_COMPLETION_ROW][7] = {
+        { 'Stringy Vulture Meat: 1/3', 'Item', nil },
+        { 'Murloc Eye: 0/3', 'Item', nil },
+        { 'Goretusk Snout: 1/3', 'Item', nil },
+        { 'Okra: 2/3', 'Item', nil }
+    }
+    UnrealQuest:GetModule('QuestSync'):ForgetAllPeers()
+    UQ_TEST_TICK(0.5, 4)
+    UQ_TEST_LOG[UQ_TEST_COMPLETION_ROW][7][4] = { 'Okra: 3/3', 'Item', 1 }
+    UQ_TEST_TICK(0.5, 8)
+""")
+check("Westfall Stew sends Okra 3/3 with no detected sharing member or addon peer",
+      rt.eval("""(function()
+    return table.getn(UQ_TEST_CHAT) == 1 and UQ_TEST_CHAT[1].chatType == 'PARTY'
+        and UQ_TEST_CHAT[1].message == UnrealQuest.L('ANNOUNCE_OBJECTIVE_LINE', 'Okra', '3', '3')
+end)()"""))
+rt.execute("""
+    UQ_TEST_CHAT = {}
+    UQ_TEST_LOG[UQ_TEST_COMPLETION_ROW][7][4] = { 'Okra: 2/3', 'Item', nil }
+    UQ_TEST_TICK(0.5, 4)
+    UQ_TEST_PARTY_SIZE = 0
+    UQ_TEST_LOG[UQ_TEST_COMPLETION_ROW][7][4] = { 'Okra: 3/3', 'Item', 1 }
+    UQ_TEST_TICK(0.5, 4)
+    UQ_TEST_PARTY_SIZE = 1
+    UQ_TEST_TICK(0.5, 4)
+""")
+check("solo completions stay silent and are not replayed when joining a party",
+      rt.eval("table.getn(UQ_TEST_CHAT) == 0"))
+rt.execute("""
+    UQ_TEST_PARTY_QUESTS.party1 = { [UQ_TEST_COMPLETION_ROW] = true }
+    SlashCmdList.UNREALQUEST('announce off')
+    UQ_TEST_LOG[UQ_TEST_COMPLETION_ROW][7][4] = { 'Okra: 2/3', 'Item', nil }
+    UQ_TEST_TICK(0.5, 4)
+    UQ_TEST_LOG[UQ_TEST_COMPLETION_ROW][7][4] = { 'Okra: 3/3', 'Item', 1 }
+    UQ_TEST_TICK(0.5, 4)
+    SlashCmdList.UNREALQUEST('announce on')
+    UQ_TEST_TICK(0.5, 4)
+""")
+check("the master switch suppresses completion without replaying it on re-enable",
+      rt.eval("table.getn(UQ_TEST_CHAT) == 0"))
+rt.execute("""
+    SlashCmdList.UNREALQUEST('announce off')
+    UnrealQuest:GetModule('Config'):Set('announceCompletedQuestsOnly', false)
+    UQ_TEST_LOG[UQ_TEST_COMPLETION_ROW] = nil
+    UQ_TEST_PARTY_QUESTS.party1 = nil
+    UQ_TEST_PARTY_SIZE = 0
+    UQ_TEST_TICK(0.5, 4)
+""")
+
+
 print("minimap indoors")
 # Indoors the minimap covers fewer yards at the same zoom step and this client
 # exposes no way to learn how many, so the pins are withheld rather than drawn
@@ -3332,13 +3888,14 @@ check("minimap draws a dot for every quest-creature spawn", rt.eval("""(function
     pins:Project(0.42, 0.65, 3470, 2314, 466.6, 140, 140)
     local dot = pins.objectivePool[1]
     local valid = pins.objectiveVisible == 1 and dot ~= nil
-        and dot.shown == true and dot.frameType == 'Frame'
+        and dot.shown == true and dot.frameType == 'Button'
         and dot.frameLevel >= 120 and dot.width == 10.8
         and dot.parent == Minimap
         and dot.unrealQuestTexture ~= nil
         and string.find(dot.unrealQuestTexture.path, 'QuestDot') ~= nil
         and dot.mouseEnabled == true
         and dot.scripts.OnEnter ~= nil and dot.scripts.OnLeave ~= nil
+        and dot.scripts.OnClick ~= nil
     pins.dirty = true
     pins:Refresh()
     return valid
@@ -3382,6 +3939,21 @@ check("hovering a minimap quest dot opens its live quest tooltip", rt.eval("""(f
     return GameTooltip.shown == true and GameTooltip.owner == pin
         and GameTooltip.text == quest.title and sawObjective
 end)()"""))
+# The gesture this surface shares with the world map: the same pin, clicked,
+# means the same thing. Driven through the pin's own OnClick so the wiring
+# installed by Client.SetMinimapPinHandlers is what is exercised, not a direct
+# call to the handler behind it.
+check("clicking a minimap quest dot follows its quest", rt.eval("""(function()
+    local pin = UQ_TEST_MINIMAP_TOOLTIP_PIN
+    local quest = pin and pin.unrealQuestObjectiveQuests[1]
+    local main = UnrealQuest:GetModule('MainQuest')
+    if not pin or not quest or not main then return false end
+    main:Set(nil)
+    pin:GetScript('OnClick')()
+    return main:Get() == quest.titleKey
+end)()"""))
+check("that click is counted, so a dead one can be told from a lost one",
+      rt.eval("UnrealQuest:GetModule('MinimapPins').clickCount >= 1"))
 rt.execute("""
     UQ_TEST_MINIMAP_TOOLTIP_PIN:GetScript('OnLeave')()
     local pins = UnrealQuest:GetModule('MinimapPins')
@@ -3419,6 +3991,64 @@ check("hovering a minimap dot fades the dots of another quest", rt.eval("""(func
     pins.dirty = true
     pins:Refresh()
     return faded and restored
+end)()"""))
+# The world map's answer to "which of these is the quest I am following",
+# on the surface the player actually walks by. Same companion texture, same
+# 4px of extra diameter and the same gold hue, so the mark reads as one quest
+# on two maps rather than as two conventions -- in the lower-contrast tint the
+# minimap's much smaller stroke needs over moving terrain.
+check("the followed quest's minimap dots gain a softened gold rim", rt.eval("""(function()
+    local pins = UnrealQuest:GetModule('MinimapPins')
+    local state = UnrealQuest:GetModule('QuestState')
+    local main = UnrealQuest:GetModule('MainQuest')
+    local first = state:GetQuestByTitle('Kobold Camp Cleanup')
+    local second = state:GetQuestByTitle("Sharptalon's Claw")
+    if not first or not second or not main then return false end
+    local restore = main:Get()
+    pins.targets = {
+        { kind = 'objective', yardX = 0.42 * 3470, yardY = 0.65 * 2314,
+          complete = false, quest = first, quests = { first } },
+        { kind = 'objective', yardX = 0.425 * 3470, yardY = 0.652 * 2314,
+          complete = false, quest = second, quests = { second } },
+    }
+    main:Set(first.titleKey)
+    pins:Project(0.42, 0.65, 3470, 2314, 466.6, 140, 140)
+    local dot = pins.objectivePool[1]
+    local border = pins.objectiveBorderPool[1]
+    if pins.objectiveVisible ~= 2 or pins.objectiveBorderVisible ~= 1
+        or not dot or not border then
+        if restore then main:Set(restore) end
+        return false
+    end
+    local vertex = border.unrealQuestTexture.vertex
+    local rimmed = border.unrealQuestTexture.path
+            == UnrealQuest.Client.FOLLOWED_QUEST_DOT_BORDER_TEXTURE
+        and vertex[1] == 0.85 and vertex[2] == 0.72 and vertex[3] == 0.28
+        and border.width == dot.width + 4 and border.height == dot.height + 4
+        and border.mouseEnabled == false and border.shown == true
+        -- Behind the dot it frames, and on the dot it frames.
+        and border.frameLevel < dot.frameLevel
+        and border.unrealQuestMinimapX == dot.unrealQuestMinimapX
+        and border.unrealQuestMinimapY == dot.unrealQuestMinimapY
+    -- Following the other quest moves the rim rather than adding a second
+    -- one, and unfollowing takes it away instead of leaving it on a dot that
+    -- is no longer the answer to anything.
+    main:Set(second.titleKey)
+    pins:Project(0.42, 0.65, 3470, 2314, 466.6, 140, 140)
+    local moved = pins.objectiveBorderVisible == 1
+        and pins.objectiveBorderPool[1].unrealQuestMinimapX
+            == pins.objectivePool[2].unrealQuestMinimapX
+        and pins.objectiveBorderPool[1].unrealQuestMinimapY
+            == pins.objectivePool[2].unrealQuestMinimapY
+    main:Clear('minimap rim test')
+    pins:Project(0.42, 0.65, 3470, 2314, 466.6, 140, 140)
+    local cleared = pins.objectiveBorderVisible == 0
+        and pins.objectiveBorderPool[1].shown == false
+        and pins.objectiveVisible == 2
+    if restore then main:Set(restore) end
+    pins.dirty = true
+    pins:Refresh()
+    return rimmed and moved and cleared
 end)()"""))
 check("minimap objective dots use raw quest-creature positions", rt.eval("""(function()
     local pins = UnrealQuest:GetModule('MinimapPins')
@@ -7071,6 +7701,50 @@ check("the client's own quest titles stay undecorated for matching", rt.eval("""
     local state = UnrealQuest:GetModule('QuestState')
     return string.find(title, '%[') == nil and level > 0
         and state:GetQuestByTitle(title) ~= nil
+end)()"""))
+check("chat linking strips party and level prefixes while preserving quest-log rows", rt.eval("""(function()
+    local levels = UnrealQuest:GetModule('QuestLogLevels')
+    UQ_TEST_PARTY_SIZE = 1
+    UQ_TEST_PARTY_QUESTS.party1 = { [2] = true }
+    UQ_TEST_LINK_ONLY = true
+    local passed = true
+    for offset = 0, 1 do
+        UQ_TEST_LOG_OFFSET = offset
+        UQ_TEST_LOG_STAMPS_IDS = false
+        UQ_TEST_REFRESH_NATIVE_QUEST_UI()
+        levels:Refresh()
+        local row = getglobal('QuestLogTitle' .. (2 - offset))
+        local decorated = row:GetText()
+        passed = passed and decorated == '  |cff888888[1]|r [1] Tracked One'
+        -- Both a link-only return and a native error must restore the row.
+        -- Two Shift-clicks also leave the tracked set as it started.
+        UQ_TEST_SHIFT_DOWN = true
+        for attempt = 1, 2 do
+            UQ_TEST_LINK_ERROR = attempt == 2
+            row:GetScript('OnClick')()
+            passed = passed and UQ_TEST_LOG_LINK_TEXT == 'Tracked One'
+                and row:GetText() == decorated
+        end
+        UQ_TEST_LINK_ERROR = false
+        UQ_TEST_SHIFT_DOWN = false
+        row:GetScript('OnClick')()
+        passed = passed and UQ_TEST_LOG_LINK_TEXT == decorated
+        if offset == 0 then
+            UQ_TEST_SHIFT_DOWN = true
+            QuestLogTitle1:GetScript('OnClick')()
+            UQ_TEST_SHIFT_DOWN = false
+            passed = passed and UQ_TEST_LOG_LINK_TEXT == 'Test Zone'
+                and QuestLogTitle1:GetText() == 'Test Zone'
+        end
+    end
+    UQ_TEST_LINK_ONLY = false
+    UQ_TEST_PARTY_SIZE = 0
+    UQ_TEST_PARTY_QUESTS.party1 = nil
+    UQ_TEST_LOG_OFFSET = 0
+    UQ_TEST_LOG_STAMPS_IDS = true
+    UQ_TEST_REFRESH_NATIVE_QUEST_UI()
+    levels:Refresh()
+    return passed
 end)()"""))
 rt.execute("UQ_TEST_REFRESH_NATIVE_QUEST_UI()")
 check("sixth tracked quest is visible to the custom tracker", rt.eval("""(function()
@@ -11803,6 +12477,31 @@ check("the built page fits the content box both hosts hand it",
 # that it reached the hosted page and that clicking it writes the store.
 check("the cluster-tooltip option is on the page",
       rt.eval("getglobal('UnrealQuestSettingsMapClusterTooltips') ~= nil"))
+# Same two-line contract, and it rides in the right-hand column of the clamp
+# row -- so this also asserts a new option can be added to a page that is
+# already within a pixel of the fixed content box.
+check("the party-chat objective option is on the page",
+      rt.eval("getglobal('UnrealQuestSettingsAnnounceObjectivesParty') ~= nil"))
+check("and shares the clamp option's row rather than adding one", rt.eval("""(function()
+    local announce = getglobal('UnrealQuestSettingsAnnounceObjectivesParty')
+    local clamp = getglobal('UnrealQuestSettingsMinimapPinsClampEdge')
+    if not announce or not clamp or not announce.point or not clamp.point then
+        return false
+    end
+    -- Second column, same line, with the completion filter beneath it.
+    return announce.point[4] == 300 and clamp.point[4] == 0
+        and announce.point[5] == clamp.point[5]
+end)()"""), "the page has no vertical room left to spend on a row of its own")
+check("the completion filter sits beneath party reporting", rt.eval("""(function()
+    local report = UnrealQuestSettingsAnnounceObjectivesParty
+    local filter = UnrealQuestSettingsAnnounceCompletedQuestsOnly
+    return filter ~= nil and filter.point[4] == report.point[4]
+        and filter.point[5] == report.point[5] - 18
+end)()"""))
+rt.execute("UnrealQuestSettingsAnnounceCompletedQuestsOnly:GetScript('OnClick')()")
+check("the completion filter checkbox stores its selection",
+      rt.eval("UnrealQuestDB.announceCompletedQuestsOnly == true"))
+rt.execute("UnrealQuestSettingsAnnounceCompletedQuestsOnly:GetScript('OnClick')()")
 rt.execute("UnrealQuestSettingsMapClusterTooltips:GetScript('OnClick')()")
 check("clicking it stores the new value",
       rt.eval("UnrealQuestDB.mapClusterTooltips == false"))

@@ -607,8 +607,18 @@ function Settings:BuildPage(parent)
     page.Checkbox("showLowLevelQuests", UQ.L("SETTINGS_LOW_LEVEL_QUESTS"), nil,
         { left = 250, width = TEXT_WIDTH - 250, advance = CHECKBOX_ADVANCE })
 
-    page.Checkbox("minimapPinsClampEdge", UQ.L("SETTINGS_MINIMAP_CLAMP"),
-        UQ.L("SETTINGS_MINIMAP_CLAMP_NOTE"))
+    -- Party reporting and its completion filter share the right column. The
+    -- clamp label describes its action without a note, leaving the second row
+    -- for the filter while keeping both hosts inside their fixed content box.
+    local clampRowTop = page.y
+    page.Checkbox("announceObjectivesParty", UQ.L("SETTINGS_ANNOUNCE_PARTY"), nil,
+        { left = 300, width = TEXT_WIDTH - 300, advance = 0 })
+    page.y = clampRowTop - CHECKBOX_ADVANCE
+    page.Checkbox("announceCompletedQuestsOnly", UQ.L("SETTINGS_ANNOUNCE_COMPLETE_ONLY"), nil,
+        { left = 300, width = TEXT_WIDTH - 300, advance = 0 })
+    page.y = clampRowTop
+    page.Checkbox("minimapPinsClampEdge", UQ.L("SETTINGS_MINIMAP_CLAMP"), nil,
+        { width = 280, advance = 2 * CHECKBOX_ADVANCE + 4 })
 
     -- The import button's label describes its action. The ordinary row gap
     -- above is enough separation; the old extra 8px is now used by the clearer

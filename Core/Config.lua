@@ -271,6 +271,22 @@ local defaults = {
     rareAlertX = 0,
     rareAlertY = -160,
 
+    -- Objective progress in party chat ---------------------------------------
+    --
+    -- Repeats each objective step the player makes -- "Kobold Vermin slain:
+    -- 4/10" -- into the group's own chat channel, so a party farming the same
+    -- quest can see each other's counters move. See Quest/ObjectiveAnnounce.lua.
+    --
+    -- ON by default: a party questing together wants to see each other's
+    -- counters move, and that is the point of the feature. It writes in a
+    -- shared channel under the player's own name, so the setting is the first
+    -- thing they can turn off. It is silent while solo, because there is no
+    -- group channel to write to.
+    announceObjectivesParty = true,
+    -- With party reports enabled, send only when each objective finishes.
+    -- Keep the stored key so existing selections survive the corrected label.
+    announceCompletedQuestsOnly = false,
+
     -- Quest tracker window ---------------------------------------------------
     --
     -- The addon's own movable tracker, which lists every quest in the log

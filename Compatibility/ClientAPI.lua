@@ -328,6 +328,53 @@ function Client.GetQuestLogEntry(index)
     return cleaned, level, questTag, isHeader, isCollapsed, isComplete, title
 end
 
+-- How many OTHER party members are on the quest at a quest log index, or nil
+-- when the question does not apply -- the player is alone, the row is not a
+-- quest, or nobody in the party shares it.
+--
+-- IsUnitOnQuest is documented as answering true when that party member has the
+-- same quest as the given quest log ROW (an index into the log, not a quest
+-- ID -- which this client does not expose anyway), and as yielding NO value
+-- when the row is not a quest, the unit is not a player, or that player is not
+-- in the party. A missing return is therefore "no", never a failure, so the
+-- loop below never has to tell the two apart.
+--
+-- Only party1..N are asked. The documentation is explicit that the local
+-- player is not counted, and there is no raid equivalent of this call here, so
+-- a raid simply reports what its party sub-group can answer for.
+--
+-- GetNumPartyMembers counts other members and answers 0 when alone, so a solo
+-- player never reaches IsUnitOnQuest at all.
+function Client.GetQuestLogPartyCount(index)
+    if type(index) ~= "number" then
+        return nil
+    end
+    local ok, members = Call0("GetNumPartyMembers")
+    if not ok or type(members) ~= "number" or members <= 0 then
+        return nil
+    end
+    local fn = Resolve("IsUnitOnQuest")
+    if not fn then
+        return nil
+    end
+    -- Resolved once and called directly rather than through Call2: this is the
+    -- compatibility layer itself, and the loop would otherwise re-resolve the
+    -- same global on every party member of every visible row.
+    local count = 0
+    local member = 1
+    while member <= members do
+        local called, onQuest = pcall(fn, index, "party" .. member)
+        if called and onQuest then
+            count = count + 1
+        end
+        member = member + 1
+    end
+    if count <= 0 then
+        return nil
+    end
+    return count
+end
+
 function Client.GetObjectiveCount(questIndex)
     local ok, value = Call1("GetNumQuestLeaderBoards", questIndex)
     if ok and type(value) == "number" then
@@ -776,6 +823,143 @@ function Client.IsInGroup()
         return true
     end
     return false
+end
+
+-- Group chat --------------------------------------------------------------
+--
+-- The chat type token a message to the player's own group has to carry. A
+-- raid does not read "PARTY" and a party has no "RAID" channel, so the two
+-- cannot be collapsed into one constant. nil means "no group", which every
+-- caller treats as "there is nobody to tell" rather than as a failure.
+--
+-- GetNumRaidMembers is documented as counting the whole roster INCLUDING the
+-- player and answering 0 for a five-player party, so it is asked first and a
+-- non-zero answer settles it.
+function Client.GetGroupChatChannel()
+    local raidOk, raidValue = Call0("GetNumRaidMembers")
+    if raidOk and type(raidValue) == "number" and raidValue > 0 then
+        return "RAID"
+    end
+    local ok, value = Call0("GetNumPartyMembers")
+    if ok and type(value) == "number" and value > 0 then
+        return "PARTY"
+    end
+    return nil
+end
+
+function Client.HasChatSend()
+    return Client.HasFunction("SendChatMessage")
+end
+
+-- Sends one line to a chat channel on the player's behalf.
+--
+-- THE ONE THING TO KNOW ABOUT THIS WRAPPER: the client API reference expects
+-- this to FAIL from an addon. Its Communication page is explicit -- "SendChat-
+-- Message is protected: it errors unless called from a secure (Blizzard UI)
+-- context. DoEmote and SendAddonMessage are not." -- and the entry repeats it
+-- ("addons cannot call this; only the default FrameXML UI can"). No probe has
+-- exercised it, so it is documentation rather than measurement, but it is
+-- documentation pointing one way.
+--
+-- The wrapper exists anyway because the cost of trying is one guarded call: if
+-- this client turns out to allow it, the visible line is what the player asked
+-- for. Quest/ObjectiveAnnounce.lua tries it first, counts the refusals, and
+-- falls back to the addon channel below -- which the same sentence says is not
+-- protected -- so the feature does not depend on the answer.
+--
+-- The message is clamped to CHAT_MESSAGE_LIMIT bytes. The client truncates or
+-- rejects an over-long line itself and neither outcome is worth handing it.
+local CHAT_MESSAGE_LIMIT = 255
+
+-- Addon-to-addon messages -----------------------------------------------------
+--
+-- The other half of the group channel, and the half that is NOT protected: the
+-- same client reference page that marks SendChatMessage protected says so in
+-- one sentence -- "SendChatMessage is protected: it errors unless called from a
+-- secure (Blizzard UI) context. DoEmote and SendAddonMessage are not." So this
+-- is the route an addon actually has to the group, and Quest/QuestSync.lua is
+-- built on it.
+--
+-- Documented shape here: SendAddonMessage(prefix, message, chatType), where the
+-- prefix and the message are joined with a TAB by the client and sent with
+-- language ADDON on chatType. There is no whisper-target argument.
+--
+-- RECEIVING is the unverified half. This client's reference documents no event
+-- names at all and the compatibility database has no CHAT_MSG_ADDON record, so
+-- whether a sent message ever comes back to another addon is settled only by
+-- two clients trying it. Nothing degrades badly if it does not: an addon that
+-- never hears a peer simply knows of no peer.
+local ADDON_MESSAGE_LIMIT = 240
+
+function Client.HasAddonMessages()
+    return Client.HasFunction("SendAddonMessage")
+end
+
+function Client.SendAddonMessage(prefix, message, chatType)
+    if type(prefix) ~= "string" or prefix == "" then
+        return false
+    end
+    if type(message) ~= "string" or message == "" then
+        return false
+    end
+    if type(chatType) ~= "string" or chatType == "" then
+        return false
+    end
+    if string.len(message) > ADDON_MESSAGE_LIMIT then
+        message = string.sub(message, 1, ADDON_MESSAGE_LIMIT)
+    end
+    local fn = Resolve("SendAddonMessage")
+    if not fn then
+        return false
+    end
+    local ok = pcall(fn, prefix, message, chatType)
+    return ok and true or false
+end
+
+-- The other players in the group, by name, so a peer record can be dropped the
+-- moment its player is no longer in the group. Read by polling rather than off
+-- a roster event, for the reason every other read here is polled: no event on
+-- this client is proven to fire.
+function Client.GetGroupMemberNames()
+    local names = {}
+    local raidOk, raidValue = Call0("GetNumRaidMembers")
+    if raidOk and type(raidValue) == "number" and raidValue > 0 then
+        local index = 1
+        while index <= raidValue do
+            local name = Client.GetUnitName("raid" .. index)
+            if name then
+                names[name] = true
+            end
+            index = index + 1
+        end
+        return names
+    end
+    local ok, value = Call0("GetNumPartyMembers")
+    if ok and type(value) == "number" and value > 0 then
+        local index = 1
+        while index <= value do
+            local name = Client.GetUnitName("party" .. index)
+            if name then
+                names[name] = true
+            end
+            index = index + 1
+        end
+    end
+    return names
+end
+
+function Client.SendChatMessage(text, chatType)
+    if type(text) ~= "string" or text == "" then
+        return false
+    end
+    if type(chatType) ~= "string" or chatType == "" then
+        return false
+    end
+    if string.len(text) > CHAT_MESSAGE_LIMIT then
+        text = string.sub(text, 1, CHAT_MESSAGE_LIMIT)
+    end
+    local ok = Call2("SendChatMessage", text, chatType)
+    return ok and true or false
 end
 
 -- Entity tooltip support ----------------------------------------------------
@@ -2993,10 +3177,21 @@ end
 
 -- Same construction as Client.CreateWorldMapPin, against Minimap instead of
 -- WorldMapButton. The pin starts mouse-disabled; a layer that gives it a
--- tooltip opts in through SetWorldMapPinHandlers. The installed pfQuest uses
+-- tooltip opts in through SetMinimapPinHandlers. The installed pfQuest uses
 -- the same EnableMouse + OnEnter/OnLeave shape on its minimap nodes, while
 -- wheel input on this client is handled by the binding layer rather than an
 -- addon frame's mouse-wheel script.
+--
+-- The pin is a Button rather than a plain Frame for one reason: OnClick is a
+-- Button script, and worldMapPinInteraction is verified for exactly this
+-- construction -- a small addon-owned Button parented to a map canvas gets
+-- both the mouse and OnClick. Nothing else changes by asking for a Button
+-- here: it is a Frame subtype, no template is applied, so it carries no art
+-- of its own and the measured minimap child contract
+-- (minimap.addon_children_render_unclipped) is about where a child of Minimap
+-- draws, not about which widget type asked to draw there. The Frame fallback
+-- keeps the layer alive on a client that refuses the Button; pins created that
+-- way take clicks through OnMouseUp instead (see SetMinimapPinHandlers).
 function Client.CreateMinimapPin(index, size, red, green, blue)
     local map = Client.GetMinimap()
     local create = Resolve("CreateFrame")
@@ -3005,7 +3200,10 @@ function Client.CreateMinimapPin(index, size, red, green, blue)
         return nil
     end
     local name = "UnrealQuestMinimapPin" .. tostring(index)
-    local ok, frame = pcall(create, "Frame", name, map)
+    local ok, frame = pcall(create, "Button", name, map)
+    if not ok or not frame then
+        ok, frame = pcall(create, "Frame", name, map)
+    end
     if not ok or not frame then
         return nil
     end
@@ -3022,6 +3220,11 @@ function Client.CreateMinimapPin(index, size, red, green, blue)
             pinLevel = level + 20
         end
         pcall(frame.SetFrameLevel, frame, pinLevel)
+        -- Recorded for the same reason the world map records it: a pooled pin
+        -- that has to sit under a sibling -- the followed quest's dot and the
+        -- gold rim behind it -- asks for an ABSOLUTE offset from this level
+        -- rather than accumulating relative raises across reuses.
+        frame.unrealQuestBaseFrameLevel = pinLevel
     end
     if type(frame.CreateTexture) == "function" then
         local textureOk, texture = pcall(frame.CreateTexture, frame, nil, "BACKGROUND")
@@ -3074,6 +3277,48 @@ Client.SetMinimapPinColor = Client.SetWorldMapPinColor
 Client.SetMinimapPinTexture = Client.SetWorldMapPinTexture
 Client.SetMinimapPinSize = Client.SetWorldMapPinSize
 Client.SetMinimapPinAlpha = Client.SetWorldMapPinAlpha
+Client.SetMinimapPinMouseEnabled = Client.SetWorldMapPinMouseEnabled
+Client.SetMinimapPinLevelBoost = Client.SetWorldMapPinLevelBoost
+
+-- Hover and click on a minimap pin. Hover is the world-map contract unchanged
+-- -- EnableMouse plus OnEnter/OnLeave, already confirmed in game by the pins'
+-- own tooltips -- so only the click needs anything of its own.
+--
+-- Two routes, because CreateMinimapPin may have had to fall back to a plain
+-- Frame, which has no OnClick and no RegisterForClicks:
+--
+--   * a Button pin registers LeftButtonUp and takes OnClick, the same shape
+--     the world-map pins use, so both surfaces answer a click identically;
+--   * a Frame pin takes OnMouseUp and filters the button itself, which is the
+--     only click script a Frame has.
+--
+-- Exactly one of the two is installed, never both, so no pin can answer one
+-- click twice. As on the world map, the click tokens are only taken when a
+-- handler is actually supplied: a hover-only pin keeps its clicks unclaimed
+-- and the minimap's own gesture underneath it is untouched.
+function Client.SetMinimapPinHandlers(frame, onEnter, onLeave, onClick)
+    if not frame or type(frame.SetScript) ~= "function" then
+        return false
+    end
+    if type(frame.EnableMouse) == "function" then
+        pcall(frame.EnableMouse, frame, true)
+    end
+    pcall(frame.SetScript, frame, "OnEnter", onEnter)
+    pcall(frame.SetScript, frame, "OnLeave", onLeave)
+    if onClick and type(frame.RegisterForClicks) == "function" then
+        pcall(frame.RegisterForClicks, frame, "LeftButtonUp")
+        pcall(frame.SetScript, frame, "OnClick", onClick)
+        return true
+    end
+    if onClick then
+        pcall(frame.SetScript, frame, "OnMouseUp", function(first)
+            if Client.ResolveClickButton(first) == "LeftButton" then
+                onClick()
+            end
+        end)
+    end
+    return true
+end
 
 function Client.IsShiftKeyDown()
     local ok, value = Call0("IsShiftKeyDown")
@@ -3788,12 +4033,14 @@ end
 -- so the ordinary Vanilla post-hook idiom is unavailable. GetScript is
 -- documented and returns the stored handler, so the chain is built by hand.
 --
--- The previous handler runs FIRST and its failure is contained: a native
--- handler that errors must not stop UnrealQuest's addition, and UnrealQuest's
+-- An optional beforeHandler prepares the widget before the previous handler;
+-- handler always runs afterwards, including when the native handler errors.
+-- Without beforeHandler the previous handler runs first. A native handler
+-- that errors must not stop UnrealQuest's addition, and UnrealQuest's
 -- addition must never be what breaks a native row. Vanilla script handlers
 -- read the implicit `this`/`arg1` globals rather than parameters, so nothing
 -- is forwarded and nothing is rewritten.
-function Client.ChainScript(frame, scriptType, handler)
+function Client.ChainScript(frame, scriptType, handler, beforeHandler)
     if not frame or type(handler) ~= "function"
         or type(frame.SetScript) ~= "function" then
         return false
@@ -3807,16 +4054,14 @@ function Client.ChainScript(frame, scriptType, handler)
         end
     end
 
-    local chained
-    if previous then
-        chained = function()
+    local chained = function()
+        if type(beforeHandler) == "function" then
+            pcall(beforeHandler)
+        end
+        if previous then
             pcall(previous)
-            pcall(handler)
         end
-    else
-        chained = function()
-            pcall(handler)
-        end
+        pcall(handler)
     end
 
     local ok = pcall(frame.SetScript, frame, scriptType, chained)
@@ -5460,35 +5705,42 @@ local function RaiseQuestLogRowLabels(row)
     row.unrealQuestLabelRaised = raised and true or nil
 end
 
--- The stock completion state is the row's named Tag FontString. Move it two
--- pixels left and three down on every quest row so followed and ordinary
--- completed quests stay aligned.
--- GetPoint returns this client's measured inverted Y value, so convert it
--- before storing and offsetting the original anchor.
-local function SetQuestLogTagOffset(row)
-    local rowName = Client.GetObjectName(row)
-    local tag = rowName and ResolveObject(rowName .. "Tag") or nil
-    if not tag or type(tag.ClearAllPoints) ~= "function"
-        or type(tag.SetPoint) ~= "function" then
-        return false
+-- The anchor an object carried before this addon first moved it, cached on the
+-- object under `field`.
+--
+-- Read once and only once: the native list re-runs its own layout constantly,
+-- so a second read would hand back whatever offset was last written here as if
+-- it were the client's own. GetPoint returns this client's measured INVERTED Y
+-- and a relative frame as a name string, so both are normalized here and the
+-- stored table can be handed straight to SetPoint.
+local function QuestLogNativeAnchor(object, row, field)
+    if not object or type(object.ClearAllPoints) ~= "function"
+        or type(object.SetPoint) ~= "function" then
+        return nil
     end
-
-    if not tag.unrealQuestFollowingPoint
-        and type(tag.GetPoint) == "function" then
+    if not object[field] and type(object.GetPoint) == "function" then
         local ok, point, relative, relativePoint, x, invertedY =
-            pcall(tag.GetPoint, tag, 1)
+            pcall(object.GetPoint, object, 1)
         if ok and point then
             if type(relative) == "string" then
                 relative = ResolveObject(relative) or row
             end
-            tag.unrealQuestFollowingPoint = {
+            object[field] = {
                 point, relative or row, relativePoint or point,
                 x or 0, -(invertedY or 0),
             }
         end
     end
+    return object[field]
+end
 
-    local anchor = tag.unrealQuestFollowingPoint
+-- The stock completion state is the row's named Tag FontString. Move it two
+-- pixels left and three down on every quest row so followed and ordinary
+-- completed quests stay aligned.
+local function SetQuestLogTagOffset(row)
+    local rowName = Client.GetObjectName(row)
+    local tag = rowName and ResolveObject(rowName .. "Tag") or nil
+    local anchor = QuestLogNativeAnchor(tag, row, "unrealQuestFollowingPoint")
     if not anchor then
         return false
     end
@@ -5507,24 +5759,7 @@ end
 -- Shift only the button's title labels; the separate Tag FontString keeps its
 -- horizontal position. Headers and empty pooled rows restore the native x.
 local function SetQuestLogTitleRegionOffset(region, row, offset)
-    if not region or type(region.ClearAllPoints) ~= "function"
-        or type(region.SetPoint) ~= "function" then
-        return false
-    end
-    if not region.unrealQuestTitlePoint and type(region.GetPoint) == "function" then
-        local ok, point, relative, relativePoint, x, invertedY =
-            pcall(region.GetPoint, region, 1)
-        if ok and point then
-            if type(relative) == "string" then
-                relative = ResolveObject(relative) or row
-            end
-            region.unrealQuestTitlePoint = {
-                point, relative or row, relativePoint or point,
-                x or 0, -(invertedY or 0),
-            }
-        end
-    end
-    local anchor = region.unrealQuestTitlePoint
+    local anchor = QuestLogNativeAnchor(region, row, "unrealQuestTitlePoint")
     if not anchor then
         return false
     end
@@ -5633,6 +5868,54 @@ function Client.SetQuestLogRowTitleColor(row, red, green, blue)
         end
     end
     return painted
+end
+
+-- Hides the party count the client draws on the row's own GroupMates
+-- FontString.
+--
+-- The widget is QuestLogTitle<N>GroupMates, and that is measured, not guessed:
+-- probe questloggrouptag (probeVersion 1.44.0, 2026-09-04) walked every quest
+-- log row with GetRegions while the player stood in a party on shared quests
+-- and found the "[1]" on exactly that region of rows 2, 5 and 6, anchored LEFT
+-- to its row's LEFT at x=8. It is NOT the row's Tag FontString, which carries
+-- the completion state and never held a count in that run.
+--
+-- It is hidden because the client anchors it into the row's left gutter, which
+-- is where this addon's own presentation already lives, and because
+-- Quest/QuestLogLevels.lua writes the same count into the row's text where it
+-- lines up with the "[level] " prefix by construction. The same run measured
+-- that the hide survives a public QuestLog_Update -- all three stayed hidden --
+-- so this is not fighting the client for the widget; the caller's poll re-applies
+-- it only for rows the list has since recycled.
+--
+-- Only a widget that literally reads as a bracketed number is hidden. One
+-- carrying anything else is left exactly as the client left it, so a client
+-- that puts something else there is never touched.
+--
+-- The hide is remembered on the widget, so a row that stops carrying a count is
+-- not left permanently missing one.
+function Client.SetQuestLogRowPartyTagHidden(row, hidden)
+    local rowName = Client.GetObjectName(row)
+    local tag = rowName and ResolveObject(rowName .. "GroupMates") or nil
+    if not tag then
+        return false
+    end
+
+    if hidden then
+        local text = Client.GetObjectText(tag)
+        if type(text) ~= "string"
+            or not string.find(text, "^%s*%[%d+%]%s*$") then
+            return false
+        end
+        tag.unrealQuestPartyTagHidden = true
+        return Client.HideObject(tag)
+    end
+
+    if not tag.unrealQuestPartyTagHidden then
+        return false
+    end
+    tag.unrealQuestPartyTagHidden = nil
+    return Client.ShowObject(tag)
 end
 
 local function EnsureQuestLogFollowingRow(row)
@@ -9238,6 +9521,10 @@ DeclareFunction("questLogSize", "GetNumQuestLogEntries", "verified",
     "exercised by the questtrack probe against a live quest log")
 DeclareFunction("questLogEntry", "GetQuestLogTitle", "verified",
     "six-value tuple captured by the questtrack probe and matching the client API reference")
+DeclareFunction("questLogPartyPeers", "IsUnitOnQuest", "documented",
+    "client API reference; answers whether one party member shares the quest at a quest log "
+    .. "index, and yields no value rather than false when it cannot. Not runtime-probed, so the "
+    .. "party count on a quest log row is absent rather than wrong when the call is missing")
 DeclareFunction("objectiveCount", "GetNumQuestLeaderBoards", "documented",
     "client API reference; not runtime-probed")
 DeclareFunction("objectiveReadout", "GetQuestLogLeaderBoard", "documented",
@@ -9339,6 +9626,32 @@ else
     UQ:DeclareCapability("questRaidMark", "missing",
         "SetRaidTarget or GetRaidTargetIndex is not a callable global, so nothing can be drawn over a "
         .. "specific creature in the world at all on this client")
+end
+if Client.HasChatSend() then
+    UQ:DeclareCapability("chatSend", "unverified",
+        "SendChatMessage resolves as a callable global, but the client's API reference says an addon "
+        .. "call errors: \"SendChatMessage is protected: it errors unless called from a secure "
+        .. "(Blizzard UI) context. DoEmote and SendAddonMessage are not.\" No probe has exercised it. "
+        .. "Quest/ObjectiveAnnounce.lua tries it once per line, counts refusals and falls back to the "
+        .. "addon channel, so \"/uq announce\" settles this in one grouped session and nothing depends "
+        .. "on the answer")
+else
+    UQ:DeclareCapability("chatSend", "missing",
+        "SendChatMessage is not a callable global, so no visible chat line can be posted at all")
+end
+if Client.HasAddonMessages() then
+    UQ:DeclareCapability("addonMessages", "unverified",
+        "SendAddonMessage is a callable global and the client's API reference explicitly exempts it "
+        .. "from the protection on SendChatMessage, with the documented shape "
+        .. "SendAddonMessage(prefix, message, chatType). RECEIVING is the open half: this client "
+        .. "documents no event names at all and the compact DB has no CHAT_MSG_ADDON record, so "
+        .. "whether a peer's message arrives is settled only by two UnrealQuest clients in one group. "
+        .. "Quest/QuestSync.lua registers the event defensively and knows of no peer when it never "
+        .. "fires; \"/uq announce\" reports peers seen and messages received")
+else
+    UQ:DeclareCapability("addonMessages", "missing",
+        "SendAddonMessage is not a callable global, so the addon cannot tell whether anyone in the "
+        .. "group shares a quest and the party report stays silent")
 end
 UQ:DeclareCapability("questIdentity", "missing",
     "the client exposes no quest ID API; quest log rows are matched to the static database by title")

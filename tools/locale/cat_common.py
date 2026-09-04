@@ -482,7 +482,7 @@ STRINGS.update({
 ),
 "SETTINGS_MINIMAP_CLAMP": (
     "Clamp off-view minimap markers to the edge",
-    "Coller au bord les marqueurs hors champ de la mini-carte",
+    "Marqueurs mini-carte hors champ collés au bord",
     "Прижимать к краю миникарты маркеры вне обзора",
     "将视野外的小地图标记固定在边缘",
 ),
@@ -492,6 +492,58 @@ STRINGS.update({
     "collés au bord.",
     "При выключении далёкие маркеры «!» и «?» скрываются, а не прижимаются к краю.",
     "关闭时将隐藏远处的“!”和“?”标记，而不是把它们固定在边框上。",
+),
+"SETTINGS_ANNOUNCE_PARTY": (
+    "Objectives in party chat",
+    "Objectifs en chat de groupe",
+    "Цели в чат группы",
+    "在小队频道播报目标",
+),
+"SETTINGS_ANNOUNCE_COMPLETE_ONLY": (
+    "Completed objectives only",
+    "Objectifs termines seuls",
+    "Только выполненные цели",
+    "仅播报已完成的目标",
+),
+
+# --- objective progress announced to the group -------------------------------
+# These are the lines OTHER PLAYERS read, so they carry as few words as the
+# report allows: the objective name and the counter come from the client's own
+# quest log and are already in the reader's game language, but anything the
+# addon adds around them is in the SENDER's addon language and cannot be
+# anything else.
+"ANNOUNCE_OBJECTIVE_LINE": (
+    "[UQ] %s: %s/%s",
+    "[UQ] %s : %s/%s",
+    "[UQ] %s: %s/%s",
+    "[UQ] %s：%s/%s",
+),
+"ANNOUNCE_OBJECTIVE_DONE": (
+    "[UQ] %s: complete",
+    "[UQ] %s : terminé",
+    "[UQ] %s: выполнено",
+    "[UQ] %s：完成",
+),
+"ANNOUNCE_PEER_LINE": (
+    "%s: %s",
+    "%s : %s",
+    "%s: %s",
+    "%s：%s",
+),
+"ANNOUNCE_BLOCKED": (
+    "the client refuses to let an addon write in chat, so objective progress "
+    "now goes only to group members running UnrealQuest",
+    "le client interdit à un addon d'écrire dans le chat : la progression des "
+    "objectifs n'ira plus qu'aux membres du groupe qui utilisent UnrealQuest",
+    "клиент не позволяет "
+    "аддону писать в чат, "
+    "поэтому прогресс "
+    "целей теперь видят "
+    "только участники "
+    "группы с UnrealQuest",
+    "客户端不允许插件在聊天中发言，"
+    "目标进度现在只会发给使用 UnrealQuest "
+    "的小队成员",
 ),
 "SETTINGS_HEADING_QUEST_HISTORY": (
     "Quest history", "Historique des quêtes", "История заданий", "任务历史"),

@@ -98,6 +98,8 @@ local HELP_TAIL_KEYS = {
     "CMD_HELP_RARE_SOUND",
     "CMD_HELP_RARE_TEST",
     "CMD_HELP_RARE_RESET",
+    "CMD_HELP_ANNOUNCE",
+    "CMD_HELP_ANNOUNCE_ONOFF",
     "CMD_HELP_MARKS",
     "CMD_HELP_MARKS_ONOFF",
     "CMD_HELP_MARKS_ICON",
@@ -537,6 +539,14 @@ local function ShowMinimap(target)
     if status.pinFailures and status.pinFailures > 0 then
         Line("  " .. UQ.L("CMD_MINIMAP_PIN_FAILURES", tostring(status.pinFailures)))
     end
+    -- The discriminator behind capability minimapPinInteraction: hovers are
+    -- proven on this surface, a click on a child of Minimap is not. Printed
+    -- always, so a session that clicked pins and saw nothing happen can say
+    -- which of the two halves failed without opening SavedVariables.
+    Line("  " .. UQ.L("CMD_MINIMAP_PIN_CLICKS", tostring(status.pinClicks or 0)))
+    if not status.pinClicks or status.pinClicks <= 0 then
+        Line("  |cff888888" .. UQ.L("CMD_MINIMAP_CLICKS_UNPROVEN") .. "|r")
+    end
 end
 
 -- "/uq rare", and its four settings. The range and the sound kit are here
@@ -635,6 +645,103 @@ local function ShowRareAlert(target)
             tostring(status.lastDistance)))
     end
     Line("  |cff888888" .. UQ.L("CMD_RARE_PROXIMITY_NOTE") .. "|r")
+end
+
+-- "/uq announce", and its one setting.
+--
+-- Worth a command of its own even though the option is a single checkbox: this
+-- is the one feature in the addon whose underlying client call is documented as
+-- PROTECTED (see Quest/ObjectiveAnnounce.lua), so "it is on and my party sees
+-- nothing" has three completely different causes -- no group, a client that
+-- refuses the call, or simply no progress yet -- and only counters can tell
+-- them apart.
+local function ShowObjectiveAnnounce(target)
+    target = string.lower(UQ.Trim(target) or "")
+    local announce = UQ:GetModule("ObjectiveAnnounce")
+    local config = UQ:GetModule("Config")
+    if not announce or not config then
+        Line(UQ.L("CMD_MODULE_MISSING_ANNOUNCE"))
+        return
+    end
+
+    if target == "on" or target == "off" then
+        config:Set("announceObjectivesParty", target == "on")
+        if target == "on" then
+            Line(UQ.L("CMD_ANNOUNCE_ON"))
+        else
+            Line(UQ.L("CMD_ANNOUNCE_OFF"))
+        end
+        return
+    end
+
+    local status = announce:GetStatus()
+    local sync = status.sync
+    Line(UQ.L("CMD_ANNOUNCE_TITLE"))
+    Line("  " .. UQ.L("CMD_ANNOUNCE_SETTING",
+        status.enabled and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF")))
+    Line("  " .. UQ.L("CMD_ANNOUNCE_CHANNEL",
+        tostring(status.channel or UQ.L("COMMON_NONE"))))
+
+    -- Which source decides whether a quest is shared. The client's own
+    -- IsUnitOnQuest covers every party member; without it only other
+    -- UnrealQuest clients can be counted, which is a much smaller group and
+    -- explains most silences.
+    if not status.completionOnly then
+        Line("  " .. UQ.L("CMD_ANNOUNCE_SOURCE",
+            status.partyCheck and UQ.L("CMD_ANNOUNCE_SOURCE_CLIENT")
+                or UQ.L("CMD_ANNOUNCE_SOURCE_PEERS")))
+    end
+    -- Peers available for addon-channel delivery and the sharing fallback.
+    local peerCount = sync and sync.peerCount or 0
+    local knownQuests = 0
+    if sync then
+        local index = 1
+        local total = table.getn(sync.peers)
+        while index <= total do
+            knownQuests = knownQuests + (sync.peers[index].quests or 0)
+            index = index + 1
+        end
+    end
+    Line("  " .. UQ.L("CMD_ANNOUNCE_PEERS", tostring(peerCount), tostring(knownQuests)))
+    if sync then
+        local index = 1
+        local total = table.getn(sync.peers)
+        while index <= total do
+            local peer = sync.peers[index]
+            Line("    " .. UQ.L("CMD_ANNOUNCE_PEER", peer.name, tostring(peer.quests)))
+            index = index + 1
+        end
+    end
+
+    Line("  " .. UQ.L("CMD_ANNOUNCE_COUNTS", tostring(status.announced),
+        tostring(status.sent), tostring(status.refused), tostring(status.dropped)))
+    Line("  " .. UQ.L("CMD_ANNOUNCE_RELAYED", tostring(status.relayed),
+        tostring(status.received)))
+    if status.unshared > 0 then
+        Line("  " .. UQ.L("CMD_ANNOUNCE_UNSHARED", tostring(status.unshared)))
+    end
+    if status.lastLine then
+        Line("  " .. UQ.L("CMD_ANNOUNCE_LAST", status.lastLine))
+    end
+
+    if not status.available then
+        Line("  |cffff5555" .. UQ.L("CMD_ANNOUNCE_UNAVAILABLE") .. "|r")
+    elseif status.blocked then
+        Line("  |cffff5555" .. UQ.L("CMD_ANNOUNCE_BLOCKED") .. "|r")
+    end
+    if sync and not sync.available then
+        Line("  |cffff5555" .. UQ.L("CMD_ANNOUNCE_NO_ADDON_CHANNEL") .. "|r")
+    elseif status.enabled and not status.channel then
+        Line("  |cff888888" .. UQ.L("CMD_ANNOUNCE_SOLO") .. "|r")
+    elseif status.enabled and not status.completionOnly and peerCount == 0 and not status.partyCheck then
+        Line("  |cff888888" .. UQ.L("CMD_ANNOUNCE_NO_PEERS") .. "|r")
+    end
+    if status.completionOnly then
+        Line("  |cff888888" .. UQ.L("CMD_ANNOUNCE_COMPLETION_NOTE") .. "|r")
+    else
+        Line("  |cff888888" .. UQ.L("CMD_ANNOUNCE_SHARED_NOTE") .. "|r")
+    end
+    Line("  |cff888888" .. UQ.L("CMD_ANNOUNCE_PROTECTED_NOTE") .. "|r")
 end
 
 local function ShowDatabase()
@@ -1712,6 +1819,8 @@ local function Handler(message)
         ImportPfQuestHistory(target)
     elseif command == "rare" or command == "rares" then
         ShowRareAlert(target)
+    elseif command == "announce" then
+        ShowObjectiveAnnounce(target)
     elseif command == "marks" or command == "mark" then
         ShowMarks(UQ.Trim(target) or "")
     elseif command == "worldscan" then

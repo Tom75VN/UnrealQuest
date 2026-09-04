@@ -46,14 +46,19 @@ end
 
 -- Captures the legacy argument globals. They are read once, immediately, since
 -- the same globals are reused by every subsequent dispatch.
+-- Four of them, not three: CHAT_MSG_ADDON carries its SENDER in arg4, and a
+-- peer message whose sender is unknown cannot be filed against a player or
+-- told apart from this client's own echo.
 local function CaptureArgs()
     local ok1, a1 = pcall(getglobal, "arg1")
     local ok2, a2 = pcall(getglobal, "arg2")
     local ok3, a3 = pcall(getglobal, "arg3")
+    local ok4, a4 = pcall(getglobal, "arg4")
     if not ok1 then a1 = nil end
     if not ok2 then a2 = nil end
     if not ok3 then a3 = nil end
-    return a1, a2, a3
+    if not ok4 then a4 = nil end
+    return a1, a2, a3, a4
 end
 
 local function Dispatch(first, second)
@@ -62,7 +67,7 @@ local function Dispatch(first, second)
         return
     end
 
-    local a1, a2, a3 = CaptureArgs()
+    local a1, a2, a3, a4 = CaptureArgs()
 
     Events.observed[event] = (Events.observed[event] or 0) + 1
     Events.pending[event] = (Events.pending[event] or 0) + 1
@@ -75,7 +80,7 @@ local function Dispatch(first, second)
     local index = 1
     local total = table.getn(list)
     while index <= total do
-        local ok, err = pcall(list[index], event, a1, a2, a3)
+        local ok, err = pcall(list[index], event, a1, a2, a3, a4)
         if not ok then
             UQ:Debug("handler for " .. event .. " failed: " .. tostring(err))
         end

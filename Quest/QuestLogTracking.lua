@@ -134,7 +134,14 @@ function QuestLogTracking:InstallRow(rowIndex)
     if Client.IsScriptChained(row, CHAIN_MARKER) then
         return true, "already"
     end
+    local savedText, linkTitle = nil, nil
     local installed = Client.ChainScript(row, "OnClick", function()
+        -- A link-only click may leave the row untouched. Restore its exact
+        -- presentation, but never overwrite a native refresh with stale text.
+        if savedText and Client.GetObjectText(row) == linkTitle then
+            Client.SetNativeObjectText(row, savedText)
+        end
+        savedText, linkTitle = nil, nil
         if Client.IsShiftKeyDown() then
             local quest = QuestFromRow(row, rowIndex)
             local tracker = Tracker()
@@ -153,6 +160,21 @@ function QuestLogTracking:InstallRow(rowIndex)
             levels:Refresh()
         end
         QuestLogTracking:RefreshMarks()
+    end, function()
+        savedText, linkTitle = nil, nil
+        if not Client.IsShiftKeyDown() then
+            return
+        end
+        local quest = QuestFromRow(row, rowIndex)
+        local title = quest and UQ.GetQuestDisplayTitle(quest)
+        local text = Client.GetObjectText(row)
+        -- USER_CONFIRMED_INGAME 2026-09-04: the native chat link includes
+        -- the row's party count and level. Expose only the quest name during
+        -- its existing click handler; native code still builds the link.
+        if title and text and title ~= text
+            and Client.SetNativeObjectText(row, title) then
+            savedText, linkTitle = text, title
+        end
     end)
     if not installed then
         return false, "chainFailed"

@@ -99,6 +99,37 @@ Every write is idempotent and fails closed:
 No player-facing string is added: brackets and a number are not translatable,
 which is why the tracker hardcodes the same format.
 
+## The party count in front of the level
+
+In a party the row reads "[1] [24] Weapons of Choice", the count greyed: how
+many OTHER members of the party are on that same quest, then the level, then
+the name.
+
+The count is worked out here, through Client.GetQuestLogPartyCount, which asks
+the client's own IsUnitOnQuest about each party member -- so it is the client's
+answer about the real party, not an addon-to-addon sync, and a member who does
+not run this addon is counted exactly like one who does.
+
+The client draws that same count itself, on QuestLogTitle<N>GroupMates, and
+that copy is hidden (Client.SetQuestLogRowPartyTagHidden). It has to be: the
+client puts it in the row's left gutter at x=8, which is where this module's
+own presentation already lives. Written into the text instead, the count cannot
+drift from the level it sits in front of, because the two are one string.
+
+Which widget that is was measured, not guessed -- probe questloggrouptag, see
+docs/CLIENT-COMPATIBILITY.md. It is not the row's Tag FontString, which is what
+the first attempt hid, to no effect.
+
+It is greyed with an inline |cff888888 escape rather than by tinting a widget,
+for the same reason: it is part of a string, so it takes its colour the way a
+string does. The escape is closed with |r before the rest of the title, so a
+skin's own colour on the row still applies to the title and not to the count --
+which is why SplitLeadIn hands the indent and the escape back separately, with
+the count belonging between them.
+
+StripLevelPrefix already removes any number of leading bracketed groups, so
+nothing here doubles up.
+
 ## The row's colour, on uUI's Modern surface only
 
 The stock quest log tints each row by how hard its quest is. This client
@@ -125,6 +156,11 @@ local Client = UQ.Client
 local QuestLogLevels = UQ:NewModule("QuestLogLevels")
 
 local MAX_LOG_ROWS = 30
+-- |cff888888, the grey every subdued line in this addon already uses. Not a
+-- player-facing string: it is a colour escape, and the count itself is
+-- brackets and a number, which is why the level prefix beside it is hardcoded
+-- the same way.
+local PARTY_COUNT_COLOR = "|cff888888"
 local POLL_INTERVAL = 0.2
 -- 0 is every driver tick. The watch itself is one GetText and one string
 -- compare; the full pass it triggers is the same one the poll runs.
@@ -142,23 +178,38 @@ QuestLogLevels.rewrites = 0
 -- stamped quest-log index remains the authoritative identity.
 QuestLogLevels.renderedRows = {}
 
--- Splits off everything that has to stay in front of the prefix -- the row's
--- indent, then a colour escape if there is one -- and returns it together
--- with the rest of the text.
+-- Splits off everything that has to stay in front of the level prefix and
+-- returns the row's indent, its colour escape and the rest, in that order.
+--
+-- The two are handed back separately because the party count goes BETWEEN
+-- them: after the indent, so a quest stays indented under its zone header, but
+-- in front of a skin's colour escape, so the count keeps its own grey and the
+-- skin keeps the title.
+--
+-- A count this module wrote on an earlier pass is dropped here rather than
+-- carried forward, so the one rebuilt below is always the one the client's tag
+-- reads right now.
 local function SplitLeadIn(text)
-    local lead = ""
+    local indent = ""
     local rest = text
-    local _, _, indent, afterIndent = string.find(rest, "^(%s+)(.*)$")
-    if indent then
-        lead = indent
+    local _, _, foundIndent, afterIndent = string.find(rest, "^(%s+)(.*)$")
+    if foundIndent then
+        indent = foundIndent
         rest = afterIndent
     end
-    local _, _, escape, afterEscape = string.find(rest, "^(|c%x%x%x%x%x%x%x%x)(.*)$")
-    if escape then
-        lead = lead .. escape
+    local _, _, afterCount = string.find(rest,
+        "^|c%x%x%x%x%x%x%x%x%[%d+%]|r%s*(.*)$")
+    if afterCount then
+        rest = afterCount
+    end
+    local escape = ""
+    local _, _, foundEscape, afterEscape =
+        string.find(rest, "^(|c%x%x%x%x%x%x%x%x)(.*)$")
+    if foundEscape then
+        escape = foundEscape
         rest = afterEscape
     end
-    return lead, rest
+    return indent, escape, rest
 end
 
 -- Removes level prefixes already present: "[24] ", "[24+] ", "[15G5] ". The
@@ -233,16 +284,19 @@ local function ResolveRowEntry(row, rowIndex, text, bare)
     return nil
 end
 
--- Returns whether the row now reads as "[level] title", and the level the row
--- resolved to. The caller paints the colour band from that same level, so the
--- two halves of the row's presentation cannot describe different quests.
-local function DecorateRow(row, rowIndex)
+-- Returns whether the row now reads as "[count] [level] title", and the level
+-- the row resolved to. The caller paints the colour band from that same level,
+-- so the two halves of the row's presentation cannot describe different quests.
+--
+-- grouped is resolved once per pass by the caller: with nobody else in the
+-- group there is no count to ask about on any row.
+local function DecorateRow(row, rowIndex, grouped)
     local text = Client.GetObjectText(row)
     if not text then
         return false
     end
 
-    local lead, rest = SplitLeadIn(text)
+    local indent, escape, rest = SplitLeadIn(text)
     local bare = StripLevelPrefix(rest)
     local questIndex, title, level, displayTitle, isOwnText =
         ResolveRowEntry(row, rowIndex, text, bare)
@@ -268,7 +322,17 @@ local function DecorateRow(row, rowIndex)
         end
     end
 
-    local decorated = lead .. "[" .. level .. "] " .. displayTitle .. suffix
+    -- Asked per row, not per pass: two rows of the same log rarely have the
+    -- same peers on them, and nothing is asked at all while solo.
+    local count = ""
+    if grouped then
+        local partyCount = Client.GetQuestLogPartyCount(questIndex)
+        if partyCount then
+            count = PARTY_COUNT_COLOR .. "[" .. partyCount .. "]|r "
+        end
+    end
+    local decorated = indent .. count .. escape
+        .. "[" .. level .. "] " .. displayTitle .. suffix
     if decorated == text then
         -- Already correct, whoever wrote it. Writing it again every 0.2s
         -- would be the only thing here that could make the list flicker.
@@ -309,6 +373,9 @@ function QuestLogLevels:Refresh()
     -- Resolved once per pass, not once per row: it is two frame lookups, and
     -- every row on screen belongs to the same surface anyway.
     local modern = Client.HasModernQuestLog()
+    -- Same reasoning as modern above: the party is a fact about the player,
+    -- not about a row, so it is one call per pass rather than one per row.
+    local grouped = Client.IsInGroup()
     local decorated = 0
     local canaryRow = nil
     local rowIndex = 1
@@ -321,7 +388,8 @@ function QuestLogLevels:Refresh()
             misses = 0
             local level = nil
             if Client.IsObjectShown(row) then
-                local rowDecorated, rowLevel = DecorateRow(row, rowIndex)
+                local rowDecorated, rowLevel =
+                    DecorateRow(row, rowIndex, grouped)
                 level = rowLevel
                 if rowDecorated then
                     decorated = decorated + 1
@@ -331,6 +399,10 @@ function QuestLogLevels:Refresh()
                 end
             end
             ColorRow(row, modern, level)
+            -- Outside the shown branch on purpose: a row that stops carrying a
+            -- count -- scrolled away, turned into a header, or the player left
+            -- the party -- is exactly the row whose own tag has to come back.
+            Client.SetQuestLogRowPartyTagHidden(row, grouped)
         end
         rowIndex = rowIndex + 1
     end

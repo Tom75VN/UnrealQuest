@@ -121,6 +121,13 @@ local function ReadObjectives(quest)
     while index <= count do
         local text, objectiveType, isFinished = Client.GetObjective(quest.index, index)
         local have, need = ParseProgress(text)
+        -- Ordinary collected items can exceed the requirement (4/3). Cap the
+        -- shared progress model and its text before diffing so every display
+        -- and party report stops at 3/3, and surplus loot is not another step.
+        if have and need and have > need then
+            have = need
+            text = string.gsub(text, "%d+(%s*/%s*%d+)", tostring(need) .. "%1", 1)
+        end
         local objective = {
             text = text,
             objectiveType = objectiveType,

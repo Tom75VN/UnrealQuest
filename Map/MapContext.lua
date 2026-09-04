@@ -834,6 +834,15 @@ function MapContext:OnInit()
     -- "verified" alone would read as "there are pins on your minimap".
     UQ:DeclareCapability("minimapPins", "verified",
         "probe 1.38.0 confirmed in game: children of Minimap render with the world-map contract, the mask does not clip them, and the zoom-0 span is 466.6 yards across a 140px minimap; IsIndoors is absent so the indoor scale cannot be selected; NO pin layer is implemented yet")
+    -- Split from minimapPins deliberately. That one says the mouse reaches a
+    -- child of Minimap, which the pins' tooltips confirm; this one says a
+    -- CLICK on such a child is delivered to the addon rather than kept by the
+    -- minimap, and nothing on this client has ever shown that. The layer is
+    -- built for it anyway -- the failure mode is a click that does nothing,
+    -- and worldMapPinInteraction stood exactly here before its own counters
+    -- settled it -- with minimapDiagnostics.pinClicks as the discriminator.
+    UQ:DeclareCapability("minimapPinInteraction", "unverified",
+        "clicking an addon-owned pin on the minimap follows its quest, the same gesture the world map's pins answer; whether Minimap lets a click reach a child frame is unmeasured here, so minimapDiagnostics.pinClicks counts the clicks that arrive -- zero forever means the minimap keeps them")
     UQ:DeclareCapability("mapZoomLevel", "documented",
         "GetCurrentMapZone is documented to return 0 when no individual zone is selected (continent or world view); used to hide the pin layer on zoom-out since GetPlayerMapPosition alone does not detect it -- the client also projects the player onto a same-continent view")
     UQ:DeclareCapability("worldMapZoneSelection", "documented",

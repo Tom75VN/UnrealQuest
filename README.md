@@ -29,6 +29,7 @@ UnrealQuest turns questing into exploration instead of guesswork. It is designed
 - See live quest progress in creature tooltips and recognize relevant targets through automatic quest marks.
 - Read every marker in one tooltip when several land on the same spot, instead of losing the ones underneath.
 - Track more reliably, with far fewer ambiguously matched quests, no other-faction quest givers and no city guards or dungeon interiors crowding the map.
+- Report your own objective progress to your party as it happens, one line per step, but only for a quest a group member genuinely has as well -- so nobody is told about work they are not doing. Off until you turn it on, and silent while you are alone.
 - Adjust everything from a standalone settings window that also plugs into unrealUI when it is installed.
 - Import completed-quest history from pfQuest so finished quests do not reappear on the map.
 - Read the whole interface in English, French, Russian or Simplified Chinese, chosen with the flag row in the settings window -- or automatically matched to unrealUI's language when that addon is installed.
@@ -124,7 +125,7 @@ visible click.
 
 ## Version
 
-Current release: 0.3.1
+Current release: 0.3.2
 
 ## License
 
