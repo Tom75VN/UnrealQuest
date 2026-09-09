@@ -222,6 +222,20 @@ function MapContext:ResolveEnclosingArea(areaId)
     return resolvedId, resolvedName
 end
 
+-- The dungeon or raid this area is the interior of, or nil.
+--
+-- Delegated to Data/Database.lua, like every other bundled-table lookup in
+-- this file. Two callers want it: GetStandingZone below, as the second of the
+-- two sources that can tell a dungeon from a mine, and the tracker's zone
+-- filter, which needs the map ID itself to ask which quests have work here.
+function MapContext:GetInstanceMapForArea(areaId)
+    local database = Database()
+    if not database or not database.available or type(areaId) ~= "number" then
+        return nil
+    end
+    return database:GetInstanceMapForArea(areaId)
+end
+
 -- Which zone is the player STANDING in -- answered so that walking through a
 -- door does not change it.
 --
@@ -239,6 +253,15 @@ end
 --                gives the resolved area a map of its own, which only a real
 --                zone has. The same conclusion as "standing" reached from the
 --                static data, and it updates the memory too.
+--   "instance"   the player is inside a dungeon or raid, so the instance's own
+--                name IS the zone. Reached from the client's IsInInstance, or
+--                -- when this client has no such global -- from a name the two
+--                zone tests already refused that Database/instances.lua names
+--                as an instance. Ahead of every recovery below because those
+--                all answer with an OUTDOOR zone, which is the one thing a
+--                dungeon interior is not. Filtering a dungeon on the outdoor
+--                zone the player walked in from is what used to leave the
+--                tracker listing the entire quest log inside instances.
 --   "parent"     Database/zones.lua files the room's area under a zone. Static
 --                data and exact, but absent for most caves and every inn.
 --   "remembered" the last proven-zone answer this session. Walking indoors does
@@ -262,6 +285,19 @@ function MapContext:GetStandingZone()
     end
 
     local areaId = self:ResolveAreaId(name)
+
+    -- Before the zone tests, because it outranks every one of their outcomes:
+    -- a dungeon's name is not in the client's zone list and its area has no map
+    -- of its own, which is exactly the shape a mine has, and the two want
+    -- opposite answers. Only the client can see a portal the bundled table has
+    -- no row for, so its verdict is taken first and on its own.
+    --
+    -- The memory of the last outdoor zone is deliberately NOT written here: it
+    -- is what the player walks back out into.
+    local inInstance = Client.IsInInstance()
+    if inInstance == true then
+        return name, areaId, "instance"
+    end
 
     -- Two independent readings of the same question, because either source can
     -- decline. The client's zone list is the measured discriminator, but it is
@@ -294,6 +330,15 @@ function MapContext:GetStandingZone()
             self.standingZoneArea = areaId
         end
         return name, areaId, how or "unlistable"
+    end
+
+    -- The second source, for a client with no IsInInstance at all. Placed here
+    -- rather than beside the client call above so it can only ever see a name
+    -- both zone tests have already refused: an outdoor area that merely shares
+    -- an instance's name -- Zul'Gurub is a Stranglethorn subzone too -- is
+    -- unreachable, because the player standing there is in a listed zone.
+    if inInstance ~= false and self:GetInstanceMapForArea(areaId) then
+        return name, areaId, "instance"
     end
 
     if areaId then

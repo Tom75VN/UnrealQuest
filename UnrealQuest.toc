@@ -1,8 +1,8 @@
 ﻿## Interface: 11200
 ## Title: |cffffffffUnreal|cfff5ae0a Quest
-## Notes: Quest helper for the Unreal Azeroth client. A movable quest tracker and service-NPC selector, current-zone world-map pins, minimap pins, quest tracking and entity tooltips. A quest navigator arc and arrow point the way to the quest you are following - see docs/HUD-NAVIGATOR.md.
+## Notes: Quest helper for the Unreal Azeroth client. A movable quest tracker and service-NPC selector, current-zone world-map pins, minimap pins, quest tracking and entity tooltips. A quest navigator arc and arrow point the way to the quest you are following, and a second one to a tracked creature - see docs/HUD-NAVIGATOR.md.
 ## Author: unrealQuest
-## Version: 0.3.2
+## Version: 0.3.3
 ## X-License: MIT. Bundled world data from pfQuest (MIT), sourced from VMaNGOS. See LICENSE.
 ## SavedVariables: UnrealQuestDB
 ## SavedVariablesPerCharacter: UnrealQuestCharDB
@@ -22,6 +22,7 @@ Database\trainers.lua
 Database\refloot.lua
 Database\quests-itemreq.lua
 Database\quests.lua
+Database\factions.lua
 Database\waypoint_index.lua
 Database\Waypoints\EasternKingdoms.lua
 Database\Waypoints\Kalimdor.lua
@@ -30,11 +31,6 @@ Database\enUS\units.lua
 Database\enUS\objects.lua
 Database\enUS\items.lua
 Database\enUS\quests.lua
-Database\deDE\zones.lua
-Database\deDE\units.lua
-Database\deDE\objects.lua
-Database\deDE\items.lua
-Database\deDE\quests.lua
 Database\esES\zones.lua
 Database\esES\units.lua
 Database\esES\objects.lua
@@ -45,16 +41,6 @@ Database\frFR\units.lua
 Database\frFR\objects.lua
 Database\frFR\items.lua
 Database\frFR\quests.lua
-Database\koKR\zones.lua
-Database\koKR\units.lua
-Database\koKR\objects.lua
-Database\koKR\items.lua
-Database\koKR\quests.lua
-Database\ptBR\zones.lua
-Database\ptBR\units.lua
-Database\ptBR\objects.lua
-Database\ptBR\items.lua
-Database\ptBR\quests.lua
 Database\ruRU\zones.lua
 Database\ruRU\units.lua
 Database\ruRU\objects.lua
@@ -65,11 +51,6 @@ Database\zhCN\units.lua
 Database\zhCN\objects.lua
 Database\zhCN\items.lua
 Database\zhCN\quests.lua
-Database\zhTW\zones.lua
-Database\zhTW\units.lua
-Database\zhTW\objects.lua
-Database\zhTW\items.lua
-Database\zhTW\quests.lua
 
 Core\Namespace.lua
 Compatibility\ClientAPI.lua
@@ -103,6 +84,7 @@ Quest\TrackerFrame.lua
 Quest\MainQuest.lua
 Quest\QuestClicks.lua
 Quest\QuestLogButtons.lua
+Quest\QuestLogRewards.lua
 Map\MapContext.lua
 Map\WorldMapPins.lua
 Map\MinimapPins.lua
@@ -115,6 +97,7 @@ World\RareAlert.lua
 HUD\PlayerHeading.lua
 HUD\Waypoint.lua
 HUD\Navigator.lua
+HUD\MobNavigator.lua
 Core\Settings.lua
 Core\Commands.lua
 UnrealQuest.lua

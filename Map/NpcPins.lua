@@ -17,6 +17,23 @@ The world map and minimap reuse their already-confirmed pooled pin contracts.
 Minimap points outside the current view are hidden rather than clamped: service
 locations are exact coordinates, and collapsing many vendors or trainers onto
 one edge point would invent a location that is not in the database.
+
+The TRACKED CREATURE is the one exception, and the exception is narrow enough
+not to weaken the rule. Tracking is single-select and deliberate: the player
+named one creature and is being pointed at it by an arrow (HUD/MobNavigator.lua),
+so its spawns are not a field of incidental locations the layer happens to know
+about -- they are the thing being navigated to, and a mark that vanishes at the
+rim is exactly the information the player asked for going missing. A clamped
+pin keeps its true bearing and says "further than this" with a faded alpha, the
+same contract the quest layer's givers and turn-ins already use on this
+surface.
+
+It is clamped UNCONDITIONALLY -- `minimapPinsClampEdge` does not reach it. That
+switch answers "should the incidental markers around me pile onto the rim or
+stay out of the way?", and turning it off is a request for a quieter minimap.
+The tracked creature is not part of that crowd: it is one pin, asked for by
+name, and the whole reason it was tracked is to be led to it. Hiding it would
+answer a question the player did not ask.
 ]]
 
 local UQ = UnrealQuest
@@ -50,6 +67,22 @@ local MOB_HOVER_DURATION = 0.16
 local NODE_WORLD_PIN_SIZE = WORLD_PIN_SIZE / 2
 local NODE_MINIMAP_PIN_SIZE = MINIMAP_PIN_SIZE / 2
 local MINIMAP_MARGIN = 2
+-- The ring around the one tracked-mob spawn HUD/MobNavigator.lua's arrow is
+-- currently aiming at. Same artwork, same padding and the same -1 level boost
+-- as the followed quest's dot rim on both maps (Map/WorldMapPins.lua,
+-- Map/MinimapPins.lua), because it answers the same question -- "which of
+-- these identical marks is the one being navigated to?" -- and answering it
+-- with a second visual language would make both harder to learn.
+--
+-- A tracked creature commonly has a dozen recorded spawns in one zone, drawn
+-- as a dozen identical accent dots. Without this the player can see where the
+-- arrow points but not which dot it chose.
+local NAV_MARK_PADDING = 6
+local NAV_MARK_LEVEL_BOOST = -1
+-- What a clamped tracked pin keeps of its opacity. A pin on the rim means
+-- "further than this rather than here", and the fade is what says so -- the
+-- same value and the same reason as Map/MinimapPins.lua's EDGE_ALPHA.
+local MINIMAP_EDGE_ALPHA = 0.55
 local MAX_PINS = 480
 -- World nodes come in the hundreds per zone where services come in dozens, so
 -- one global ceiling would let the first category alphabetically consume the
@@ -123,6 +156,19 @@ local CATEGORIES = {
       red = 0.95, green = 0.85, blue = 0.20 },
 }
 
+-- A settings-selected creature is not another tracker-header category: each
+-- unit is chosen by name and persisted independently. It still joins this
+-- layer's target/pool machinery through one private presentation category.
+-- No service icon is assigned, so tracked creatures use the ordinary coloured
+-- objective dot rather than being misrepresented as rares or vendors.
+local TRACKED_CATEGORY = {
+    key = "tracked",
+    labelKey = "NPC_CATEGORY_TRACKED_MOB",
+    red = UQ.colors.accent[1],
+    green = UQ.colors.accent[2],
+    blue = UQ.colors.accent[3],
+}
+
 -- The Rare/Elite/Boss row is one category with three faces, so a pin says
 -- which kind of creature it is without being hovered. The rank comes off the
 -- unit record; a creature whose rank cannot be read keeps the row's own icon.
@@ -192,9 +238,18 @@ while categoryIndex <= table.getn(CATEGORIES) do
     CATEGORY_BY_KEY[CATEGORIES[categoryIndex].key] = CATEGORIES[categoryIndex]
     categoryIndex = categoryIndex + 1
 end
+CATEGORY_BY_KEY.tracked = TRACKED_CATEGORY
 
 NpcPins.worldPool = {}
 NpcPins.minimapPool = {}
+-- One ring per surface rather than a pool: exactly one spawn is aimed at.
+NpcPins.worldNavMark = nil
+NpcPins.minimapNavMark = nil
+NpcPins.worldNavMarkVisible = false
+NpcPins.minimapNavMarkVisible = false
+-- Tracked pins currently resting on the minimap rim rather than at their own
+-- position. Reported, never branched on.
+NpcPins.minimapClamped = 0
 NpcPins.targets = {}
 -- The minimap's own set: it can only ever draw the player's zone, so it parts
 -- company with self.targets whenever the world map is showing another one.
@@ -243,6 +298,10 @@ local function MinimapPins()
     return UQ:GetModule("MinimapPins")
 end
 
+local function MobNavigator()
+    return UQ:GetModule("MobNavigator")
+end
+
 local function Setting(key)
     local config = Config()
     return config and config:Get(key)
@@ -251,6 +310,19 @@ end
 local function Store(key, value)
     local config = Config()
     return config and config:Set(key, value)
+end
+
+-- Pulls a point back onto the minimap rim, keeping its bearing. The bearing is
+-- the whole of what a clamped pin still says truthfully, so the offsets are
+-- scaled rather than replaced. A point already inside, or exactly on the
+-- player, is returned untouched: dividing by that distance is what would put a
+-- pin at nan.
+local function ClampToRim(offsetX, offsetY, distance, rim)
+    if distance <= rim or distance <= 0 then
+        return offsetX, offsetY, false
+    end
+    local scale = rim / distance
+    return offsetX * scale, offsetY * scale, true
 end
 
 local function HidePoolFrom(pool, first)
@@ -270,7 +342,17 @@ end
 function NpcPins:HideAll()
     self.worldVisible = HidePoolFrom(self.worldPool, 1)
     self.minimapVisible = HidePoolFrom(self.minimapPool, 1)
+    self:HideNavMark(self.worldNavMark)
+    self.worldNavMarkVisible = false
+    self:HideNavMark(self.minimapNavMark)
+    self.minimapNavMarkVisible = false
     self:HidePatrolRoute(nil)
+end
+
+function NpcPins:HideNavMark(mark)
+    if mark then
+        Client.HideObject(mark)
+    end
 end
 
 function NpcPins:GetMenuEntries()
@@ -352,7 +434,99 @@ function NpcPins:Selection()
         if enabled then count = count + 1 end
         index = index + 1
     end
-    return selected, count, signature
+    local tracked = self:GetTrackedMobIds()
+    local trackedIndex = 1
+    local trackedTotal = table.getn(tracked)
+    while trackedIndex <= trackedTotal do
+        signature = signature .. ":" .. tostring(tracked[trackedIndex])
+        trackedIndex = trackedIndex + 1
+    end
+    if trackedTotal > 0 then
+        selected.tracked = true
+        count = count + 1
+    end
+    return selected, count, signature, tracked
+end
+
+-- The tracked creature IDs. Single-select means this holds one entry at most
+-- from any list this build wrote, but it stays a LIST: a saved file from an
+-- earlier build may hold several, and both consumers -- the pin scene here and
+-- HUD/MobNavigator.lua's spawn scene -- then draw all of them rather than
+-- silently picking one until the player next taps a row.
+--
+-- Sorted rather than in `pairs` order because both consumers build a cache
+-- signature from it, and a hash-ordered list would rebuild both on arbitrary
+-- ticks.
+function NpcPins:GetTrackedMobIds()
+    local tracked = {}
+    local config = Config()
+    local section = config and config:GetSection("trackedMobs")
+    if type(section) == "table" then
+        local unitId, enabled
+        for unitId, enabled in pairs(section) do
+            if type(unitId) == "number" and enabled then
+                table.insert(tracked, unitId)
+            end
+        end
+        table.sort(tracked)
+    end
+    return tracked
+end
+
+-- The tracked creature, or nil. There is at most one: see SetMobTracked.
+function NpcPins:GetTrackedMobId()
+    local tracked = self:GetTrackedMobIds()
+    return tracked[1]
+end
+
+function NpcPins:IsMobTracked(unitId)
+    if type(unitId) ~= "number" then
+        return false
+    end
+    local config = Config()
+    local section = config and config:GetSection("trackedMobs")
+    return type(section) == "table" and section[unitId] and true or false
+end
+
+-- Tracking is SINGLE-SELECT: taking a creature drops whichever was held
+-- before, so the stored section never carries more than one entry.
+--
+-- The reason is the arrow, not the pins. HUD/MobNavigator.lua aims at the
+-- nearest spawn of whatever is tracked, so several tracked creatures made the
+-- dial swap targets as the player moved -- and the caption naming a different
+-- creature every few steps reads as a bug rather than as a feature. One
+-- creature, one arrow, one ring.
+--
+-- The section rather than a plain setting is kept deliberately: it is already
+-- the persisted shape, it is what Config sanitizes on load, and a saved file
+-- written by an earlier build may legitimately hold several entries. Clearing
+-- before setting is therefore also the migration -- the first creature tracked
+-- after this change collapses an old multi-entry list to one.
+function NpcPins:SetMobTracked(unitId, tracked)
+    if type(unitId) ~= "number" then
+        return false
+    end
+    local config = Config()
+    if not config then
+        return false
+    end
+    if tracked then
+        config:ClearSection("trackedMobs")
+        if not config:SetSectionEntry("trackedMobs", unitId, true) then
+            return false
+        end
+    elseif not config:SetSectionEntry("trackedMobs", unitId, nil) then
+        return false
+    end
+    self.dirty = true
+    self:Refresh()
+    return true
+end
+
+-- Zero or one, now that tracking is single-select. Kept as a count rather than
+-- collapsed into IsMobTracked because the options page prints it.
+function NpcPins:GetTrackedMobCount()
+    return table.getn(self:GetTrackedMobIds())
 end
 
 -- Merges categories carried by the same entity spawn. Repair vendors, for
@@ -362,7 +536,7 @@ end
 -- Only a new point spends a category's share of the pin budget. A location
 -- that merges into a spawn already on the map costs nothing but a tooltip
 -- line, so it is always taken.
-function NpcPins:BuildTargets(areaId, selected, selectedCount)
+function NpcPins:BuildTargets(areaId, selected, selectedCount, trackedMobs)
     local database = Database()
     if not database or not database.available then
         return {}
@@ -425,6 +599,16 @@ function NpcPins:BuildTargets(areaId, selected, selectedCount)
     while index <= total do
         AppendLocation(source[index])
         index = index + 1
+    end
+    if selected.tracked and type(trackedMobs) == "table" then
+        local trackedLocations = database:GetTrackedMobLocations(areaId,
+            trackedMobs, MAX_PINS)
+        index = 1
+        total = table.getn(trackedLocations)
+        while index <= total do
+            AppendLocation(trackedLocations[index])
+            index = index + 1
+        end
     end
     if selected.instances then
         local entrances = database:GetInstanceEntrances(areaId)
@@ -831,6 +1015,82 @@ function NpcPins:SetMinimapFocusDim(dimmed)
     ApplyPoolAlpha(self.minimapPool, dimmed and FOCUS_DIM_ALPHA or FOCUS_FULL_ALPHA)
 end
 
+-- The ring frames. Both take no handlers, so they keep the mouse-disabled
+-- state their constructors start a pin in: the tracked-mob pin inside the ring
+-- owns the hover and the tooltip, and a rim that answered either would name
+-- the mark instead of the creature.
+function NpcPins:GetWorldNavMark()
+    if self.worldNavMark then
+        return self.worldNavMark
+    end
+    local accent = UQ.colors.accent
+    local mark = Client.CreateWorldMapPin("TrackedMobNavMark",
+        accent[1], accent[2], accent[3])
+    if mark then
+        Client.SetWorldMapPinTexture(mark, Client.FOLLOWED_QUEST_DOT_BORDER_TEXTURE)
+        Client.SetWorldMapPinColor(mark, accent[1], accent[2], accent[3])
+        Client.SetWorldMapPinMouseEnabled(mark, false)
+        Client.SetWorldMapPinLevelBoost(mark, NAV_MARK_LEVEL_BOOST)
+        self.worldNavMark = mark
+    end
+    return mark
+end
+
+function NpcPins:GetMinimapNavMark()
+    if self.minimapNavMark then
+        return self.minimapNavMark
+    end
+    local accent = UQ.colors.accent
+    local mark = Client.CreateMinimapPin("TrackedMobNavMark",
+        MINIMAP_PIN_SIZE + NAV_MARK_PADDING, accent[1], accent[2], accent[3])
+    if mark then
+        Client.SetMinimapPinTexture(mark, Client.FOLLOWED_QUEST_DOT_BORDER_TEXTURE)
+        Client.SetMinimapPinColor(mark, accent[1], accent[2], accent[3])
+        Client.SetMinimapPinMouseEnabled(mark, false)
+        Client.SetMinimapPinLevelBoost(mark, NAV_MARK_LEVEL_BOOST)
+        self.minimapNavMark = mark
+    end
+    return mark
+end
+
+-- The spawn the mob navigator's arrow is aiming at, for the zone `areaId` is
+-- drawing, or nil. Read on every draw rather than pushed from the navigator:
+-- the mark then cannot outlive the arrow, and neither surface has to know
+-- about the other's ordering.
+function NpcPins:NavMarkPoint(areaId)
+    if type(areaId) ~= "number" then
+        return nil
+    end
+    local navigator = MobNavigator()
+    if not navigator then
+        return nil
+    end
+    local targetAreaId, x, y = navigator:GetTarget()
+    if targetAreaId ~= areaId or type(x) ~= "number" or type(y) ~= "number" then
+        return nil
+    end
+    return x, y
+end
+
+function NpcPins:DrawWorldNavMark(alpha)
+    local x, y = self:NavMarkPoint(self.lastAreaId)
+    local mark = x and self:GetWorldNavMark()
+    if not mark then
+        self:HideNavMark(self.worldNavMark)
+        self.worldNavMarkVisible = false
+        return false
+    end
+    local size = WORLD_PIN_SIZE + NAV_MARK_PADDING
+    Client.SetWorldMapPinSize(mark, size, size)
+    Client.SetWorldMapPinAlpha(mark, alpha)
+    self.worldNavMarkVisible =
+        Client.PositionWorldMapPin(mark, x / 100, y / 100) and true or false
+    if not self.worldNavMarkVisible then
+        Client.HideObject(mark)
+    end
+    return self.worldNavMarkVisible
+end
+
 function NpcPins:DrawWorldMap()
     local alpha = self.worldFocusDimmed and FOCUS_DIM_ALPHA or FOCUS_FULL_ALPHA
     local visible = 0
@@ -860,11 +1120,12 @@ function NpcPins:DrawWorldMap()
         index = index + 1
     end
     self.worldVisible = HidePoolFrom(self.worldPool, visible + 1)
+    self:DrawWorldNavMark(alpha)
 end
 
 function NpcPins:DrawMinimap(report, areaId)
     if Client.IsMinimapRotating() then
-        self.minimapVisible = HidePoolFrom(self.minimapPool, 1)
+        self:HideMinimapPins()
         return
     end
     local width, height, zoom = Client.GetMinimapGeometry()
@@ -875,7 +1136,7 @@ function NpcPins:DrawMinimap(report, areaId)
     if type(width) ~= "number" or type(height) ~= "number" or type(span) ~= "number"
         or type(yards) ~= "table" or type(yards[1]) ~= "number"
         or type(yards[2]) ~= "number" then
-        self.minimapVisible = HidePoolFrom(self.minimapPool, 1)
+        self:HideMinimapPins()
         return
     end
 
@@ -889,8 +1150,15 @@ function NpcPins:DrawMinimap(report, areaId)
     if limit < 0 then limit = 0 end
     local nodeLimit = shortest / 2 - NODE_MINIMAP_PIN_SIZE / 2 - MINIMAP_MARGIN
     if nodeLimit < 0 then nodeLimit = 0 end
-
+    -- The rim a clamped tracked pin rests on. Sized for the RING rather than
+    -- the pin, because the ring is the larger of the two and is drawn
+    -- concentric with it: containing the ring contains both, and nothing
+    -- clips a child of the minimap on this client.
+    local trackedRim = shortest / 2
+        - (MINIMAP_PIN_SIZE + NAV_MARK_PADDING) / 2 - MINIMAP_MARGIN
+    if trackedRim < 0 then trackedRim = 0 end
     local visible = 0
+    local clamped = 0
     local index = 1
     local total = table.getn(self.minimapTargets)
     while index <= total do
@@ -900,12 +1168,27 @@ function NpcPins:DrawMinimap(report, areaId)
         local distance = math.sqrt(offsetX * offsetX + offsetY * offsetY)
         local reach = limit
         if target.small then reach = nodeLimit end
-        if distance <= reach then
+        -- Off-view is the end of it for everything but the tracked creature,
+        -- which is pulled to the rim whatever minimapPinsClampEdge says: that
+        -- switch is about the incidental markers around the player, and this
+        -- is the one pin they asked for by name.
+        local onEdge = false
+        local draw = distance <= reach
+        if not draw and target.categorySeen and target.categorySeen.tracked then
+            offsetX, offsetY, onEdge = ClampToRim(offsetX, offsetY, distance,
+                trackedRim)
+            draw = onEdge
+        end
+        if draw then
             local pin = self:GetMinimapPin(visible + 1)
             if pin then
                 pin.unrealQuestNpcTarget = target
-                Client.SetMinimapPinAlpha(pin,
-                    self.minimapFocusDimmed and FOCUS_DIM_ALPHA or FOCUS_FULL_ALPHA)
+                local alpha = self.minimapFocusDimmed and FOCUS_DIM_ALPHA
+                    or FOCUS_FULL_ALPHA
+                if onEdge then
+                    alpha = alpha * MINIMAP_EDGE_ALPHA
+                end
+                Client.SetMinimapPinAlpha(pin, alpha)
                 local size = MINIMAP_PIN_SIZE
                 if target.small then size = NODE_MINIMAP_PIN_SIZE end
                 Client.SetMinimapPinSize(pin, size, size)
@@ -917,6 +1200,7 @@ function NpcPins:DrawMinimap(report, areaId)
                 end
                 if Client.PositionMinimapPin(pin, offsetX, offsetY) then
                     visible = visible + 1
+                    if onEdge then clamped = clamped + 1 end
                 else
                     Client.HideObject(pin)
                 end
@@ -925,10 +1209,53 @@ function NpcPins:DrawMinimap(report, areaId)
         index = index + 1
     end
     self.minimapVisible = HidePoolFrom(self.minimapPool, visible + 1)
+    self.minimapClamped = clamped
+    self:DrawMinimapNavMark(report, areaId, yards, yardsPerPixel, trackedRim)
+end
+
+-- One place that clears both the minimap pins and the ring, because every
+-- reason to withhold the pins -- a rotating minimap, an unreadable scale, an
+-- interior -- withholds the ring for the same reason. Leaving it behind would
+-- put a mark on the minimap at the last position that could be computed.
+function NpcPins:HideMinimapPins()
+    self.minimapVisible = HidePoolFrom(self.minimapPool, 1)
+    self:HideNavMark(self.minimapNavMark)
+    self.minimapNavMarkVisible = false
+end
+
+-- The ring is placed from the same yards-per-pixel and pulled to the same rim
+-- as the pin it frames, so the two cannot separate: an aimed spawn on the rim
+-- keeps its ring on the rim with it.
+function NpcPins:DrawMinimapNavMark(report, areaId, yards, yardsPerPixel, rim)
+    local x, y = self:NavMarkPoint(areaId)
+    local mark = x and self:GetMinimapNavMark()
+    if not mark then
+        self:HideNavMark(self.minimapNavMark)
+        self.minimapNavMarkVisible = false
+        return false
+    end
+    local offsetX = ((x / 100) - report.playerX) * yards[1] / yardsPerPixel
+    local offsetY = -(((y / 100) - report.playerY) * yards[2]) / yardsPerPixel
+    local distance = math.sqrt(offsetX * offsetX + offsetY * offsetY)
+    local size = MINIMAP_PIN_SIZE + NAV_MARK_PADDING
+    local onEdge
+    offsetX, offsetY, onEdge = ClampToRim(offsetX, offsetY, distance, rim)
+    local alpha = self.minimapFocusDimmed and FOCUS_DIM_ALPHA or FOCUS_FULL_ALPHA
+    if onEdge then
+        alpha = alpha * MINIMAP_EDGE_ALPHA
+    end
+    Client.SetMinimapPinSize(mark, size, size)
+    Client.SetMinimapPinAlpha(mark, alpha)
+    self.minimapNavMarkVisible =
+        Client.PositionMinimapPin(mark, offsetX, offsetY) and true or false
+    if not self.minimapNavMarkVisible then
+        Client.HideObject(mark)
+    end
+    return self.minimapNavMarkVisible
 end
 
 function NpcPins:Refresh()
-    local selected, selectedCount, signature = self:Selection()
+    local selected, selectedCount, signature, trackedMobs = self:Selection()
     if selectedCount == 0 then
         self:HideAll()
         self.lastSelectionSignature = signature
@@ -957,14 +1284,16 @@ function NpcPins:Refresh()
         or self.lastPlayerAreaId ~= playerAreaId
         or self.lastSelectionSignature ~= signature then
         if viewedAreaId then
-            self.targets = self:BuildTargets(viewedAreaId, selected, selectedCount)
+            self.targets = self:BuildTargets(viewedAreaId, selected, selectedCount,
+                trackedMobs)
         else
             self.targets = {}
         end
         if playerAreaId and playerAreaId == viewedAreaId then
             self.minimapTargets = self.targets
         elseif playerAreaId then
-            self.minimapTargets = self:BuildTargets(playerAreaId, selected, selectedCount)
+            self.minimapTargets = self:BuildTargets(playerAreaId, selected,
+                selectedCount, trackedMobs)
         else
             self.minimapTargets = {}
         end
@@ -995,10 +1324,10 @@ function NpcPins:Refresh()
     -- MapContext:IsInterior and docs/MINIMAP-PINS.md.
     local pinConfig = Config()
     if not playerAreaId or not report then
-        self.minimapVisible = HidePoolFrom(self.minimapPool, 1)
+        self:HideMinimapPins()
     elseif (not pinConfig or pinConfig:Get("minimapPinsHideIndoors") ~= false)
         and mapContext:IsInterior(report) then
-        self.minimapVisible = HidePoolFrom(self.minimapPool, 1)
+        self:HideMinimapPins()
     else
         self:DrawMinimap(report, playerAreaId)
     end
@@ -1011,6 +1340,9 @@ function NpcPins:GetStatus()
         targets = table.getn(self.targets),
         worldVisible = self.worldVisible,
         minimapVisible = self.minimapVisible,
+        worldNavMark = self.worldNavMarkVisible,
+        minimapNavMark = self.minimapNavMarkVisible,
+        minimapClamped = self.minimapClamped,
     }
 end
 

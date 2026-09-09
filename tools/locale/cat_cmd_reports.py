@@ -8,6 +8,9 @@ STRINGS = {
     "v%s capability report", "v%s rapport de capacités",
     "v%s отчёт о возможностях", "v%s 功能报告"),
 "CMD_STATUS_SNAPSHOT_COMPLETE": ("complete", "complet", "полный", "完整"),
+"CMD_STATUS_FRAME_COUNT": (
+    "client frame objects: %s", "objets de cadre du client : %s",
+    "объекты рамок клиента: %s", "客户端框架对象：%s"),
 "CMD_STATUS_OBJECTIVE_PATH": (
     "objective readout path: %s", "voie de lecture des objectifs : %s",
     "путь чтения целей: %s", "目标读取路径：%s"),
@@ -283,6 +286,31 @@ STRINGS = {
     "échelle :       %s mètres de large (%s)",
     "масштаб:        %s ярдов в ширину (%s)",
     "比例：          宽 %s 码（%s）"),
+"CMD_MINIMAP_ARROW_RAISED": (
+    "player arrow:   raised above the pins",
+    "fleche joueur : remontee au-dessus des marqueurs",
+    "стрелка игрока: поднята над метками",
+    "玩家箭头：    已提升到标记上方"),
+"CMD_MINIMAP_ARROW_BELOW": (
+    "player arrow:   markers lowered to level %s so the arrow draws over them",
+    "fleche joueur : marqueurs abaisses au niveau %s pour passer dessous",
+    "стрелка игрока: метки опущены на уровень %s, стрелка рисуется поверх",
+    "玩家箭头：    标记已降至层级 %s，箭头绘制在上方"),
+"CMD_MINIMAP_ARROW_OFF": (
+    "player arrow:   not handled; markers keep level %s",
+    "fleche joueur : non geree ; marqueurs au niveau %s",
+    "стрелка игрока: не обрабатывается; метки на уровне %s",
+    "玩家箭头：    未处理；标记保持层级 %s"),
+"CMD_MINIMAP_ARROW_RESCAN_FOUND": (
+    "the client handed over a minimap player arrow; it is raised above the markers",
+    "le client a fourni une fleche de joueur ; elle passe au-dessus des marqueurs",
+    "клиент вернул стрелку игрока; она поднята над метками",
+    "客户端提供了小地图玩家箭头；已将其提升到标记上方"),
+"CMD_MINIMAP_ARROW_RESCAN_MISSING": (
+    "no minimap player arrow was handed over; the markers are lowered instead",
+    "aucune fleche de joueur fournie ; les marqueurs sont abaisses a la place",
+    "стрелка игрока не предоставлена; вместо этого опущены метки",
+    "未提供小地图玩家箭头；改为降低标记层级"),
 "CMD_MINIMAP_ONLY_ZOOM_ZERO": (
     "only zoom 0 is measured on this client; other steps use Vanilla constants",
     "seul le zoom 0 est mesuré sur ce client ; les autres niveaux utilisent les "
@@ -403,6 +431,21 @@ STRINGS = {
 "CMD_TOOLTIP_CURRENT_UNIT": (
     "currently hovered unit key:   %s", "clé de l'unité survolée :     %s",
     "ключ существа под курсором:   %s", "当前悬停单位键：              %s"),
+"CMD_TOOLTIP_DELAY_CURRENT": (
+    "tooltip fade hold: %s seconds",
+    "delai de l'infobulle : %s secondes",
+    "задержка скрытия подсказки: %s с",
+    "提示停留时间：%s 秒"),
+"CMD_TOOLTIP_DELAY_SET": (
+    "tooltip fade hold set to %s seconds",
+    "delai de l'infobulle regle a %s secondes",
+    "задержка скрытия подсказки: %s с",
+    "提示停留时间已设为 %s 秒"),
+"CMD_TOOLTIP_DELAY_USAGE": (
+    "usage: /uq tooltip delay <0.25-1.00>",
+    "utilisation : /uq tooltip delay <0.25-1.00>",
+    "использование: /uq tooltip delay <0.25-1.00>",
+    "用法：/uq tooltip delay <0.25-1.00>"),
 
 # --- marks -------------------------------------------------------------------
 "CMD_MARKS_OFF": (
@@ -796,6 +839,16 @@ STRINGS = {
     "navigateur de quete :",
     "навигатор заданий:",
     "任务导航："),
+"CMD_MOBNAV_TITLE": (
+    "tracked mob navigator:",
+    "navigateur de creature :",
+    "навигатор существ:",
+    "生物导航："),
+"CMD_MOBNAV_NONE_TRACKED": (
+    "no creature is tracked; add one from the options page's Mob tracking tab",
+    "aucune creature suivie ; ajoutez-en une depuis l'onglet Suivi de creature des options",
+    "ни одно существо не отслеживается; добавьте его на вкладке настроек",
+    "未追踪任何生物；请在设置页的生物追踪选项卡中添加"),
 "CMD_NAV_HIDDEN": (
     "hidden: %s",
     "masque : %s",
@@ -1093,6 +1146,14 @@ STRINGS = {
     u"alerte : %s",
     u"оповещение: %s",
     u"提醒：%s",
+),
+# The three rank switches, so a status line that says the alert is on can also
+# say what it is still listening for.
+"CMD_RARE_RANKS": (
+    u"rares: %s, rare elites: %s, bosses: %s",
+    u"rares : %s, élites rares : %s, boss : %s",
+    u"редкие: %s, редкие элитные: %s, боссы: %s",
+    u"稀有：%s，稀有精英：%s，首领：%s",
 ),
 "CMD_RARE_RANGE": (
     u"range: %s yards, card stays %s seconds",

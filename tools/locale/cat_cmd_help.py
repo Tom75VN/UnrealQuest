@@ -90,6 +90,12 @@ STRINGS = {
     "/uq tooltip   диагностика целей в подсказках существ",
     "/uq tooltip   实体提示中的目标诊断",
 ),
+"CMD_HELP_TOOLTIP_DELAY": (
+    "/uq tooltip delay <seconds>   set cursor-follow fade hold",
+    "/uq tooltip delay <secondes>  regler le delai de suivi du curseur",
+    "/uq tooltip delay <секунды>   задержка подсказки у курсора",
+    "/uq tooltip delay <秒>        设置跟随光标提示的停留时间",
+),
 "CMD_HELP_TRACKER": (
     "/uq tracker   the movable quest tracker window",
     "/uq tracker   la fenêtre de suivi de quêtes déplaçable",
@@ -180,6 +186,11 @@ STRINGS = {
     "/uq nav       diagnostics du navigateur de quete",
     "/uq nav       диагностика навигатора заданий",
     "/uq nav       任务导航诊断"),
+"CMD_HELP_MOBNAV": (
+    "/uq mobnav    tracked mob navigator diagnostics",
+    "/uq mobnav    diagnostics du navigateur de creature",
+    "/uq mobnav    диагностика навигатора существ",
+    "/uq mobnav    生物导航诊断"),
 "CMD_HELP_MAIN_DISABLED": (
     "/uq main, /uq waypoint   disabled in this build",
     "/uq main, /uq waypoint   désactivés dans cette version",

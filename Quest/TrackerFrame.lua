@@ -497,6 +497,29 @@ end
 -- When every route declines, the filter is switched off and the whole log is
 -- listed. An unfiltered window is a far smaller wrong than an empty one.
 --
+-- Inside a DUNGEON, the client names the dungeon ----------------------------
+--
+-- Which is the same shape as the mine above and wants the opposite answer. A
+-- mine is still in Elwynn Forest, so the last outdoor zone is the right thing
+-- to filter on; a dungeon is not, and filtering on the outdoor zone the player
+-- walked in from is what left this window listing the whole quest log the
+-- moment anybody stepped through a portal -- every outdoor quest survived on
+-- its header, or none did and the guard below listed them all anyway.
+--
+-- MapContext:GetStandingZone therefore answers an instance with the instance's
+-- own name, on a route of its own ("instance"), ahead of every recovery that
+-- can only produce an outdoor zone.
+--
+-- The map half cannot follow it in there. THE BUNDLED DATA HOLDS NO
+-- COORDINATE INSIDE ANY INSTANCE AT ALL -- every recorded position sits in one
+-- of the 50 outdoor areas this client draws a map for -- so asking
+-- QuestZonePresence:HasPoints about the Deadmines' own area would answer false
+-- for a Deadmines quest and hide exactly the quests the player came in to do.
+-- QuestZonePresence:HasInstanceWork replaces it there, answering from the
+-- creature provenance in Database/instance_only_units.lua instead of from
+-- position, and the quest-log header stays the fallback underneath it exactly
+-- as it is outdoors.
+
 -- The filter may narrow the window, never empty it --------------------------
 --
 -- Every input above is a hypothesis this client cannot be made to confirm:
@@ -548,12 +571,18 @@ local PROVEN_ZONE_ROUTES = {
     standing = true,
     standingSpan = true,
     parent = true,
+    -- The client told us the player is inside an instance, or the bundled
+    -- instance table named the area. Either way the place is identified, so an
+    -- empty result is an answer about the dungeon and not about a guess.
+    instance = true,
 }
 
--- Returns the normalized zone name, the resolved area ID for the map half, and
--- the route the name was reached by. Each may be nil independently: an
--- unresolvable area only costs the map question, and an unnamed zone disables
--- the filter entirely.
+-- Returns the normalized zone name, the resolved area ID for the map half, the
+-- route the name was reached by, and -- when that route is "instance" -- the
+-- dungeon or raid map ID the provenance half needs. Each may be nil
+-- independently: an unresolvable area only costs the map question, an
+-- unresolvable instance map only costs the provenance question, and an unnamed
+-- zone disables the filter entirely.
 local function CurrentZone()
     if not Setting("trackerCurrentZoneOnly") then
         return nil
@@ -568,7 +597,11 @@ local function CurrentZone()
     if type(name) ~= "string" or name == "" then
         return nil
     end
-    return UQ.NameKey(name), areaId, how
+    local instanceMap = nil
+    if how == "instance" then
+        instanceMap = mapContext:GetInstanceMapForArea(areaId)
+    end
+    return UQ.NameKey(name), areaId, how, instanceMap
 end
 
 -- True for a quest that has no drawable work in the current zone, falling back
@@ -608,14 +641,32 @@ local function HeaderParentKey(zone, zoneKey)
     return parentKey
 end
 
-local function IsOtherZone(quest, zone, currentZoneKey, currentAreaId)
+-- `where` is the one table BuildLines assembles before the scan: the
+-- normalized zone name every comparison here is against, the area the map half
+-- asks about, whether the player is inside an instance at all, and the instance
+-- map the provenance half asks about. The last two are separate on purpose --
+-- the client can say "instance" for a place Database/instances.lua has no row
+-- for, and that still has to switch the map half off.
+local function IsOtherZone(quest, zone, where)
+    local currentZoneKey = where.zoneKey
     if not currentZoneKey then
         return false
     end
-    if currentAreaId then
+    if where.inInstance then
+        -- Not the map half: there is no coordinate in here to ask it about.
+        if where.instanceMap then
+            local presence = ZonePresence()
+            if presence then
+                local hasWork = presence:HasInstanceWork(quest, where.instanceMap)
+                if hasWork ~= nil then
+                    return not hasWork
+                end
+            end
+        end
+    elseif where.areaId then
         local presence = ZonePresence()
         if presence then
-            local hasPoints = presence:HasPoints(quest, currentAreaId)
+            local hasPoints = presence:HasPoints(quest, where.areaId)
             if hasPoints ~= nil then
                 return not hasPoints
             end
@@ -925,7 +976,13 @@ function TrackerFrame:BuildLines()
     -- and the window never repaints.
     local progressBars = Setting("trackerProgressBar") and true or false
     local recentFirst = Setting("trackerRecentFirst") and true or false
-    local currentZoneKey, currentAreaId, currentZoneHow = CurrentZone()
+    local currentZoneKey, currentAreaId, currentZoneHow, currentInstanceMap = CurrentZone()
+    local where = {
+        zoneKey = currentZoneKey,
+        areaId = currentAreaId,
+        inInstance = currentZoneHow == "instance",
+        instanceMap = currentInstanceMap,
+    }
     local mapKept = 0
     local quests = state:GetOrderedQuests()
     NoteProgressPass(quests)
@@ -946,7 +1003,7 @@ function TrackerFrame:BuildLines()
         local scan = 1
         while scan <= total do
             local quest = quests[scan]
-            local flag = IsOtherZone(quest, quest.zone, currentZoneKey, currentAreaId)
+            local flag = IsOtherZone(quest, quest.zone, where)
             elsewhereFlags[scan] = flag
             -- A quest the player shift-clicked away is not evidence about the
             -- filter: it would be gone either way. Only the quests the filter
@@ -1119,6 +1176,7 @@ function TrackerFrame:BuildLines()
     end
 
     self.currentZoneArea = currentAreaId
+    self.currentInstanceMap = currentInstanceMap
     self.mapKept = mapKept
     self.zoneFilterDropped = zoneFilterDropped
     self.zoneFilterEmpty = zoneFilterEmpty
@@ -1874,6 +1932,7 @@ function TrackerFrame:GetReport()
         currentZoneArea = self.currentZoneArea,
         currentZoneName = self.currentZoneName,
         currentZoneHow = self.currentZoneHow,
+        currentInstanceMap = self.currentInstanceMap,
         mapKept = self.mapKept,
         zoneFilterDropped = self.zoneFilterDropped and true or false,
         zoneFilterEmpty = self.zoneFilterEmpty and true or false,

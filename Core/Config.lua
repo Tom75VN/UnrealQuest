@@ -60,6 +60,10 @@ local SECTION_LIMITS = {
     questHistory = 6000,
     questHistoryManual = 6000,
     questHistoryImported = 6000,
+    -- One counter per alert-worthy creature. The current bundled alert set is
+    -- much smaller, but the bound leaves room for future world-data updates
+    -- while keeping a damaged SavedVariables branch finite.
+    rareKillCounts = 2000,
     -- Temporary review collection: one "unitId:areaId" entry for each
     -- Rare/Elite/Boss pin the player explicitly removes from a dungeon
     -- approach. Kept account-wide so every character contributes to one list.
@@ -76,6 +80,10 @@ local CHARACTER_SECTIONS = {
     questHistory = true,
     questHistoryManual = true,
     questHistoryImported = true,
+    -- A kill is something this character did, exactly like completing a
+    -- quest; sharing the count account-wide would attribute one alt's kills
+    -- to every other character.
+    rareKillCounts = true,
     -- Quest title -> palette slot (Core/Namespace.lua). A quest log is a
     -- character's own, so the colours drawn for it are too: sharing the map
     -- account-wide would have one alt's quests hold slots the alt actually
@@ -108,6 +116,16 @@ local defaults = {
     -- an existing opt-out remains respected. Live client text is always the
     -- fallback; identity, progress counters and game state are never changed.
     translateQuestTitles = true,
+
+    -- Shows the fixed respawn duration recorded by the bundled world data on
+    -- creature and game-object tooltips. A zero or absent duration is unknown
+    -- and stays hidden rather than being presented as an instant respawn.
+    tooltipRespawnTimers = true,
+
+    -- Experience and reputation rows at the tail of the Quest Log reward
+    -- section. Both values come from the bundled world data after a title
+    -- match, because the client reports neither.
+    questLogRewards = true,
 
     restoreTracking = true,
     -- Seasonal quests are hidden by default: the client cannot report which
@@ -164,6 +182,14 @@ local defaults = {
     -- dots are never clamped either way -- this only affects the two icon
     -- pools. See Map/MinimapPins.lua.
     minimapPinsClampEdge = true,
+    -- Keeps the game's own player arrow readable at the centre of the
+    -- minimap. Every pin is created in the measured level-120 band, which is
+    -- far above the arrow, so a dot standing on the player used to bury it.
+    -- With this on the arrow is raised where the client gives a handle on it,
+    -- and otherwise the pins drop to just above the minimap's own level so the
+    -- arrow comes out on top. No pin is ever hidden either way, and "/uq
+    -- minimap" reports which of the two happened. See Map/MinimapPins.lua.
+    minimapPinsBelowArrow = true,
     -- Deliberately not on the options page: the page is at its height budget,
     -- and this is an escape hatch rather than a preference -- "/uq minimap
     -- indoors on|off" -- for the case where the interior test misfires.
@@ -241,14 +267,27 @@ local defaults = {
     -- spawn data, not a sighting: this client has no way to enumerate the
     -- creatures around the player, so "in range" means "within rareAlertRange
     -- yards of a spawn point recorded for this creature".
-    rareAlert = true,
+    -- One key per rank the alert can raise, because which of them is worth
+    -- being interrupted for is a different answer for every player: the
+    -- curated rank-4 rares, the curated rank-2 rare elites, and the rank-3
+    -- open-world bosses.
+    --
+    -- There is deliberately no fourth key. Rank 1 is 816 ordinary elites --
+    -- every elite camp in the game plus a tail of parked NPCs -- and
+    -- Database:IsAlertWorthy never admits one, so a switch for it would be
+    -- wired to nothing. They stay map-only whatever these three say.
+    --
+    -- All three off IS the alert turned off, and that is what "/uq rare off"
+    -- writes. There is no master switch above them: the options page shows
+    -- exactly these three, so it can never show a rank as tracked while a
+    -- hidden switch silences it.
+    rareAlertRares = true,
+    rareAlertElites = true,
+    rareAlertBosses = true,
 
     -- Yards. The settings slider and World/RareAlert.lua both use 20-500.
     -- 120 warns early without reaching as far into neighbouring city blocks.
     rareAlertRange = 120,
-
-    -- ONE switch covers the curated rares and rare elites plus open-world
-    -- bosses. Ordinary elites remain map-only; see Database:IsAlertWorthy.
 
     -- Seconds the card stays up on its own. Clamped to 3-60.
     rareAlertSeconds = 12,
@@ -433,6 +472,24 @@ local defaults = {
     -- Whether the decorative arc is drawn behind the arrow. It is a reference
     -- frame, not information -- the arrow alone is still correct without it.
     navigatorShowArc = true,
+
+    -- The mob navigator: a second, independent arc-and-arrow that aims at the
+    -- nearest recorded spawn of a creature tracked from the options page's Mob
+    -- tracking tab. Separate keys throughout rather than a mode on the quest
+    -- navigator, because the point of it is that both can be on screen at once
+    -- and be dragged apart. See docs/HUD-NAVIGATOR.md.
+    mobNavigatorEnabled = true,
+    mobNavigatorInterval = 0.05,
+    mobNavigatorScale = 1,
+
+    -- Offset left of the quest navigator's default so a player who tracks a
+    -- mob for the first time sees two dials rather than one dial with a second
+    -- hidden exactly behind it.
+    mobNavigatorPoint = "TOP",
+    mobNavigatorRelativePoint = "CENTER",
+    mobNavigatorX = -170,
+    mobNavigatorY = 150,
+    mobNavigatorShowArc = true,
 }
 
 local function IsSafeString(value)
@@ -571,6 +628,34 @@ function Config:OnInit()
             UnrealQuestDB.trackerWidth = defaults.trackerWidth
         end
         UnrealQuestDB.trackerWidthDefaultVersion = TRACKER_WIDTH_DEFAULT_VERSION
+    end
+
+    -- The alert's single on/off switch became one key per rank. A player who
+    -- had turned the whole alert off keeps it off: the three rank keys the
+    -- loop above has just defaulted to true inherit that answer instead. The
+    -- retired key is consumed rather than left in place, so this cannot run a
+    -- second time and undo a choice made on the options page since.
+    if UnrealQuestDB.rareAlert ~= nil then
+        if UnrealQuestDB.rareAlert == false then
+            UnrealQuestDB.rareAlertRares = false
+            UnrealQuestDB.rareAlertElites = false
+            UnrealQuestDB.rareAlertBosses = false
+        end
+        UnrealQuestDB.rareAlert = nil
+    end
+
+    -- Warleader Krazzilak's outdoor Tanaris spawn was mistakenly collected as
+    -- a dungeon approach. Retire that reviewed pair once, including the saved
+    -- manual hide that originally fed the bundled list. The version guard lets
+    -- a later deliberate hide survive subsequent loads.
+    local RANKED_IGNORE_REVIEW_VERSION = 1
+    if type(UnrealQuestDB.rankedIgnoreReviewVersion) ~= "number"
+        or UnrealQuestDB.rankedIgnoreReviewVersion < RANKED_IGNORE_REVIEW_VERSION then
+        local ignores = UnrealQuestDB.rareApproachIgnores
+        if type(ignores) == "table" then
+            ignores["8199:440"] = nil
+        end
+        UnrealQuestDB.rankedIgnoreReviewVersion = RANKED_IGNORE_REVIEW_VERSION
     end
 
     self.store = UnrealQuestDB

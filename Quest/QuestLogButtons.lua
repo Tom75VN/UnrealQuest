@@ -22,27 +22,45 @@ gold plaque and its quest marker.
                        reference gold active state while it is the followed
                        one. The same gesture the tracker window's own rows use.
 
-## What is shared between the surfaces, and what is not
+A fourth control sits apart from that row, in the detail pane's top-right
+corner: the language flags. They are anchored to the detail VIEWPORT on both
+surfaces and parented to QuestLogFrame -- see Client.PlaceQuestLogFlag for why
+neither uUI's own detail panel nor the scroll child is the right frame.
 
-The Following button, followed-row plaque and quest marker are properties of
-UnrealQuest's model, not of a host theme, so they run on whichever quest log is
-on screen. Both surfaces list the quest log through the SAME native
-`QuestLogTitle<N>` rows -- unrealUI's modern panels reuse them, and the EQL3
-extension merely repositions and multiplies them. The gutter between the
-tracked bar and title carries the quest's map colour dot; following replaces
-that dot with the quest marker, while the plaque begins at the title rather
-than behind either gutter mark.
+  * Flags          -- one flag per language this quest can be read in, side by
+                       side, the same row the settings window's header carries
+                       and read the same way: full opacity is the language the
+                       quest is in, 30% the others, 95% under the cursor.
+                       Clicking one puts THIS quest in that language --
+                       title, objective summary and description -- without
+                       touching the account-wide translateQuestTitles setting
+                       and without a reload. It writes a per-quest language
+                       (Quest/QuestLogTranslation.lua, stored in
+                       Core/Locale.lua) and the detail pane is reapplied in the
+                       same click.
 
-Three things stay modern-only, because each one depends on a widget that
-unrealUI's panels supply and the native log does not lay out the same way: the
-denser 18px row height (Client.SetModernQuestLogRowLayout), the recoloured
-objective lines, and the quest level under the detail title -- the native log
-already carries the level in the row text through Quest/QuestLogLevels.lua.
+                       The row's first flag is the CLIENT's own locale, and it
+                       always appears: it needs no bundled row, it is the text
+                       the server actually sent, and it is the way back for a
+                       player whose font cannot draw the language they picked.
+                       The rest are the bundled languages that have a real row
+                       for this quest, in the settings row's own order, packed
+                       against the right edge so a quest missing one of them
+                       leaves no hole.
 
-A fourth modern-only treatment deliberately lives in that module and not here:
-the row's own name is tinted by quest difficulty there, in the same pass that
-writes the level prefix, because the two are one fact about one row and uUI's
-font pass would otherwise leave every quest the same colour.
+                       Drawn 30% smaller than the settings header's flags,
+                       because this row sits inside the quest text rather than
+                       in chrome of its own.
+
+                       The scope is the QUEST, not this panel: every surface
+                       asks Database:GetQuestDisplayText, so the tracker, the
+                       map pins and the tooltips follow along on their own next
+                       poll. "Only this quest" means one quest everywhere, not
+                       one panel.
+
+                       The whole row is drawn only when there is a choice: an
+                       unambiguous quest ID, and at least one bundled language
+                       beside the client's own.
 
 ## Placement
 
@@ -122,7 +140,26 @@ local DOCK_TITLE_EXTRA_HEIGHT = 28
 local POLL_INTERVAL = 0.3
 local MAX_LOG_ROWS = 30
 
+-- The language row. 30% off the settings header's 18x14 and its 3-pixel gap,
+-- because this row sits inside the quest text rather than in a chrome strip of
+-- its own. The inset is measured from the detail viewport's top-right corner
+-- and kept small: the scroll bar sits outside that corner.
+local FLAG_WIDTH = 13
+local FLAG_HEIGHT = 10
+local FLAG_GAP = 2
+local FLAG_INSET_X = -6
+local FLAG_INSET_Y = -4
+
+-- The settings row's own three shades, for the same reason it has them:
+-- selection is communicated by opacity alone, and pointing at the current
+-- choice must never make it look weaker than the others.
+local FLAG_SHADE_SELECTED = 1
+local FLAG_SHADE_IDLE = 0.3
+local FLAG_SHADE_HOVER = 0.95
+
 QuestLogButtons.buttons = nil
+QuestLogButtons.flags = nil
+QuestLogButtons.flagCodes = nil
 QuestLogButtons.currentQuest = nil
 QuestLogButtons.dockTitlePrepared = false
 
@@ -140,6 +177,10 @@ end
 
 local function QuestClicks()
     return UQ:GetModule("QuestClicks")
+end
+
+local function Translation()
+    return UQ:GetModule("QuestLogTranslation")
 end
 
 -- Widgets ---------------------------------------------------------------
@@ -322,6 +363,195 @@ local function AnchorModernButtons(buttons)
     return true
 end
 
+-- The language row -----------------------------------------------------------
+
+-- The roster is fixed for the session: the languages this addon carries flags
+-- for, in the settings row's order, plus the client's own locale when it is
+-- not one of them. WHICH of these a given quest actually offers changes per
+-- quest and is decided in RefreshFlags; this only decides what exists and in
+-- what order it reads.
+local function FlagRoster()
+    if QuestLogButtons.flagCodes then
+        return QuestLogButtons.flagCodes
+    end
+    local languages = UQ.GetLanguages()
+    if not languages then
+        return nil
+    end
+    local codes = {}
+    local seen = {}
+    local index = 1
+    local total = table.getn(languages)
+    while index <= total do
+        local code = languages[index].code
+        table.insert(codes, code)
+        seen[code] = true
+        index = index + 1
+    end
+    local clientLanguage = Client.GetLocale()
+    if type(clientLanguage) == "string" and not seen[clientLanguage] then
+        table.insert(codes, 1, clientLanguage)
+    end
+    QuestLogButtons.flagCodes = codes
+    return codes
+end
+
+local function FlagTooltip(button)
+    local translation = Translation()
+    local quest = QuestLogButtons.currentQuest
+    local code = button.unrealQuestLanguage
+    if not translation or not quest or type(code) ~= "string" then
+        return
+    end
+    local native = code == Client.GetLocale()
+    Client.ShowGameTooltip(button, {
+        { text = UQ.GetLanguageLabel(code), r = UQ.colors.accent[1],
+          g = UQ.colors.accent[2], b = UQ.colors.accent[3] },
+        { text = native and UQ.L("QUESTLOG_FLAG_NATIVE")
+            or UQ.L("QUESTLOG_FLAG_TRANSLATED"), r = 0.9, g = 0.9, b = 0.9 },
+        { text = UQ.L("QUESTLOG_FLAG_ONLY_THIS_QUEST"), r = 0.7, g = 0.7, b = 0.7 },
+    }, "ANCHOR_LEFT")
+end
+
+-- Built once per language; Client.PlaceQuestLogFlag then reparents each to
+-- QuestLogFrame and keeps it there. There is no rebuild, because this client
+-- cannot destroy a frame. Each is created WITH artwork rather than with the
+-- ASCII badge: Client.CreateFlagButton only makes the icon texture when it is
+-- handed a path, and a flag that started as a badge could never grow one.
+local function EnsureFlags(parent)
+    if QuestLogButtons.flags then
+        return QuestLogButtons.flags
+    end
+    local codes = FlagRoster()
+    if not codes then
+        return nil
+    end
+
+    local flags = {}
+    local index = 1
+    local total = table.getn(codes)
+    while index <= total do
+        -- Captured per row: the closures below outlive this iteration.
+        local code = codes[index]
+        local button = Client.CreateFlagButton(parent,
+            "UnrealQuestLogLanguageFlag" .. code,
+            UQ.FlagTexture(code), UQ.GetLanguageBadge(code),
+            FLAG_WIDTH, FLAG_HEIGHT)
+        if button then
+            button.unrealQuestLanguage = code
+            Client.SetObjectScript(button, "OnClick", function()
+                local translation = Translation()
+                local quest = QuestLogButtons.currentQuest
+                if not translation or not quest then
+                    return
+                end
+                if not translation:SetQuestLanguage(quest, code) then
+                    return
+                end
+                QuestLogButtons:Refresh()
+                FlagTooltip(button)
+            end)
+            Client.SetObjectScript(button, "OnEnter", function()
+                if not button.unrealQuestSelected then
+                    Client.SetFlagButtonShade(button, FLAG_SHADE_HOVER, false)
+                end
+                FlagTooltip(button)
+            end)
+            Client.SetObjectScript(button, "OnLeave", function()
+                if not button.unrealQuestSelected then
+                    Client.SetFlagButtonShade(button, FLAG_SHADE_IDLE, false)
+                end
+                Client.HideGameTooltip(button)
+            end)
+            Client.HideObject(button)
+            flags[code] = button
+        end
+        index = index + 1
+    end
+
+    QuestLogButtons.flags = flags
+    return flags
+end
+
+local function HideFlags()
+    local flags = QuestLogButtons.flags
+    if not flags then
+        return
+    end
+    local codes = QuestLogButtons.flagCodes
+    local index = 1
+    local total = codes and table.getn(codes) or 0
+    while index <= total do
+        local button = flags[codes[index]]
+        if button then
+            Client.HideObject(button)
+        end
+        index = index + 1
+    end
+end
+
+local function RefreshFlags(quest)
+    local translation = Translation()
+    local anchor = Client.GetQuestLogDetailAnchor()
+    if not translation or not quest or not anchor
+        or not translation:CanChooseLanguage(quest) then
+        HideFlags()
+        return
+    end
+    local flags = EnsureFlags(anchor)
+    local codes = QuestLogButtons.flagCodes
+    if not flags or not codes then
+        return
+    end
+
+    -- Membership, not order: the row reads in the roster's order, while
+    -- GetLanguageChoices answers in the module's own (client language first).
+    local offered = {}
+    local choices = translation:GetLanguageChoices(quest)
+    local index = 1
+    local total = choices and table.getn(choices) or 0
+    while index <= total do
+        offered[choices[index]] = true
+        index = index + 1
+    end
+
+    -- Two passes, because the position of the first flag depends on how many
+    -- follow it: a quest missing one language must leave no hole in the row.
+    local shown = {}
+    index = 1
+    total = table.getn(codes)
+    while index <= total do
+        local code = codes[index]
+        local button = flags[code]
+        if button and offered[code] then
+            table.insert(shown, button)
+        elseif button then
+            Client.HideObject(button)
+        end
+        index = index + 1
+    end
+
+    local current = translation:GetQuestLanguage(quest)
+    local count = table.getn(shown)
+    index = 1
+    while index <= count do
+        local button = shown[index]
+        -- Right to left from the viewport's right edge, exactly as the
+        -- settings header lays its own row out.
+        local offsetX = FLAG_INSET_X - (count - index) * (FLAG_WIDTH + FLAG_GAP)
+        if Client.PlaceQuestLogFlag(button, anchor, offsetX, FLAG_INSET_Y) then
+            local selected = button.unrealQuestLanguage == current
+            button.unrealQuestSelected = selected
+            Client.SetFlagButtonShade(button,
+                selected and FLAG_SHADE_SELECTED or FLAG_SHADE_IDLE, selected)
+            Client.ShowObject(button)
+        else
+            Client.HideObject(button)
+        end
+        index = index + 1
+    end
+end
+
 -- Resolving the current quest ------------------------------------------------
 --
 -- Neither surface hands over a quest id -- this client has none. The selected
@@ -367,6 +597,7 @@ function QuestLogButtons:Refresh()
     local logFrame = Client.GetNamedObject(PARENT_NAME)
     if not logFrame or not Client.IsObjectShown(logFrame) then
         self.currentQuest = nil
+        RefreshFlags(nil)
         Client.HideObject(buttons.show)
         Client.HideObject(buttons.track)
         Client.HideObject(buttons.follow)
@@ -379,6 +610,10 @@ function QuestLogButtons:Refresh()
 
     local quest = ResolveSelectedQuest()
     self.currentQuest = quest
+    -- Independent of the action row: the flags anchor to the detail viewport
+    -- itself, so they still show on a surface where the action row's own
+    -- anchor could not be prepared.
+    RefreshFlags(quest)
     local anchored = false
     if quest then
         if modern then

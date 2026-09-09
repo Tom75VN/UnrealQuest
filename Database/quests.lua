@@ -2,6 +2,8 @@
 -- Content originates from the VMaNGOS world database and was packaged by
 -- pfQuest (MIT, Eric Mauser / Shagu). Full Vanilla dataset; TBC data excluded.
 -- See Database/CREDITS.md and LICENSE in the addon root.
+-- Quest XP/reputation rewards synchronized from VMaNGOS revision 6958f26, Vanilla patch 10 (1.12.1).
+-- ["xp"] = base RewXP; ["rep"] = flat { factionId, value, ... } direct quest reputation rewards.
 UnrealQuestData["quests"] = {
   [1] = {
     ["lvl"] = 4,
@@ -10,6 +12,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 6497 },
     },
+    ["xp"] = 540,
+    ["rep"] = { 529, 75, 87, -500 },
   },
   [2] = {
     ["end"] = {
@@ -22,6 +26,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 16305, 16305 },
     },
+    ["xp"] = 2450,
+    ["rep"] = { 81, 100 },
   },
   [5] = {
     ["end"] = {
@@ -33,6 +39,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 288 },
     },
+    ["xp"] = 390,
+    ["rep"] = { 72, 25 },
   },
   [6] = {
     ["end"] = {
@@ -47,6 +55,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 823 },
     },
+    ["xp"] = 335,
+    ["rep"] = { 72, 75 },
   },
   [7] = {
     ["end"] = {
@@ -61,6 +71,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 197 },
     },
+    ["xp"] = 170,
+    ["rep"] = { 72, 100 },
   },
   [8] = {
     ["end"] = {
@@ -71,6 +83,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6784 },
     },
+    ["xp"] = 110,
+    ["rep"] = { 68, 25 },
   },
   [9] = {
     ["end"] = {
@@ -84,6 +98,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 233 },
     },
+    ["xp"] = 1050,
+    ["rep"] = { 72, 100 },
   },
   [10] = {
     ["end"] = {
@@ -98,6 +114,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7724 },
     },
+    ["xp"] = 4400,
+    ["rep"] = { 369, 100 },
   },
   [11] = {
     ["end"] = {
@@ -112,6 +130,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 963 },
     },
+    ["xp"] = 840,
+    ["rep"] = { 72, 100 },
   },
   [12] = {
     ["end"] = {
@@ -125,6 +145,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 234 },
     },
+    ["xp"] = 910,
+    ["rep"] = { 72, 100 },
   },
   [13] = {
     ["end"] = {
@@ -139,6 +161,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 234 },
     },
+    ["xp"] = 980,
+    ["rep"] = { 72, 100 },
   },
   [14] = {
     ["end"] = {
@@ -153,6 +177,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 234 },
     },
+    ["xp"] = 1600,
+    ["rep"] = { 72, 150 },
   },
   [15] = {
     ["end"] = {
@@ -167,6 +193,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 197 },
     },
+    ["xp"] = 250,
+    ["rep"] = { 72, 100 },
   },
   [16] = {
     ["end"] = {
@@ -194,6 +222,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1470 },
     },
+    ["xp"] = 3450,
+    ["rep"] = { 47, 100 },
   },
   [18] = {
     ["end"] = {
@@ -208,6 +238,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 823 },
     },
+    ["xp"] = 355,
+    ["rep"] = { 72, 100 },
   },
   [19] = {
     ["end"] = {
@@ -222,6 +254,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 382 },
     },
+    ["xp"] = 2550,
+    ["rep"] = { 72, 150 },
   },
   [20] = {
     ["end"] = {
@@ -235,6 +269,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 382 },
     },
+    ["xp"] = 1650,
+    ["rep"] = { 72, 100 },
   },
   [21] = {
     ["end"] = {
@@ -249,6 +285,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 197 },
     },
+    ["xp"] = 450,
+    ["rep"] = { 72, 100 },
   },
   [22] = {
     ["end"] = {
@@ -262,6 +300,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 235 },
     },
+    ["xp"] = 910,
+    ["rep"] = { 72, 100 },
   },
   [23] = {
     ["end"] = {
@@ -274,6 +314,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 16303, 16303 },
     },
+    ["xp"] = 1950,
+    ["rep"] = { 81, 100 },
   },
   [24] = {
     ["end"] = {
@@ -286,6 +328,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 16304, 16304 },
     },
+    ["xp"] = 2200,
+    ["rep"] = { 81, 100 },
   },
   [25] = {
     ["end"] = {
@@ -300,6 +344,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12737 },
     },
+    ["xp"] = 2000,
+    ["rep"] = { 76, 100 },
   },
   [26] = {
     ["class"] = 1024,
@@ -312,6 +358,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4217 },
     },
+    ["xp"] = 115,
   },
   [27] = {
     ["class"] = 1024,
@@ -324,6 +371,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3033 },
     },
+    ["xp"] = 115,
   },
   [28] = {
     ["class"] = 1024,
@@ -342,6 +390,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11802 },
     },
+    ["xp"] = 880,
+    ["rep"] = { 609, 75 },
   },
   [29] = {
     ["class"] = 1024,
@@ -360,6 +410,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11802 },
     },
+    ["xp"] = 880,
+    ["rep"] = { 609, 75 },
   },
   [30] = {
     ["class"] = 1024,
@@ -376,6 +428,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11799 },
     },
+    ["xp"] = 880,
+    ["rep"] = { 609, 75 },
   },
   [31] = {
     ["class"] = 1024,
@@ -389,6 +443,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11802 },
     },
+    ["xp"] = 1150,
+    ["rep"] = { 609, 100 },
   },
   [32] = {
     ["end"] = {
@@ -401,6 +457,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7724 },
     },
+    ["xp"] = 5450,
+    ["rep"] = { 369, 150, 67, 150 },
   },
   [33] = {
     ["end"] = {
@@ -415,6 +473,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 196 },
     },
+    ["xp"] = 170,
+    ["rep"] = { 72, 100 },
   },
   [34] = {
     ["end"] = {
@@ -428,6 +488,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 342 },
     },
+    ["xp"] = 1950,
+    ["rep"] = { 72, 100 },
   },
   [35] = {
     ["end"] = {
@@ -439,6 +501,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 240 },
     },
+    ["xp"] = 420,
+    ["rep"] = { 72, 50 },
   },
   [36] = {
     ["end"] = {
@@ -449,6 +513,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 238 },
     },
+    ["xp"] = 420,
+    ["rep"] = { 72, 50 },
   },
   [37] = {
     ["end"] = {
@@ -460,6 +526,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 261 },
     },
+    ["xp"] = 210,
+    ["rep"] = { 72, 25 },
   },
   [38] = {
     ["end"] = {
@@ -474,6 +542,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 235 },
     },
+    ["xp"] = 910,
+    ["rep"] = { 72, 100 },
   },
   [39] = {
     ["end"] = {
@@ -485,6 +555,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 261 },
     },
+    ["xp"] = 1050,
+    ["rep"] = { 72, 150 },
   },
   [40] = {
     ["end"] = {
@@ -495,6 +567,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 241 },
     },
+    ["xp"] = 85,
+    ["rep"] = { 72, 10 },
   },
   [45] = {
     ["end"] = {
@@ -506,6 +580,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 55 },
     },
+    ["xp"] = 420,
+    ["rep"] = { 72, 50 },
   },
   [46] = {
     ["end"] = {
@@ -519,6 +595,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 261 },
     },
+    ["xp"] = 840,
+    ["rep"] = { 72, 100 },
   },
   [47] = {
     ["end"] = {
@@ -532,6 +610,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 241 },
     },
+    ["xp"] = 630,
+    ["rep"] = { 72, 100 },
   },
   [48] = {
     ["end"] = {
@@ -545,6 +625,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 239 },
     },
+    ["xp"] = 3750,
   },
   [49] = {
     ["end"] = {
@@ -559,6 +640,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 239 },
     },
+    ["xp"] = 4650,
   },
   [50] = {
     ["end"] = {
@@ -573,6 +655,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 239 },
     },
+    ["xp"] = 4650,
   },
   [51] = {
     ["end"] = {
@@ -587,6 +670,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 239 },
     },
+    ["xp"] = 4650,
   },
   [52] = {
     ["end"] = {
@@ -600,6 +684,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 261 },
     },
+    ["xp"] = 630,
+    ["rep"] = { 72, 75 },
   },
   [53] = {
     ["end"] = {
@@ -614,6 +700,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 239 },
     },
+    ["xp"] = 5600,
   },
   [54] = {
     ["end"] = {
@@ -625,6 +712,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 197 },
     },
+    ["xp"] = 225,
+    ["rep"] = { 72, 50 },
   },
   [55] = {
     ["end"] = {
@@ -640,6 +729,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 311 },
     },
+    ["xp"] = 3850,
+    ["rep"] = { 72, 200 },
   },
   [56] = {
     ["end"] = {
@@ -653,6 +744,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 264 },
     },
+    ["xp"] = 1450,
+    ["rep"] = { 72, 75 },
   },
   [57] = {
     ["end"] = {
@@ -667,6 +760,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 264 },
     },
+    ["xp"] = 2100,
+    ["rep"] = { 72, 100 },
   },
   [58] = {
     ["end"] = {
@@ -681,6 +776,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 264 },
     },
+    ["xp"] = 2450,
+    ["rep"] = { 72, 100 },
   },
   [59] = {
     ["end"] = {
@@ -692,6 +789,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 240 },
     },
+    ["xp"] = 210,
+    ["rep"] = { 72, 25 },
   },
   [60] = {
     ["end"] = {
@@ -705,6 +804,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 253 },
     },
+    ["xp"] = 475,
+    ["rep"] = { 72, 75 },
   },
   [61] = {
     ["end"] = {
@@ -716,6 +817,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 253 },
     },
+    ["xp"] = 790,
+    ["rep"] = { 72, 150 },
   },
   [62] = {
     ["end"] = {
@@ -729,6 +832,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 240 },
     },
+    ["xp"] = 475,
+    ["rep"] = { 72, 75 },
   },
   [63] = {
     ["class"] = 64,
@@ -744,6 +849,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5901 },
     },
+    ["xp"] = 1400,
   },
   [64] = {
     ["end"] = {
@@ -757,6 +863,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 237 },
     },
+    ["xp"] = 910,
+    ["rep"] = { 72, 100 },
   },
   [65] = {
     ["end"] = {
@@ -767,6 +875,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 234 },
     },
+    ["xp"] = 1350,
+    ["rep"] = { 72, 100 },
   },
   [66] = {
     ["end"] = {
@@ -777,6 +887,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 265 },
     },
+    ["xp"] = 230,
+    ["rep"] = { 72, 25 },
   },
   [67] = {
     ["end"] = {
@@ -788,6 +900,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 267 },
     },
+    ["xp"] = 1150,
+    ["rep"] = { 72, 50 },
   },
   [68] = {
     ["end"] = {
@@ -799,6 +913,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 3643 },
     },
+    ["xp"] = 1700,
+    ["rep"] = { 72, 75 },
   },
   [69] = {
     ["end"] = {
@@ -810,6 +926,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 267 },
     },
+    ["xp"] = 570,
+    ["rep"] = { 72, 25 },
   },
   [70] = {
     ["end"] = {
@@ -824,6 +942,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 295 },
     },
+    ["xp"] = 1700,
+    ["rep"] = { 72, 75 },
   },
   [71] = {
     ["end"] = {
@@ -835,6 +955,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 56 },
     },
+    ["xp"] = 210,
+    ["rep"] = { 72, 25 },
   },
   [72] = {
     ["end"] = {
@@ -846,6 +968,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 297 },
     },
+    ["xp"] = 230,
   },
   [73] = {
     ["lvl"] = 1,
@@ -861,6 +984,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 1561 },
     },
+    ["xp"] = 1150,
+    ["rep"] = { 72, 50 },
   },
   [75] = {
     ["end"] = {
@@ -875,6 +1000,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 294 },
     },
+    ["xp"] = 1150,
+    ["rep"] = { 72, 50 },
   },
   [76] = {
     ["end"] = {
@@ -889,6 +1016,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 240 },
     },
+    ["xp"] = 840,
+    ["rep"] = { 72, 100 },
   },
   [77] = {
     ["end"] = {
@@ -903,6 +1032,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7801 },
     },
+    ["xp"] = 4400,
+    ["rep"] = { 76, 100 },
   },
   [78] = {
     ["end"] = {
@@ -914,6 +1045,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 294 },
     },
+    ["xp"] = 570,
+    ["rep"] = { 72, 25 },
   },
   [79] = {
     ["end"] = {
@@ -925,6 +1058,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 273 },
     },
+    ["xp"] = 230,
+    ["rep"] = { 72, 25 },
   },
   [80] = {
     ["end"] = {
@@ -936,6 +1071,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 264 },
     },
+    ["xp"] = 230,
+    ["rep"] = { 72, 25 },
   },
   [81] = {
     ["end"] = {
@@ -947,6 +1084,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7801 },
     },
+    ["xp"] = 4400,
+    ["rep"] = { 76, 100 },
   },
   [82] = {
     ["end"] = {
@@ -961,6 +1100,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7724 },
     },
+    ["xp"] = 3150,
+    ["rep"] = { 369, 75 },
   },
   [83] = {
     ["end"] = {
@@ -974,6 +1115,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 278 },
     },
+    ["xp"] = 780,
+    ["rep"] = { 72, 100 },
   },
   [84] = {
     ["end"] = {
@@ -985,6 +1128,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 246 },
     },
+    ["xp"] = 135,
+    ["rep"] = { 72, 25 },
   },
   [85] = {
     ["end"] = {
@@ -995,6 +1140,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 246 },
     },
+    ["xp"] = 135,
+    ["rep"] = { 72, 25 },
   },
   [86] = {
     ["end"] = {
@@ -1009,6 +1156,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 247 },
     },
+    ["xp"] = 405,
+    ["rep"] = { 72, 75 },
   },
   [87] = {
     ["end"] = {
@@ -1023,6 +1172,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 247 },
     },
+    ["xp"] = 880,
+    ["rep"] = { 72, 150 },
   },
   [88] = {
     ["end"] = {
@@ -1036,6 +1187,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 244 },
     },
+    ["xp"] = 780,
+    ["rep"] = { 72, 100 },
   },
   [89] = {
     ["end"] = {
@@ -1050,6 +1203,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 341 },
     },
+    ["xp"] = 1550,
+    ["rep"] = { 72, 100 },
   },
   [90] = {
     ["end"] = {
@@ -1064,6 +1219,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 272 },
     },
+    ["xp"] = 2000,
+    ["rep"] = { 72, 100 },
   },
   [91] = {
     ["end"] = {
@@ -1077,6 +1234,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 900 },
     },
+    ["xp"] = 1850,
+    ["rep"] = { 72, 100 },
   },
   [92] = {
     ["end"] = {
@@ -1090,6 +1249,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 343 },
     },
+    ["xp"] = 1350,
+    ["rep"] = { 72, 100 },
   },
   [93] = {
     ["end"] = {
@@ -1104,6 +1265,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 272 },
     },
+    ["xp"] = 780,
+    ["rep"] = { 72, 50 },
   },
   [94] = {
     ["end"] = {
@@ -1114,6 +1277,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 313 },
     },
+    ["xp"] = 1250,
   },
   [95] = {
     ["end"] = {
@@ -1125,6 +1289,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 311 },
     },
+    ["xp"] = 1000,
+    ["rep"] = { 72, 50 },
   },
   [96] = {
     ["class"] = 64,
@@ -1138,6 +1304,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5895 },
     },
+    ["xp"] = 2750,
   },
   [97] = {
     ["end"] = {
@@ -1149,6 +1316,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 267 },
     },
+    ["xp"] = 230,
+    ["rep"] = { 72, 25 },
   },
   [98] = {
     ["end"] = {
@@ -1163,6 +1332,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 264 },
     },
+    ["xp"] = 4100,
+    ["rep"] = { 72, 200 },
   },
   [99] = {
     ["end"] = {
@@ -1177,6 +1348,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1938 },
     },
+    ["xp"] = 1350,
+    ["rep"] = { 68, 150 },
   },
   [100] = {
     ["class"] = 64,
@@ -1202,6 +1375,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 265 },
     },
+    ["xp"] = 2550,
+    ["rep"] = { 72, 150 },
   },
   [102] = {
     ["end"] = {
@@ -1215,6 +1390,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 821 },
     },
+    ["xp"] = 980,
+    ["rep"] = { 72, 100 },
   },
   [103] = {
     ["end"] = {
@@ -1228,6 +1405,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 392 },
     },
+    ["xp"] = 1150,
   },
   [104] = {
     ["end"] = {
@@ -1241,6 +1419,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 392 },
     },
+    ["xp"] = 1550,
   },
   [105] = {
     ["end"] = {
@@ -1255,6 +1434,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10837 },
     },
+    ["xp"] = 8300,
+    ["rep"] = { 67, 150, 529, 150 },
   },
   [106] = {
     ["end"] = {
@@ -1265,6 +1446,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 251 },
     },
+    ["xp"] = 135,
+    ["rep"] = { 72, 25 },
   },
   [107] = {
     ["end"] = {
@@ -1276,6 +1459,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 248 },
     },
+    ["xp"] = 135,
+    ["rep"] = { 72, 25 },
   },
   [108] = {
     ["lvl"] = 1,
@@ -1290,6 +1475,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 261, 233, 237, 240, 294, 963 },
     },
+    ["xp"] = 630,
+    ["rep"] = { 72, 75 },
   },
   [110] = {
     ["end"] = {
@@ -1301,6 +1488,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7724 },
     },
+    ["xp"] = 440,
+    ["rep"] = { 369, 10 },
   },
   [111] = {
     ["end"] = {
@@ -1312,6 +1501,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 252 },
     },
+    ["xp"] = 135,
+    ["rep"] = { 72, 25 },
   },
   [112] = {
     ["end"] = {
@@ -1326,6 +1517,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 253 },
     },
+    ["xp"] = 315,
+    ["rep"] = { 72, 50 },
   },
   [113] = {
     ["end"] = {
@@ -1337,6 +1530,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5594 },
     },
+    ["xp"] = 440,
+    ["rep"] = { 369, 10 },
   },
   [114] = {
     ["end"] = {
@@ -1348,6 +1543,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 253 },
     },
+    ["xp"] = 790,
+    ["rep"] = { 72, 150 },
   },
   [115] = {
     ["end"] = {
@@ -1362,6 +1559,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 382 },
     },
+    ["xp"] = 2300,
+    ["rep"] = { 72, 150 },
   },
   [116] = {
     ["end"] = {
@@ -1375,6 +1574,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 346 },
     },
+    ["xp"] = 1050,
+    ["rep"] = { 72, 100 },
   },
   [117] = {
     ["end"] = {
@@ -1397,6 +1598,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 415 },
     },
+    ["xp"] = 340,
+    ["rep"] = { 72, 25 },
   },
   [119] = {
     ["end"] = {
@@ -1408,6 +1611,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 514 },
     },
+    ["xp"] = 680,
+    ["rep"] = { 72, 50 },
   },
   [120] = {
     ["end"] = {
@@ -1418,6 +1623,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 344 },
     },
+    ["xp"] = 490,
+    ["rep"] = { 72, 50 },
   },
   [121] = {
     ["end"] = {
@@ -1429,6 +1636,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 466 },
     },
+    ["xp"] = 245,
+    ["rep"] = { 72, 25 },
   },
   [122] = {
     ["end"] = {
@@ -1443,6 +1652,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 415 },
     },
+    ["xp"] = 1700,
+    ["rep"] = { 72, 150 },
   },
   [123] = {
     ["end"] = {
@@ -1454,6 +1665,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 1307 },
     },
+    ["xp"] = 210,
+    ["rep"] = { 72, 25 },
   },
   [124] = {
     ["end"] = {
@@ -1468,6 +1681,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 415 },
     },
+    ["xp"] = 1150,
+    ["rep"] = { 72, 75 },
   },
   [125] = {
     ["end"] = {
@@ -1481,6 +1696,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 341 },
     },
+    ["xp"] = 880,
+    ["rep"] = { 72, 75 },
   },
   [126] = {
     ["end"] = {
@@ -1495,6 +1712,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 415 },
     },
+    ["xp"] = 2000,
+    ["rep"] = { 72, 100 },
   },
   [127] = {
     ["end"] = {
@@ -1508,6 +1727,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 381 },
     },
+    ["xp"] = 1250,
+    ["rep"] = { 72, 75 },
   },
   [128] = {
     ["end"] = {
@@ -1521,6 +1742,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 903 },
     },
+    ["xp"] = 2000,
+    ["rep"] = { 72, 100 },
   },
   [129] = {
     ["end"] = {
@@ -1531,6 +1754,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 379 },
     },
+    ["xp"] = 540,
   },
   [130] = {
     ["end"] = {
@@ -1542,6 +1766,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 464 },
     },
+    ["xp"] = 270,
   },
   [131] = {
     ["end"] = {
@@ -1553,6 +1778,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 342 },
     },
+    ["xp"] = 270,
   },
   [132] = {
     ["end"] = {
@@ -1564,6 +1790,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 266 },
     },
+    ["xp"] = 680,
+    ["rep"] = { 72, 50 },
   },
   [133] = {
     ["end"] = {
@@ -1578,6 +1806,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 289 },
     },
+    ["xp"] = 1650,
   },
   [134] = {
     ["end"] = {
@@ -1592,6 +1821,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 289 },
     },
+    ["xp"] = 1200,
   },
   [135] = {
     ["end"] = {
@@ -1603,6 +1833,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 234 },
     },
+    ["xp"] = 680,
+    ["rep"] = { 72, 50 },
   },
   [136] = {
     ["end"] = {
@@ -1613,6 +1845,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 1357 },
     },
+    ["xp"] = 580,
   },
   [137] = {
     ["lvl"] = 8,
@@ -1631,6 +1864,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 35 },
     },
+    ["xp"] = 580,
   },
   [139] = {
     ["end"] = {
@@ -1642,6 +1876,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 36 },
     },
+    ["xp"] = 580,
   },
   [140] = {
     ["end"] = {
@@ -1653,6 +1888,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 34 },
     },
+    ["xp"] = 1150,
   },
   [141] = {
     ["end"] = {
@@ -1664,6 +1900,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 332 },
     },
+    ["xp"] = 340,
+    ["rep"] = { 72, 25 },
   },
   [142] = {
     ["end"] = {
@@ -1678,6 +1916,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 234 },
     },
+    ["xp"] = 1350,
+    ["rep"] = { 72, 100 },
   },
   [143] = {
     ["end"] = {
@@ -1689,6 +1929,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 344 },
     },
+    ["xp"] = 490,
+    ["rep"] = { 72, 50 },
   },
   [144] = {
     ["end"] = {
@@ -1700,6 +1942,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 234 },
     },
+    ["xp"] = 245,
+    ["rep"] = { 72, 25 },
   },
   [145] = {
     ["end"] = {
@@ -1711,6 +1955,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 344 },
     },
+    ["xp"] = 1000,
+    ["rep"] = { 72, 75 },
   },
   [146] = {
     ["end"] = {
@@ -1722,6 +1968,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 263 },
     },
+    ["xp"] = 340,
+    ["rep"] = { 72, 25 },
   },
   [147] = {
     ["end"] = {
@@ -1736,6 +1984,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 240 },
     },
+    ["xp"] = 840,
+    ["rep"] = { 72, 100 },
   },
   [148] = {
     ["end"] = {
@@ -1747,6 +1997,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 289 },
     },
+    ["xp"] = 485,
   },
   [149] = {
     ["end"] = {
@@ -1758,6 +2009,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 265 },
     },
+    ["xp"] = 485,
   },
   [150] = {
     ["end"] = {
@@ -1771,6 +2023,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 381 },
     },
+    ["xp"] = 1550,
+    ["rep"] = { 72, 100 },
   },
   [151] = {
     ["end"] = {
@@ -1784,6 +2038,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 238 },
     },
+    ["xp"] = 1250,
+    ["rep"] = { 72, 100 },
   },
   [152] = {
     ["end"] = {
@@ -1797,6 +2053,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 392 },
     },
+    ["xp"] = 1450,
   },
   [153] = {
     ["end"] = {
@@ -1810,6 +2067,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 878 },
     },
+    ["xp"] = 1050,
+    ["rep"] = { 72, 100 },
   },
   [154] = {
     ["end"] = {
@@ -1821,6 +2080,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 302 },
     },
+    ["xp"] = 195,
   },
   [155] = {
     ["end"] = {
@@ -1835,6 +2095,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 467 },
     },
+    ["xp"] = 1700,
+    ["rep"] = { 72, 150 },
   },
   [156] = {
     ["end"] = {
@@ -1849,6 +2111,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 273 },
     },
+    ["xp"] = 970,
   },
   [157] = {
     ["end"] = {
@@ -1860,6 +2123,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 265 },
     },
+    ["xp"] = 1450,
   },
   [158] = {
     ["end"] = {
@@ -1871,6 +2135,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 289 },
     },
+    ["xp"] = 485,
   },
   [159] = {
     ["end"] = {
@@ -1882,6 +2147,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 273 },
     },
+    ["xp"] = 970,
   },
   [160] = {
     ["end"] = {
@@ -1893,6 +2159,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 289 },
     },
+    ["xp"] = 610,
   },
   [161] = {
     ["end"] = {
@@ -1904,6 +2171,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1093 },
     },
+    ["xp"] = 1350,
+    ["rep"] = { 47, 100 },
   },
   [162] = {
     ["end"] = {
@@ -1916,6 +2185,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7724 },
     },
+    ["xp"] = 5700,
+    ["rep"] = { 369, 150, 469, 150 },
   },
   [163] = {
     ["end"] = {
@@ -1926,6 +2197,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 633 },
     },
+    ["xp"] = 390,
+    ["rep"] = { 72, 25 },
   },
   [164] = {
     ["end"] = {
@@ -1936,6 +2209,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 633 },
     },
+    ["xp"] = 920,
+    ["rep"] = { 72, 50 },
   },
   [165] = {
     ["end"] = {
@@ -1946,6 +2221,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 633 },
     },
+    ["xp"] = 1000,
+    ["rep"] = { 72, 50 },
   },
   [166] = {
     ["end"] = {
@@ -1960,6 +2237,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 234 },
     },
+    ["xp"] = 2600,
+    ["rep"] = { 72, 200 },
   },
   [167] = {
     ["end"] = {
@@ -1973,6 +2252,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 656 },
     },
+    ["xp"] = 1550,
+    ["rep"] = { 47, 100 },
   },
   [168] = {
     ["end"] = {
@@ -1986,6 +2267,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 656 },
     },
+    ["xp"] = 1350,
+    ["rep"] = { 47, 100 },
   },
   [169] = {
     ["end"] = {
@@ -1999,6 +2282,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 60 },
     },
+    ["xp"] = 2650,
+    ["rep"] = { 72, 150 },
   },
   [170] = {
     ["end"] = {
@@ -2013,6 +2298,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 713 },
     },
+    ["xp"] = 170,
+    ["rep"] = { 47, 100, 54, 100 },
   },
   [171] = {
     ["end"] = {
@@ -2028,6 +2315,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2142, 14305 },
     },
+    ["xp"] = 1650,
+    ["rep"] = { 469, 200 },
   },
   [172] = {
     ["end"] = {
@@ -2042,6 +2331,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14451, 271 },
     },
+    ["rep"] = { 67, 10 },
   },
   [173] = {
     ["end"] = {
@@ -2055,6 +2345,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 663 },
     },
+    ["xp"] = 1150,
+    ["rep"] = { 72, 50 },
   },
   [174] = {
     ["end"] = {
@@ -2068,6 +2360,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 276 },
     },
+    ["xp"] = 2000,
+    ["rep"] = { 72, 100 },
   },
   [175] = {
     ["end"] = {
@@ -2079,6 +2373,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 276 },
     },
+    ["xp"] = 1000,
   },
   [176] = {
     ["end"] = {
@@ -2093,6 +2388,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 68, 156561 },
     },
+    ["xp"] = 880,
+    ["rep"] = { 72, 100 },
   },
   [177] = {
     ["end"] = {
@@ -2107,6 +2404,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 302 },
     },
+    ["xp"] = 1500,
+    ["rep"] = { 72, 75 },
   },
   [178] = {
     ["end"] = {
@@ -2118,6 +2417,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 1962 },
     },
+    ["xp"] = 1400,
+    ["rep"] = { 72, 75 },
   },
   [179] = {
     ["end"] = {
@@ -2131,6 +2432,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 658 },
     },
+    ["xp"] = 80,
+    ["rep"] = { 47, 100, 54, 100 },
   },
   [180] = {
     ["end"] = {
@@ -2144,6 +2447,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 47 },
     },
+    ["xp"] = 2650,
+    ["rep"] = { 72, 150 },
   },
   [181] = {
     ["end"] = {
@@ -2158,6 +2463,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 276 },
     },
+    ["xp"] = 2450,
+    ["rep"] = { 72, 100 },
   },
   [182] = {
     ["end"] = {
@@ -2171,6 +2478,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 786 },
     },
+    ["xp"] = 355,
+    ["rep"] = { 47, 100, 54, 100 },
   },
   [183] = {
     ["end"] = {
@@ -2184,6 +2493,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 714 },
     },
+    ["xp"] = 250,
+    ["rep"] = { 47, 100, 54, 100 },
   },
   [184] = {
     ["end"] = {
@@ -2195,6 +2506,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 1972 },
     },
+    ["xp"] = 590,
+    ["rep"] = { 72, 75 },
   },
   [185] = {
     ["end"] = {
@@ -2209,6 +2522,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 717 },
     },
+    ["xp"] = 1250,
   },
   [186] = {
     ["end"] = {
@@ -2223,6 +2537,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 717 },
     },
+    ["xp"] = 1300,
   },
   [187] = {
     ["end"] = {
@@ -2237,6 +2552,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 717 },
     },
+    ["xp"] = 2050,
   },
   [188] = {
     ["end"] = {
@@ -2251,6 +2567,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 717 },
     },
+    ["xp"] = 2850,
   },
   [189] = {
     ["end"] = {
@@ -2264,6 +2581,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 737 },
     },
+    ["xp"] = 2050,
+    ["rep"] = { 21, 100, 87, -500 },
   },
   [190] = {
     ["end"] = {
@@ -2278,6 +2597,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 718 },
     },
+    ["xp"] = 1250,
   },
   [191] = {
     ["end"] = {
@@ -2292,6 +2612,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 718 },
     },
+    ["xp"] = 1300,
   },
   [192] = {
     ["end"] = {
@@ -2306,6 +2627,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 718 },
     },
+    ["xp"] = 2150,
   },
   [193] = {
     ["end"] = {
@@ -2320,6 +2642,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 718 },
     },
+    ["xp"] = 3150,
   },
   [194] = {
     ["end"] = {
@@ -2334,6 +2657,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 715 },
     },
+    ["xp"] = 1350,
   },
   [195] = {
     ["end"] = {
@@ -2348,6 +2672,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 715 },
     },
+    ["xp"] = 1400,
   },
   [196] = {
     ["end"] = {
@@ -2362,6 +2687,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 715 },
     },
+    ["xp"] = 2450,
   },
   [197] = {
     ["end"] = {
@@ -2376,6 +2702,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 715 },
     },
+    ["xp"] = 3600,
   },
   [198] = {
     ["end"] = {
@@ -2387,6 +2714,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 773 },
     },
+    ["xp"] = 640,
+    ["rep"] = { 72, 50 },
   },
   [199] = {
     ["end"] = {
@@ -2398,6 +2727,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 257 },
     },
+    ["xp"] = 1350,
+    ["rep"] = { 47, 100 },
   },
   [200] = {
     ["end"] = {
@@ -2409,6 +2740,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 469 },
     },
+    ["xp"] = 1350,
+    ["rep"] = { 72, 75 },
   },
   [201] = {
     ["end"] = {
@@ -2422,6 +2755,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 773 },
     },
+    ["xp"] = 255,
+    ["rep"] = { 21, 50, 87, -250 },
   },
   [202] = {
     ["end"] = {
@@ -2437,6 +2772,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 469 },
     },
+    ["xp"] = 3150,
+    ["rep"] = { 72, 100 },
   },
   [203] = {
     ["end"] = {
@@ -2450,6 +2787,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 733 },
     },
+    ["xp"] = 1950,
+    ["rep"] = { 72, 75 },
   },
   [204] = {
     ["end"] = {
@@ -2463,6 +2802,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 733 },
     },
+    ["xp"] = 2700,
+    ["rep"] = { 72, 100 },
   },
   [205] = {
     ["end"] = {
@@ -2477,6 +2818,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 739 },
     },
+    ["xp"] = 3150,
+    ["rep"] = { 72, 100 },
   },
   [206] = {
     ["end"] = {
@@ -2491,6 +2834,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 739 },
     },
+    ["xp"] = 5050,
+    ["rep"] = { 72, 150 },
   },
   [207] = {
     ["end"] = {
@@ -2504,6 +2849,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 739 },
     },
+    ["xp"] = 3550,
+    ["rep"] = { 72, 150 },
   },
   [208] = {
     ["end"] = {
@@ -2518,6 +2865,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 715 },
     },
+    ["xp"] = 5350,
   },
   [209] = {
     ["end"] = {
@@ -2532,6 +2880,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 737 },
     },
+    ["xp"] = 3450,
+    ["rep"] = { 21, 100, 87, -500 },
   },
   [210] = {
     ["end"] = {
@@ -2542,6 +2892,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 770 },
     },
+    ["xp"] = 1400,
+    ["rep"] = { 21, 50, 87, -250 },
   },
   [211] = {
     ["end"] = {
@@ -2556,6 +2908,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10838 },
     },
+    ["xp"] = 8300,
+    ["rep"] = { 469, 150, 529, 150 },
   },
   [212] = {
     ["end"] = {
@@ -2569,6 +2923,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1141 },
     },
+    ["xp"] = 4700,
+    ["rep"] = { 72, 200 },
   },
   [213] = {
     ["end"] = {
@@ -2582,6 +2938,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 737 },
     },
+    ["xp"] = 2800,
+    ["rep"] = { 21, 100, 87, -500 },
   },
   [214] = {
     ["end"] = {
@@ -2596,6 +2954,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 820 },
     },
+    ["xp"] = 1250,
+    ["rep"] = { 72, 100 },
   },
   [215] = {
     ["end"] = {
@@ -2606,6 +2966,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 738 },
     },
+    ["xp"] = 1300,
+    ["rep"] = { 72, 50 },
   },
   [216] = {
     ["end"] = {
@@ -2619,6 +2981,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12757 },
     },
+    ["xp"] = 1950,
+    ["rep"] = { 76, 100 },
   },
   [217] = {
     ["end"] = {
@@ -2633,6 +2997,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1092 },
     },
+    ["xp"] = 1600,
+    ["rep"] = { 47, 150 },
   },
   [218] = {
     ["end"] = {
@@ -2647,6 +3013,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 786 },
     },
+    ["xp"] = 560,
+    ["rep"] = { 47, 150, 54, 200 },
   },
   [219] = {
     ["end"] = {
@@ -2657,6 +3025,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 349 },
     },
+    ["xp"] = 2550,
+    ["rep"] = { 72, 150 },
   },
   [220] = {
     ["class"] = 64,
@@ -2669,6 +3039,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5899 },
     },
+    ["xp"] = 460,
   },
   [221] = {
     ["end"] = {
@@ -2683,6 +3054,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 663 },
     },
+    ["xp"] = 1750,
+    ["rep"] = { 72, 75 },
   },
   [222] = {
     ["end"] = {
@@ -2697,6 +3070,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 663 },
     },
+    ["xp"] = 1900,
+    ["rep"] = { 72, 75 },
   },
   [223] = {
     ["end"] = {
@@ -2708,6 +3083,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 663 },
     },
+    ["xp"] = 3150,
+    ["rep"] = { 72, 150 },
   },
   [224] = {
     ["end"] = {
@@ -2721,6 +3098,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1089 },
     },
+    ["xp"] = 910,
+    ["rep"] = { 47, 100 },
   },
   [225] = {
     ["end"] = {
@@ -2731,6 +3110,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 61 },
     },
+    ["xp"] = 690,
+    ["rep"] = { 72, 25 },
   },
   [226] = {
     ["end"] = {
@@ -2744,6 +3125,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 893 },
     },
+    ["xp"] = 1250,
+    ["rep"] = { 72, 75 },
   },
   [227] = {
     ["end"] = {
@@ -2755,6 +3138,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 268 },
     },
+    ["xp"] = 275,
+    ["rep"] = { 72, 25 },
   },
   [228] = {
     ["end"] = {
@@ -2769,6 +3154,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 264 },
     },
+    ["xp"] = 2050,
+    ["rep"] = { 72, 75 },
   },
   [229] = {
     ["end"] = {
@@ -2780,6 +3167,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 264 },
     },
+    ["xp"] = 275,
+    ["rep"] = { 72, 25 },
   },
   [230] = {
     ["end"] = {
@@ -2791,6 +3180,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 59 },
     },
+    ["xp"] = 1000,
+    ["rep"] = { 72, 50 },
   },
   [231] = {
     ["end"] = {
@@ -2802,6 +3193,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 576 },
     },
+    ["xp"] = 1350,
   },
   [232] = {
     ["end"] = {
@@ -2812,6 +3204,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5204 },
     },
+    ["xp"] = 390,
+    ["rep"] = { 68, 10 },
   },
   [233] = {
     ["end"] = {
@@ -2822,6 +3216,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 658 },
     },
+    ["xp"] = 190,
+    ["rep"] = { 47, 75, 54, 75 },
   },
   [234] = {
     ["end"] = {
@@ -2833,6 +3229,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 714 },
     },
+    ["xp"] = 270,
+    ["rep"] = { 47, 75, 54, 75 },
   },
   [235] = {
     ["close"] = { 235, 742, 6382 },
@@ -2844,6 +3242,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10880 },
     },
+    ["xp"] = 155,
+    ["rep"] = { 81, 10 },
   },
   [236] = {
     ["end"] = {
@@ -2855,6 +3255,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 888 },
     },
+    ["xp"] = 1250,
   },
   [237] = {
     ["end"] = {
@@ -2869,6 +3270,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1091 },
     },
+    ["xp"] = 1050,
+    ["rep"] = { 47, 100 },
   },
   [238] = {
     ["end"] = {
@@ -2880,6 +3283,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7683 },
     },
+    ["xp"] = 390,
+    ["rep"] = { 68, 10 },
   },
   [239] = {
     ["end"] = {
@@ -2891,6 +3296,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 240 },
     },
+    ["xp"] = 210,
+    ["rep"] = { 72, 25 },
   },
   [240] = {
     ["end"] = {
@@ -2902,6 +3309,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 272 },
     },
+    ["xp"] = 780,
+    ["rep"] = { 72, 50 },
   },
   [241] = {
     ["lvl"] = 1,
@@ -2924,6 +3333,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5204 },
     },
+    ["xp"] = 2000,
+    ["rep"] = { 68, 50 },
   },
   [244] = {
     ["end"] = {
@@ -2934,6 +3345,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 464 },
     },
+    ["xp"] = 290,
+    ["rep"] = { 72, 25 },
   },
   [245] = {
     ["end"] = {
@@ -2947,6 +3360,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 888 },
     },
+    ["xp"] = 1250,
+    ["rep"] = { 72, 75 },
   },
   [246] = {
     ["end"] = {
@@ -2961,6 +3376,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1070 },
     },
+    ["xp"] = 950,
+    ["rep"] = { 72, 75 },
   },
   [247] = {
     ["end"] = {
@@ -2972,6 +3389,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12696 },
     },
+    ["xp"] = 3050,
+    ["rep"] = { 81, 150 },
   },
   [248] = {
     ["end"] = {
@@ -2983,6 +3402,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 31 },
     },
+    ["xp"] = 1300,
+    ["rep"] = { 72, 75 },
   },
   [249] = {
     ["end"] = {
@@ -2998,6 +3419,8 @@ UnrealQuestData["quests"] = {
       ["O"] = { 31 },
       ["U"] = { 313 },
     },
+    ["xp"] = 2750,
+    ["rep"] = { 72, 150 },
   },
   [250] = {
     ["end"] = {
@@ -3008,6 +3431,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1093 },
     },
+    ["xp"] = 680,
+    ["rep"] = { 47, 50 },
   },
   [251] = {
     ["end"] = {
@@ -3019,6 +3444,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 263 },
     },
+    ["xp"] = 245,
   },
   [252] = {
     ["end"] = {
@@ -3030,6 +3456,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 268 },
     },
+    ["xp"] = 245,
   },
   [253] = {
     ["end"] = {
@@ -3044,6 +3471,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 263 },
     },
+    ["xp"] = 3650,
+    ["rep"] = { 469, 200 },
   },
   [254] = {
     ["end"] = {
@@ -3068,6 +3497,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1139 },
     },
+    ["xp"] = 1800,
+    ["rep"] = { 47, 150 },
   },
   [256] = {
     ["end"] = {
@@ -3081,6 +3512,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 256 },
     },
+    ["xp"] = 1750,
+    ["rep"] = { 47, 100 },
   },
   [257] = {
     ["end"] = {
@@ -3094,6 +3527,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1187 },
     },
+    ["xp"] = 880,
   },
   [258] = {
     ["end"] = {
@@ -3108,6 +3542,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1187 },
     },
+    ["xp"] = 950,
   },
   [259] = {
   },
@@ -3132,6 +3567,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1182 },
     },
+    ["xp"] = 3000,
   },
   [262] = {
     ["end"] = {
@@ -3143,6 +3579,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 311 },
     },
+    ["xp"] = 510,
+    ["rep"] = { 72, 25 },
   },
   [263] = {
     ["end"] = {
@@ -3157,6 +3595,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1090 },
     },
+    ["xp"] = 1050,
+    ["rep"] = { 47, 100 },
   },
   [264] = {
     ["end"] = {
@@ -3167,6 +3607,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5543 },
     },
+    ["xp"] = 540,
   },
   [265] = {
     ["end"] = {
@@ -3178,6 +3619,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 265 },
     },
+    ["xp"] = 200,
   },
   [266] = {
     ["end"] = {
@@ -3189,6 +3631,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 267 },
     },
+    ["xp"] = 200,
   },
   [267] = {
     ["end"] = {
@@ -3202,6 +3645,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1092 },
     },
+    ["xp"] = 910,
+    ["rep"] = { 47, 100 },
   },
   [268] = {
     ["end"] = {
@@ -3213,6 +3658,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 288 },
     },
+    ["xp"] = 510,
+    ["rep"] = { 72, 25 },
   },
   [269] = {
     ["end"] = {
@@ -3224,6 +3671,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 311 },
     },
+    ["xp"] = 590,
+    ["rep"] = { 72, 25 },
   },
   [270] = {
     ["end"] = {
@@ -3235,6 +3684,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1212 },
     },
+    ["xp"] = 1200,
+    ["rep"] = { 72, 50 },
   },
   [271] = {
     ["end"] = {
@@ -3249,6 +3700,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1156 },
     },
+    ["xp"] = 780,
   },
   [272] = {
     ["class"] = 1024,
@@ -3266,6 +3718,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11799 },
     },
+    ["xp"] = 880,
+    ["rep"] = { 609, 75 },
   },
   [273] = {
     ["end"] = {
@@ -3277,6 +3731,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1105 },
     },
+    ["xp"] = 270,
+    ["rep"] = { 47, 25 },
   },
   [274] = {
     ["end"] = {
@@ -3288,6 +3744,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1073 },
     },
+    ["xp"] = 340,
+    ["rep"] = { 47, 25 },
   },
   [275] = {
     ["end"] = {
@@ -3302,6 +3760,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1244 },
     },
+    ["xp"] = 2650,
   },
   [276] = {
     ["end"] = {
@@ -3316,6 +3775,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1244 },
     },
+    ["xp"] = 1250,
   },
   [277] = {
     ["end"] = {
@@ -3330,6 +3790,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1244 },
     },
+    ["xp"] = 1850,
   },
   [278] = {
     ["end"] = {
@@ -3344,6 +3805,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1093 },
     },
+    ["xp"] = 1350,
+    ["rep"] = { 47, 100 },
   },
   [279] = {
     ["end"] = {
@@ -3358,6 +3821,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1242 },
     },
+    ["xp"] = 1750,
+    ["rep"] = { 72, 100 },
   },
   [280] = {
     ["end"] = {
@@ -3369,6 +3834,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1093 },
     },
+    ["xp"] = 680,
+    ["rep"] = { 47, 50 },
   },
   [281] = {
     ["end"] = {
@@ -3380,6 +3847,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1242 },
     },
+    ["xp"] = 510,
+    ["rep"] = { 72, 25 },
   },
   [282] = {
     ["end"] = {
@@ -3391,6 +3860,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 786 },
     },
+    ["xp"] = 335,
+    ["rep"] = { 47, 75, 54, 75 },
   },
   [283] = {
     ["end"] = {
@@ -3402,6 +3873,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 1585 },
     },
+    ["xp"] = 1950,
+    ["rep"] = { 47, 150 },
   },
   [284] = {
     ["end"] = {
@@ -3413,6 +3886,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 261 },
     },
+    ["xp"] = 510,
+    ["rep"] = { 72, 25 },
   },
   [285] = {
     ["end"] = {
@@ -3424,6 +3899,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 142151 },
     },
+    ["xp"] = 1000,
+    ["rep"] = { 72, 50 },
   },
   [286] = {
     ["end"] = {
@@ -3435,6 +3912,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 259 },
     },
+    ["xp"] = 1500,
+    ["rep"] = { 72, 75 },
   },
   [287] = {
     ["end"] = {
@@ -3450,6 +3929,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1252 },
     },
+    ["xp"] = 590,
+    ["rep"] = { 47, 75, 54, 75 },
   },
   [288] = {
     ["end"] = {
@@ -3463,6 +3944,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1239 },
     },
+    ["xp"] = 220,
   },
   [289] = {
     ["end"] = {
@@ -3478,6 +3960,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1239 },
     },
+    ["xp"] = 1750,
+    ["rep"] = { 72, 75 },
   },
   [290] = {
     ["end"] = {
@@ -3492,6 +3976,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1239 },
     },
+    ["xp"] = 1200,
+    ["rep"] = { 72, 50 },
   },
   [291] = {
     ["end"] = {
@@ -3503,6 +3989,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1252 },
     },
+    ["xp"] = 420,
+    ["rep"] = { 47, 50, 54, 50 },
   },
   [292] = {
     ["end"] = {
@@ -3514,6 +4002,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 112948 },
     },
+    ["xp"] = 1200,
+    ["rep"] = { 72, 50 },
   },
   [293] = {
     ["end"] = {
@@ -3525,6 +4015,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1217 },
     },
+    ["xp"] = 2450,
+    ["rep"] = { 72, 100 },
   },
   [294] = {
     ["end"] = {
@@ -3538,6 +4030,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1078 },
     },
+    ["xp"] = 1950,
+    ["rep"] = { 47, 100 },
   },
   [295] = {
     ["end"] = {
@@ -3552,6 +4046,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1078 },
     },
+    ["xp"] = 2200,
+    ["rep"] = { 47, 100 },
   },
   [296] = {
     ["end"] = {
@@ -3566,6 +4062,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1078 },
     },
+    ["xp"] = 2950,
+    ["rep"] = { 47, 150 },
   },
   [297] = {
     ["end"] = {
@@ -3580,6 +4078,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1345 },
     },
+    ["xp"] = 1350,
+    ["rep"] = { 47, 100 },
   },
   [298] = {
     ["end"] = {
@@ -3590,6 +4090,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1344 },
     },
+    ["xp"] = 270,
+    ["rep"] = { 47, 25 },
   },
   [299] = {
     ["end"] = {
@@ -3603,6 +4105,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1077 },
     },
+    ["xp"] = 2300,
+    ["rep"] = { 47, 100 },
   },
   [301] = {
     ["end"] = {
@@ -3614,6 +4118,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1105 },
     },
+    ["xp"] = 540,
+    ["rep"] = { 47, 50 },
   },
   [302] = {
     ["end"] = {
@@ -3625,6 +4131,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1356 },
     },
+    ["xp"] = 270,
+    ["rep"] = { 47, 25 },
   },
   [303] = {
     ["end"] = {
@@ -3638,6 +4146,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1074 },
     },
+    ["xp"] = 2450,
+    ["rep"] = { 47, 100 },
   },
   [304] = {
     ["end"] = {
@@ -3651,6 +4161,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1071 },
     },
+    ["xp"] = 3350,
+    ["rep"] = { 47, 150 },
   },
   [305] = {
     ["end"] = {
@@ -3661,6 +4173,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2096 },
     },
+    ["xp"] = 970,
+    ["rep"] = { 47, 50 },
   },
   [306] = {
     ["end"] = {
@@ -3672,6 +4186,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1076 },
     },
+    ["xp"] = 485,
+    ["rep"] = { 47, 25 },
   },
   [307] = {
     ["end"] = {
@@ -3685,6 +4201,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1343 },
     },
+    ["xp"] = 1350,
+    ["rep"] = { 47, 150 },
   },
   [308] = {
     ["end"] = {
@@ -3710,6 +4228,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1379 },
     },
+    ["xp"] = 1050,
+    ["rep"] = { 47, 100 },
   },
   [310] = {
     ["end"] = {
@@ -3720,6 +4240,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1375 },
     },
+    ["xp"] = 135,
+    ["rep"] = { 47, 25, 54, 25 },
   },
   [311] = {
     ["end"] = {
@@ -3731,6 +4253,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 270 },
     },
+    ["xp"] = 630,
+    ["rep"] = { 47, 100, 54, 100 },
   },
   [312] = {
     ["end"] = {
@@ -3744,6 +4268,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1266 },
     },
+    ["xp"] = 910,
+    ["rep"] = { 47, 100, 54, 100 },
   },
   [313] = {
     ["end"] = {
@@ -3757,6 +4283,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1377 },
     },
+    ["xp"] = 630,
+    ["rep"] = { 47, 100, 54, 100 },
   },
   [314] = {
     ["end"] = {
@@ -3770,6 +4298,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1265 },
     },
+    ["xp"] = 910,
+    ["rep"] = { 47, 100, 54, 100 },
   },
   [315] = {
     ["end"] = {
@@ -3783,6 +4313,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1374 },
     },
+    ["xp"] = 780,
+    ["rep"] = { 47, 100, 54, 100 },
   },
   [316] = {
     ["lvl"] = 1,
@@ -3803,6 +4335,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1378 },
     },
+    ["xp"] = 680,
+    ["rep"] = { 47, 150, 54, 150 },
   },
   [318] = {
     ["end"] = {
@@ -3814,6 +4348,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1378 },
     },
+    ["xp"] = 160,
+    ["rep"] = { 47, 25, 54, 25 },
   },
   [319] = {
     ["end"] = {
@@ -3828,6 +4364,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1374 },
     },
+    ["xp"] = 530,
+    ["rep"] = { 47, 75, 54, 75 },
   },
   [320] = {
     ["end"] = {
@@ -3839,6 +4377,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1374 },
     },
+    ["xp"] = 880,
+    ["rep"] = { 47, 150, 54, 150 },
   },
   [321] = {
     ["end"] = {
@@ -3850,6 +4390,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1217 },
     },
+    ["xp"] = 590,
+    ["rep"] = { 72, 25 },
   },
   [322] = {
     ["end"] = {
@@ -3861,6 +4403,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1217 },
     },
+    ["xp"] = 1200,
+    ["rep"] = { 47, 50 },
   },
   [323] = {
     ["end"] = {
@@ -3875,6 +4419,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 311 },
     },
+    ["xp"] = 2300,
+    ["rep"] = { 72, 100 },
   },
   [324] = {
     ["end"] = {
@@ -3889,6 +4435,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 2734 },
     },
+    ["xp"] = 1750,
+    ["rep"] = { 47, 75 },
   },
   [325] = {
     ["end"] = {
@@ -3903,6 +4451,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1416 },
     },
+    ["xp"] = 590,
+    ["rep"] = { 72, 25 },
   },
   [328] = {
     ["end"] = {
@@ -3914,6 +4464,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 287 },
     },
+    ["xp"] = 1400,
+    ["rep"] = { 72, 50 },
   },
   [329] = {
     ["end"] = {
@@ -3925,6 +4477,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 288 },
     },
+    ["xp"] = 1400,
+    ["rep"] = { 72, 50 },
   },
   [330] = {
     ["end"] = {
@@ -3936,6 +4490,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 469 },
     },
+    ["xp"] = 285,
   },
   [331] = {
     ["end"] = {
@@ -3947,6 +4502,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1422 },
     },
+    ["xp"] = 2850,
+    ["rep"] = { 72, 100 },
   },
   [332] = {
     ["end"] = {
@@ -3957,6 +4514,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1432 },
     },
+    ["xp"] = 130,
+    ["rep"] = { 72, 75 },
   },
   [333] = {
     ["end"] = {
@@ -3967,6 +4526,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1427 },
     },
+    ["xp"] = 85,
+    ["rep"] = { 72, 50 },
   },
   [334] = {
     ["end"] = {
@@ -3977,6 +4538,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1428 },
     },
+    ["xp"] = 130,
+    ["rep"] = { 72, 75 },
   },
   [335] = {
     ["end"] = {
@@ -3990,6 +4553,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1435 },
     },
+    ["xp"] = 2450,
   },
   [336] = {
     ["end"] = {
@@ -4001,6 +4565,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1435 },
     },
+    ["xp"] = 2450,
   },
   [337] = {
     ["end"] = {
@@ -4012,6 +4577,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 2794 },
     },
+    ["xp"] = 1500,
+    ["rep"] = { 72, 75 },
   },
   [338] = {
     ["end"] = {
@@ -4026,6 +4593,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 716 },
     },
+    ["xp"] = 4700,
   },
   [339] = {
     ["end"] = {
@@ -4040,6 +4608,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 716 },
     },
+    ["xp"] = 780,
   },
   [340] = {
     ["end"] = {
@@ -4054,6 +4623,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 716 },
     },
+    ["xp"] = 780,
   },
   [341] = {
     ["end"] = {
@@ -4068,6 +4638,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 716 },
     },
+    ["xp"] = 780,
   },
   [342] = {
     ["end"] = {
@@ -4082,6 +4653,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 716 },
     },
+    ["xp"] = 780,
   },
   [343] = {
     ["end"] = {
@@ -4092,6 +4664,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1444 },
     },
+    ["xp"] = 195,
+    ["rep"] = { 72, 10 },
   },
   [344] = {
     ["end"] = {
@@ -4103,6 +4677,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1440 },
     },
+    ["xp"] = 485,
+    ["rep"] = { 72, 25 },
   },
   [345] = {
     ["end"] = {
@@ -4114,6 +4690,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 951 },
     },
+    ["xp"] = 485,
+    ["rep"] = { 72, 25 },
   },
   [346] = {
     ["end"] = {
@@ -4125,6 +4703,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 951 },
     },
+    ["xp"] = 1950,
+    ["rep"] = { 72, 100 },
   },
   [347] = {
     ["end"] = {
@@ -4139,6 +4719,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 341 },
     },
+    ["xp"] = 970,
+    ["rep"] = { 72, 50 },
   },
   [348] = {
     ["end"] = {
@@ -4152,6 +4734,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2486 },
     },
+    ["xp"] = 5850,
+    ["rep"] = { 21, 200, 87, -1000 },
   },
   [349] = {
     ["end"] = {
@@ -4177,6 +4761,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 332 },
     },
+    ["xp"] = 250,
   },
   [351] = {
     ["end"] = {
@@ -4187,6 +4772,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 8623, 8623, 8623 },
     },
+    ["xp"] = 4400,
+    ["rep"] = { 21, 100, 87, -500 },
   },
   [352] = {
     ["lvl"] = 1,
@@ -4202,6 +4789,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1416 },
     },
+    ["xp"] = 1050,
+    ["rep"] = { 47, 100 },
   },
   [354] = {
     ["end"] = {
@@ -4215,6 +4804,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1500 },
     },
+    ["xp"] = 880,
+    ["rep"] = { 68, 100 },
   },
   [355] = {
     ["end"] = {
@@ -4226,6 +4817,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1500 },
     },
+    ["xp"] = 85,
+    ["rep"] = { 68, 10 },
   },
   [356] = {
     ["end"] = {
@@ -4239,6 +4832,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1495 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 68, 75 },
   },
   [357] = {
     ["end"] = {
@@ -4253,6 +4848,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1498 },
     },
+    ["xp"] = 530,
+    ["rep"] = { 68, 75 },
   },
   [358] = {
     ["end"] = {
@@ -4267,6 +4864,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1499 },
     },
+    ["xp"] = 700,
+    ["rep"] = { 68, 100 },
   },
   [359] = {
     ["end"] = {
@@ -4278,6 +4877,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1499 },
     },
+    ["xp"] = 195,
+    ["rep"] = { 68, 25 },
   },
   [360] = {
     ["end"] = {
@@ -4289,6 +4890,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1495 },
     },
+    ["xp"] = 390,
+    ["rep"] = { 68, 50 },
   },
   [361] = {
     ["end"] = {
@@ -4300,6 +4903,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 2839 },
     },
+    ["xp"] = 475,
+    ["rep"] = { 68, 75 },
   },
   [362] = {
     ["end"] = {
@@ -4313,6 +4918,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1500 },
     },
+    ["xp"] = 420,
+    ["rep"] = { 68, 50 },
   },
   [363] = {
     ["end"] = {
@@ -4324,6 +4931,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1568 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 68, 50 },
   },
   [364] = {
     ["end"] = {
@@ -4338,6 +4947,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1569 },
     },
+    ["xp"] = 170,
+    ["rep"] = { 68, 100 },
   },
   [365] = {
     ["end"] = {
@@ -4351,6 +4962,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1519 },
     },
+    ["xp"] = 630,
+    ["rep"] = { 68, 100 },
   },
   [366] = {
     ["end"] = {
@@ -4362,6 +4975,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1498 },
     },
+    ["xp"] = 350,
+    ["rep"] = { 68, 50 },
   },
   [367] = {
     ["end"] = {
@@ -4375,6 +4990,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1518 },
     },
+    ["xp"] = 540,
+    ["rep"] = { 68, 100 },
   },
   [368] = {
     ["end"] = {
@@ -4389,6 +5006,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1518 },
     },
+    ["xp"] = 780,
+    ["rep"] = { 68, 100 },
   },
   [369] = {
     ["end"] = {
@@ -4403,6 +5022,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1518 },
     },
+    ["xp"] = 220,
+    ["rep"] = { 68, 25 },
   },
   [370] = {
     ["end"] = {
@@ -4417,6 +5038,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1515 },
     },
+    ["xp"] = 780,
+    ["rep"] = { 68, 100 },
   },
   [371] = {
     ["end"] = {
@@ -4431,6 +5054,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1515 },
     },
+    ["xp"] = 840,
+    ["rep"] = { 68, 100 },
   },
   [372] = {
     ["end"] = {
@@ -4445,6 +5070,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1515 },
     },
+    ["xp"] = 910,
+    ["rep"] = { 68, 100 },
   },
   [373] = {
     ["end"] = {
@@ -4456,6 +5083,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 2874 },
     },
+    ["xp"] = 870,
+    ["rep"] = { 72, 50 },
   },
   [374] = {
     ["end"] = {
@@ -4470,6 +5099,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1652 },
     },
+    ["xp"] = 630,
+    ["rep"] = { 68, 100 },
   },
   [375] = {
     ["end"] = {
@@ -4483,6 +5114,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1521 },
     },
+    ["xp"] = 700,
+    ["rep"] = { 68, 100 },
   },
   [376] = {
     ["end"] = {
@@ -4496,6 +5129,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1661 },
     },
+    ["xp"] = 170,
+    ["rep"] = { 68, 100 },
   },
   [377] = {
     ["end"] = {
@@ -4509,6 +5144,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 270 },
     },
+    ["xp"] = 2100,
+    ["rep"] = { 72, 100 },
   },
   [378] = {
     ["end"] = {
@@ -4523,6 +5160,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1074 },
     },
+    ["xp"] = 2750,
+    ["rep"] = { 47, 150 },
   },
   [379] = {
     ["end"] = {
@@ -4537,6 +5176,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7407 },
     },
+    ["xp"] = 3050,
+    ["rep"] = { 68, 75, 369, 75 },
   },
   [380] = {
     ["end"] = {
@@ -4551,6 +5192,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1570 },
     },
+    ["xp"] = 355,
+    ["rep"] = { 68, 100 },
   },
   [381] = {
     ["end"] = {
@@ -4565,6 +5208,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1570 },
     },
+    ["xp"] = 355,
+    ["rep"] = { 68, 100 },
   },
   [382] = {
     ["end"] = {
@@ -4579,6 +5224,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1570 },
     },
+    ["xp"] = 670,
+    ["rep"] = { 68, 200 },
   },
   [383] = {
     ["end"] = {
@@ -4590,6 +5237,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1570 },
     },
+    ["xp"] = 335,
+    ["rep"] = { 68, 75 },
   },
   [384] = {
     ["end"] = {
@@ -4604,6 +5253,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1267 },
     },
+    ["xp"] = 630,
+    ["rep"] = { 47, 100, 54, 100 },
   },
   [385] = {
     ["end"] = {
@@ -4617,6 +5268,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1154 },
     },
+    ["xp"] = 1050,
+    ["rep"] = { 47, 100 },
   },
   [386] = {
     ["end"] = {
@@ -4630,6 +5283,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 859 },
     },
+    ["xp"] = 2000,
+    ["rep"] = { 72, 100 },
   },
   [387] = {
     ["end"] = {
@@ -4643,6 +5298,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1719 },
     },
+    ["xp"] = 2650,
+    ["rep"] = { 72, 150 },
   },
   [388] = {
     ["end"] = {
@@ -4656,6 +5313,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1721 },
     },
+    ["xp"] = 2650,
+    ["rep"] = { 72, 150 },
   },
   [389] = {
     ["end"] = {
@@ -4667,6 +5326,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1646 },
     },
+    ["xp"] = 435,
   },
   [390] = {
     ["lvl"] = 1,
@@ -4685,6 +5345,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1719 },
     },
+    ["xp"] = 2350,
+    ["rep"] = { 72, 100 },
   },
   [392] = {
     ["end"] = {
@@ -4696,6 +5358,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1719 },
     },
+    ["xp"] = 590,
+    ["rep"] = { 72, 25 },
   },
   [393] = {
     ["end"] = {
@@ -4707,6 +5371,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1646 },
     },
+    ["xp"] = 590,
+    ["rep"] = { 72, 25 },
   },
   [394] = {
     ["end"] = {
@@ -4718,6 +5384,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 482 },
     },
+    ["xp"] = 250,
   },
   [395] = {
     ["end"] = {
@@ -4729,6 +5396,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 332 },
     },
+    ["xp"] = 630,
+    ["rep"] = { 72, 25 },
   },
   [396] = {
     ["end"] = {
@@ -4740,6 +5409,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1646 },
     },
+    ["xp"] = 3750,
+    ["rep"] = { 72, 200 },
   },
   [397] = {
     ["class"] = 256,
@@ -4752,6 +5423,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1435 },
     },
+    ["xp"] = 245,
   },
   [398] = {
     ["end"] = {
@@ -4765,6 +5437,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 711 },
     },
+    ["xp"] = 840,
+    ["rep"] = { 68, 100 },
   },
   [399] = {
     ["end"] = {
@@ -4778,6 +5452,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1646 },
     },
+    ["xp"] = 1050,
+    ["rep"] = { 72, 100 },
   },
   [400] = {
     ["end"] = {
@@ -4788,6 +5464,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1872 },
     },
+    ["xp"] = 110,
+    ["rep"] = { 47, 25, 54, 25 },
   },
   [401] = {
     ["end"] = {
@@ -4799,6 +5477,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 268 },
     },
+    ["xp"] = 1850,
   },
   [403] = {
     ["end"] = {
@@ -4823,6 +5502,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1496 },
     },
+    ["xp"] = 405,
+    ["rep"] = { 68, 75 },
   },
   [405] = {
     ["end"] = {
@@ -4834,6 +5515,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1499 },
     },
+    ["xp"] = 175,
+    ["rep"] = { 68, 25 },
   },
   [406] = {
     ["lvl"] = 1,
@@ -4849,6 +5532,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1518 },
     },
+    ["xp"] = 160,
+    ["rep"] = { 68, 25 },
   },
   [408] = {
     ["end"] = {
@@ -4864,6 +5549,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1499 },
     },
+    ["xp"] = 910,
+    ["rep"] = { 68, 100 },
   },
   [409] = {
     ["end"] = {
@@ -4878,6 +5565,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1497 },
     },
+    ["xp"] = 680,
+    ["rep"] = { 68, 75 },
   },
   [410] = {
     ["end"] = {
@@ -4903,6 +5592,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1497 },
     },
+    ["xp"] = 910,
+    ["rep"] = { 68, 100 },
   },
   [412] = {
     ["end"] = {
@@ -4916,6 +5607,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1269 },
     },
+    ["xp"] = 840,
+    ["rep"] = { 54, 100, 47, 100 },
   },
   [413] = {
     ["end"] = {
@@ -4927,6 +5620,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1374 },
     },
+    ["xp"] = 420,
+    ["rep"] = { 47, 50, 54, 50 },
   },
   [414] = {
     ["end"] = {
@@ -4938,6 +5633,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1959 },
     },
+    ["xp"] = 630,
+    ["rep"] = { 47, 75, 54, 75 },
   },
   [415] = {
     ["end"] = {
@@ -4949,6 +5646,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1872, 1378 },
     },
+    ["xp"] = 85,
+    ["rep"] = { 47, 10, 54, 10 },
   },
   [416] = {
     ["end"] = {
@@ -4962,6 +5661,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1340 },
     },
+    ["xp"] = 880,
+    ["rep"] = { 47, 100 },
   },
   [417] = {
     ["end"] = {
@@ -4976,6 +5677,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 2059 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 47, 75, 54, 75 },
   },
   [418] = {
     ["end"] = {
@@ -4989,6 +5692,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1963 },
     },
+    ["xp"] = 880,
+    ["rep"] = { 47, 100 },
   },
   [419] = {
     ["end"] = {
@@ -4999,6 +5704,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1960 },
     },
+    ["xp"] = 420,
+    ["rep"] = { 47, 50, 54, 50 },
   },
   [420] = {
     ["end"] = {
@@ -5010,6 +5717,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1965 },
     },
+    ["xp"] = 335,
+    ["rep"] = { 47, 75, 54, 75 },
   },
   [421] = {
     ["end"] = {
@@ -5023,6 +5732,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1938 },
     },
+    ["xp"] = 840,
+    ["rep"] = { 68, 100 },
   },
   [422] = {
     ["end"] = {
@@ -5037,6 +5748,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1938 },
     },
+    ["xp"] = 880,
+    ["rep"] = { 68, 100 },
   },
   [423] = {
     ["end"] = {
@@ -5051,6 +5764,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1938 },
     },
+    ["xp"] = 980,
+    ["rep"] = { 68, 100 },
   },
   [424] = {
     ["end"] = {
@@ -5065,6 +5780,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1938 },
     },
+    ["xp"] = 1050,
+    ["rep"] = { 68, 100 },
   },
   [425] = {
     ["end"] = {
@@ -5079,6 +5796,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1950 },
     },
+    ["xp"] = 680,
+    ["rep"] = { 68, 75 },
   },
   [426] = {
     ["end"] = {
@@ -5093,6 +5812,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1496 },
     },
+    ["xp"] = 880,
+    ["rep"] = { 68, 150 },
   },
   [427] = {
     ["end"] = {
@@ -5107,6 +5828,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1515 },
     },
+    ["xp"] = 700,
+    ["rep"] = { 68, 100 },
   },
   [428] = {
     ["end"] = {
@@ -5117,6 +5840,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1952 },
     },
+    ["xp"] = 225,
+    ["rep"] = { 68, 25 },
   },
   [429] = {
     ["end"] = {
@@ -5131,6 +5856,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1950 },
     },
+    ["xp"] = 440,
+    ["rep"] = { 68, 50 },
   },
   [430] = {
     ["end"] = {
@@ -5142,6 +5869,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1937 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 68, 75 },
   },
   [431] = {
     ["end"] = {
@@ -5166,6 +5895,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1254 },
     },
+    ["xp"] = 590,
+    ["rep"] = { 47, 75, 54, 75 },
   },
   [433] = {
     ["end"] = {
@@ -5179,6 +5910,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1977 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 47, 75, 54, 75 },
   },
   [434] = {
     ["end"] = {
@@ -5193,6 +5926,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7766 },
     },
+    ["xp"] = 1900,
+    ["rep"] = { 72, 75 },
   },
   [435] = {
     ["end"] = {
@@ -5203,6 +5938,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1978 },
     },
+    ["xp"] = 880,
+    ["rep"] = { 68, 100 },
   },
   [436] = {
     ["end"] = {
@@ -5213,6 +5950,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1105 },
     },
+    ["xp"] = 340,
+    ["rep"] = { 47, 25 },
   },
   [437] = {
     ["end"] = {
@@ -5227,6 +5966,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1952 },
     },
+    ["xp"] = 980,
+    ["rep"] = { 68, 100 },
   },
   [438] = {
     ["end"] = {
@@ -5238,6 +5979,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1952 },
     },
+    ["xp"] = 880,
+    ["rep"] = { 68, 75 },
   },
   [439] = {
     ["end"] = {
@@ -5249,6 +5992,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 1593 },
     },
+    ["xp"] = 290,
+    ["rep"] = { 68, 25 },
   },
   [440] = {
     ["end"] = {
@@ -5260,6 +6005,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1952 },
     },
+    ["xp"] = 580,
+    ["rep"] = { 68, 50 },
   },
   [441] = {
     ["end"] = {
@@ -5271,6 +6018,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1499 },
     },
+    ["xp"] = 580,
+    ["rep"] = { 68, 50 },
   },
   [442] = {
     ["end"] = {
@@ -5285,6 +6034,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1952 },
     },
+    ["xp"] = 1950,
+    ["rep"] = { 68, 100 },
   },
   [443] = {
     ["end"] = {
@@ -5299,6 +6050,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1952 },
     },
+    ["xp"] = 1250,
+    ["rep"] = { 68, 100 },
   },
   [444] = {
     ["end"] = {
@@ -5310,6 +6063,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1937 },
     },
+    ["xp"] = 315,
+    ["rep"] = { 68, 25 },
   },
   [445] = {
     ["end"] = {
@@ -5320,6 +6075,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1518 },
     },
+    ["xp"] = 630,
+    ["rep"] = { 68, 75 },
   },
   [446] = {
     ["end"] = {
@@ -5331,6 +6088,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1498 },
     },
+    ["xp"] = 290,
+    ["rep"] = { 68, 25 },
   },
   [447] = {
     ["end"] = {
@@ -5344,6 +6103,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1937 },
     },
+    ["xp"] = 910,
+    ["rep"] = { 68, 100 },
   },
   [448] = {
     ["end"] = {
@@ -5355,6 +6116,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1937 },
     },
+    ["xp"] = 580,
+    ["rep"] = { 68, 50 },
   },
   [449] = {
     ["end"] = {
@@ -5366,6 +6129,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1950 },
     },
+    ["xp"] = 440,
+    ["rep"] = { 68, 50 },
   },
   [450] = {
     ["end"] = {
@@ -5380,6 +6145,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2055 },
     },
+    ["xp"] = 1350,
+    ["rep"] = { 68, 150 },
   },
   [451] = {
     ["end"] = {
@@ -5394,6 +6161,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1937 },
     },
+    ["xp"] = 2050,
+    ["rep"] = { 68, 200 },
   },
   [452] = {
     ["end"] = {
@@ -5404,6 +6173,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2058 },
     },
+    ["xp"] = 1350,
+    ["rep"] = { 68, 150 },
   },
   [453] = {
     ["end"] = {
@@ -5415,6 +6186,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 273 },
     },
+    ["xp"] = 1000,
+    ["rep"] = { 72, 50 },
   },
   [454] = {
     ["end"] = {
@@ -5426,6 +6199,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2057 },
     },
+    ["xp"] = 105,
+    ["rep"] = { 47, 10 },
   },
   [455] = {
     ["end"] = {
@@ -5441,6 +6216,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1342 },
     },
+    ["xp"] = 1250,
+    ["rep"] = { 47, 75 },
   },
   [456] = {
     ["end"] = {
@@ -5454,6 +6231,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2079 },
     },
+    ["xp"] = 170,
+    ["rep"] = { 69, 100 },
   },
   [457] = {
     ["end"] = {
@@ -5468,6 +6247,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2079 },
     },
+    ["xp"] = 250,
+    ["rep"] = { 69, 100 },
   },
   [458] = {
     ["end"] = {
@@ -5478,6 +6259,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2077 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 69, 50 },
   },
   [459] = {
     ["end"] = {
@@ -5492,6 +6275,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1992 },
     },
+    ["xp"] = 250,
+    ["rep"] = { 69, 100 },
   },
   [460] = {
     ["end"] = {
@@ -5503,6 +6288,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 3317 },
     },
+    ["xp"] = 630,
+    ["rep"] = { 68, 50 },
   },
   [461] = {
     ["end"] = {
@@ -5514,6 +6301,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 1599 },
     },
+    ["xp"] = 680,
+    ["rep"] = { 68, 50 },
   },
   [462] = {
     ["lvl"] = 1,
@@ -5531,6 +6320,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1239 },
     },
+    ["xp"] = 830,
   },
   [464] = {
     ["end"] = {
@@ -5545,6 +6335,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2104 },
     },
+    ["xp"] = 2300,
+    ["rep"] = { 47, 100 },
   },
   [465] = {
     ["end"] = {
@@ -5556,6 +6348,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2104 },
     },
+    ["xp"] = 1900,
+    ["rep"] = { 47, 75 },
   },
   [466] = {
     ["end"] = {
@@ -5570,6 +6364,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1377 },
     },
+    ["xp"] = 1750,
+    ["rep"] = { 47, 100 },
   },
   [467] = {
     ["end"] = {
@@ -5580,6 +6376,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1340, 2092 },
     },
+    ["xp"] = 460,
   },
   [468] = {
     ["end"] = {
@@ -5590,6 +6387,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1340 },
     },
+    ["xp"] = 165,
+    ["rep"] = { 47, 25 },
   },
   [469] = {
     ["end"] = {
@@ -5600,6 +6399,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2093 },
     },
+    ["xp"] = 830,
+    ["rep"] = { 72, 50 },
   },
   [470] = {
     ["end"] = {
@@ -5613,6 +6414,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2111 },
     },
+    ["xp"] = 2400,
+    ["rep"] = { 47, 150 },
   },
   [471] = {
     ["end"] = {
@@ -5627,6 +6430,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2094 },
     },
+    ["xp"] = 2100,
+    ["rep"] = { 72, 100 },
   },
   [472] = {
     ["end"] = {
@@ -5637,6 +6442,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2097 },
     },
+    ["xp"] = 1000,
+    ["rep"] = { 47, 50 },
   },
   [473] = {
     ["end"] = {
@@ -5647,6 +6454,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2086 },
     },
+    ["xp"] = 230,
+    ["rep"] = { 47, 25 },
   },
   [474] = {
     ["end"] = {
@@ -5661,6 +6470,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 1609 },
     },
+    ["xp"] = 2550,
+    ["rep"] = { 47, 100 },
   },
   [475] = {
     ["end"] = {
@@ -5671,6 +6482,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2078 },
     },
+    ["xp"] = 270,
+    ["rep"] = { 69, 50 },
   },
   [476] = {
     ["end"] = {
@@ -5682,6 +6495,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2107 },
     },
+    ["xp"] = 540,
+    ["rep"] = { 69, 100 },
   },
   [477] = {
     ["end"] = {
@@ -5692,6 +6507,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2121 },
     },
+    ["xp"] = 980,
+    ["rep"] = { 68, 100 },
   },
   [478] = {
     ["end"] = {
@@ -5703,6 +6520,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 1627 },
     },
+    ["xp"] = 740,
+    ["rep"] = { 68, 75 },
   },
   [479] = {
     ["end"] = {
@@ -5717,6 +6536,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2121 },
     },
+    ["xp"] = 1150,
+    ["rep"] = { 68, 100 },
   },
   [480] = {
     ["end"] = {
@@ -5731,6 +6552,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2121 },
     },
+    ["xp"] = 1750,
+    ["rep"] = { 68, 100 },
   },
   [481] = {
     ["end"] = {
@@ -5742,6 +6565,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2121 },
     },
+    ["xp"] = 100,
+    ["rep"] = { 68, 10 },
   },
   [482] = {
     ["end"] = {
@@ -5753,6 +6578,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1938 },
     },
+    ["xp"] = 100,
+    ["rep"] = { 68, 10 },
   },
   [483] = {
     ["end"] = {
@@ -5767,6 +6594,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2078 },
     },
+    ["xp"] = 780,
+    ["rep"] = { 69, 100 },
   },
   [484] = {
     ["end"] = {
@@ -5780,6 +6609,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2094 },
     },
+    ["xp"] = 1750,
+    ["rep"] = { 72, 100 },
   },
   [485] = {
     ["end"] = {
@@ -5790,6 +6621,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 8704, 8704, 8704 },
     },
+    ["xp"] = 4400,
+    ["rep"] = { 21, 100, 87, -500 },
   },
   [486] = {
     ["end"] = {
@@ -5804,6 +6637,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2078 },
     },
+    ["xp"] = 1150,
+    ["rep"] = { 69, 150 },
   },
   [487] = {
     ["end"] = {
@@ -5817,6 +6652,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2151 },
     },
+    ["xp"] = 700,
+    ["rep"] = { 69, 100 },
   },
   [488] = {
     ["end"] = {
@@ -5830,6 +6667,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2150 },
     },
+    ["xp"] = 450,
   },
   [489] = {
     ["end"] = {
@@ -5844,6 +6682,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2083 },
     },
+    ["xp"] = 630,
+    ["rep"] = { 69, 200 },
   },
   [490] = {
     ["lvl"] = 7,
@@ -5851,6 +6691,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 5220 },
     },
+    ["xp"] = 630,
   },
   [491] = {
     ["end"] = {
@@ -5862,6 +6703,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 112888 },
     },
+    ["xp"] = 1700,
+    ["rep"] = { 68, 150 },
   },
   [492] = {
     ["end"] = {
@@ -5873,6 +6716,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1518 },
     },
+    ["xp"] = 880,
+    ["rep"] = { 68, 100 },
   },
   [493] = {
     ["end"] = {
@@ -5883,6 +6728,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1937 },
     },
+    ["xp"] = 1150,
+    ["rep"] = { 68, 75 },
   },
   [494] = {
     ["end"] = {
@@ -5893,6 +6740,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2214 },
     },
+    ["xp"] = 780,
+    ["rep"] = { 68, 50 },
   },
   [495] = {
     ["end"] = {
@@ -5903,6 +6752,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2227 },
     },
+    ["xp"] = 300,
   },
   [496] = {
     ["end"] = {
@@ -5916,10 +6766,13 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2216 },
     },
+    ["xp"] = 175,
+    ["rep"] = { 68, 25 },
   },
   [497] = {
     ["lvl"] = 22,
     ["min"] = 19,
+    ["xp"] = 435,
   },
   [498] = {
     ["end"] = {
@@ -5935,6 +6788,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2229 },
     },
+    ["xp"] = 2200,
+    ["rep"] = { 76, 150 },
   },
   [499] = {
     ["end"] = {
@@ -5946,6 +6801,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2216 },
     },
+    ["xp"] = 1750,
+    ["rep"] = { 68, 100 },
   },
   [500] = {
     ["end"] = {
@@ -5959,6 +6816,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2263 },
     },
+    ["xp"] = 3500,
+    ["rep"] = { 72, 100 },
   },
   [501] = {
     ["end"] = {
@@ -5972,6 +6831,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2216 },
     },
+    ["xp"] = 1950,
+    ["rep"] = { 68, 100 },
   },
   [502] = {
     ["end"] = {
@@ -5983,6 +6844,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2216 },
     },
+    ["xp"] = 1450,
+    ["rep"] = { 68, 75 },
   },
   [503] = {
     ["end"] = {
@@ -5998,6 +6861,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2229 },
     },
+    ["xp"] = 2800,
+    ["rep"] = { 76, 100 },
   },
   [504] = {
     ["end"] = {
@@ -6012,6 +6877,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2263 },
     },
+    ["xp"] = 4700,
+    ["rep"] = { 72, 100 },
   },
   [505] = {
     ["end"] = {
@@ -6025,6 +6892,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2276 },
     },
+    ["xp"] = 1950,
+    ["rep"] = { 72, 75 },
   },
   [506] = {
     ["end"] = {
@@ -6036,6 +6905,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2316 },
     },
+    ["xp"] = 2100,
+    ["rep"] = { 76, 75 },
   },
   [507] = {
     ["end"] = {
@@ -6050,6 +6921,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2229 },
     },
+    ["xp"] = 4300,
   },
   [508] = {
     ["end"] = {
@@ -6061,6 +6933,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2317 },
     },
+    ["xp"] = 3900,
+    ["rep"] = { 76, 150 },
   },
   [509] = {
     ["end"] = {
@@ -6074,6 +6948,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2216 },
     },
+    ["xp"] = 2300,
+    ["rep"] = { 68, 100 },
   },
   [510] = {
     ["end"] = {
@@ -6084,6 +6960,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 1740, 1738, 1739 },
     },
+    ["xp"] = 1350,
+    ["rep"] = { 72, 50 },
   },
   [511] = {
     ["end"] = {
@@ -6094,6 +6972,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 1740, 1738, 1739 },
     },
+    ["xp"] = 1350,
+    ["rep"] = { 72, 50 },
   },
   [512] = {
     ["end"] = {
@@ -6108,6 +6988,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2276 },
     },
+    ["xp"] = 2800,
+    ["rep"] = { 72, 100 },
   },
   [513] = {
     ["end"] = {
@@ -6119,6 +7001,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2216 },
     },
+    ["xp"] = 1150,
+    ["rep"] = { 68, 50 },
   },
   [514] = {
     ["end"] = {
@@ -6130,6 +7014,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2277 },
     },
+    ["xp"] = 1350,
+    ["rep"] = { 47, 50 },
   },
   [515] = {
     ["end"] = {
@@ -6144,6 +7030,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2055 },
     },
+    ["xp"] = 3050,
+    ["rep"] = { 68, 150 },
   },
   [516] = {
     ["end"] = {
@@ -6157,6 +7045,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2121 },
     },
+    ["xp"] = 1250,
+    ["rep"] = { 68, 75 },
   },
   [517] = {
     ["end"] = {
@@ -6171,6 +7061,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2216 },
     },
+    ["xp"] = 1200,
+    ["rep"] = { 68, 50 },
   },
   [518] = {
     ["end"] = {
@@ -6185,6 +7077,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2278 },
     },
+    ["xp"] = 2250,
+    ["rep"] = { 68, 100 },
   },
   [519] = {
     ["end"] = {
@@ -6199,6 +7093,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2278 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 68, 100 },
   },
   [520] = {
     ["end"] = {
@@ -6213,6 +7109,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2278 },
     },
+    ["xp"] = 4450,
+    ["rep"] = { 68, 150 },
   },
   [521] = {
     ["end"] = {
@@ -6224,6 +7122,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2278 },
     },
+    ["xp"] = 3600,
+    ["rep"] = { 68, 100 },
   },
   [522] = {
     ["end"] = {
@@ -6235,6 +7135,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 3668 },
     },
+    ["xp"] = 710,
+    ["rep"] = { 72, 25 },
   },
   [523] = {
     ["end"] = {
@@ -6249,6 +7151,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2276 },
     },
+    ["xp"] = 3900,
+    ["rep"] = { 72, 100 },
   },
   [524] = {
     ["end"] = {
@@ -6260,6 +7164,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2216 },
     },
+    ["xp"] = 3650,
+    ["rep"] = { 68, 200 },
   },
   [525] = {
     ["end"] = {
@@ -6271,6 +7177,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1356 },
     },
+    ["xp"] = 1350,
+    ["rep"] = { 72, 50 },
   },
   [526] = {
     ["end"] = {
@@ -6285,6 +7193,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1217 },
     },
+    ["xp"] = 1750,
+    ["rep"] = { 47, 75 },
   },
   [527] = {
     ["end"] = {
@@ -6298,6 +7208,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2215 },
     },
+    ["xp"] = 1950,
+    ["rep"] = { 68, 100 },
   },
   [528] = {
     ["end"] = {
@@ -6312,6 +7224,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2215 },
     },
+    ["xp"] = 2000,
+    ["rep"] = { 68, 100 },
   },
   [529] = {
     ["end"] = {
@@ -6327,6 +7241,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2215 },
     },
+    ["xp"] = 2100,
+    ["rep"] = { 68, 100 },
   },
   [530] = {
     ["end"] = {
@@ -6341,6 +7257,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2050 },
     },
+    ["xp"] = 1550,
+    ["rep"] = { 68, 100 },
   },
   [531] = {
     ["end"] = {
@@ -6352,6 +7270,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1187 },
     },
+    ["xp"] = 1550,
   },
   [532] = {
     ["end"] = {
@@ -6368,6 +7287,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2215 },
     },
+    ["xp"] = 2100,
+    ["rep"] = { 68, 100 },
   },
   [533] = {
     ["end"] = {
@@ -6381,6 +7302,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2229 },
     },
+    ["xp"] = 2700,
+    ["rep"] = { 76, 100 },
   },
   [534] = {
     ["lvl"] = 34,
@@ -6398,6 +7321,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2333 },
     },
+    ["xp"] = 270,
   },
   [536] = {
     ["end"] = {
@@ -6411,6 +7335,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2228 },
     },
+    ["xp"] = 1850,
   },
   [537] = {
     ["end"] = {
@@ -6426,6 +7351,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2276 },
     },
+    ["xp"] = 3150,
+    ["rep"] = { 72, 100 },
   },
   [538] = {
     ["end"] = {
@@ -6437,6 +7364,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1440 },
     },
+    ["xp"] = 710,
+    ["rep"] = { 72, 25 },
   },
   [539] = {
     ["end"] = {
@@ -6451,6 +7380,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2215 },
     },
+    ["xp"] = 2300,
+    ["rep"] = { 68, 100 },
   },
   [540] = {
     ["end"] = {
@@ -6465,6 +7396,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2277 },
     },
+    ["xp"] = 3550,
+    ["rep"] = { 72, 150 },
   },
   [541] = {
     ["end"] = {
@@ -6479,6 +7412,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2215 },
     },
+    ["xp"] = 2450,
+    ["rep"] = { 68, 100 },
   },
   [542] = {
     ["end"] = {
@@ -6490,6 +7425,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2277 },
     },
+    ["xp"] = 3550,
+    ["rep"] = { 72, 150 },
   },
   [543] = {
     ["end"] = {
@@ -6503,6 +7440,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2285 },
     },
+    ["xp"] = 4700,
+    ["rep"] = { 72, 200 },
   },
   [544] = {
     ["end"] = {
@@ -6516,6 +7455,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2410 },
     },
+    ["xp"] = 3350,
+    ["rep"] = { 68, 150 },
   },
   [545] = {
     ["end"] = {
@@ -6530,6 +7471,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2410 },
     },
+    ["xp"] = 2050,
+    ["rep"] = { 68, 75 },
   },
   [546] = {
     ["end"] = {
@@ -6544,6 +7487,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2418 },
     },
+    ["xp"] = 2550,
+    ["rep"] = { 68, 150 },
   },
   [547] = {
     ["end"] = {
@@ -6557,6 +7502,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2419 },
     },
+    ["xp"] = 3050,
+    ["rep"] = { 68, 150 },
   },
   [548] = {
     ["lvl"] = 35,
@@ -6574,6 +7521,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 1763 },
     },
+    ["xp"] = 1750,
+    ["rep"] = { 68, 100 },
   },
   [550] = {
     ["end"] = {
@@ -6585,6 +7534,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2215 },
     },
+    ["xp"] = 2550,
+    ["rep"] = { 68, 100 },
   },
   [551] = {
     ["end"] = {
@@ -6596,6 +7547,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 3706 },
     },
+    ["xp"] = 780,
   },
   [552] = {
     ["end"] = {
@@ -6609,6 +7561,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2429 },
     },
+    ["xp"] = 2650,
+    ["rep"] = { 68, 100 },
   },
   [553] = {
     ["end"] = {
@@ -6624,6 +7578,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2429 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 68, 150 },
   },
   [554] = {
     ["end"] = {
@@ -6635,6 +7591,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2277 },
     },
+    ["xp"] = 1550,
+    ["rep"] = { 47, 100 },
   },
   [555] = {
     ["end"] = {
@@ -6648,6 +7606,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2430 },
     },
+    ["xp"] = 2500,
+    ["rep"] = { 72, 100 },
   },
   [556] = {
     ["end"] = {
@@ -6661,6 +7621,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2437 },
     },
+    ["xp"] = 2550,
+    ["rep"] = { 68, 100 },
   },
   [557] = {
     ["end"] = {
@@ -6675,6 +7637,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2437 },
     },
+    ["xp"] = 2700,
+    ["rep"] = { 68, 100 },
   },
   [558] = {
     ["end"] = {
@@ -6689,6 +7653,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14305 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 469, 75 },
   },
   [559] = {
     ["end"] = {
@@ -6703,6 +7669,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2228 },
     },
+    ["xp"] = 2550,
   },
   [560] = {
     ["end"] = {
@@ -6714,6 +7681,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2228 },
     },
+    ["xp"] = 255,
+    ["rep"] = { 72, 25 },
   },
   [561] = {
     ["end"] = {
@@ -6725,6 +7694,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2263 },
     },
+    ["xp"] = 255,
   },
   [562] = {
     ["end"] = {
@@ -6739,6 +7709,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2228 },
     },
+    ["xp"] = 1950,
   },
   [563] = {
     ["end"] = {
@@ -6750,6 +7721,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2228 },
     },
+    ["xp"] = 3200,
   },
   [564] = {
     ["end"] = {
@@ -6763,6 +7735,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2382 },
     },
+    ["xp"] = 2700,
+    ["rep"] = { 72, 100 },
   },
   [565] = {
     ["end"] = {
@@ -6776,6 +7750,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2438 },
     },
+    ["xp"] = 2700,
+    ["rep"] = { 72, 100 },
   },
   [566] = {
     ["end"] = {
@@ -6789,6 +7765,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 1763 },
     },
+    ["xp"] = 3150,
+    ["rep"] = { 68, 100 },
   },
   [567] = {
     ["end"] = {
@@ -6802,6 +7780,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 2008 },
     },
+    ["xp"] = 2300,
+    ["rep"] = { 68, 100 },
   },
   [568] = {
     ["end"] = {
@@ -6815,6 +7795,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2464 },
     },
+    ["xp"] = 2800,
+    ["rep"] = { 76, 100 },
   },
   [569] = {
     ["end"] = {
@@ -6829,6 +7811,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2464 },
     },
+    ["xp"] = 2850,
+    ["rep"] = { 76, 100 },
   },
   [570] = {
     ["end"] = {
@@ -6842,6 +7826,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2465 },
     },
+    ["xp"] = 2150,
+    ["rep"] = { 76, 100 },
   },
   [571] = {
     ["end"] = {
@@ -6856,6 +7842,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2465 },
     },
+    ["xp"] = 2450,
+    ["rep"] = { 76, 100 },
   },
   [572] = {
     ["end"] = {
@@ -6870,6 +7858,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2465 },
     },
+    ["xp"] = 2450,
+    ["rep"] = { 76, 100 },
   },
   [573] = {
     ["end"] = {
@@ -6885,6 +7875,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2465 },
     },
+    ["xp"] = 4650,
+    ["rep"] = { 76, 150 },
   },
   [574] = {
     ["end"] = {
@@ -6899,6 +7891,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 733 },
     },
+    ["xp"] = 2850,
+    ["rep"] = { 72, 100 },
   },
   [575] = {
     ["end"] = {
@@ -6912,6 +7906,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2495 },
     },
+    ["xp"] = 1250,
+    ["rep"] = { 21, 100, 87, -500 },
   },
   [576] = {
     ["end"] = {
@@ -6926,6 +7922,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2493 },
     },
+    ["xp"] = 2550,
+    ["rep"] = { 21, 150, 87, -750 },
   },
   [577] = {
     ["end"] = {
@@ -6940,6 +7938,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2495 },
     },
+    ["xp"] = 1400,
+    ["rep"] = { 21, 100, 87, -500 },
   },
   [578] = {
     ["end"] = {
@@ -6955,6 +7955,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2496 },
     },
+    ["xp"] = 2850,
+    ["rep"] = { 21, 100, 87, -500 },
   },
   [579] = {
     ["end"] = {
@@ -6981,6 +7983,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2491 },
     },
+    ["xp"] = 4700,
+    ["rep"] = { 21, 100, 87, -500 },
   },
   [581] = {
     ["end"] = {
@@ -6994,6 +7998,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2497 },
     },
+    ["xp"] = 2000,
+    ["rep"] = { 530, 100 },
   },
   [582] = {
     ["end"] = {
@@ -7008,6 +8014,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2497 },
     },
+    ["xp"] = 2100,
+    ["rep"] = { 530, 100 },
   },
   [583] = {
     ["end"] = {
@@ -7018,6 +8026,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 716 },
     },
+    ["xp"] = 245,
   },
   [584] = {
     ["end"] = {
@@ -7032,6 +8041,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2497 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 530, 100 },
   },
   [585] = {
     ["end"] = {
@@ -7046,6 +8057,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 2076 },
     },
+    ["xp"] = 2350,
+    ["rep"] = { 530, 75 },
   },
   [586] = {
     ["end"] = {
@@ -7061,6 +8074,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 2076 },
     },
+    ["xp"] = 4050,
+    ["rep"] = { 530, 100 },
   },
   [587] = {
     ["end"] = {
@@ -7075,6 +8090,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2488 },
     },
+    ["xp"] = 1650,
+    ["rep"] = { 21, 100, 87, -500 },
   },
   [588] = {
     ["end"] = {
@@ -7086,6 +8103,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 2076 },
     },
+    ["xp"] = 390,
+    ["rep"] = { 530, 25 },
   },
   [589] = {
     ["end"] = {
@@ -7100,6 +8119,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2519 },
     },
+    ["xp"] = 3900,
+    ["rep"] = { 530, 100 },
   },
   [590] = {
     ["end"] = {
@@ -7111,6 +8132,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6784 },
     },
+    ["xp"] = 110,
+    ["rep"] = { 68, 50 },
   },
   [591] = {
     ["end"] = {
@@ -7125,6 +8148,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2519 },
     },
+    ["xp"] = 5050,
+    ["rep"] = { 530, 150 },
   },
   [592] = {
     ["end"] = {
@@ -7140,6 +8165,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2519 },
     },
+    ["xp"] = 5050,
+    ["rep"] = { 530, 150 },
   },
   [593] = {
     ["end"] = {
@@ -7165,6 +8192,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 4098 },
     },
+    ["xp"] = 2900,
   },
   [595] = {
     ["end"] = {
@@ -7175,6 +8203,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2490 },
     },
+    ["xp"] = 2450,
+    ["rep"] = { 21, 75, 87, -375 },
   },
   [596] = {
     ["end"] = {
@@ -7188,6 +8218,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2519 },
     },
+    ["xp"] = 2100,
+    ["rep"] = { 530, 100 },
   },
   [597] = {
     ["end"] = {
@@ -7199,6 +8231,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 2083 },
     },
+    ["xp"] = 2450,
+    ["rep"] = { 21, 75, 87, -375 },
   },
   [598] = {
     ["end"] = {
@@ -7213,6 +8247,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2519 },
     },
+    ["xp"] = 3450,
+    ["rep"] = { 530, 100 },
   },
   [599] = {
     ["end"] = {
@@ -7224,6 +8260,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2490 },
     },
+    ["xp"] = 820,
+    ["rep"] = { 21, 25, 87, -125 },
   },
   [600] = {
     ["end"] = {
@@ -7238,6 +8276,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2498 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 21, 100, 87, -500 },
   },
   [601] = {
     ["end"] = {
@@ -7253,6 +8293,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2496 },
     },
+    ["xp"] = 2850,
+    ["rep"] = { 21, 100, 87, -500 },
   },
   [602] = {
     ["end"] = {
@@ -7265,6 +8307,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2496 },
     },
+    ["xp"] = 1400,
+    ["rep"] = { 72, 50 },
   },
   [603] = {
     ["end"] = {
@@ -7277,6 +8321,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2543 },
     },
+    ["xp"] = 1400,
+    ["rep"] = { 21, 50, 87, -250 },
   },
   [604] = {
     ["end"] = {
@@ -7292,6 +8338,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2487 },
     },
+    ["xp"] = 3600,
+    ["rep"] = { 21, 100, 87, -500 },
   },
   [605] = {
     ["end"] = {
@@ -7305,6 +8353,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2498 },
     },
+    ["xp"] = 2750,
+    ["rep"] = { 21, 100, 87, -500 },
   },
   [606] = {
     ["end"] = {
@@ -7318,6 +8368,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2501 },
     },
+    ["xp"] = 820,
+    ["rep"] = { 21, 25, 87, -125 },
   },
   [607] = {
     ["end"] = {
@@ -7329,6 +8381,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2502 },
     },
+    ["xp"] = 2450,
+    ["rep"] = { 21, 75, 87, -375 },
   },
   [608] = {
     ["end"] = {
@@ -7343,6 +8397,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2487 },
     },
+    ["xp"] = 4850,
+    ["rep"] = { 21, 150, 87, -750 },
   },
   [609] = {
     ["end"] = {
@@ -7357,6 +8413,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2501 },
     },
+    ["xp"] = 3750,
+    ["rep"] = { 21, 100, 87, -500 },
   },
   [610] = {
     ["end"] = {
@@ -7373,6 +8431,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2542 },
     },
+    ["xp"] = 2250,
+    ["rep"] = { 21, 100, 87, -500 },
   },
   [611] = {
     ["end"] = {
@@ -7389,6 +8449,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2542 },
     },
+    ["xp"] = 3150,
+    ["rep"] = { 21, 150, 87, -750 },
   },
   [613] = {
     ["end"] = {
@@ -7403,6 +8465,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2501 },
     },
+    ["xp"] = 4650,
+    ["rep"] = { 21, 150, 87, -750 },
   },
   [614] = {
     ["end"] = {
@@ -7416,6 +8480,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2500 },
     },
+    ["xp"] = 3150,
+    ["rep"] = { 21, 75, 87, -375 },
   },
   [615] = {
     ["end"] = {
@@ -7427,6 +8493,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2500 },
     },
+    ["xp"] = 470,
   },
   [616] = {
     ["end"] = {
@@ -7438,6 +8505,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 773 },
     },
+    ["xp"] = 285,
   },
   [617] = {
     ["end"] = {
@@ -7451,6 +8519,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2494 },
     },
+    ["xp"] = 3600,
+    ["rep"] = { 21, 100, 87, -500 },
   },
   [618] = {
     ["end"] = {
@@ -7465,6 +8535,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2594 },
     },
+    ["xp"] = 7100,
+    ["rep"] = { 21, 200, 87, -1000 },
   },
   [619] = {
     ["end"] = {
@@ -7488,6 +8560,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 3985 },
     },
+    ["xp"] = 2350,
+    ["rep"] = { 21, 50, 87, -250 },
   },
   [621] = {
     ["end"] = {
@@ -7501,6 +8575,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2498 },
     },
+    ["xp"] = 3750,
+    ["rep"] = { 21, 100, 87, -500 },
   },
   [622] = {
     ["end"] = {
@@ -7512,6 +8588,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 773 },
     },
+    ["xp"] = 2850,
+    ["rep"] = { 72, 100 },
   },
   [623] = {
     ["end"] = {
@@ -7524,6 +8602,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2494 },
     },
+    ["xp"] = 2700,
+    ["rep"] = { 21, 150, 87, -750 },
   },
   [624] = {
     ["end"] = {
@@ -7534,6 +8614,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 4056 },
     },
+    ["xp"] = 3600,
   },
   [625] = {
     ["end"] = {
@@ -7545,6 +8626,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 2553 },
     },
+    ["xp"] = 3600,
   },
   [626] = {
     ["end"] = {
@@ -7556,6 +8638,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 2555 },
     },
+    ["xp"] = 6100,
   },
   [627] = {
     ["end"] = {
@@ -7570,6 +8653,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 773 },
     },
+    ["xp"] = 2100,
+    ["rep"] = { 21, 75, 87, -375 },
   },
   [628] = {
     ["end"] = {
@@ -7584,6 +8669,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2495 },
     },
+    ["xp"] = 2850,
+    ["rep"] = { 21, 100, 87, -500 },
   },
   [629] = {
     ["end"] = {
@@ -7597,6 +8684,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2519 },
     },
+    ["xp"] = 2850,
+    ["rep"] = { 530, 100 },
   },
   [630] = {
     ["end"] = {
@@ -7611,6 +8700,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2634 },
     },
+    ["xp"] = 7350,
   },
   [631] = {
     ["end"] = {
@@ -7621,6 +8711,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1075 },
     },
+    ["xp"] = 2500,
+    ["rep"] = { 47, 100 },
   },
   [632] = {
     ["end"] = {
@@ -7632,6 +8724,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 2652 },
     },
+    ["xp"] = 2500,
+    ["rep"] = { 47, 100 },
   },
   [633] = {
     ["end"] = {
@@ -7646,6 +8740,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1075 },
     },
+    ["xp"] = 2500,
+    ["rep"] = { 47, 100 },
   },
   [634] = {
     ["end"] = {
@@ -7657,6 +8753,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1075 },
     },
+    ["xp"] = 1250,
   },
   [635] = {
     ["end"] = {
@@ -7667,10 +8764,12 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 4614 },
     },
+    ["xp"] = 275,
   },
   [636] = {
     ["lvl"] = 35,
     ["min"] = 30,
+    ["xp"] = 275,
   },
   [637] = {
     ["end"] = {
@@ -7682,6 +8781,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 4433 },
     },
+    ["xp"] = 2450,
+    ["rep"] = { 47, 100 },
   },
   [638] = {
     ["end"] = {
@@ -7693,6 +8794,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2497 },
     },
+    ["xp"] = 710,
+    ["rep"] = { 530, 25 },
   },
   [639] = {
     ["end"] = {
@@ -7708,6 +8811,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2703 },
     },
+    ["xp"] = 2850,
+    ["rep"] = { 530, 100 },
   },
   [640] = {
     ["end"] = {
@@ -7723,6 +8828,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2703 },
     },
+    ["xp"] = 3150,
+    ["rep"] = { 76, 100 },
   },
   [641] = {
     ["end"] = {
@@ -7735,6 +8842,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2706 },
     },
+    ["xp"] = 315,
+    ["rep"] = { 530, 25 },
   },
   [642] = {
     ["end"] = {
@@ -7748,6 +8857,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 138492 },
     },
+    ["xp"] = 2850,
   },
   [643] = {
     ["end"] = {
@@ -7763,6 +8873,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2703 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 530, 100 },
   },
   [644] = {
     ["end"] = {
@@ -7778,6 +8890,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2703 },
     },
+    ["xp"] = 3450,
+    ["rep"] = { 530, 100 },
   },
   [645] = {
     ["end"] = {
@@ -7790,6 +8904,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2703 },
     },
+    ["xp"] = 860,
+    ["rep"] = { 530, 25 },
   },
   [646] = {
     ["end"] = {
@@ -7802,6 +8918,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 2703 },
     },
+    ["xp"] = 4300,
+    ["rep"] = { 530, 150 },
   },
   [647] = {
     ["end"] = {
@@ -7812,6 +8930,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2696 },
     },
+    ["xp"] = 3050,
+    ["rep"] = { 47, 150 },
   },
   [648] = {
     ["end"] = {
@@ -7823,6 +8943,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7784 },
     },
+    ["xp"] = 5450,
+    ["rep"] = { 21, 150, 87, -750 },
   },
   [649] = {
     ["end"] = {
@@ -7833,6 +8955,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6986 },
     },
+    ["xp"] = 440,
   },
   [650] = {
     ["end"] = {
@@ -7844,6 +8967,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6987 },
     },
+    ["xp"] = 4400,
+    ["rep"] = { 76, 100 },
   },
   [651] = {
     ["end"] = {
@@ -7858,6 +8983,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 2701 },
     },
+    ["xp"] = 2850,
   },
   [652] = {
     ["end"] = {
@@ -7872,6 +8998,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 2702 },
     },
+    ["xp"] = 3450,
   },
   [653] = {
     ["end"] = {
@@ -7884,6 +9011,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 2688 },
     },
+    ["xp"] = 2350,
   },
   [654] = {
     ["end"] = {
@@ -7898,6 +9026,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 8524, 8524 },
     },
+    ["xp"] = 4050,
+    ["rep"] = { 68, 100 },
   },
   [655] = {
     ["end"] = {
@@ -7909,6 +9039,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2792 },
     },
+    ["xp"] = 270,
+    ["rep"] = { 76, 25 },
   },
   [656] = {
     ["end"] = {
@@ -7924,6 +9056,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2785 },
     },
+    ["xp"] = 7100,
   },
   [657] = {
     ["end"] = {
@@ -7949,6 +9082,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2712 },
     },
+    ["xp"] = 2800,
+    ["rep"] = { 72, 100 },
   },
   [659] = {
     ["end"] = {
@@ -7959,6 +9094,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2711 },
     },
+    ["xp"] = 1300,
+    ["rep"] = { 72, 50 },
   },
   [660] = {
     ["end"] = {
@@ -7970,6 +9107,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2713 },
     },
+    ["xp"] = 2850,
+    ["rep"] = { 72, 100 },
   },
   [661] = {
     ["end"] = {
@@ -7981,6 +9120,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2712 },
     },
+    ["xp"] = 3550,
+    ["rep"] = { 72, 150 },
   },
   [662] = {
     ["end"] = {
@@ -7995,6 +9136,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2767 },
     },
+    ["xp"] = 3150,
+    ["rep"] = { 21, 100, 87, -500 },
   },
   [663] = {
     ["end"] = {
@@ -8005,6 +9148,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2766 },
     },
+    ["xp"] = 690,
+    ["rep"] = { 21, 25, 87, -125 },
   },
   [664] = {
     ["end"] = {
@@ -8018,6 +9163,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2769 },
     },
+    ["xp"] = 3150,
+    ["rep"] = { 21, 100, 87, -500 },
   },
   [665] = {
     ["end"] = {
@@ -8028,6 +9175,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2768 },
     },
+    ["xp"] = 3150,
+    ["rep"] = { 21, 100, 87, -500 },
   },
   [666] = {
     ["end"] = {
@@ -8042,6 +9191,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2774 },
     },
+    ["xp"] = 3900,
+    ["rep"] = { 21, 150, 87, -750 },
   },
   [667] = {
     ["end"] = {
@@ -8053,6 +9204,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2610 },
     },
+    ["xp"] = 4650,
+    ["rep"] = { 21, 150, 87, -750 },
   },
   [668] = {
     ["end"] = {
@@ -8064,6 +9217,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2774 },
     },
+    ["xp"] = 1550,
+    ["rep"] = { 21, 50, 87, -250 },
   },
   [669] = {
     ["end"] = {
@@ -8075,6 +9230,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2610 },
     },
+    ["xp"] = 3150,
+    ["rep"] = { 21, 100, 87, -500 },
   },
   [670] = {
     ["end"] = {
@@ -8086,6 +9243,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2487 },
     },
+    ["xp"] = 3150,
+    ["rep"] = { 21, 100, 87, -500 },
   },
   [671] = {
     ["end"] = {
@@ -8100,6 +9259,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2706 },
     },
+    ["xp"] = 2650,
+    ["rep"] = { 530, 100 },
   },
   [672] = {
     ["end"] = {
@@ -8115,6 +9276,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2706 },
     },
+    ["xp"] = 2700,
+    ["rep"] = { 76, 100 },
   },
   [673] = {
     ["end"] = {
@@ -8130,6 +9293,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2706 },
     },
+    ["xp"] = 3150,
+    ["rep"] = { 530, 100 },
   },
   [674] = {
     ["end"] = {
@@ -8142,6 +9307,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2706 },
     },
+    ["xp"] = 270,
+    ["rep"] = { 76, 25 },
   },
   [675] = {
     ["end"] = {
@@ -8154,6 +9321,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2792 },
     },
+    ["xp"] = 270,
+    ["rep"] = { 76, 25 },
   },
   [676] = {
     ["end"] = {
@@ -8167,6 +9336,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2770 },
     },
+    ["xp"] = 2550,
+    ["rep"] = { 530, 100 },
   },
   [677] = {
     ["end"] = {
@@ -8181,6 +9352,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2771 },
     },
+    ["xp"] = 2550,
+    ["rep"] = { 76, 100 },
   },
   [678] = {
     ["end"] = {
@@ -8195,6 +9368,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2771 },
     },
+    ["xp"] = 2850,
+    ["rep"] = { 76, 100 },
   },
   [679] = {
     ["end"] = {
@@ -8209,6 +9384,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2771 },
     },
+    ["xp"] = 3150,
+    ["rep"] = { 76, 100 },
   },
   [680] = {
     ["end"] = {
@@ -8223,6 +9400,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2772 },
     },
+    ["xp"] = 3900,
+    ["rep"] = { 76, 150 },
   },
   [681] = {
     ["end"] = {
@@ -8236,6 +9415,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2700 },
     },
+    ["xp"] = 2500,
+    ["rep"] = { 72, 100 },
   },
   [682] = {
     ["end"] = {
@@ -8250,6 +9431,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2700 },
     },
+    ["xp"] = 3550,
+    ["rep"] = { 72, 150 },
   },
   [683] = {
     ["end"] = {
@@ -8261,6 +9444,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2695 },
     },
+    ["xp"] = 1200,
+    ["rep"] = { 47, 50 },
   },
   [684] = {
     ["end"] = {
@@ -8274,6 +9459,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 2713 },
     },
+    ["xp"] = 3750,
+    ["rep"] = { 72, 150 },
   },
   [685] = {
     ["end"] = {
@@ -8287,6 +9474,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 2713 },
     },
+    ["xp"] = 3900,
+    ["rep"] = { 72, 150 },
   },
   [686] = {
     ["end"] = {
@@ -8298,6 +9487,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2784 },
     },
+    ["xp"] = 1200,
+    ["rep"] = { 47, 50 },
   },
   [687] = {
     ["end"] = {
@@ -8309,6 +9500,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2786, 2787 },
     },
+    ["xp"] = 1550,
   },
   [688] = {
     ["end"] = {
@@ -8321,6 +9513,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 2688 },
     },
+    ["xp"] = 2350,
   },
   [689] = {
     ["end"] = {
@@ -8335,6 +9528,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2790 },
     },
+    ["xp"] = 2500,
+    ["rep"] = { 47, 100 },
   },
   [690] = {
     ["end"] = {
@@ -8345,6 +9540,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2708 },
     },
+    ["xp"] = 1950,
+    ["rep"] = { 47, 75 },
   },
   [691] = {
     ["end"] = {
@@ -8358,6 +9555,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2788 },
     },
+    ["xp"] = 3500,
+    ["rep"] = { 72, 150 },
   },
   [692] = {
     ["end"] = {
@@ -8372,6 +9571,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2785 },
     },
+    ["xp"] = 3300,
   },
   [693] = {
     ["end"] = {
@@ -8386,6 +9586,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2789 },
     },
+    ["xp"] = 3000,
+    ["rep"] = { 47, 100 },
   },
   [694] = {
     ["end"] = {
@@ -8400,6 +9602,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2789 },
     },
+    ["xp"] = 3000,
+    ["rep"] = { 72, 100 },
   },
   [695] = {
     ["end"] = {
@@ -8414,6 +9618,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2788 },
     },
+    ["xp"] = 300,
+    ["rep"] = { 47, 25 },
   },
   [696] = {
     ["end"] = {
@@ -8428,6 +9634,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2789 },
     },
+    ["xp"] = 3000,
+    ["rep"] = { 47, 100 },
   },
   [697] = {
     ["end"] = {
@@ -8439,6 +9647,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2789 },
     },
+    ["xp"] = 3750,
+    ["rep"] = { 72, 150 },
   },
   [698] = {
     ["end"] = {
@@ -8452,6 +9662,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5591 },
     },
+    ["xp"] = 3150,
+    ["rep"] = { 76, 100 },
   },
   [699] = {
     ["end"] = {
@@ -8466,6 +9678,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5592 },
     },
+    ["xp"] = 3450,
+    ["rep"] = { 76, 100 },
   },
   [700] = {
     ["end"] = {
@@ -8477,6 +9691,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2790 },
     },
+    ["xp"] = 2500,
+    ["rep"] = { 47, 100 },
   },
   [701] = {
     ["end"] = {
@@ -8492,6 +9708,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2706 },
     },
+    ["xp"] = 2850,
+    ["rep"] = { 76, 100 },
   },
   [702] = {
     ["end"] = {
@@ -8504,6 +9722,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2706 },
     },
+    ["xp"] = 285,
+    ["rep"] = { 76, 25 },
   },
   [703] = {
     ["end"] = {
@@ -8517,6 +9737,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2817 },
     },
+    ["xp"] = 2350,
+    ["rep"] = { 21, 75, 87, -375 },
   },
   [704] = {
     ["end"] = {
@@ -8531,6 +9753,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1344 },
     },
+    ["xp"] = 2850,
+    ["rep"] = { 47, 100 },
   },
   [705] = {
     ["end"] = {
@@ -8544,6 +9768,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2817 },
     },
+    ["xp"] = 3550,
+    ["rep"] = { 21, 150, 87, -750 },
   },
   [706] = {
     ["end"] = {
@@ -8557,6 +9783,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2860 },
     },
+    ["xp"] = 3900,
+    ["rep"] = { 47, 100 },
   },
   [707] = {
     ["end"] = {
@@ -8567,6 +9795,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1356 },
     },
+    ["xp"] = 710,
+    ["rep"] = { 47, 25 },
   },
   [708] = {
     ["end"] = {
@@ -8578,6 +9808,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 4613 },
     },
+    ["xp"] = 2350,
+    ["rep"] = { 47, 75 },
   },
   [709] = {
     ["end"] = {
@@ -8591,6 +9823,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2785 },
     },
+    ["xp"] = 3150,
   },
   [710] = {
     ["end"] = {
@@ -8604,6 +9837,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2921 },
     },
+    ["xp"] = 2850,
   },
   [711] = {
     ["end"] = {
@@ -8618,6 +9852,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2921 },
     },
+    ["xp"] = 3000,
   },
   [712] = {
     ["end"] = {
@@ -8632,6 +9867,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2921 },
     },
+    ["xp"] = 3450,
   },
   [713] = {
     ["end"] = {
@@ -8645,6 +9881,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2921 },
     },
+    ["xp"] = 2850,
   },
   [714] = {
     ["end"] = {
@@ -8659,6 +9896,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2921 },
     },
+    ["xp"] = 2850,
   },
   [715] = {
     ["end"] = {
@@ -8674,6 +9912,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2920 },
     },
+    ["xp"] = 2100,
   },
   [716] = {
     ["end"] = {
@@ -8688,6 +9927,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2920 },
     },
+    ["xp"] = 2550,
   },
   [717] = {
     ["end"] = {
@@ -8702,6 +9942,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2888 },
     },
+    ["xp"] = 5900,
+    ["rep"] = { 72, 150 },
   },
   [718] = {
     ["end"] = {
@@ -8715,6 +9957,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2860 },
     },
+    ["xp"] = 2150,
+    ["rep"] = { 47, 75 },
   },
   [719] = {
     ["end"] = {
@@ -8728,6 +9972,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2910 },
     },
+    ["xp"] = 2750,
+    ["rep"] = { 47, 100 },
   },
   [720] = {
     ["end"] = {
@@ -8738,6 +9984,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 2868 },
     },
+    ["xp"] = 1350,
+    ["rep"] = { 47, 50 },
   },
   [721] = {
     ["end"] = {
@@ -8749,6 +9997,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2910 },
     },
+    ["xp"] = 2750,
+    ["rep"] = { 47, 100 },
   },
   [722] = {
     ["end"] = {
@@ -8763,6 +10013,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2909 },
     },
+    ["xp"] = 3150,
+    ["rep"] = { 47, 100 },
   },
   [723] = {
     ["end"] = {
@@ -8774,6 +10026,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2909 },
     },
+    ["xp"] = 2350,
+    ["rep"] = { 47, 75 },
   },
   [724] = {
     ["end"] = {
@@ -8785,6 +10039,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2910 },
     },
+    ["xp"] = 3150,
+    ["rep"] = { 47, 100 },
   },
   [725] = {
     ["end"] = {
@@ -8796,6 +10052,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2916 },
     },
+    ["xp"] = 1550,
+    ["rep"] = { 47, 50 },
   },
   [726] = {
     ["end"] = {
@@ -8807,6 +10065,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2918 },
     },
+    ["xp"] = 2350,
+    ["rep"] = { 47, 75 },
   },
   [727] = {
     ["end"] = {
@@ -8819,6 +10079,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2785 },
     },
+    ["xp"] = 780,
   },
   [728] = {
     ["end"] = {
@@ -8831,6 +10092,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2785 },
     },
+    ["xp"] = 780,
   },
   [729] = {
     ["end"] = {
@@ -8842,6 +10104,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2913 },
     },
+    ["xp"] = 1150,
+    ["rep"] = { 47, 75 },
   },
   [730] = {
     ["end"] = {
@@ -8852,6 +10116,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2912 },
     },
+    ["xp"] = 490,
+    ["rep"] = { 47, 50 },
   },
   [731] = {
     ["end"] = {
@@ -8863,6 +10129,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2917 },
     },
+    ["xp"] = 1950,
+    ["rep"] = { 47, 150 },
   },
   [732] = {
     ["end"] = {
@@ -8877,6 +10145,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2888 },
     },
+    ["xp"] = 3600,
+    ["rep"] = { 72, 100 },
   },
   [733] = {
     ["end"] = {
@@ -8891,6 +10161,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2860 },
     },
+    ["xp"] = 3150,
+    ["rep"] = { 47, 100 },
   },
   [734] = {
     ["end"] = {
@@ -8917,6 +10189,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2786 },
     },
+    ["xp"] = 5600,
   },
   [736] = {
     ["end"] = {
@@ -8932,6 +10205,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2934 },
     },
+    ["xp"] = 5600,
   },
   [737] = {
     ["end"] = {
@@ -8943,6 +10217,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2786, 2934 },
     },
+    ["xp"] = 2350,
   },
   [738] = {
     ["end"] = {
@@ -8954,6 +10229,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1344 },
     },
+    ["xp"] = 1450,
+    ["rep"] = { 47, 50 },
   },
   [739] = {
     ["end"] = {
@@ -8968,6 +10245,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 2875 },
     },
+    ["xp"] = 3450,
+    ["rep"] = { 47, 100 },
   },
   [741] = {
     ["end"] = {
@@ -8979,6 +10258,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2913 },
     },
+    ["xp"] = 1150,
+    ["rep"] = { 47, 75 },
   },
   [742] = {
     ["close"] = { 235, 742, 6382 },
@@ -8990,6 +10271,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10881 },
     },
+    ["xp"] = 155,
+    ["rep"] = { 81, 10 },
   },
   [743] = {
     ["end"] = {
@@ -9003,6 +10286,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2985 },
     },
+    ["xp"] = 700,
+    ["rep"] = { 81, 100 },
   },
   [744] = {
     ["end"] = {
@@ -9016,6 +10301,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2987 },
     },
+    ["xp"] = 880,
+    ["rep"] = { 81, 100 },
   },
   [745] = {
     ["end"] = {
@@ -9029,6 +10316,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2993 },
     },
+    ["xp"] = 540,
+    ["rep"] = { 81, 100 },
   },
   [746] = {
     ["end"] = {
@@ -9043,6 +10332,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2993 },
     },
+    ["xp"] = 700,
+    ["rep"] = { 81, 100 },
   },
   [747] = {
     ["end"] = {
@@ -9056,6 +10347,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2980 },
     },
+    ["xp"] = 170,
+    ["rep"] = { 81, 100 },
   },
   [748] = {
     ["end"] = {
@@ -9070,6 +10363,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2948 },
     },
+    ["xp"] = 450,
+    ["rep"] = { 81, 100 },
   },
   [749] = {
     ["end"] = {
@@ -9080,6 +10375,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2988 },
     },
+    ["xp"] = 530,
+    ["rep"] = { 81, 75 },
   },
   [750] = {
     ["end"] = {
@@ -9094,6 +10391,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2980 },
     },
+    ["xp"] = 250,
+    ["rep"] = { 81, 100 },
   },
   [751] = {
     ["end"] = {
@@ -9105,6 +10404,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 2908 },
     },
+    ["xp"] = 530,
+    ["rep"] = { 81, 75 },
   },
   [752] = {
     ["end"] = {
@@ -9115,6 +10416,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2981 },
     },
+    ["xp"] = 85,
+    ["rep"] = { 81, 50 },
   },
   [753] = {
     ["end"] = {
@@ -9129,6 +10432,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2991 },
     },
+    ["xp"] = 250,
+    ["rep"] = { 81, 100 },
   },
   [754] = {
     ["end"] = {
@@ -9143,6 +10448,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2948 },
     },
+    ["xp"] = 540,
+    ["rep"] = { 81, 100 },
   },
   [755] = {
     ["end"] = {
@@ -9154,6 +10461,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2981 },
     },
+    ["xp"] = 250,
+    ["rep"] = { 81, 100 },
   },
   [756] = {
     ["end"] = {
@@ -9169,6 +10478,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2948 },
     },
+    ["xp"] = 630,
+    ["rep"] = { 81, 100 },
   },
   [757] = {
     ["end"] = {
@@ -9183,6 +10494,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2982 },
     },
+    ["xp"] = 445,
+    ["rep"] = { 81, 150 },
   },
   [758] = {
     ["end"] = {
@@ -9197,6 +10510,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2948 },
     },
+    ["xp"] = 700,
+    ["rep"] = { 81, 100 },
   },
   [759] = {
     ["end"] = {
@@ -9212,6 +10527,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2948 },
     },
+    ["xp"] = 840,
+    ["rep"] = { 81, 100 },
   },
   [760] = {
     ["end"] = {
@@ -9226,6 +10543,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2948 },
     },
+    ["xp"] = 1050,
+    ["rep"] = { 81, 150 },
   },
   [761] = {
     ["end"] = {
@@ -9239,6 +10558,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2947 },
     },
+    ["xp"] = 680,
+    ["rep"] = { 81, 150 },
   },
   [762] = {
     ["end"] = {
@@ -9253,6 +10574,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2916 },
     },
+    ["xp"] = 4650,
+    ["rep"] = { 47, 150 },
   },
   [763] = {
     ["end"] = {
@@ -9264,6 +10587,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2981 },
     },
+    ["xp"] = 335,
+    ["rep"] = { 81, 75 },
   },
   [764] = {
     ["end"] = {
@@ -9278,6 +10603,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2988 },
     },
+    ["xp"] = 630,
+    ["rep"] = { 81, 75 },
   },
   [765] = {
     ["end"] = {
@@ -9292,6 +10619,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2988 },
     },
+    ["xp"] = 910,
+    ["rep"] = { 81, 100 },
   },
   [766] = {
     ["end"] = {
@@ -9305,6 +10634,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3055 },
     },
+    ["xp"] = 700,
+    ["rep"] = { 81, 100 },
   },
   [767] = {
     ["end"] = {
@@ -9316,6 +10647,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2993 },
     },
+    ["xp"] = 55,
+    ["rep"] = { 81, 25 },
   },
   [768] = {
     ["end"] = {
@@ -9330,6 +10663,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3050 },
     },
+    ["xp"] = 880,
+    ["rep"] = { 81, 150 },
   },
   [769] = {
     ["end"] = {
@@ -9344,6 +10679,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3050 },
     },
+    ["xp"] = 420,
+    ["rep"] = { 81, 50 },
   },
   [770] = {
     ["end"] = {
@@ -9355,6 +10692,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 4854 },
     },
+    ["xp"] = 910,
+    ["rep"] = { 81, 100 },
   },
   [771] = {
     ["end"] = {
@@ -9369,6 +10708,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3054 },
     },
+    ["xp"] = 630,
+    ["rep"] = { 81, 100 },
   },
   [772] = {
     ["end"] = {
@@ -9383,6 +10724,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3054 },
     },
+    ["xp"] = 475,
+    ["rep"] = { 81, 75 },
   },
   [773] = {
     ["end"] = {
@@ -9394,6 +10737,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2984 },
     },
+    ["xp"] = 840,
+    ["rep"] = { 81, 100 },
   },
   [774] = {
     ["lvl"] = 4,
@@ -9409,6 +10754,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2994 },
     },
+    ["xp"] = 420,
+    ["rep"] = { 81, 50 },
   },
   [776] = {
     ["end"] = {
@@ -9423,6 +10770,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3057 },
     },
+    ["xp"] = 1250,
+    ["rep"] = { 81, 150 },
   },
   [777] = {
     ["end"] = {
@@ -9448,6 +10797,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2921 },
     },
+    ["xp"] = 4850,
   },
   [779] = {
     ["end"] = {
@@ -9476,6 +10826,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2980 },
     },
+    ["xp"] = 445,
+    ["rep"] = { 81, 150 },
   },
   [781] = {
     ["end"] = {
@@ -9487,6 +10839,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 4851 },
     },
+    ["xp"] = 355,
+    ["rep"] = { 81, 100 },
   },
   [782] = {
     ["end"] = {
@@ -9500,6 +10854,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1068 },
     },
+    ["xp"] = 3600,
+    ["rep"] = { 76, 100 },
   },
   [783] = {
     ["end"] = {
@@ -9510,6 +10866,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 823 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 72, 50 },
   },
   [784] = {
     ["end"] = {
@@ -9523,10 +10881,14 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3139 },
     },
+    ["xp"] = 630,
+    ["rep"] = { 76, 100, 530, 100 },
   },
   [785] = {
     ["lvl"] = 8,
     ["min"] = 5,
+    ["xp"] = 350,
+    ["rep"] = { 76, 50, 530, 50 },
   },
   [786] = {
     ["end"] = {
@@ -9541,6 +10903,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3140 },
     },
+    ["xp"] = 700,
+    ["rep"] = { 76, 100, 530, 100 },
   },
   [787] = {
     ["end"] = {
@@ -9551,6 +10915,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3144 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 76, 50, 530, 50 },
   },
   [788] = {
     ["end"] = {
@@ -9565,6 +10931,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3143 },
     },
+    ["xp"] = 170,
+    ["rep"] = { 76, 100, 530, 100 },
   },
   [789] = {
     ["end"] = {
@@ -9579,6 +10947,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3143 },
     },
+    ["xp"] = 250,
+    ["rep"] = { 76, 100, 530, 100 },
   },
   [790] = {
     ["end"] = {
@@ -9592,6 +10962,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3287 },
     },
+    ["xp"] = 450,
+    ["rep"] = { 76, 100, 530, 100 },
   },
   [791] = {
     ["end"] = {
@@ -9605,6 +10977,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3147 },
     },
+    ["xp"] = 630,
+    ["rep"] = { 76, 100, 530, 100 },
   },
   [792] = {
     ["class"] = 1245,
@@ -9619,6 +10993,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3145 },
     },
+    ["xp"] = 445,
+    ["rep"] = { 76, 150, 530, 150 },
   },
   [793] = {
     ["end"] = {
@@ -9633,6 +11009,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1068 },
     },
+    ["xp"] = 5900,
+    ["rep"] = { 76, 150 },
   },
   [794] = {
     ["end"] = {
@@ -9647,6 +11025,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3145 },
     },
+    ["xp"] = 670,
+    ["rep"] = { 76, 200, 530, 200 },
   },
   [795] = {
     ["end"] = {
@@ -9704,6 +11084,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3287 },
     },
+    ["xp"] = 110,
+    ["rep"] = { 76, 25, 530, 25 },
   },
   [805] = {
     ["end"] = {
@@ -9715,6 +11097,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3145 },
     },
+    ["xp"] = 225,
+    ["rep"] = { 76, 50, 530, 50 },
   },
   [806] = {
     ["end"] = {
@@ -9729,6 +11113,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3142 },
     },
+    ["xp"] = 910,
+    ["rep"] = { 76, 100, 530, 100 },
   },
   [808] = {
     ["end"] = {
@@ -9742,6 +11128,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3188 },
     },
+    ["xp"] = 780,
+    ["rep"] = { 76, 100, 530, 100 },
   },
   [809] = {
     ["end"] = {
@@ -9753,10 +11141,13 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3216 },
     },
+    ["xp"] = 455,
+    ["rep"] = { 76, 50, 530, 50 },
   },
   [810] = {
     ["lvl"] = 5,
     ["min"] = 4,
+    ["xp"] = 450,
   },
   [811] = {
     ["lvl"] = 1,
@@ -9775,6 +11166,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3190 },
     },
+    ["xp"] = 980,
+    ["rep"] = { 76, 150, 530, 150 },
   },
   [813] = {
     ["end"] = {
@@ -9793,6 +11186,7 @@ UnrealQuestData["quests"] = {
   [814] = {
     ["lvl"] = 6,
     ["min"] = 4,
+    ["xp"] = 540,
   },
   [815] = {
     ["end"] = {
@@ -9806,6 +11200,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3191 },
     },
+    ["xp"] = 700,
+    ["rep"] = { 76, 100, 530, 100 },
   },
   [816] = {
     ["end"] = {
@@ -9819,6 +11215,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3193 },
     },
+    ["xp"] = 880,
+    ["rep"] = { 76, 100, 530, 100 },
   },
   [817] = {
     ["end"] = {
@@ -9832,6 +11230,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3194 },
     },
+    ["xp"] = 700,
+    ["rep"] = { 76, 100, 530, 100 },
   },
   [818] = {
     ["end"] = {
@@ -9845,6 +11245,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3304 },
     },
+    ["xp"] = 630,
+    ["rep"] = { 76, 100, 530, 100 },
   },
   [819] = {
     ["end"] = {
@@ -9856,6 +11258,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 4926 },
     },
+    ["xp"] = 1050,
+    ["rep"] = { 76, 100 },
   },
   [821] = {
     ["end"] = {
@@ -9870,6 +11274,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3292 },
     },
+    ["xp"] = 1350,
+    ["rep"] = { 76, 150 },
   },
   [822] = {
     ["end"] = {
@@ -9884,6 +11290,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3292 },
     },
+    ["xp"] = 970,
+    ["rep"] = { 76, 50 },
   },
   [823] = {
     ["end"] = {
@@ -9894,6 +11302,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3188 },
     },
+    ["xp"] = 315,
+    ["rep"] = { 76, 50, 530, 50 },
   },
   [824] = {
     ["end"] = {
@@ -9905,6 +11315,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12737 },
     },
+    ["xp"] = 2200,
+    ["rep"] = { 530, 100 },
   },
   [825] = {
     ["end"] = {
@@ -9919,6 +11331,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3139 },
     },
+    ["xp"] = 700,
+    ["rep"] = { 76, 100, 530, 100 },
   },
   [826] = {
     ["end"] = {
@@ -9933,6 +11347,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3188 },
     },
+    ["xp"] = 840,
+    ["rep"] = { 76, 100, 530, 100 },
   },
   [827] = {
     ["end"] = {
@@ -9947,6 +11363,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3208 },
     },
+    ["xp"] = 910,
+    ["rep"] = { 76, 100, 530, 100 },
   },
   [828] = {
     ["end"] = {
@@ -9958,6 +11376,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3142 },
     },
+    ["xp"] = 90,
+    ["rep"] = { 76, 10, 530, 10 },
   },
   [829] = {
     ["end"] = {
@@ -9969,6 +11389,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3208 },
     },
+    ["xp"] = 455,
+    ["rep"] = { 76, 50, 530, 50 },
   },
   [830] = {
     ["end"] = {
@@ -9980,6 +11402,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 4881 },
     },
+    ["xp"] = 630,
+    ["rep"] = { 76, 100, 530, 100 },
   },
   [831] = {
     ["end"] = {
@@ -9991,6 +11415,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3139 },
     },
+    ["xp"] = 630,
+    ["rep"] = { 76, 100, 530, 100 },
   },
   [832] = {
     ["end"] = {
@@ -10002,6 +11428,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 4903 },
     },
+    ["xp"] = 680,
+    ["rep"] = { 76, 75, 530, 75 },
   },
   [833] = {
     ["end"] = {
@@ -10015,6 +11443,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3233 },
     },
+    ["xp"] = 630,
+    ["rep"] = { 81, 75 },
   },
   [834] = {
     ["end"] = {
@@ -10028,6 +11458,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3293 },
     },
+    ["xp"] = 780,
+    ["rep"] = { 76, 100, 530, 100, 470, 100 },
   },
   [835] = {
     ["end"] = {
@@ -10042,6 +11474,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3293 },
     },
+    ["xp"] = 880,
+    ["rep"] = { 76, 100, 530, 100, 470, 100 },
   },
   [836] = {
     ["end"] = {
@@ -10053,6 +11487,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7806 },
     },
+    ["xp"] = 5450,
+    ["rep"] = { 21, 150, 87, -750 },
   },
   [837] = {
     ["end"] = {
@@ -10066,6 +11502,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3139 },
     },
+    ["xp"] = 630,
+    ["rep"] = { 76, 75, 530, 75 },
   },
   [838] = {
     ["end"] = {
@@ -10077,10 +11515,12 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10837 },
     },
+    ["xp"] = 560,
   },
   [839] = {
     ["lvl"] = 1,
     ["min"] = 1,
+    ["xp"] = 10,
   },
   [840] = {
     ["end"] = {
@@ -10091,6 +11531,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3336 },
     },
+    ["xp"] = 455,
+    ["rep"] = { 76, 50, 530, 50 },
   },
   [841] = {
     ["end"] = {
@@ -10116,6 +11558,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3337 },
     },
+    ["xp"] = 910,
+    ["rep"] = { 76, 100, 530, 100 },
   },
   [843] = {
     ["end"] = {
@@ -10130,6 +11574,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3341 },
     },
+    ["xp"] = 1850,
+    ["rep"] = { 81, 100 },
   },
   [844] = {
     ["end"] = {
@@ -10144,6 +11590,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3338 },
     },
+    ["xp"] = 910,
+    ["rep"] = { 76, 100 },
   },
   [845] = {
     ["end"] = {
@@ -10158,6 +11606,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3338 },
     },
+    ["xp"] = 910,
+    ["rep"] = { 76, 100 },
   },
   [846] = {
     ["end"] = {
@@ -10172,6 +11622,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3341 },
     },
+    ["xp"] = 2100,
+    ["rep"] = { 81, 100 },
   },
   [847] = {
     ["end"] = {
@@ -10183,6 +11635,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2792 },
     },
+    ["xp"] = 2850,
+    ["rep"] = { 76, 100 },
   },
   [848] = {
     ["end"] = {
@@ -10196,6 +11650,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3390 },
     },
+    ["xp"] = 1050,
+    ["rep"] = { 68, 100 },
   },
   [849] = {
     ["end"] = {
@@ -10211,6 +11667,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3341 },
     },
+    ["xp"] = 2100,
+    ["rep"] = { 81, 100 },
   },
   [850] = {
     ["end"] = {
@@ -10224,6 +11682,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3389 },
     },
+    ["xp"] = 880,
+    ["rep"] = { 76, 75 },
   },
   [851] = {
     ["end"] = {
@@ -10238,6 +11698,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3389 },
     },
+    ["xp"] = 1000,
+    ["rep"] = { 76, 75 },
   },
   [852] = {
     ["end"] = {
@@ -10252,6 +11714,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3389 },
     },
+    ["xp"] = 1100,
+    ["rep"] = { 76, 75 },
   },
   [853] = {
     ["end"] = {
@@ -10263,6 +11727,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3390 },
     },
+    ["xp"] = 800,
+    ["rep"] = { 68, 75 },
   },
   [854] = {
     ["end"] = {
@@ -10274,6 +11740,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3418 },
     },
+    ["xp"] = 225,
+    ["rep"] = { 81, 25 },
   },
   [855] = {
     ["end"] = {
@@ -10287,10 +11755,13 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3389 },
     },
+    ["xp"] = 1250,
+    ["rep"] = { 76, 150 },
   },
   [856] = {
     ["lvl"] = 12,
     ["min"] = 9,
+    ["xp"] = 910,
   },
   [857] = {
     ["end"] = {
@@ -10304,6 +11775,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3421 },
     },
+    ["xp"] = 2450,
   },
   [858] = {
     ["end"] = {
@@ -10317,6 +11789,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3439 },
     },
+    ["xp"] = 1350,
+    ["rep"] = { 470, 100 },
   },
   [860] = {
     ["end"] = {
@@ -10328,6 +11802,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3441 },
     },
+    ["xp"] = 85,
+    ["rep"] = { 81, 10 },
   },
   [861] = {
     ["end"] = {
@@ -10341,6 +11817,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3052 },
     },
+    ["xp"] = 840,
+    ["rep"] = { 81, 100 },
   },
   [862] = {
     ["end"] = {
@@ -10355,6 +11833,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3443 },
     },
+    ["xp"] = 1850,
+    ["rep"] = { 76, 100 },
   },
   [863] = {
     ["end"] = {
@@ -10366,6 +11846,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3439 },
     },
+    ["xp"] = 1700,
+    ["rep"] = { 470, 150 },
   },
   [864] = {
     ["end"] = {
@@ -10377,6 +11859,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7407 },
     },
+    ["xp"] = 5050,
+    ["rep"] = { 68, 150 },
   },
   [865] = {
     ["end"] = {
@@ -10390,6 +11874,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3446 },
     },
+    ["xp"] = 1350,
+    ["rep"] = { 470, 100 },
   },
   [866] = {
     ["end"] = {
@@ -10404,6 +11890,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3446 },
     },
+    ["xp"] = 1150,
+    ["rep"] = { 470, 100 },
   },
   [867] = {
     ["end"] = {
@@ -10417,6 +11905,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3449 },
     },
+    ["xp"] = 1050,
+    ["rep"] = { 76, 100 },
   },
   [868] = {
     ["end"] = {
@@ -10430,6 +11920,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3428 },
     },
+    ["xp"] = 1750,
+    ["rep"] = { 530, 100 },
   },
   [869] = {
     ["end"] = {
@@ -10443,6 +11935,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3464 },
     },
+    ["xp"] = 910,
+    ["rep"] = { 76, 100 },
   },
   [870] = {
     ["end"] = {
@@ -10457,6 +11951,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3448 },
     },
+    ["xp"] = 680,
+    ["rep"] = { 81, 75 },
   },
   [871] = {
     ["end"] = {
@@ -10470,6 +11966,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3429 },
     },
+    ["xp"] = 910,
+    ["rep"] = { 76, 100 },
   },
   [872] = {
     ["end"] = {
@@ -10485,6 +11983,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3429 },
     },
+    ["xp"] = 1050,
+    ["rep"] = { 76, 100 },
   },
   [873] = {
     ["end"] = {
@@ -10499,6 +11999,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3388 },
     },
+    ["xp"] = 2750,
+    ["rep"] = { 81, 150 },
   },
   [874] = {
     ["end"] = {
@@ -10510,6 +12012,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3387 },
     },
+    ["xp"] = 550,
+    ["rep"] = { 81, 25 },
   },
   [875] = {
     ["end"] = {
@@ -10524,6 +12028,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3449 },
     },
+    ["xp"] = 1150,
+    ["rep"] = { 76, 100 },
   },
   [876] = {
     ["end"] = {
@@ -10538,6 +12044,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3449 },
     },
+    ["xp"] = 1950,
+    ["rep"] = { 76, 150 },
   },
   [877] = {
     ["end"] = {
@@ -10553,6 +12061,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3448 },
     },
+    ["xp"] = 1150,
+    ["rep"] = { 81, 100 },
   },
   [878] = {
     ["end"] = {
@@ -10566,6 +12076,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3430 },
     },
+    ["xp"] = 1650,
+    ["rep"] = { 76, 100 },
   },
   [879] = {
     ["end"] = {
@@ -10580,6 +12092,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3430 },
     },
+    ["xp"] = 1500,
+    ["rep"] = { 76, 75 },
   },
   [880] = {
     ["end"] = {
@@ -10594,6 +12108,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3448 },
     },
+    ["xp"] = 1150,
+    ["rep"] = { 81, 100 },
   },
   [881] = {
     ["end"] = {
@@ -10609,6 +12125,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3338 },
     },
+    ["xp"] = 1450,
+    ["rep"] = { 76, 150 },
   },
   [882] = {
     ["end"] = {
@@ -10624,6 +12142,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3387 },
     },
+    ["xp"] = 1800,
+    ["rep"] = { 81, 150 },
   },
   [883] = {
     ["end"] = {
@@ -10635,6 +12155,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 5099 },
     },
+    ["xp"] = 1300,
+    ["rep"] = { 81, 75 },
   },
   [884] = {
     ["end"] = {
@@ -10646,6 +12168,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 5102 },
     },
+    ["xp"] = 1450,
+    ["rep"] = { 81, 75 },
   },
   [885] = {
     ["end"] = {
@@ -10657,6 +12181,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 5103 },
     },
+    ["xp"] = 1500,
+    ["rep"] = { 81, 75 },
   },
   [886] = {
     ["end"] = {
@@ -10667,6 +12193,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5769 },
     },
+    ["xp"] = 85,
+    ["rep"] = { 81, 10 },
   },
   [887] = {
     ["end"] = {
@@ -10680,6 +12208,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3391 },
     },
+    ["xp"] = 740,
+    ["rep"] = { 470, 75 },
   },
   [888] = {
     ["end"] = {
@@ -10694,6 +12224,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3391 },
     },
+    ["xp"] = 1150,
+    ["rep"] = { 470, 100 },
   },
   [889] = {
     ["end"] = {
@@ -10719,6 +12251,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3391 },
     },
+    ["xp"] = 100,
+    ["rep"] = { 470, 10 },
   },
   [891] = {
     ["end"] = {
@@ -10734,6 +12268,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3339 },
     },
+    ["xp"] = 1550,
+    ["rep"] = { 470, 100, 67, 50 },
   },
   [892] = {
     ["end"] = {
@@ -10745,6 +12281,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3453 },
     },
+    ["xp"] = 100,
+    ["rep"] = { 470, 10 },
   },
   [893] = {
     ["end"] = {
@@ -10758,6 +12296,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3433 },
     },
+    ["xp"] = 1950,
+    ["rep"] = { 76, 100 },
   },
   [894] = {
     ["end"] = {
@@ -10768,6 +12308,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3442 },
     },
+    ["xp"] = 740,
+    ["rep"] = { 470, 75 },
   },
   [895] = {
     ["end"] = {
@@ -10781,6 +12323,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 3972 },
     },
+    ["xp"] = 1150,
+    ["rep"] = { 470, 100 },
   },
   [896] = {
     ["end"] = {
@@ -10794,6 +12338,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3453 },
     },
+    ["xp"] = 1700,
+    ["rep"] = { 470, 150 },
   },
   [897] = {
     ["end"] = {
@@ -10805,6 +12351,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 5138 },
     },
+    ["xp"] = 2400,
+    ["rep"] = { 81, 150 },
   },
   [898] = {
     ["end"] = {
@@ -10816,6 +12364,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3465 },
     },
+    ["xp"] = 1950,
+    ["rep"] = { 470, 150 },
   },
   [899] = {
     ["end"] = {
@@ -10829,6 +12379,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3432 },
     },
+    ["xp"] = 1950,
+    ["rep"] = { 76, 150 },
   },
   [900] = {
     ["end"] = {
@@ -10843,6 +12395,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 4141 },
     },
+    ["xp"] = 490,
+    ["rep"] = { 470, 50 },
   },
   [901] = {
     ["end"] = {
@@ -10857,6 +12411,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 4141 },
     },
+    ["xp"] = 740,
+    ["rep"] = { 470, 75 },
   },
   [902] = {
     ["end"] = {
@@ -10868,6 +12424,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 4141 },
     },
+    ["xp"] = 1150,
+    ["rep"] = { 470, 100 },
   },
   [903] = {
     ["end"] = {
@@ -10882,6 +12440,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3338 },
     },
+    ["xp"] = 1050,
+    ["rep"] = { 76, 100 },
   },
   [904] = {
     ["lvl"] = 1,
@@ -10902,6 +12462,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3338 },
     },
+    ["xp"] = 1250,
+    ["rep"] = { 76, 100 },
   },
   [906] = {
     ["end"] = {
@@ -10913,6 +12475,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3430 },
     },
+    ["xp"] = 3050,
+    ["rep"] = { 76, 200 },
   },
   [907] = {
     ["end"] = {
@@ -10927,6 +12491,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3387 },
     },
+    ["xp"] = 1700,
+    ["rep"] = { 81, 150 },
   },
   [908] = {
     ["lvl"] = 27,
@@ -10935,6 +12501,8 @@ UnrealQuestData["quests"] = {
       ["I"] = { 16762 },
     },
     ["pre"] = { 6563 },
+    ["xp"] = 2750,
+    ["rep"] = { 530, 150 },
   },
   [909] = {
     ["end"] = {
@@ -10943,6 +12511,8 @@ UnrealQuestData["quests"] = {
     ["lvl"] = 30,
     ["min"] = 25,
     ["race"] = 178,
+    ["xp"] = 3050,
+    ["rep"] = { 530, 150 },
   },
   [910] = {
     ["end"] = {
@@ -10955,6 +12525,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14444 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 67, 50 },
   },
   [911] = {
     ["end"] = {
@@ -10967,10 +12539,13 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14444 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 67, 50 },
   },
   [912] = {
     ["lvl"] = 12,
     ["min"] = 10,
+    ["xp"] = 225,
   },
   [913] = {
     ["end"] = {
@@ -10985,6 +12560,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3387 },
     },
+    ["xp"] = 1950,
+    ["rep"] = { 81, 150 },
   },
   [914] = {
     ["end"] = {
@@ -10999,6 +12576,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5770 },
     },
+    ["xp"] = 2200,
+    ["rep"] = { 81, 150 },
   },
   [915] = {
     ["end"] = {
@@ -11013,6 +12592,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14444 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 67, 75 },
   },
   [916] = {
     ["end"] = {
@@ -11026,6 +12607,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2082 },
     },
+    ["xp"] = 355,
+    ["rep"] = { 69, 100 },
   },
   [917] = {
     ["end"] = {
@@ -11040,6 +12623,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2082 },
     },
+    ["xp"] = 560,
+    ["rep"] = { 69, 150 },
   },
   [918] = {
     ["end"] = {
@@ -11053,6 +12638,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2080 },
     },
+    ["xp"] = 630,
+    ["rep"] = { 69, 100 },
   },
   [919] = {
     ["end"] = {
@@ -11066,6 +12653,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2080 },
     },
+    ["xp"] = 790,
+    ["rep"] = { 69, 150 },
   },
   [920] = {
     ["end"] = {
@@ -11077,6 +12666,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2082 },
     },
+    ["xp"] = 45,
+    ["rep"] = { 69, 10 },
   },
   [921] = {
     ["end"] = {
@@ -11092,6 +12683,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3514 },
     },
+    ["xp"] = 335,
+    ["rep"] = { 69, 75 },
   },
   [922] = {
     ["end"] = {
@@ -11103,6 +12696,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2080 },
     },
+    ["xp"] = 315,
+    ["rep"] = { 69, 50 },
   },
   [923] = {
     ["end"] = {
@@ -11117,6 +12712,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3517 },
     },
+    ["xp"] = 980,
+    ["rep"] = { 69, 150 },
   },
   [924] = {
     ["end"] = {
@@ -11131,6 +12728,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3521 },
     },
+    ["xp"] = 1250,
+    ["rep"] = { 76, 150 },
   },
   [925] = {
     ["end"] = {
@@ -11145,6 +12744,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14444 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 67, 75 },
   },
   [926] = {
     ["end"] = {
@@ -11167,6 +12768,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 5179 },
     },
+    ["xp"] = 455,
+    ["rep"] = { 69, 50 },
   },
   [928] = {
     ["end"] = {
@@ -11178,6 +12781,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3514 },
     },
+    ["xp"] = 225,
+    ["rep"] = { 69, 50 },
   },
   [929] = {
     ["end"] = {
@@ -11193,6 +12798,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3515 },
     },
+    ["xp"] = 335,
+    ["rep"] = { 69, 100 },
   },
   [930] = {
     ["end"] = {
@@ -11203,6 +12810,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 6751 },
     },
+    ["xp"] = 840,
+    ["rep"] = { 69, 100 },
   },
   [931] = {
     ["end"] = {
@@ -11213,6 +12822,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 6752 },
     },
+    ["xp"] = 840,
+    ["rep"] = { 69, 100 },
   },
   [932] = {
     ["end"] = {
@@ -11226,6 +12837,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3567 },
     },
+    ["xp"] = 630,
+    ["rep"] = { 69, 100 },
   },
   [933] = {
     ["end"] = {
@@ -11241,6 +12854,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3515 },
     },
+    ["xp"] = 780,
+    ["rep"] = { 69, 100 },
   },
   [934] = {
     ["end"] = {
@@ -11256,6 +12871,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3515 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 69, 75 },
   },
   [935] = {
     ["end"] = {
@@ -11267,6 +12884,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3515 },
     },
+    ["xp"] = 1100,
+    ["rep"] = { 69, 150 },
   },
   [936] = {
     ["close"] = { 936, 3762, 3784 },
@@ -11278,6 +12897,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6929 },
     },
+    ["xp"] = 470,
+    ["rep"] = { 81, 10 },
   },
   [937] = {
     ["end"] = {
@@ -11291,6 +12912,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3519 },
     },
+    ["xp"] = 440,
+    ["rep"] = { 69, 50 },
   },
   [938] = {
     ["end"] = {
@@ -11301,6 +12924,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3568 },
     },
+    ["xp"] = 910,
+    ["rep"] = { 69, 100 },
   },
   [939] = {
     ["end"] = {
@@ -11315,6 +12940,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 11668 },
     },
+    ["xp"] = 5450,
   },
   [940] = {
     ["end"] = {
@@ -11326,6 +12952,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3519 },
     },
+    ["xp"] = 440,
+    ["rep"] = { 69, 50 },
   },
   [941] = {
     ["end"] = {
@@ -11337,6 +12965,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2080 },
     },
+    ["xp"] = 910,
+    ["rep"] = { 69, 100 },
   },
   [942] = {
     ["end"] = {
@@ -11348,6 +12978,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2912 },
     },
+    ["xp"] = 1550,
+    ["rep"] = { 47, 100 },
   },
   [943] = {
     ["end"] = {
@@ -11362,6 +12994,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2911 },
     },
+    ["xp"] = 2400,
+    ["rep"] = { 47, 150 },
   },
   [944] = {
     ["end"] = {
@@ -11376,6 +13010,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3616 },
     },
+    ["xp"] = 630,
+    ["rep"] = { 69, 50 },
   },
   [945] = {
     ["end"] = {
@@ -11386,6 +13022,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3584 },
     },
+    ["xp"] = 1350,
+    ["rep"] = { 69, 100 },
   },
   [946] = {
   },
@@ -11401,6 +13039,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3583 },
     },
+    ["xp"] = 1250,
+    ["rep"] = { 69, 100 },
   },
   [948] = {
     ["end"] = {
@@ -11412,6 +13052,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3583 },
     },
+    ["xp"] = 630,
+    ["rep"] = { 69, 50 },
   },
   [949] = {
     ["end"] = {
@@ -11423,6 +13065,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 10076 },
     },
+    ["xp"] = 1250,
+    ["rep"] = { 69, 100 },
   },
   [950] = {
     ["end"] = {
@@ -11434,6 +13078,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 12666 },
     },
+    ["xp"] = 950,
+    ["rep"] = { 69, 75 },
   },
   [951] = {
     ["end"] = {
@@ -11448,6 +13094,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3616 },
     },
+    ["xp"] = 1950,
+    ["rep"] = { 69, 150 },
   },
   [952] = {
     ["end"] = {
@@ -11459,6 +13107,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3516 },
     },
+    ["xp"] = 880,
+    ["rep"] = { 69, 100 },
   },
   [953] = {
     ["end"] = {
@@ -11472,6 +13122,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3639 },
     },
+    ["xp"] = 910,
+    ["rep"] = { 69, 100 },
   },
   [954] = {
     ["end"] = {
@@ -11485,6 +13137,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3649 },
     },
+    ["xp"] = 680,
+    ["rep"] = { 69, 75 },
   },
   [955] = {
     ["end"] = {
@@ -11499,6 +13153,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3650 },
     },
+    ["xp"] = 910,
+    ["rep"] = { 69, 100 },
   },
   [956] = {
     ["end"] = {
@@ -11514,6 +13170,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3650 },
     },
+    ["xp"] = 910,
+    ["rep"] = { 69, 100 },
   },
   [957] = {
     ["end"] = {
@@ -11529,6 +13187,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3650 },
     },
+    ["xp"] = 680,
+    ["rep"] = { 69, 75 },
   },
   [958] = {
     ["end"] = {
@@ -11542,6 +13202,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3649 },
     },
+    ["xp"] = 910,
+    ["rep"] = { 69, 100 },
   },
   [959] = {
     ["end"] = {
@@ -11555,6 +13217,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3665 },
     },
+    ["xp"] = 1350,
+    ["rep"] = { 470, 100 },
   },
   [960] = {
     ["end"] = {
@@ -11590,6 +13254,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3419 },
     },
+    ["xp"] = 1700,
+    ["rep"] = { 68, 150 },
   },
   [963] = {
     ["end"] = {
@@ -11603,6 +13269,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3644 },
     },
+    ["xp"] = 880,
+    ["rep"] = { 69, 75 },
   },
   [964] = {
     ["end"] = {
@@ -11617,6 +13285,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11057 },
     },
+    ["xp"] = 4500,
   },
   [965] = {
     ["end"] = {
@@ -11627,6 +13296,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3657 },
     },
+    ["xp"] = 680,
+    ["rep"] = { 69, 50 },
   },
   [966] = {
     ["end"] = {
@@ -11641,6 +13312,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3661 },
     },
+    ["xp"] = 1350,
+    ["rep"] = { 69, 100 },
   },
   [967] = {
     ["end"] = {
@@ -11652,6 +13325,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3661 },
     },
+    ["xp"] = 1000,
+    ["rep"] = { 69, 75 },
   },
   [968] = {
     ["end"] = {
@@ -11663,6 +13338,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 5352 },
     },
+    ["xp"] = 1950,
+    ["rep"] = { 69, 150 },
   },
   [969] = {
     ["end"] = {
@@ -11677,6 +13354,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10307 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 530, 100 },
   },
   [970] = {
     ["end"] = {
@@ -11691,6 +13370,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3663 },
     },
+    ["xp"] = 1650,
+    ["rep"] = { 69, 100 },
   },
   [971] = {
     ["end"] = {
@@ -11704,6 +13385,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2786 },
     },
+    ["xp"] = 2750,
+    ["rep"] = { 47, 50 },
   },
   [972] = {
     ["class"] = 64,
@@ -11730,6 +13413,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3663 },
     },
+    ["xp"] = 1950,
+    ["rep"] = { 69, 100 },
   },
   [974] = {
     ["end"] = {
@@ -11744,6 +13429,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10302 },
     },
+    ["xp"] = 5650,
   },
   [975] = {
     ["end"] = {
@@ -11766,6 +13452,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4484 },
     },
+    ["xp"] = 2900,
+    ["rep"] = { 69, 200 },
   },
   [977] = {
     ["end"] = {
@@ -11780,6 +13468,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10305 },
     },
+    ["xp"] = 4650,
+    ["rep"] = { 577, 75 },
   },
   [978] = {
     ["end"] = {
@@ -11794,6 +13484,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7916 },
     },
+    ["xp"] = 5650,
+    ["rep"] = { 69, 100 },
   },
   [979] = {
     ["end"] = {
@@ -11805,6 +13497,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7916 },
     },
+    ["xp"] = 3000,
+    ["rep"] = { 69, 50 },
   },
   [980] = {
     ["end"] = {
@@ -11816,6 +13510,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10302 },
     },
+    ["xp"] = 2800,
   },
   [981] = {
     ["end"] = {
@@ -11827,6 +13522,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3661 },
     },
+    ["xp"] = 2500,
+    ["rep"] = { 69, 100 },
   },
   [982] = {
     ["end"] = {
@@ -11840,6 +13537,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6301 },
     },
+    ["xp"] = 1250,
+    ["rep"] = { 69, 100 },
   },
   [983] = {
     ["end"] = {
@@ -11853,6 +13552,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3666 },
     },
+    ["xp"] = 840,
+    ["rep"] = { 54, 100 },
   },
   [984] = {
     ["end"] = {
@@ -11866,6 +13567,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3693 },
     },
+    ["xp"] = 740,
+    ["rep"] = { 69, 75 },
   },
   [985] = {
     ["end"] = {
@@ -11880,6 +13583,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3693 },
     },
+    ["xp"] = 980,
+    ["rep"] = { 69, 100 },
   },
   [986] = {
     ["end"] = {
@@ -11894,6 +13599,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3693 },
     },
+    ["xp"] = 1550,
+    ["rep"] = { 69, 100 },
   },
   [987] = {
     ["lvl"] = 30,
@@ -11910,6 +13617,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3694 },
     },
+    ["xp"] = 365,
+    ["rep"] = { 69, 25 },
   },
   [991] = {
     ["end"] = {
@@ -11920,6 +13629,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3691 },
     },
+    ["xp"] = 1450,
+    ["rep"] = { 69, 100 },
   },
   [992] = {
     ["end"] = {
@@ -11934,6 +13645,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7724 },
     },
+    ["xp"] = 3050,
+    ["rep"] = { 369, 75 },
   },
   [993] = {
     ["end"] = {
@@ -11945,6 +13658,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3693 },
     },
+    ["xp"] = 780,
+    ["rep"] = { 69, 50 },
   },
   [994] = {
     ["close"] = { 994, 995 },
@@ -11957,6 +13672,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3692 },
     },
+    ["xp"] = 1750,
+    ["rep"] = { 69, 100 },
   },
   [995] = {
     ["close"] = { 994, 995 },
@@ -11969,6 +13686,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3692 },
     },
+    ["xp"] = 780,
+    ["rep"] = { 69, 50 },
   },
   [996] = {
     ["end"] = {
@@ -11982,6 +13701,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 174600 },
     },
+    ["xp"] = 560,
   },
   [997] = {
     ["end"] = {
@@ -11992,6 +13712,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2083 },
     },
+    ["xp"] = 225,
+    ["rep"] = { 69, 50 },
   },
   [998] = {
     ["end"] = {
@@ -12005,6 +13727,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 174599 },
     },
+    ["xp"] = 560,
   },
   [999] = {
     ["lvl"] = 25,
@@ -12020,6 +13743,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10881 },
     },
+    ["xp"] = 560,
+    ["rep"] = { 81, 10 },
   },
   [1001] = {
     ["end"] = {
@@ -12034,6 +13759,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 17182 },
     },
+    ["xp"] = 1150,
+    ["rep"] = { 54, 150 },
   },
   [1002] = {
     ["end"] = {
@@ -12048,6 +13775,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 17183 },
     },
+    ["xp"] = 980,
+    ["rep"] = { 54, 100 },
   },
   [1003] = {
     ["end"] = {
@@ -12062,6 +13791,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 17184 },
     },
+    ["xp"] = 1150,
+    ["rep"] = { 54, 100 },
   },
   [1004] = {
     ["close"] = { 1000, 1004, 1018 },
@@ -12073,6 +13804,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10879 },
     },
+    ["xp"] = 560,
+    ["rep"] = { 81, 10 },
   },
   [1005] = {
     ["lvl"] = 20,
@@ -12094,6 +13827,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3846 },
     },
+    ["xp"] = 1150,
+    ["rep"] = { 69, 75 },
   },
   [1008] = {
     ["end"] = {
@@ -12107,6 +13842,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3845 },
     },
+    ["xp"] = 1450,
+    ["rep"] = { 69, 100 },
   },
   [1009] = {
     ["end"] = {
@@ -12121,6 +13858,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3846 },
     },
+    ["xp"] = 2550,
+    ["rep"] = { 69, 150 },
   },
   [1010] = {
     ["end"] = {
@@ -12134,6 +13873,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3847 },
     },
+    ["xp"] = 780,
+    ["rep"] = { 69, 50 },
   },
   [1011] = {
     ["end"] = {
@@ -12148,6 +13889,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3848 },
     },
+    ["xp"] = 2350,
+    ["rep"] = { 69, 100 },
   },
   [1012] = {
     ["end"] = {
@@ -12162,6 +13905,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3848 },
     },
+    ["xp"] = 3200,
+    ["rep"] = { 69, 150 },
   },
   [1013] = {
     ["end"] = {
@@ -12175,6 +13920,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2934 },
     },
+    ["xp"] = 2100,
+    ["rep"] = { 68, 100 },
   },
   [1014] = {
     ["end"] = {
@@ -12188,6 +13935,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1938 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 68, 200 },
   },
   [1015] = {
     ["close"] = { 1015, 1019, 1047 },
@@ -12199,6 +13948,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2198 },
     },
+    ["xp"] = 560,
   },
   [1016] = {
     ["end"] = {
@@ -12212,6 +13962,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3885 },
     },
+    ["xp"] = 1950,
+    ["rep"] = { 69, 100 },
   },
   [1017] = {
     ["end"] = {
@@ -12226,6 +13978,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3885 },
     },
+    ["xp"] = 2550,
+    ["rep"] = { 69, 150 },
   },
   [1018] = {
     ["close"] = { 1000, 1004, 1018 },
@@ -12237,6 +13991,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10880 },
     },
+    ["xp"] = 560,
+    ["rep"] = { 81, 10 },
   },
   [1019] = {
     ["close"] = { 1015, 1019, 1047 },
@@ -12248,6 +14004,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10877 },
     },
+    ["xp"] = 560,
   },
   [1020] = {
     ["end"] = {
@@ -12259,6 +14016,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3847 },
     },
+    ["xp"] = 1950,
+    ["rep"] = { 69, 150 },
   },
   [1021] = {
     ["end"] = {
@@ -12269,6 +14028,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3901 },
     },
+    ["xp"] = 2550,
+    ["rep"] = { 69, 100 },
   },
   [1022] = {
     ["end"] = {
@@ -12282,6 +14043,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3880 },
     },
+    ["xp"] = 2450,
+    ["rep"] = { 69, 100 },
   },
   [1023] = {
     ["end"] = {
@@ -12296,6 +14059,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3891 },
     },
+    ["xp"] = 1250,
+    ["rep"] = { 69, 75 },
   },
   [1024] = {
     ["end"] = {
@@ -12307,6 +14072,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3691 },
     },
+    ["xp"] = 830,
+    ["rep"] = { 69, 50 },
   },
   [1025] = {
     ["end"] = {
@@ -12321,6 +14088,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3691 },
     },
+    ["xp"] = 1950,
+    ["rep"] = { 69, 100 },
   },
   [1026] = {
     ["end"] = {
@@ -12335,6 +14104,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3916 },
     },
+    ["xp"] = 2200,
+    ["rep"] = { 69, 100 },
   },
   [1027] = {
     ["end"] = {
@@ -12349,6 +14120,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3916 },
     },
+    ["xp"] = 2300,
+    ["rep"] = { 69, 100 },
   },
   [1028] = {
     ["end"] = {
@@ -12360,6 +14133,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3916 },
     },
+    ["xp"] = 1700,
+    ["rep"] = { 69, 75 },
   },
   [1029] = {
     ["end"] = {
@@ -12371,6 +14146,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3916 },
     },
+    ["xp"] = 230,
+    ["rep"] = { 69, 25 },
   },
   [1030] = {
     ["end"] = {
@@ -12382,6 +14159,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3691 },
     },
+    ["xp"] = 1700,
+    ["rep"] = { 69, 75 },
   },
   [1031] = {
     ["end"] = {
@@ -12396,6 +14175,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3920 },
     },
+    ["xp"] = 2550,
+    ["rep"] = { 69, 100 },
   },
   [1032] = {
     ["end"] = {
@@ -12410,6 +14191,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3901 },
     },
+    ["xp"] = 2550,
+    ["rep"] = { 69, 100 },
   },
   [1033] = {
     ["end"] = {
@@ -12424,6 +14207,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3894 },
     },
+    ["xp"] = 1750,
+    ["rep"] = { 69, 100 },
   },
   [1034] = {
     ["end"] = {
@@ -12438,6 +14223,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3894 },
     },
+    ["xp"] = 1850,
+    ["rep"] = { 69, 100 },
   },
   [1035] = {
     ["end"] = {
@@ -12452,6 +14239,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3894 },
     },
+    ["xp"] = 3050,
+    ["rep"] = { 69, 150 },
   },
   [1036] = {
     ["end"] = {
@@ -12462,6 +14251,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2545 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 87, 25, 21, -125 },
   },
   [1037] = {
     ["end"] = {
@@ -12473,6 +14264,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3880 },
     },
+    ["xp"] = 610,
+    ["rep"] = { 69, 25 },
   },
   [1038] = {
     ["end"] = {
@@ -12487,6 +14280,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8026 },
     },
+    ["xp"] = 610,
+    ["rep"] = { 69, 25 },
   },
   [1039] = {
     ["end"] = {
@@ -12498,6 +14293,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8026 },
     },
+    ["xp"] = 1200,
+    ["rep"] = { 69, 50 },
   },
   [1040] = {
     ["end"] = {
@@ -12509,6 +14306,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3453 },
     },
+    ["xp"] = 610,
+    ["rep"] = { 21, 25 },
   },
   [1041] = {
     ["end"] = {
@@ -12520,6 +14319,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3945 },
     },
+    ["xp"] = 1200,
+    ["rep"] = { 72, 50 },
   },
   [1042] = {
     ["end"] = {
@@ -12531,6 +14332,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 267 },
     },
+    ["xp"] = 245,
   },
   [1043] = {
     ["end"] = {
@@ -12545,6 +14347,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 661 },
     },
+    ["xp"] = 2450,
+    ["rep"] = { 72, 100 },
   },
   [1044] = {
     ["end"] = {
@@ -12556,6 +14360,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 661 },
     },
+    ["xp"] = 3050,
+    ["rep"] = { 69, 150 },
   },
   [1045] = {
     ["end"] = {
@@ -12571,6 +14377,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3897 },
     },
+    ["xp"] = 2450,
+    ["rep"] = { 69, 100 },
   },
   [1046] = {
     ["end"] = {
@@ -12585,6 +14393,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3897 },
     },
+    ["xp"] = 3050,
+    ["rep"] = { 69, 150 },
   },
   [1047] = {
     ["close"] = { 1015, 1019, 1047 },
@@ -12596,6 +14406,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10878 },
     },
+    ["xp"] = 560,
   },
   [1048] = {
     ["end"] = {
@@ -12609,6 +14420,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2425 },
     },
+    ["xp"] = 5150,
+    ["rep"] = { 68, 200 },
   },
   [1049] = {
     ["end"] = {
@@ -12623,6 +14436,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3978 },
     },
+    ["xp"] = 3550,
+    ["rep"] = { 81, 150 },
   },
   [1050] = {
     ["end"] = {
@@ -12636,6 +14451,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3979 },
     },
+    ["xp"] = 3550,
+    ["rep"] = { 47, 150 },
   },
   [1051] = {
     ["end"] = {
@@ -12649,6 +14466,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3981 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 68, 150 },
   },
   [1052] = {
     ["end"] = {
@@ -12660,6 +14479,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1182 },
     },
+    ["xp"] = 1550,
+    ["rep"] = { 72, 50 },
   },
   [1053] = {
     ["end"] = {
@@ -12674,6 +14495,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3980 },
     },
+    ["xp"] = 4700,
+    ["rep"] = { 72, 200 },
   },
   [1054] = {
     ["end"] = {
@@ -12687,6 +14510,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3691 },
     },
+    ["xp"] = 2000,
+    ["rep"] = { 69, 100 },
   },
   [1055] = {
     ["end"] = {
@@ -12698,6 +14523,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 19024 },
     },
+    ["xp"] = 230,
+    ["rep"] = { 69, 25 },
   },
   [1056] = {
     ["end"] = {
@@ -12708,6 +14535,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3996 },
     },
+    ["xp"] = 680,
+    ["rep"] = { 69, 50 },
   },
   [1057] = {
     ["end"] = {
@@ -12722,6 +14551,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3994 },
     },
+    ["xp"] = 2200,
+    ["rep"] = { 69, 100 },
   },
   [1058] = {
     ["end"] = {
@@ -12735,6 +14566,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3995 },
     },
+    ["xp"] = 2100,
+    ["rep"] = { 530, 100 },
   },
   [1059] = {
     ["end"] = {
@@ -12746,6 +14579,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3994 },
     },
+    ["xp"] = 2200,
+    ["rep"] = { 69, 100 },
   },
   [1060] = {
     ["end"] = {
@@ -12757,6 +14592,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3449 },
     },
+    ["xp"] = 1550,
+    ["rep"] = { 530, 100 },
   },
   [1061] = {
     ["end"] = {
@@ -12767,6 +14604,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4047 },
     },
+    ["xp"] = 315,
+    ["rep"] = { 76, 25 },
   },
   [1062] = {
     ["end"] = {
@@ -12781,6 +14620,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4049 },
     },
+    ["xp"] = 1450,
+    ["rep"] = { 76, 100 },
   },
   [1063] = {
     ["end"] = {
@@ -12792,6 +14633,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4049 },
     },
+    ["xp"] = 680,
   },
   [1064] = {
     ["end"] = {
@@ -12803,6 +14645,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4046 },
     },
+    ["xp"] = 340,
+    ["rep"] = { 81, 25 },
   },
   [1065] = {
     ["end"] = {
@@ -12814,6 +14658,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3419 },
     },
+    ["xp"] = 1350,
+    ["rep"] = { 81, 100 },
   },
   [1066] = {
     ["end"] = {
@@ -12828,6 +14674,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2216 },
     },
+    ["xp"] = 1850,
+    ["rep"] = { 68, 100 },
   },
   [1067] = {
     ["end"] = {
@@ -12839,6 +14687,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2216 },
     },
+    ["xp"] = 1400,
+    ["rep"] = { 68, 75 },
   },
   [1068] = {
     ["end"] = {
@@ -12853,6 +14703,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4049 },
     },
+    ["xp"] = 1850,
+    ["rep"] = { 76, 100 },
   },
   [1069] = {
     ["end"] = {
@@ -12866,6 +14718,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3446 },
     },
+    ["xp"] = 1950,
+    ["rep"] = { 470, 150 },
   },
   [1070] = {
     ["end"] = {
@@ -12876,6 +14730,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4079 },
     },
+    ["xp"] = 830,
+    ["rep"] = { 69, 50 },
   },
   [1071] = {
     ["end"] = {
@@ -12890,6 +14746,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4077 },
     },
+    ["xp"] = 1650,
+    ["rep"] = { 54, 100 },
   },
   [1072] = {
     ["end"] = {
@@ -12901,6 +14759,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4077 },
     },
+    ["xp"] = 830,
+    ["rep"] = { 54, 50 },
   },
   [1073] = {
     ["end"] = {
@@ -12915,6 +14775,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4081 },
     },
+    ["xp"] = 1650,
+    ["rep"] = { 54, 100 },
   },
   [1074] = {
     ["end"] = {
@@ -12926,6 +14788,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4081 },
     },
+    ["xp"] = 830,
+    ["rep"] = { 54, 50 },
   },
   [1075] = {
     ["end"] = {
@@ -12937,6 +14801,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4077 },
     },
+    ["xp"] = 830,
+    ["rep"] = { 54, 50, 72, 50 },
   },
   [1076] = {
     ["end"] = {
@@ -12951,6 +14817,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4078 },
     },
+    ["xp"] = 1650,
+    ["rep"] = { 54, 100, 72, 100 },
   },
   [1077] = {
     ["end"] = {
@@ -12962,6 +14830,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4078 },
     },
+    ["xp"] = 830,
+    ["rep"] = { 54, 50 },
   },
   [1078] = {
     ["end"] = {
@@ -12975,6 +14845,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4078 },
     },
+    ["xp"] = 2100,
+    ["rep"] = { 54, 100, 72, 100 },
   },
   [1079] = {
     ["end"] = {
@@ -12990,6 +14862,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4077 },
     },
+    ["xp"] = 2200,
+    ["rep"] = { 54, 150 },
   },
   [1080] = {
     ["end"] = {
@@ -13003,6 +14877,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4077 },
     },
+    ["xp"] = 2200,
+    ["rep"] = { 54, 150 },
   },
   [1081] = {
     ["end"] = {
@@ -13014,6 +14890,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4079 },
     },
+    ["xp"] = 3400,
+    ["rep"] = { 469, 200 },
   },
   [1082] = {
     ["end"] = {
@@ -13025,6 +14903,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4080 },
     },
+    ["xp"] = 870,
+    ["rep"] = { 69, 50 },
   },
   [1083] = {
     ["end"] = {
@@ -13039,6 +14919,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4080 },
     },
+    ["xp"] = 2100,
+    ["rep"] = { 69, 100 },
   },
   [1084] = {
     ["end"] = {
@@ -13053,6 +14935,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4080 },
     },
+    ["xp"] = 2300,
+    ["rep"] = { 69, 100 },
   },
   [1085] = {
     ["end"] = {
@@ -13064,6 +14948,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4080 },
     },
+    ["xp"] = 165,
+    ["rep"] = { 54, 25 },
   },
   [1086] = {
     ["end"] = {
@@ -13078,6 +14964,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3419 },
     },
+    ["xp"] = 2300,
+    ["rep"] = { 68, 150 },
   },
   [1087] = {
     ["end"] = {
@@ -13091,6 +14979,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4198 },
     },
+    ["xp"] = 1500,
   },
   [1088] = {
     ["end"] = {
@@ -13105,6 +14994,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4198 },
     },
+    ["xp"] = 2350,
   },
   [1089] = {
     ["end"] = {
@@ -13119,6 +15009,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4198 },
     },
+    ["xp"] = 2950,
   },
   [1090] = {
     ["end"] = {
@@ -13129,6 +15020,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4276 },
     },
+    ["xp"] = 2200,
+    ["rep"] = { 470, 150 },
   },
   [1091] = {
     ["end"] = {
@@ -13140,6 +15033,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4077 },
     },
+    ["xp"] = 175,
+    ["rep"] = { 69, 25 },
   },
   [1092] = {
     ["end"] = {
@@ -13151,6 +15046,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4276 },
     },
+    ["xp"] = 1300,
+    ["rep"] = { 470, 75 },
   },
   [1093] = {
     ["end"] = {
@@ -13165,6 +15062,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4201 },
     },
+    ["xp"] = 1650,
+    ["rep"] = { 470, 100 },
   },
   [1094] = {
     ["end"] = {
@@ -13176,6 +15075,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4201 },
     },
+    ["xp"] = 830,
+    ["rep"] = { 470, 50 },
   },
   [1095] = {
     ["end"] = {
@@ -13187,6 +15088,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3442 },
     },
+    ["xp"] = 1100,
+    ["rep"] = { 470, 50 },
   },
   [1096] = {
     ["end"] = {
@@ -13201,6 +15104,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4201 },
     },
+    ["xp"] = 2200,
+    ["rep"] = { 470, 100 },
   },
   [1097] = {
     ["end"] = {
@@ -13211,6 +15116,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 514, 415 },
     },
+    ["xp"] = 105,
   },
   [1098] = {
     ["end"] = {
@@ -13221,6 +15127,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1952 },
     },
+    ["xp"] = 2000,
+    ["rep"] = { 68, 100 },
   },
   [1099] = {
     ["lvl"] = 1,
@@ -13239,6 +15147,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 5791 },
     },
+    ["xp"] = 1350,
   },
   [1101] = {
     ["end"] = {
@@ -13253,6 +15162,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4048 },
     },
+    ["xp"] = 3350,
   },
   [1102] = {
     ["end"] = {
@@ -13266,6 +15176,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4451 },
     },
+    ["xp"] = 4050,
+    ["rep"] = { 81, 200 },
   },
   [1103] = {
     ["class"] = 64,
@@ -13295,6 +15207,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4454 },
     },
+    ["xp"] = 1850,
   },
   [1105] = {
     ["end"] = {
@@ -13308,6 +15221,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4453 },
     },
+    ["xp"] = 2450,
   },
   [1106] = {
     ["end"] = {
@@ -13319,6 +15233,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4454 },
     },
+    ["xp"] = 1350,
   },
   [1107] = {
     ["end"] = {
@@ -13333,6 +15248,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4453 },
     },
+    ["xp"] = 3450,
   },
   [1108] = {
     ["end"] = {
@@ -13347,6 +15263,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4618 },
     },
+    ["xp"] = 3000,
   },
   [1109] = {
     ["end"] = {
@@ -13360,6 +15277,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2055 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 68, 150 },
   },
   [1110] = {
     ["end"] = {
@@ -13373,6 +15292,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4452 },
     },
+    ["xp"] = 2500,
   },
   [1111] = {
     ["end"] = {
@@ -13383,6 +15303,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4452 },
     },
+    ["xp"] = 1400,
   },
   [1112] = {
     ["end"] = {
@@ -13394,6 +15315,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3453 },
     },
+    ["xp"] = 1400,
   },
   [1113] = {
     ["end"] = {
@@ -13408,6 +15330,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2055 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 68, 150 },
   },
   [1114] = {
     ["end"] = {
@@ -13419,6 +15343,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4452 },
     },
+    ["xp"] = 700,
   },
   [1115] = {
     ["end"] = {
@@ -13430,6 +15355,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4452 },
     },
+    ["xp"] = 1400,
   },
   [1116] = {
     ["end"] = {
@@ -13444,6 +15370,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 773 },
     },
+    ["xp"] = 3500,
   },
   [1117] = {
     ["end"] = {
@@ -13455,6 +15382,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 773 },
     },
+    ["xp"] = 3500,
   },
   [1118] = {
     ["end"] = {
@@ -13466,6 +15394,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4452 },
     },
+    ["xp"] = 890,
   },
   [1119] = {
     ["end"] = {
@@ -13477,6 +15406,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2498 },
     },
+    ["xp"] = 3750,
   },
   [1120] = {
     ["close"] = { 1120, 1121 },
@@ -13489,6 +15419,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4452 },
     },
+    ["xp"] = 375,
   },
   [1121] = {
     ["close"] = { 1120, 1121 },
@@ -13501,6 +15432,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4452 },
     },
+    ["xp"] = 375,
   },
   [1122] = {
     ["end"] = {
@@ -13511,6 +15443,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4452 },
     },
+    ["xp"] = 1850,
   },
   [1123] = {
     ["end"] = {
@@ -13522,6 +15455,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5769 },
     },
+    ["xp"] = 1400,
+    ["rep"] = { 609, 25 },
   },
   [1124] = {
     ["end"] = {
@@ -13533,6 +15468,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11801 },
     },
+    ["xp"] = 2800,
+    ["rep"] = { 609, 50 },
   },
   [1125] = {
     ["end"] = {
@@ -13547,6 +15484,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13220 },
     },
+    ["xp"] = 5650,
+    ["rep"] = { 609, 100 },
   },
   [1126] = {
     ["end"] = {
@@ -13561,6 +15500,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13220 },
     },
+    ["xp"] = 6000,
+    ["rep"] = { 609, 100 },
   },
   [1127] = {
     ["end"] = {
@@ -13600,6 +15541,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3441 },
     },
+    ["xp"] = 2450,
+    ["rep"] = { 81, 100 },
   },
   [1132] = {
     ["end"] = {
@@ -13610,6 +15553,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4455 },
     },
+    ["xp"] = 780,
   },
   [1133] = {
     ["end"] = {
@@ -13635,6 +15579,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3845 },
     },
+    ["xp"] = 1650,
+    ["rep"] = { 69, 100 },
   },
   [1135] = {
     ["end"] = {
@@ -13648,6 +15594,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4456 },
     },
+    ["xp"] = 3650,
   },
   [1136] = {
     ["end"] = {
@@ -13663,6 +15610,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3441 },
     },
+    ["xp"] = 4250,
+    ["rep"] = { 81, 200 },
   },
   [1137] = {
     ["end"] = {
@@ -13674,6 +15623,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4618 },
     },
+    ["xp"] = 1450,
   },
   [1138] = {
     ["end"] = {
@@ -13687,6 +15637,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10216 },
     },
+    ["xp"] = 1250,
+    ["rep"] = { 47, 100 },
   },
   [1139] = {
     ["end"] = {
@@ -13701,6 +15653,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2918 },
     },
+    ["xp"] = 5850,
+    ["rep"] = { 47, 200 },
   },
   [1140] = {
     ["end"] = {
@@ -13715,6 +15669,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3663 },
     },
+    ["xp"] = 2300,
+    ["rep"] = { 69, 100 },
   },
   [1141] = {
     ["end"] = {
@@ -13728,6 +15684,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10216 },
     },
+    ["xp"] = 980,
+    ["rep"] = { 47, 100 },
   },
   [1142] = {
     ["end"] = {
@@ -13741,6 +15699,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4510 },
     },
+    ["xp"] = 3050,
+    ["rep"] = { 69, 150 },
   },
   [1143] = {
     ["end"] = {
@@ -13755,6 +15715,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3661 },
     },
+    ["xp"] = 2500,
+    ["rep"] = { 69, 100 },
   },
   [1144] = {
     ["end"] = {
@@ -13765,6 +15727,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4508 },
     },
+    ["xp"] = 3050,
+    ["rep"] = { 470, 150 },
   },
   [1145] = {
     ["end"] = {
@@ -13775,6 +15739,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3428 },
     },
+    ["xp"] = 1300,
+    ["rep"] = { 76, 50 },
   },
   [1146] = {
     ["end"] = {
@@ -13786,6 +15752,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4485 },
     },
+    ["xp"] = 1950,
+    ["rep"] = { 76, 75 },
   },
   [1147] = {
     ["end"] = {
@@ -13800,6 +15768,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4483 },
     },
+    ["xp"] = 2750,
+    ["rep"] = { 76, 100 },
   },
   [1148] = {
     ["end"] = {
@@ -13814,6 +15784,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 5877 },
     },
+    ["xp"] = 2750,
+    ["rep"] = { 530, 100 },
   },
   [1149] = {
     ["end"] = {
@@ -13827,6 +15799,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2986 },
     },
+    ["xp"] = 1050,
+    ["rep"] = { 81, 50 },
   },
   [1150] = {
     ["end"] = {
@@ -13841,6 +15815,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2986 },
     },
+    ["xp"] = 2450,
+    ["rep"] = { 81, 100 },
   },
   [1151] = {
     ["end"] = {
@@ -13855,6 +15831,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2986 },
     },
+    ["xp"] = 3050,
+    ["rep"] = { 81, 150 },
   },
   [1152] = {
     ["end"] = {
@@ -13866,6 +15844,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2986 },
     },
+    ["xp"] = 1200,
+    ["rep"] = { 81, 50 },
   },
   [1153] = {
     ["end"] = {
@@ -13880,6 +15860,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3433 },
     },
+    ["xp"] = 2350,
+    ["rep"] = { 76, 100 },
   },
   [1154] = {
     ["end"] = {
@@ -13894,6 +15876,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4489 },
     },
+    ["xp"] = 1850,
+    ["rep"] = { 81, 75 },
   },
   [1155] = {
     ["lvl"] = 55,
@@ -13924,6 +15908,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4489 },
     },
+    ["xp"] = 1200,
+    ["rep"] = { 68, 50 },
   },
   [1160] = {
     ["end"] = {
@@ -13938,6 +15924,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4488 },
     },
+    ["xp"] = 2100,
+    ["rep"] = { 68, 75 },
   },
   [1161] = {
     ["lvl"] = 58,
@@ -13963,6 +15951,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4486 },
     },
+    ["xp"] = 2800,
+    ["rep"] = { 68, 100 },
   },
   [1166] = {
     ["end"] = {
@@ -13976,6 +15966,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4500 },
     },
+    ["xp"] = 4450,
   },
   [1167] = {
     ["end"] = {
@@ -13987,6 +15978,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3663 },
     },
+    ["xp"] = 570,
+    ["rep"] = { 69, 25 },
   },
   [1168] = {
     ["end"] = {
@@ -14000,6 +15993,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4502 },
     },
+    ["xp"] = 3600,
   },
   [1169] = {
     ["end"] = {
@@ -14013,6 +16007,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4501 },
     },
+    ["xp"] = 5350,
   },
   [1170] = {
     ["end"] = {
@@ -14024,6 +16019,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4501 },
     },
+    ["xp"] = 360,
   },
   [1171] = {
     ["end"] = {
@@ -14035,6 +16031,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4500 },
     },
+    ["xp"] = 360,
   },
   [1172] = {
     ["end"] = {
@@ -14049,6 +16046,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4501 },
     },
+    ["xp"] = 4850,
   },
   [1173] = {
     ["end"] = {
@@ -14060,6 +16058,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4500 },
     },
+    ["xp"] = 4850,
   },
   [1174] = {
     ["lvl"] = 1,
@@ -14080,6 +16079,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4629 },
     },
+    ["xp"] = 2650,
   },
   [1176] = {
     ["end"] = {
@@ -14093,6 +16093,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4630 },
     },
+    ["xp"] = 1850,
+    ["rep"] = { 470, 100 },
   },
   [1177] = {
     ["end"] = {
@@ -14106,6 +16108,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4503 },
     },
+    ["xp"] = 2800,
   },
   [1178] = {
     ["end"] = {
@@ -14117,6 +16120,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4630 },
     },
+    ["xp"] = 710,
+    ["rep"] = { 470, 25 },
   },
   [1179] = {
     ["end"] = {
@@ -14127,6 +16132,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2092 },
     },
+    ["xp"] = 2450,
+    ["rep"] = { 54, 100 },
   },
   [1180] = {
     ["end"] = {
@@ -14138,6 +16145,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3391 },
     },
+    ["xp"] = 710,
+    ["rep"] = { 470, 25, 21, 25, 87, -125 },
   },
   [1181] = {
     ["end"] = {
@@ -14149,6 +16158,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4631 },
     },
+    ["xp"] = 285,
   },
   [1182] = {
     ["end"] = {
@@ -14163,6 +16173,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2496 },
     },
+    ["xp"] = 2850,
+    ["rep"] = { 21, 100, 87, -500 },
   },
   [1183] = {
     ["end"] = {
@@ -14174,6 +16186,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2496 },
     },
+    ["xp"] = 710,
   },
   [1184] = {
     ["end"] = {
@@ -14185,6 +16198,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3428 },
     },
+    ["xp"] = 1350,
+    ["rep"] = { 76, 50 },
   },
   [1185] = {
     ["end"] = {
@@ -14196,6 +16211,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11939 },
     },
+    ["xp"] = 3000,
+    ["rep"] = { 609, 50 },
   },
   [1186] = {
     ["end"] = {
@@ -14207,6 +16224,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4630 },
     },
+    ["xp"] = 285,
   },
   [1187] = {
     ["end"] = {
@@ -14221,6 +16239,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4706 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 470, 100 },
   },
   [1188] = {
     ["end"] = {
@@ -14232,6 +16252,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4706 },
     },
+    ["xp"] = 820,
+    ["rep"] = { 369, 25 },
   },
   [1189] = {
     ["end"] = {
@@ -14243,6 +16265,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4708 },
     },
+    ["xp"] = 820,
+    ["rep"] = { 470, 25 },
   },
   [1190] = {
     ["end"] = {
@@ -14254,6 +16278,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4630 },
     },
+    ["xp"] = 1650,
+    ["rep"] = { 470, 50 },
   },
   [1191] = {
     ["end"] = {
@@ -14302,6 +16328,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 20805 },
     },
+    ["xp"] = 1650,
+    ["rep"] = { 470, 50 },
   },
   [1195] = {
     ["end"] = {
@@ -14316,6 +16344,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4721 },
     },
+    ["xp"] = 2550,
+    ["rep"] = { 81, 150 },
   },
   [1196] = {
     ["end"] = {
@@ -14327,6 +16357,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4721 },
     },
+    ["xp"] = 590,
+    ["rep"] = { 81, 25 },
   },
   [1197] = {
     ["end"] = {
@@ -14341,6 +16373,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4722 },
     },
+    ["xp"] = 2350,
+    ["rep"] = { 81, 100 },
   },
   [1198] = {
     ["end"] = {
@@ -14351,6 +16385,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4786 },
     },
+    ["xp"] = 2400,
+    ["rep"] = { 529, 150, 69, 150 },
   },
   [1199] = {
     ["end"] = {
@@ -14365,6 +16401,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4784 },
     },
+    ["xp"] = 2550,
+    ["rep"] = { 529, 150, 69, 150 },
   },
   [1200] = {
     ["end"] = {
@@ -14380,6 +16418,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4787 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 529, 200, 69, 200 },
   },
   [1201] = {
     ["end"] = {
@@ -14393,6 +16433,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4791 },
     },
+    ["xp"] = 2750,
+    ["rep"] = { 76, 100 },
   },
   [1202] = {
     ["end"] = {
@@ -14407,6 +16449,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4791 },
     },
+    ["xp"] = 2750,
+    ["rep"] = { 76, 100 },
   },
   [1203] = {
     ["end"] = {
@@ -14421,6 +16465,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4792 },
     },
+    ["xp"] = 3450,
   },
   [1204] = {
     ["end"] = {
@@ -14435,6 +16480,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4794 },
     },
+    ["xp"] = 2850,
+    ["rep"] = { 72, 100 },
   },
   [1205] = {
     ["end"] = {
@@ -14448,6 +16495,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3441 },
     },
+    ["xp"] = 3900,
+    ["rep"] = { 81, 100 },
   },
   [1206] = {
     ["end"] = {
@@ -14462,6 +16511,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4792 },
     },
+    ["xp"] = 2750,
   },
   [1218] = {
     ["end"] = {
@@ -14475,6 +16525,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4792 },
     },
+    ["xp"] = 1350,
   },
   [1219] = {
     ["end"] = {
@@ -14486,6 +16537,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 20985 },
     },
+    ["xp"] = 690,
+    ["rep"] = { 72, 25 },
   },
   [1220] = {
     ["end"] = {
@@ -14497,6 +16550,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4947 },
     },
+    ["xp"] = 2750,
+    ["rep"] = { 72, 100 },
   },
   [1221] = {
     ["end"] = {
@@ -14511,6 +16566,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3446 },
     },
+    ["xp"] = 2100,
+    ["rep"] = { 470, 100 },
   },
   [1222] = {
     ["end"] = {
@@ -14522,6 +16579,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4880 },
     },
+    ["xp"] = 2850,
+    ["rep"] = { 72, 100 },
   },
   [1238] = {
     ["end"] = {
@@ -14533,6 +16592,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 20985 },
     },
+    ["xp"] = 2050,
+    ["rep"] = { 76, 75 },
   },
   [1239] = {
     ["end"] = {
@@ -14544,6 +16605,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 20985 },
     },
+    ["xp"] = 2050,
+    ["rep"] = { 76, 75 },
   },
   [1240] = {
     ["end"] = {
@@ -14555,6 +16618,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4791 },
     },
+    ["xp"] = 2750,
+    ["rep"] = { 530, 100 },
   },
   [1241] = {
     ["end"] = {
@@ -14566,6 +16631,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4960 },
     },
+    ["xp"] = 230,
   },
   [1242] = {
     ["end"] = {
@@ -14577,6 +16643,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4959 },
     },
+    ["xp"] = 230,
   },
   [1243] = {
     ["end"] = {
@@ -14588,6 +16655,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 482 },
     },
+    ["xp"] = 230,
   },
   [1244] = {
     ["end"] = {
@@ -14602,6 +16670,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 840 },
     },
+    ["xp"] = 2450,
   },
   [1245] = {
     ["end"] = {
@@ -14613,6 +16682,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 840 },
     },
+    ["xp"] = 245,
   },
   [1246] = {
     ["end"] = {
@@ -14624,6 +16694,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 482 },
     },
+    ["xp"] = 250,
   },
   [1247] = {
     ["end"] = {
@@ -14635,6 +16706,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4961 },
     },
+    ["xp"] = 250,
   },
   [1248] = {
     ["end"] = {
@@ -14646,6 +16718,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 482 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 72, 25 },
   },
   [1249] = {
     ["end"] = {
@@ -14657,6 +16731,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4963 },
     },
+    ["xp"] = 1300,
+    ["rep"] = { 72, 50 },
   },
   [1250] = {
     ["end"] = {
@@ -14668,6 +16744,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4962 },
     },
+    ["xp"] = 265,
   },
   [1251] = {
     ["end"] = {
@@ -14679,6 +16756,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 20992 },
     },
+    ["xp"] = 690,
   },
   [1252] = {
     ["end"] = {
@@ -14690,6 +16768,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 21042 },
     },
+    ["xp"] = 780,
   },
   [1253] = {
     ["end"] = {
@@ -14701,6 +16780,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 20992 },
     },
+    ["xp"] = 690,
   },
   [1258] = {
     ["end"] = {
@@ -14715,6 +16795,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4794 },
     },
+    ["xp"] = 3150,
+    ["rep"] = { 72, 100 },
   },
   [1259] = {
     ["end"] = {
@@ -14726,6 +16808,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4944 },
     },
+    ["xp"] = 315,
   },
   [1260] = {
     ["end"] = {
@@ -14736,6 +16819,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1141 },
     },
+    ["xp"] = 710,
+    ["rep"] = { 72, 25 },
   },
   [1261] = {
     ["end"] = {
@@ -14750,6 +16835,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 2076 },
     },
+    ["xp"] = 3150,
+    ["rep"] = { 76, 100 },
   },
   [1262] = {
     ["end"] = {
@@ -14761,6 +16848,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4791 },
     },
+    ["xp"] = 3150,
+    ["rep"] = { 76, 100 },
   },
   [1263] = {
     ["lvl"] = 35,
@@ -14776,6 +16865,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4963 },
     },
+    ["xp"] = 1300,
+    ["rep"] = { 72, 50 },
   },
   [1265] = {
     ["end"] = {
@@ -14787,6 +16878,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4964 },
     },
+    ["xp"] = 275,
   },
   [1266] = {
     ["end"] = {
@@ -14798,6 +16890,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4967 },
     },
+    ["xp"] = 700,
+    ["rep"] = { 72, 25 },
   },
   [1267] = {
     ["end"] = {
@@ -14809,6 +16903,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4968 },
     },
+    ["xp"] = 4300,
+    ["rep"] = { 469, 200 },
   },
   [1268] = {
     ["end"] = {
@@ -14820,6 +16916,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 21015, 21016 },
     },
+    ["xp"] = 1350,
   },
   [1269] = {
     ["end"] = {
@@ -14831,6 +16928,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 21042 },
     },
+    ["xp"] = 710,
   },
   [1270] = {
     ["end"] = {
@@ -14842,6 +16940,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4880 },
     },
+    ["xp"] = 2850,
+    ["rep"] = { 470, 100 },
   },
   [1271] = {
     ["end"] = {
@@ -14864,6 +16964,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4983 },
     },
+    ["xp"] = 3550,
   },
   [1274] = {
     ["end"] = {
@@ -14874,6 +16975,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4982 },
     },
+    ["xp"] = 230,
   },
   [1275] = {
     ["end"] = {
@@ -14888,6 +16990,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8997 },
     },
+    ["xp"] = 2400,
+    ["rep"] = { 69, 150 },
   },
   [1276] = {
     ["end"] = {
@@ -14899,6 +17003,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4926 },
     },
+    ["xp"] = 1400,
   },
   [1277] = {
     ["lvl"] = 40,
@@ -14926,6 +17031,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4921 },
     },
+    ["xp"] = 275,
   },
   [1283] = {
     ["lvl"] = 35,
@@ -14941,6 +17047,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 21015, 21016 },
     },
+    ["xp"] = 1350,
   },
   [1285] = {
     ["end"] = {
@@ -14952,6 +17059,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4948 },
     },
+    ["xp"] = 285,
   },
   [1286] = {
     ["end"] = {
@@ -14963,6 +17071,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4944 },
     },
+    ["xp"] = 2850,
   },
   [1287] = {
     ["end"] = {
@@ -14974,6 +17083,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5089 },
     },
+    ["xp"] = 2850,
   },
   [1288] = {
     ["end"] = {
@@ -14986,12 +17096,14 @@ UnrealQuestData["quests"] = {
       ["I"] = { 6075 },
       ["U"] = { 4944 },
     },
+    ["xp"] = 285,
   },
   [1289] = {
     ["lvl"] = 38,
     ["min"] = 30,
     ["pre"] = { 1288 },
     ["race"] = 77,
+    ["xp"] = 290,
   },
   [1293] = {
   },
@@ -15016,6 +17128,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5081 },
     },
+    ["xp"] = 690,
   },
   [1302] = {
     ["close"] = { 1282, 1302 },
@@ -15028,6 +17141,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5082 },
     },
+    ["xp"] = 690,
   },
   [1318] = {
     ["lvl"] = 60,
@@ -15035,6 +17149,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 18336 },
     },
+    ["xp"] = 8300,
   },
   [1319] = {
     ["end"] = {
@@ -15046,6 +17161,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4944 },
     },
+    ["xp"] = 275,
   },
   [1320] = {
     ["end"] = {
@@ -15057,6 +17173,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4941 },
     },
+    ["xp"] = 1350,
   },
   [1321] = {
     ["end"] = {
@@ -15068,6 +17185,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4926 },
     },
+    ["xp"] = 275,
   },
   [1322] = {
     ["end"] = {
@@ -15082,6 +17200,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5087 },
     },
+    ["xp"] = 2850,
   },
   [1323] = {
     ["end"] = {
@@ -15093,6 +17212,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5087 },
     },
+    ["xp"] = 1400,
   },
   [1324] = {
     ["end"] = {
@@ -15104,6 +17224,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4966 },
     },
+    ["xp"] = 2150,
+    ["rep"] = { 72, 75 },
   },
   [1338] = {
     ["end"] = {
@@ -15115,6 +17237,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1343 },
     },
+    ["xp"] = 980,
+    ["rep"] = { 47, 100 },
   },
   [1339] = {
     ["end"] = {
@@ -15125,6 +17249,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1340 },
     },
+    ["xp"] = 540,
+    ["rep"] = { 47, 50 },
   },
   [1358] = {
     ["end"] = {
@@ -15136,6 +17262,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5204 },
     },
+    ["xp"] = 1050,
+    ["rep"] = { 68, 100 },
   },
   [1359] = {
     ["end"] = {
@@ -15147,6 +17275,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1937 },
     },
+    ["xp"] = 105,
+    ["rep"] = { 68, 10 },
   },
   [1360] = {
     ["end"] = {
@@ -15160,6 +17290,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6294 },
     },
+    ["xp"] = 3600,
+    ["rep"] = { 47, 100 },
   },
   [1361] = {
     ["end"] = {
@@ -15170,6 +17302,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2229, 4485 },
     },
+    ["xp"] = 640,
+    ["rep"] = { 76, 25 },
   },
   [1362] = {
     ["end"] = {
@@ -15181,6 +17315,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3389 },
     },
+    ["xp"] = 640,
+    ["rep"] = { 76, 25 },
   },
   [1363] = {
     ["end"] = {
@@ -15191,6 +17327,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 338 },
     },
+    ["xp"] = 330,
+    ["rep"] = { 72, 25 },
   },
   [1364] = {
     ["end"] = {
@@ -15205,6 +17343,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5386 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 72, 100 },
   },
   [1365] = {
     ["end"] = {
@@ -15219,6 +17359,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5395 },
     },
+    ["xp"] = 3450,
+    ["rep"] = { 76, 150 },
   },
   [1366] = {
     ["end"] = {
@@ -15233,6 +17375,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5395 },
     },
+    ["xp"] = 3750,
+    ["rep"] = { 76, 150 },
   },
   [1367] = {
     ["end"] = {
@@ -15243,6 +17387,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5412 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 92, -500, 93, 100 },
   },
   [1368] = {
     ["end"] = {
@@ -15253,6 +17399,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5412 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 93, -500, 92, 100 },
   },
   [1369] = {
     ["end"] = {
@@ -15267,6 +17415,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5398 },
     },
+    ["xp"] = 2650,
   },
   [1370] = {
     ["end"] = {
@@ -15281,6 +17430,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5397 },
     },
+    ["xp"] = 1350,
   },
   [1371] = {
     ["end"] = {
@@ -15295,6 +17445,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5398 },
     },
+    ["xp"] = 2050,
   },
   [1372] = {
     ["end"] = {
@@ -15305,6 +17456,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5418 },
     },
+    ["xp"] = 345,
+    ["rep"] = { 68, 25 },
   },
   [1373] = {
     ["end"] = {
@@ -15319,6 +17472,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5397 },
     },
+    ["xp"] = 2850,
   },
   [1374] = {
     ["end"] = {
@@ -15333,6 +17487,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5397 },
     },
+    ["xp"] = 2850,
   },
   [1375] = {
     ["end"] = {
@@ -15347,6 +17502,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5398 },
     },
+    ["xp"] = 2850,
   },
   [1380] = {
     ["end"] = {
@@ -15362,6 +17518,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5397 },
     },
+    ["xp"] = 4300,
   },
   [1381] = {
     ["end"] = {
@@ -15377,6 +17534,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5398 },
     },
+    ["xp"] = 4300,
   },
   [1382] = {
     ["end"] = {
@@ -15387,6 +17545,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5396 },
     },
+    ["xp"] = 2050,
+    ["rep"] = { 93, -500, 92, 100 },
   },
   [1383] = {
     ["end"] = {
@@ -15401,6 +17561,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5414 },
     },
+    ["xp"] = 4300,
+    ["rep"] = { 68, 150 },
   },
   [1384] = {
     ["end"] = {
@@ -15416,6 +17578,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5397 },
     },
+    ["xp"] = 2550,
   },
   [1385] = {
     ["end"] = {
@@ -15426,6 +17589,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5396 },
     },
+    ["xp"] = 2050,
+    ["rep"] = { 93, 100, 92, -500 },
   },
   [1386] = {
     ["end"] = {
@@ -15441,6 +17606,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5398 },
     },
+    ["xp"] = 2550,
   },
   [1387] = {
     ["end"] = {
@@ -15454,6 +17620,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5752 },
     },
+    ["xp"] = 3750,
+    ["rep"] = { 72, 150 },
   },
   [1388] = {
     ["end"] = {
@@ -15465,6 +17633,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5414 },
     },
+    ["xp"] = 345,
+    ["rep"] = { 68, 25 },
   },
   [1389] = {
     ["end"] = {
@@ -15478,11 +17648,13 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1776 },
     },
+    ["xp"] = 2750,
   },
   [1390] = {
     ["lvl"] = 60,
     ["min"] = 60,
     ["pre"] = { 1289 },
+    ["xp"] = 100,
   },
   [1391] = {
     ["end"] = {
@@ -15494,6 +17666,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5418 },
     },
+    ["xp"] = 2550,
+    ["rep"] = { 68, 75 },
   },
   [1392] = {
     ["end"] = {
@@ -15504,6 +17678,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 6196 },
     },
+    ["xp"] = 2250,
   },
   [1393] = {
     ["end"] = {
@@ -15514,6 +17689,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5391 },
     },
+    ["xp"] = 2850,
+    ["rep"] = { 469, 50, 67, 50 },
   },
   [1394] = {
     ["end"] = {
@@ -15525,6 +17702,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4488 },
     },
+    ["xp"] = 4200,
+    ["rep"] = { 67, 200 },
   },
   [1395] = {
     ["end"] = {
@@ -15536,6 +17715,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5464 },
     },
+    ["xp"] = 2900,
+    ["rep"] = { 72, 75 },
   },
   [1396] = {
     ["end"] = {
@@ -15549,6 +17730,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5476 },
     },
+    ["xp"] = 2850,
+    ["rep"] = { 72, 100 },
   },
   [1398] = {
     ["end"] = {
@@ -15563,6 +17746,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5476 },
     },
+    ["xp"] = 3450,
+    ["rep"] = { 72, 100 },
   },
   [1418] = {
     ["end"] = {
@@ -15573,6 +17758,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1442 },
     },
+    ["xp"] = 1350,
+    ["rep"] = { 76, 50 },
   },
   [1419] = {
     ["end"] = {
@@ -15586,6 +17773,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5394 },
     },
+    ["xp"] = 3150,
+    ["rep"] = { 76, 100 },
   },
   [1420] = {
     ["end"] = {
@@ -15597,6 +17786,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5394 },
     },
+    ["xp"] = 2350,
+    ["rep"] = { 76, 75 },
   },
   [1421] = {
     ["end"] = {
@@ -15611,6 +17802,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5476 },
     },
+    ["xp"] = 2750,
+    ["rep"] = { 72, 100 },
   },
   [1422] = {
     ["end"] = {
@@ -15633,6 +17826,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 6172 },
     },
+    ["rep"] = { 72, 25 },
   },
   [1424] = {
     ["end"] = {
@@ -15646,6 +17840,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1443 },
     },
+    ["xp"] = 4450,
+    ["rep"] = { 76, 150 },
   },
   [1425] = {
     ["end"] = {
@@ -15657,6 +17853,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5476 },
     },
+    ["xp"] = 2550,
+    ["rep"] = { 72, 75 },
   },
   [1426] = {
     ["end"] = {
@@ -15671,6 +17869,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5593 },
     },
+    ["xp"] = 4450,
+    ["rep"] = { 76, 150 },
   },
   [1427] = {
     ["end"] = {
@@ -15682,6 +17882,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5593 },
     },
+    ["xp"] = 3600,
+    ["rep"] = { 76, 100 },
   },
   [1428] = {
     ["end"] = {
@@ -15696,6 +17898,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5593 },
     },
+    ["xp"] = 3900,
+    ["rep"] = { 76, 100 },
   },
   [1429] = {
     ["end"] = {
@@ -15707,6 +17911,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1443 },
     },
+    ["xp"] = 3750,
   },
   [1430] = {
     ["end"] = {
@@ -15720,6 +17925,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5591 },
     },
+    ["xp"] = 3750,
+    ["rep"] = { 76, 100 },
   },
   [1431] = {
     ["end"] = {
@@ -15730,6 +17937,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5639 },
     },
+    ["xp"] = 610,
+    ["rep"] = { 76, 25 },
   },
   [1432] = {
     ["end"] = {
@@ -15741,6 +17950,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5640 },
     },
+    ["xp"] = 1200,
+    ["rep"] = { 76, 50 },
   },
   [1433] = {
     ["end"] = {
@@ -15752,6 +17963,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5641 },
     },
+    ["xp"] = 265,
   },
   [1434] = {
     ["end"] = {
@@ -15766,6 +17978,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5641 },
     },
+    ["xp"] = 2650,
+    ["rep"] = { 68, 100 },
   },
   [1435] = {
     ["end"] = {
@@ -15781,6 +17995,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4498 },
     },
+    ["xp"] = 2650,
+    ["rep"] = { 68, 100 },
   },
   [1436] = {
     ["end"] = {
@@ -15792,6 +18008,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5641 },
     },
+    ["xp"] = 2650,
+    ["rep"] = { 76, 100 },
   },
   [1437] = {
     ["end"] = {
@@ -15802,6 +18020,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5642 },
     },
+    ["xp"] = 1950,
+    ["rep"] = { 69, 75 },
   },
   [1438] = {
     ["end"] = {
@@ -15813,6 +18033,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5642 },
     },
+    ["xp"] = 2650,
+    ["rep"] = { 69, 100 },
   },
   [1439] = {
     ["end"] = {
@@ -15827,6 +18049,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5644 },
     },
+    ["xp"] = 2650,
+    ["rep"] = { 69, 100 },
   },
   [1440] = {
     ["end"] = {
@@ -15838,10 +18062,13 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5644 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 69, 150 },
   },
   [1441] = {
     ["lvl"] = 33,
     ["min"] = 30,
+    ["xp"] = 3300,
   },
   [1442] = {
     ["class"] = 2,
@@ -15857,6 +18084,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3649 },
     },
+    ["xp"] = 435,
   },
   [1444] = {
     ["end"] = {
@@ -15868,6 +18096,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5598 },
     },
+    ["xp"] = 3750,
+    ["rep"] = { 76, 150 },
   },
   [1445] = {
     ["end"] = {
@@ -15882,6 +18112,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1443 },
     },
+    ["xp"] = 5900,
+    ["rep"] = { 76, 150 },
   },
   [1446] = {
     ["end"] = {
@@ -15895,6 +18127,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5598 },
     },
+    ["xp"] = 6550,
   },
   [1447] = {
     ["end"] = {
@@ -15906,6 +18139,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4961 },
     },
+    ["xp"] = 1250,
+    ["rep"] = { 72, 50 },
   },
   [1448] = {
     ["end"] = {
@@ -15919,6 +18154,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5384 },
     },
+    ["xp"] = 3600,
+    ["rep"] = { 47, 100 },
   },
   [1449] = {
     ["end"] = {
@@ -15930,6 +18167,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5384 },
     },
+    ["xp"] = 1800,
   },
   [1450] = {
     ["end"] = {
@@ -15941,6 +18179,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5635 },
     },
+    ["xp"] = 890,
   },
   [1451] = {
     ["end"] = {
@@ -15952,6 +18191,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5636 },
     },
+    ["xp"] = 1800,
   },
   [1452] = {
     ["end"] = {
@@ -15966,6 +18206,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5634 },
     },
+    ["xp"] = 3600,
+    ["rep"] = { 471, 100 },
   },
   [1453] = {
     ["end"] = {
@@ -15976,6 +18218,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5637 },
     },
+    ["xp"] = 1300,
+    ["rep"] = { 47, 50 },
   },
   [1454] = {
     ["end"] = {
@@ -15987,6 +18231,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5638 },
     },
+    ["xp"] = 3000,
+    ["rep"] = { 47, 100 },
   },
   [1455] = {
     ["end"] = {
@@ -15998,6 +18244,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 35251 },
     },
+    ["xp"] = 1500,
+    ["rep"] = { 47, 50 },
   },
   [1456] = {
     ["end"] = {
@@ -16012,6 +18260,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5638 },
     },
+    ["xp"] = 3000,
+    ["rep"] = { 47, 100 },
   },
   [1457] = {
     ["end"] = {
@@ -16023,6 +18273,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5638 },
     },
+    ["xp"] = 2250,
+    ["rep"] = { 47, 75 },
   },
   [1458] = {
     ["end"] = {
@@ -16037,6 +18289,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5638 },
     },
+    ["xp"] = 2650,
+    ["rep"] = { 47, 100 },
   },
   [1459] = {
     ["end"] = {
@@ -16051,6 +18305,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5638 },
     },
+    ["xp"] = 2750,
+    ["rep"] = { 47, 100 },
   },
   [1460] = {
     ["lvl"] = 37,
@@ -16106,6 +18362,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 50961 },
     },
+    ["xp"] = 1950,
+    ["rep"] = { 69, 75 },
   },
   [1466] = {
     ["end"] = {
@@ -16120,6 +18378,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5638 },
     },
+    ["xp"] = 3150,
+    ["rep"] = { 47, 100 },
   },
   [1467] = {
     ["end"] = {
@@ -16131,6 +18391,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5638 },
     },
+    ["xp"] = 3150,
+    ["rep"] = { 47, 100 },
   },
   [1468] = {
     ["end"] = {
@@ -16143,6 +18405,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14450 },
     },
+    ["rep"] = { 469, 10 },
   },
   [1469] = {
     ["end"] = {
@@ -16154,6 +18417,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5634 },
     },
+    ["xp"] = 2700,
+    ["rep"] = { 47, 75 },
   },
   [1470] = {
     ["class"] = 256,
@@ -16169,6 +18434,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5667 },
     },
+    ["xp"] = 190,
+    ["rep"] = { 68, 75 },
   },
   [1471] = {
     ["class"] = 256,
@@ -16185,6 +18452,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5675 },
     },
+    ["xp"] = 630,
   },
   [1472] = {
     ["class"] = 256,
@@ -16197,6 +18465,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5675 },
     },
+    ["xp"] = 155,
   },
   [1473] = {
     ["class"] = 256,
@@ -16212,6 +18481,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5675 },
     },
+    ["xp"] = 630,
   },
   [1474] = {
     ["class"] = 256,
@@ -16228,6 +18498,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5675 },
     },
+    ["xp"] = 1550,
   },
   [1475] = {
     ["end"] = {
@@ -16242,6 +18513,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5384 },
     },
+    ["xp"] = 7100,
+    ["rep"] = { 47, 200 },
   },
   [1476] = {
     ["class"] = 256,
@@ -16257,6 +18530,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5693 },
     },
+    ["xp"] = 1550,
   },
   [1477] = {
     ["end"] = {
@@ -16267,6 +18541,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5694 },
     },
+    ["xp"] = 970,
+    ["rep"] = { 72, 25 },
   },
   [1478] = {
     ["class"] = 256,
@@ -16279,6 +18555,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5724 },
     },
+    ["xp"] = 210,
   },
   [1479] = {
     ["end"] = {
@@ -16291,6 +18568,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14305 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 469, 50 },
   },
   [1480] = {
     ["end"] = {
@@ -16302,6 +18581,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 6766, 6766, 20310 },
     },
+    ["xp"] = 1300,
+    ["rep"] = { 68, 50 },
   },
   [1481] = {
     ["end"] = {
@@ -16316,6 +18597,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4498 },
     },
+    ["xp"] = 2650,
+    ["rep"] = { 68, 100 },
   },
   [1482] = {
     ["end"] = {
@@ -16330,6 +18613,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4498 },
     },
+    ["xp"] = 2750,
+    ["rep"] = { 68, 100 },
   },
   [1483] = {
     ["end"] = {
@@ -16340,6 +18625,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3442 },
     },
+    ["xp"] = 415,
+    ["rep"] = { 470, 25 },
   },
   [1484] = {
     ["end"] = {
@@ -16351,6 +18638,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4498 },
     },
+    ["xp"] = 265,
   },
   [1485] = {
     ["class"] = 256,
@@ -16366,6 +18654,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5765 },
     },
+    ["xp"] = 355,
+    ["rep"] = { 76, 100 },
   },
   [1486] = {
     ["end"] = {
@@ -16379,6 +18669,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5767 },
     },
+    ["xp"] = 1600,
   },
   [1487] = {
     ["end"] = {
@@ -16392,6 +18683,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5768 },
     },
+    ["xp"] = 2050,
   },
   [1488] = {
     ["end"] = {
@@ -16406,6 +18698,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5641 },
     },
+    ["xp"] = 3900,
+    ["rep"] = { 67, 150 },
   },
   [1489] = {
     ["end"] = {
@@ -16417,6 +18711,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3448 },
     },
+    ["xp"] = 290,
+    ["rep"] = { 81, 25 },
   },
   [1490] = {
     ["end"] = {
@@ -16428,6 +18724,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5769 },
     },
+    ["xp"] = 115,
+    ["rep"] = { 81, 10 },
   },
   [1491] = {
     ["end"] = {
@@ -16442,6 +18740,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3446 },
     },
+    ["xp"] = 1350,
+    ["rep"] = { 470, 100 },
   },
   [1492] = {
     ["end"] = {
@@ -16452,6 +18752,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3390 },
     },
+    ["xp"] = 440,
+    ["rep"] = { 470, 50 },
   },
   [1498] = {
     ["class"] = 1,
@@ -16467,6 +18769,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5810 },
     },
+    ["xp"] = 630,
   },
   [1499] = {
     ["class"] = 256,
@@ -16480,6 +18783,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5765 },
     },
+    ["xp"] = 35,
+    ["rep"] = { 530, 10, 76, 10 },
   },
   [1500] = {
     ["lvl"] = 25,
@@ -16499,6 +18804,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5875 },
     },
+    ["xp"] = 880,
   },
   [1502] = {
     ["class"] = 1,
@@ -16511,6 +18817,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5810 },
     },
+    ["xp"] = 210,
   },
   [1503] = {
     ["class"] = 1,
@@ -16526,6 +18833,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5878 },
     },
+    ["xp"] = 840,
   },
   [1504] = {
     ["class"] = 256,
@@ -16542,6 +18850,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5875 },
     },
+    ["xp"] = 660,
   },
   [1505] = {
     ["class"] = 1,
@@ -16554,6 +18863,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3063, 3169, 3354 },
     },
+    ["xp"] = 85,
   },
   [1506] = {
     ["class"] = 256,
@@ -16566,6 +18876,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3294 },
     },
+    ["xp"] = 210,
   },
   [1507] = {
     ["class"] = 256,
@@ -16578,6 +18889,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5875 },
     },
+    ["xp"] = 155,
   },
   [1508] = {
     ["class"] = 256,
@@ -16590,6 +18902,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5909 },
     },
+    ["xp"] = 390,
   },
   [1509] = {
     ["class"] = 256,
@@ -16602,6 +18915,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5910 },
     },
+    ["xp"] = 390,
   },
   [1510] = {
     ["class"] = 256,
@@ -16614,6 +18928,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3464 },
     },
+    ["xp"] = 780,
   },
   [1511] = {
     ["class"] = 256,
@@ -16626,6 +18941,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4197 },
     },
+    ["xp"] = 1550,
   },
   [1512] = {
     ["class"] = 256,
@@ -16638,6 +18954,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5908 },
     },
+    ["xp"] = 390,
   },
   [1513] = {
     ["class"] = 256,
@@ -16654,6 +18971,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5875 },
     },
+    ["xp"] = 1150,
   },
   [1514] = {
     ["end"] = {
@@ -16667,6 +18985,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 173327 },
     },
+    ["xp"] = 560,
   },
   [1515] = {
     ["class"] = 256,
@@ -16679,6 +18998,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5911 },
     },
+    ["xp"] = 1150,
   },
   [1516] = {
     ["class"] = 64,
@@ -16694,6 +19014,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5887 },
     },
+    ["xp"] = 270,
   },
   [1517] = {
     ["class"] = 64,
@@ -16709,6 +19030,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5887 },
     },
+    ["xp"] = 270,
   },
   [1518] = {
     ["class"] = 64,
@@ -16721,6 +19043,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5891 },
     },
+    ["xp"] = 445,
   },
   [1519] = {
     ["class"] = 64,
@@ -16736,6 +19059,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5888 },
     },
+    ["xp"] = 270,
   },
   [1520] = {
     ["class"] = 64,
@@ -16751,6 +19075,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5888 },
     },
+    ["xp"] = 180,
   },
   [1521] = {
     ["class"] = 64,
@@ -16763,6 +19088,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5891 },
     },
+    ["xp"] = 445,
   },
   [1522] = {
     ["class"] = 64,
@@ -16774,6 +19100,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5892 },
     },
+    ["xp"] = 420,
   },
   [1523] = {
     ["class"] = 64,
@@ -16785,6 +19112,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5906 },
     },
+    ["xp"] = 420,
   },
   [1524] = {
     ["class"] = 64,
@@ -16797,6 +19125,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5907 },
     },
+    ["xp"] = 660,
   },
   [1525] = {
     ["class"] = 64,
@@ -16812,6 +19141,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5900 },
     },
+    ["xp"] = 910,
   },
   [1526] = {
     ["class"] = 64,
@@ -16827,6 +19157,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5900 },
     },
+    ["xp"] = 1150,
   },
   [1527] = {
     ["class"] = 64,
@@ -16839,6 +19170,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 61934 },
     },
+    ["xp"] = 1150,
   },
   [1528] = {
     ["class"] = 64,
@@ -16850,6 +19182,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5892 },
     },
+    ["xp"] = 780,
   },
   [1529] = {
     ["class"] = 64,
@@ -16861,6 +19194,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5906 },
     },
+    ["xp"] = 780,
   },
   [1530] = {
     ["class"] = 64,
@@ -16873,6 +19207,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5901 },
     },
+    ["xp"] = 435,
   },
   [1531] = {
     ["class"] = 64,
@@ -16885,6 +19220,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5892 },
     },
+    ["xp"] = 2450,
   },
   [1532] = {
     ["class"] = 64,
@@ -16897,6 +19233,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5906 },
     },
+    ["xp"] = 2450,
   },
   [1534] = {
     ["class"] = 64,
@@ -16913,6 +19250,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5899 },
     },
+    ["xp"] = 1400,
   },
   [1535] = {
     ["class"] = 64,
@@ -16929,6 +19267,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5899 },
     },
+    ["xp"] = 870,
   },
   [1536] = {
     ["class"] = 64,
@@ -16945,6 +19284,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5899 },
     },
+    ["xp"] = 1300,
   },
   [1558] = {
     ["end"] = {
@@ -16957,6 +19297,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14305 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 469, 50 },
   },
   [1559] = {
     ["end"] = {
@@ -16979,6 +19321,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5955 },
     },
+    ["xp"] = 5900,
   },
   [1578] = {
     ["end"] = {
@@ -16993,6 +19336,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6031 },
     },
+    ["xp"] = 910,
+    ["rep"] = { 47, 100 },
   },
   [1579] = {
     ["end"] = {
@@ -17007,6 +19352,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3666 },
     },
+    ["xp"] = 455,
+    ["rep"] = { 54, 50 },
   },
   [1580] = {
     ["end"] = {
@@ -17022,6 +19369,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3666 },
     },
+    ["xp"] = 910,
+    ["rep"] = { 54, 100 },
   },
   [1581] = {
     ["end"] = {
@@ -17036,6 +19385,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2083 },
     },
+    ["xp"] = 700,
+    ["rep"] = { 69, 100 },
   },
   [1582] = {
     ["end"] = {
@@ -17050,6 +19401,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6034 },
     },
+    ["xp"] = 1350,
+    ["rep"] = { 69, 100 },
   },
   [1598] = {
     ["class"] = 256,
@@ -17065,6 +19418,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 459 },
     },
+    ["xp"] = 355,
+    ["rep"] = { 72, 100 },
   },
   [1599] = {
     ["class"] = 256,
@@ -17080,6 +19435,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 460 },
     },
+    ["xp"] = 355,
+    ["rep"] = { 47, 100, 54, 100 },
   },
   [1618] = {
     ["end"] = {
@@ -17094,6 +19451,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6031 },
     },
+    ["xp"] = 1150,
+    ["rep"] = { 72, 100 },
   },
   [1638] = {
     ["class"] = 1,
@@ -17106,6 +19465,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 913, 5480 },
     },
+    ["xp"] = 85,
   },
   [1639] = {
     ["class"] = 1,
@@ -17118,6 +19478,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6089 },
     },
+    ["xp"] = 85,
   },
   [1640] = {
     ["class"] = 1,
@@ -17130,6 +19491,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6090 },
     },
+    ["xp"] = 210,
   },
   [1641] = {
     ["class"] = 2,
@@ -17154,6 +19516,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 6775 },
     },
+    ["xp"] = 90,
   },
   [1643] = {
     ["class"] = 2,
@@ -17167,6 +19530,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6171 },
     },
+    ["xp"] = 455,
   },
   [1644] = {
     ["class"] = 2,
@@ -17183,6 +19547,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6174 },
     },
+    ["xp"] = 910,
   },
   [1645] = {
     ["class"] = 2,
@@ -17207,6 +19572,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 6916 },
     },
+    ["xp"] = 90,
   },
   [1647] = {
     ["class"] = 2,
@@ -17220,6 +19586,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6179 },
     },
+    ["xp"] = 455,
   },
   [1648] = {
     ["class"] = 2,
@@ -17236,6 +19603,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6175 },
     },
+    ["xp"] = 910,
   },
   [1649] = {
     ["class"] = 2,
@@ -17247,6 +19615,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 6776 },
     },
+    ["xp"] = 390,
   },
   [1650] = {
     ["class"] = 2,
@@ -17259,6 +19628,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6171 },
     },
+    ["xp"] = 1850,
   },
   [1651] = {
     ["class"] = 2,
@@ -17271,6 +19641,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6182 },
     },
+    ["xp"] = 1000,
   },
   [1652] = {
     ["class"] = 2,
@@ -17283,6 +19654,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6182 },
     },
+    ["xp"] = 2550,
   },
   [1653] = {
     ["class"] = 2,
@@ -17295,6 +19667,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6171 },
     },
+    ["xp"] = 830,
   },
   [1654] = {
     ["class"] = 2,
@@ -17310,6 +19683,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6181 },
     },
+    ["xp"] = 870,
   },
   [1655] = {
     ["class"] = 2,
@@ -17325,6 +19699,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6241 },
     },
+    ["xp"] = 435,
   },
   [1656] = {
     ["end"] = {
@@ -17335,6 +19710,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6775 },
     },
+    ["xp"] = 110,
+    ["rep"] = { 81, 25 },
   },
   [1657] = {
     ["end"] = {
@@ -17350,6 +19727,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15197 },
     },
+    ["xp"] = 1650,
+    ["rep"] = { 68, 150 },
   },
   [1658] = {
     ["end"] = {
@@ -17364,6 +19743,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15199 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 469, 100 },
   },
   [1659] = {
     ["lvl"] = 30,
@@ -17395,6 +19776,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6090 },
     },
+    ["xp"] = 420,
   },
   [1666] = {
     ["class"] = 1,
@@ -17407,6 +19789,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6089 },
     },
+    ["xp"] = 420,
   },
   [1667] = {
     ["class"] = 1,
@@ -17422,6 +19805,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 294 },
     },
+    ["xp"] = 840,
   },
   [1678] = {
     ["class"] = 1,
@@ -17437,6 +19821,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6114 },
     },
+    ["xp"] = 1100,
   },
   [1679] = {
     ["class"] = 1,
@@ -17449,6 +19834,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1229 },
     },
+    ["xp"] = 85,
   },
   [1680] = {
     ["class"] = 1,
@@ -17461,6 +19847,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6114 },
     },
+    ["xp"] = 90,
   },
   [1681] = {
     ["class"] = 1,
@@ -17476,6 +19863,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6031 },
     },
+    ["xp"] = 660,
   },
   [1682] = {
     ["class"] = 1,
@@ -17488,6 +19876,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6031 },
     },
+    ["xp"] = 630,
   },
   [1683] = {
     ["class"] = 1,
@@ -17503,6 +19892,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4088 },
     },
+    ["xp"] = 840,
   },
   [1684] = {
     ["class"] = 1,
@@ -17515,6 +19905,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3598, 2151, 3657 },
     },
+    ["xp"] = 85,
   },
   [1685] = {
     ["class"] = 256,
@@ -17527,6 +19918,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6121 },
     },
+    ["xp"] = 420,
   },
   [1686] = {
     ["class"] = 1,
@@ -17542,6 +19934,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4088 },
     },
+    ["xp"] = 840,
   },
   [1687] = {
     ["end"] = {
@@ -17554,6 +19947,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14305 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 469, 50 },
   },
   [1688] = {
     ["class"] = 256,
@@ -17569,6 +19964,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6122 },
     },
+    ["xp"] = 630,
   },
   [1689] = {
     ["class"] = 256,
@@ -17585,6 +19981,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6122 },
     },
+    ["xp"] = 630,
   },
   [1690] = {
     ["end"] = {
@@ -17598,6 +19995,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7407 },
     },
+    ["xp"] = 3600,
+    ["rep"] = { 369, 100 },
   },
   [1691] = {
     ["end"] = {
@@ -17612,6 +20011,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7407 },
     },
+    ["xp"] = 3750,
+    ["rep"] = { 369, 100 },
   },
   [1692] = {
     ["class"] = 1,
@@ -17624,6 +20025,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4088 },
     },
+    ["xp"] = 420,
   },
   [1693] = {
     ["class"] = 1,
@@ -17636,6 +20038,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6142 },
     },
+    ["xp"] = 630,
   },
   [1698] = {
     ["class"] = 1,
@@ -17647,6 +20050,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7315, 5479 },
     },
+    ["xp"] = 155,
   },
   [1699] = {
     ["class"] = 1,
@@ -17662,6 +20066,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6166 },
     },
+    ["xp"] = 1300,
   },
   [1700] = {
     ["class"] = 1,
@@ -17675,6 +20080,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5413 },
     },
+    ["xp"] = 570,
   },
   [1701] = {
     ["class"] = 1,
@@ -17690,6 +20096,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5413 },
     },
+    ["xp"] = 2300,
   },
   [1702] = {
     ["class"] = 1,
@@ -17702,6 +20109,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6166 },
     },
+    ["xp"] = 435,
   },
   [1703] = {
     ["class"] = 1,
@@ -17715,6 +20123,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5413 },
     },
+    ["xp"] = 1150,
   },
   [1704] = {
     ["class"] = 1,
@@ -17728,6 +20137,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5413 },
     },
+    ["xp"] = 570,
   },
   [1705] = {
     ["class"] = 1,
@@ -17743,6 +20153,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1416 },
     },
+    ["xp"] = 2300,
   },
   [1706] = {
     ["class"] = 1,
@@ -17755,6 +20166,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1416 },
     },
+    ["xp"] = 3050,
   },
   [1707] = {
     ["end"] = {
@@ -17768,6 +20180,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7408 },
     },
+    ["xp"] = 2800,
+    ["rep"] = { 369, 75 },
   },
   [1708] = {
     ["class"] = 1,
@@ -17783,6 +20197,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6169 },
     },
+    ["xp"] = 1750,
   },
   [1709] = {
     ["class"] = 1,
@@ -17795,6 +20210,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6169 },
     },
+    ["xp"] = 3050,
   },
   [1710] = {
     ["class"] = 1,
@@ -17810,6 +20226,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6142 },
     },
+    ["xp"] = 1850,
   },
   [1711] = {
     ["class"] = 1,
@@ -17822,6 +20239,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6142 },
     },
+    ["xp"] = 3050,
   },
   [1712] = {
     ["class"] = 1,
@@ -17837,6 +20255,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6176 },
     },
+    ["xp"] = 2350,
   },
   [1713] = {
     ["class"] = 1,
@@ -17852,6 +20271,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6176 },
     },
+    ["xp"] = 2350,
   },
   [1714] = {
     ["class"] = 1,
@@ -17880,6 +20300,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6120 },
     },
+    ["xp"] = 420,
   },
   [1716] = {
     ["class"] = 256,
@@ -17892,6 +20313,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6122 },
     },
+    ["xp"] = 780,
   },
   [1717] = {
     ["class"] = 256,
@@ -17903,6 +20325,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6120 },
     },
+    ["xp"] = 390,
   },
   [1718] = {
     ["class"] = 1,
@@ -17914,6 +20337,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3041, 3354, 4595, 5113, 5479 },
     },
+    ["xp"] = 610,
   },
   [1719] = {
     ["class"] = 1,
@@ -17930,6 +20354,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6236 },
     },
+    ["xp"] = 2450,
   },
   [1738] = {
     ["class"] = 256,
@@ -17945,6 +20370,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6244 },
     },
+    ["xp"] = 1550,
   },
   [1739] = {
     ["class"] = 256,
@@ -17961,6 +20387,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6122 },
     },
+    ["xp"] = 1150,
   },
   [1740] = {
     ["class"] = 256,
@@ -17975,6 +20402,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6247 },
     },
+    ["xp"] = 2550,
   },
   [1758] = {
     ["class"] = 256,
@@ -17988,6 +20416,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6251 },
     },
+    ["xp"] = 610,
   },
   [1778] = {
     ["class"] = 2,
@@ -18001,6 +20430,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6175 },
     },
+    ["xp"] = 230,
   },
   [1779] = {
     ["class"] = 2,
@@ -18030,6 +20460,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6174 },
     },
+    ["xp"] = 230,
   },
   [1781] = {
     ["class"] = 2,
@@ -18057,6 +20488,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5413 },
     },
+    ["xp"] = 3400,
   },
   [1783] = {
     ["class"] = 2,
@@ -18070,6 +20502,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6178 },
     },
+    ["xp"] = 680,
   },
   [1784] = {
     ["class"] = 2,
@@ -18086,6 +20519,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6177 },
     },
+    ["xp"] = 680,
   },
   [1785] = {
     ["class"] = 2,
@@ -18099,6 +20533,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6178 },
     },
+    ["xp"] = 1150,
   },
   [1786] = {
     ["class"] = 2,
@@ -18112,6 +20547,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6173 },
     },
+    ["xp"] = 680,
   },
   [1787] = {
     ["class"] = 2,
@@ -18128,6 +20564,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6172 },
     },
+    ["xp"] = 680,
   },
   [1788] = {
     ["class"] = 2,
@@ -18141,6 +20578,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6173 },
     },
+    ["xp"] = 1150,
   },
   [1789] = {
     ["class"] = 2,
@@ -18179,6 +20617,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6236 },
     },
+    ["xp"] = 245,
   },
   [1792] = {
     ["class"] = 1,
@@ -18191,6 +20630,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6176 },
     },
+    ["xp"] = 3900,
   },
   [1793] = {
     ["class"] = 2,
@@ -18231,6 +20671,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6251 },
     },
+    ["xp"] = 2450,
   },
   [1796] = {
     ["class"] = 256,
@@ -18246,6 +20687,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6266 },
     },
+    ["xp"] = 2500,
   },
   [1798] = {
     ["class"] = 256,
@@ -18257,6 +20699,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6122 },
     },
+    ["xp"] = 610,
   },
   [1799] = {
     ["class"] = 256,
@@ -18272,6 +20715,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6266 },
     },
+    ["xp"] = 3150,
   },
   [1800] = {
     ["end"] = {
@@ -18283,6 +20727,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14444 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 67, 50 },
   },
   [1801] = {
     ["class"] = 256,
@@ -18296,6 +20742,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6251 },
     },
+    ["xp"] = 610,
   },
   [1802] = {
     ["class"] = 256,
@@ -18312,6 +20759,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6294 },
     },
+    ["xp"] = 2450,
   },
   [1803] = {
     ["class"] = 256,
@@ -18328,6 +20776,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6293 },
     },
+    ["xp"] = 610,
   },
   [1804] = {
     ["class"] = 256,
@@ -18343,6 +20792,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6294 },
     },
+    ["xp"] = 2450,
   },
   [1805] = {
     ["class"] = 256,
@@ -18358,6 +20808,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6293 },
     },
+    ["xp"] = 2450,
   },
   [1806] = {
     ["class"] = 2,
@@ -18370,6 +20821,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6181 },
     },
+    ["xp"] = 2200,
   },
   [1818] = {
     ["class"] = 1,
@@ -18382,6 +20834,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2131 },
     },
+    ["xp"] = 85,
   },
   [1819] = {
     ["class"] = 1,
@@ -18397,6 +20850,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1496 },
     },
+    ["xp"] = 840,
   },
   [1820] = {
     ["class"] = 1,
@@ -18409,6 +20863,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1496 },
     },
+    ["xp"] = 210,
   },
   [1821] = {
     ["class"] = 1,
@@ -18424,6 +20879,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1500 },
     },
+    ["xp"] = 660,
   },
   [1822] = {
     ["class"] = 1,
@@ -18436,6 +20892,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1500 },
     },
+    ["xp"] = 880,
   },
   [1823] = {
     ["class"] = 1,
@@ -18447,6 +20904,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3354, 3041, 4595 },
     },
+    ["xp"] = 155,
   },
   [1824] = {
     ["class"] = 1,
@@ -18462,6 +20920,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6394 },
     },
+    ["xp"] = 1550,
   },
   [1825] = {
     ["class"] = 1,
@@ -18474,6 +20933,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6394 },
     },
+    ["xp"] = 780,
   },
   [1838] = {
     ["class"] = 1,
@@ -18489,6 +20949,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5878 },
     },
+    ["xp"] = 3650,
   },
   [1839] = {
     ["class"] = 1,
@@ -18501,6 +20962,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5878 },
     },
+    ["xp"] = 1200,
   },
   [1840] = {
     ["class"] = 1,
@@ -18513,6 +20975,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5878 },
     },
+    ["xp"] = 1200,
   },
   [1841] = {
     ["class"] = 1,
@@ -18525,6 +20988,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5878 },
     },
+    ["xp"] = 1200,
   },
   [1842] = {
     ["class"] = 1,
@@ -18540,6 +21004,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6408 },
     },
+    ["xp"] = 1200,
   },
   [1843] = {
     ["class"] = 1,
@@ -18552,6 +21017,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6408 },
     },
+    ["xp"] = 1850,
   },
   [1844] = {
     ["class"] = 1,
@@ -18567,6 +21033,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6410 },
     },
+    ["xp"] = 1200,
   },
   [1845] = {
     ["class"] = 1,
@@ -18579,6 +21046,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6410 },
     },
+    ["xp"] = 1850,
   },
   [1846] = {
     ["class"] = 1,
@@ -18594,6 +21062,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6411 },
     },
+    ["xp"] = 1200,
   },
   [1847] = {
     ["class"] = 1,
@@ -18606,6 +21075,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6411 },
     },
+    ["xp"] = 1850,
   },
   [1848] = {
     ["class"] = 1,
@@ -18618,6 +21088,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5878 },
     },
+    ["xp"] = 3050,
   },
   [1858] = {
     ["class"] = 8,
@@ -18634,6 +21105,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6446 },
     },
+    ["xp"] = 455,
   },
   [1859] = {
     ["class"] = 8,
@@ -18646,6 +21118,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3170 },
     },
+    ["xp"] = 210,
   },
   [1860] = {
     ["class"] = 128,
@@ -18658,6 +21131,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 328 },
     },
+    ["xp"] = 420,
   },
   [1861] = {
     ["class"] = 128,
@@ -18674,6 +21148,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5497 },
     },
+    ["xp"] = 840,
   },
   [1878] = {
     ["end"] = {
@@ -18688,6 +21163,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7408 },
     },
+    ["xp"] = 375,
+    ["rep"] = { 369, 10 },
   },
   [1879] = {
     ["class"] = 128,
@@ -18700,6 +21177,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1228 },
     },
+    ["xp"] = 85,
   },
   [1880] = {
     ["class"] = 128,
@@ -18715,6 +21193,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5144 },
     },
+    ["xp"] = 840,
   },
   [1881] = {
     ["class"] = 128,
@@ -18727,6 +21206,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2128 },
     },
+    ["xp"] = 85,
   },
   [1882] = {
     ["class"] = 128,
@@ -18742,6 +21222,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4568 },
     },
+    ["xp"] = 840,
   },
   [1883] = {
     ["class"] = 128,
@@ -18754,6 +21235,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3049, 7311 },
     },
+    ["xp"] = 85,
   },
   [1884] = {
     ["class"] = 128,
@@ -18769,6 +21251,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5880 },
     },
+    ["xp"] = 840,
   },
   [1885] = {
     ["class"] = 8,
@@ -18781,6 +21264,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2130 },
     },
+    ["xp"] = 210,
   },
   [1886] = {
     ["class"] = 8,
@@ -18796,6 +21280,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6467 },
     },
+    ["xp"] = 680,
   },
   [1898] = {
     ["class"] = 8,
@@ -18809,6 +21294,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6467 },
     },
+    ["xp"] = 230,
   },
   [1899] = {
     ["class"] = 8,
@@ -18825,6 +21311,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6522 },
     },
+    ["xp"] = 230,
   },
   [1918] = {
     ["end"] = {
@@ -18835,6 +21322,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 16408, 16408 },
     },
+    ["xp"] = 550,
+    ["rep"] = { 76, 25 },
   },
   [1919] = {
     ["class"] = 128,
@@ -18846,6 +21335,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7312, 1228, 328 },
     },
+    ["xp"] = 105,
   },
   [1920] = {
     ["class"] = 128,
@@ -18862,6 +21352,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5497 },
     },
+    ["xp"] = 1150,
   },
   [1921] = {
     ["class"] = 128,
@@ -18877,6 +21368,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5497 },
     },
+    ["xp"] = 800,
   },
   [1938] = {
     ["class"] = 128,
@@ -18892,6 +21384,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5694 },
     },
+    ["xp"] = 2300,
   },
   [1939] = {
     ["class"] = 128,
@@ -18903,6 +21396,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5144, 5497 },
     },
+    ["xp"] = 1050,
   },
   [1940] = {
     ["class"] = 128,
@@ -18918,6 +21412,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5694 },
     },
+    ["xp"] = 1600,
   },
   [1941] = {
     ["class"] = 128,
@@ -18930,6 +21425,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1309 },
     },
+    ["xp"] = 1050,
   },
   [1942] = {
     ["class"] = 128,
@@ -18942,6 +21438,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1309 },
     },
+    ["xp"] = 2100,
   },
   [1943] = {
     ["class"] = 128,
@@ -18953,6 +21450,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4568 },
     },
+    ["xp"] = 210,
   },
   [1944] = {
     ["class"] = 128,
@@ -18969,6 +21467,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5885 },
     },
+    ["xp"] = 2100,
   },
   [1945] = {
     ["class"] = 128,
@@ -18984,6 +21483,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5885 },
     },
+    ["xp"] = 1600,
   },
   [1946] = {
     ["class"] = 128,
@@ -18996,6 +21496,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3484 },
     },
+    ["xp"] = 2100,
   },
   [1947] = {
     ["class"] = 128,
@@ -19007,6 +21508,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3048, 5144, 4568, 5497, 5885 },
     },
+    ["xp"] = 285,
   },
   [1948] = {
     ["class"] = 128,
@@ -19023,6 +21525,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6546 },
     },
+    ["xp"] = 3150,
   },
   [1949] = {
     ["class"] = 128,
@@ -19035,6 +21538,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6546 },
     },
+    ["xp"] = 1450,
   },
   [1950] = {
     ["class"] = 128,
@@ -19047,6 +21551,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6548 },
     },
+    ["xp"] = 1850,
   },
   [1951] = {
     ["class"] = 128,
@@ -19062,6 +21567,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6548 },
     },
+    ["xp"] = 3150,
   },
   [1952] = {
     ["class"] = 128,
@@ -19074,6 +21580,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6546 },
     },
+    ["xp"] = 3150,
   },
   [1953] = {
     ["class"] = 128,
@@ -19085,6 +21592,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5885, 4568, 5144, 5497, 3048 },
     },
+    ["xp"] = 315,
   },
   [1954] = {
     ["class"] = 128,
@@ -19100,6 +21608,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6546 },
     },
+    ["xp"] = 2350,
   },
   [1955] = {
     ["class"] = 128,
@@ -19115,6 +21624,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6546 },
     },
+    ["xp"] = 2350,
   },
   [1956] = {
     ["class"] = 128,
@@ -19130,6 +21640,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6546 },
     },
+    ["xp"] = 3900,
   },
   [1957] = {
     ["class"] = 128,
@@ -19145,6 +21656,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6546 },
     },
+    ["xp"] = 2350,
   },
   [1958] = {
     ["class"] = 128,
@@ -19157,6 +21669,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6546 },
     },
+    ["xp"] = 3150,
   },
   [1959] = {
     ["class"] = 128,
@@ -19168,6 +21681,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3049, 7311 },
     },
+    ["xp"] = 105,
   },
   [1960] = {
     ["class"] = 128,
@@ -19184,6 +21698,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4568 },
     },
+    ["xp"] = 1150,
   },
   [1961] = {
     ["class"] = 128,
@@ -19199,6 +21714,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4568 },
     },
+    ["xp"] = 800,
   },
   [1962] = {
     ["class"] = 128,
@@ -19211,6 +21727,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4576 },
     },
+    ["xp"] = 1050,
   },
   [1963] = {
     ["class"] = 8,
@@ -19226,6 +21743,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6446 },
     },
+    ["xp"] = 680,
   },
   [1978] = {
     ["class"] = 8,
@@ -19239,6 +21757,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6467 },
     },
+    ["xp"] = 910,
   },
   [1998] = {
     ["class"] = 8,
@@ -19254,6 +21773,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6467 },
     },
+    ["xp"] = 880,
   },
   [1999] = {
     ["class"] = 8,
@@ -19270,6 +21790,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6467 },
     },
+    ["xp"] = 1550,
   },
   [2038] = {
     ["end"] = {
@@ -19284,6 +21805,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6577 },
     },
+    ["xp"] = 1050,
+    ["rep"] = { 54, 100 },
   },
   [2039] = {
     ["end"] = {
@@ -19294,6 +21817,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6569 },
     },
+    ["xp"] = 270,
+    ["rep"] = { 54, 25 },
   },
   [2040] = {
     ["end"] = {
@@ -19308,6 +21833,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6579 },
     },
+    ["xp"] = 1550,
+    ["rep"] = { 72, 100, 54, 100 },
   },
   [2041] = {
     ["end"] = {
@@ -19318,6 +21845,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6569 },
     },
+    ["xp"] = 270,
+    ["rep"] = { 54, 25 },
   },
   [2078] = {
     ["end"] = {
@@ -19332,6 +21861,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6667 },
     },
+    ["xp"] = 1150,
+    ["rep"] = { 47, 100 },
   },
   [2098] = {
     ["end"] = {
@@ -19345,6 +21876,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6667 },
     },
+    ["xp"] = 1550,
+    ["rep"] = { 47, 100 },
   },
   [2118] = {
     ["end"] = {
@@ -19358,6 +21891,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3701 },
     },
+    ["xp"] = 980,
+    ["rep"] = { 69, 100 },
   },
   [2138] = {
     ["end"] = {
@@ -19372,6 +21907,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3701 },
     },
+    ["xp"] = 1150,
+    ["rep"] = { 69, 100 },
   },
   [2139] = {
     ["end"] = {
@@ -19386,6 +21923,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3701 },
     },
+    ["xp"] = 1350,
+    ["rep"] = { 69, 100 },
   },
   [2158] = {
     ["end"] = {
@@ -19396,6 +21935,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6774 },
     },
+    ["xp"] = 110,
+    ["rep"] = { 72, 25 },
   },
   [2159] = {
     ["end"] = {
@@ -19406,6 +21947,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6780 },
     },
+    ["xp"] = 110,
+    ["rep"] = { 69, 25 },
   },
   [2160] = {
     ["end"] = {
@@ -19416,6 +21959,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6782 },
     },
+    ["xp"] = 110,
+    ["rep"] = { 47, 25, 54, 25 },
   },
   [2161] = {
     ["end"] = {
@@ -19426,6 +21971,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6786 },
     },
+    ["xp"] = 110,
+    ["rep"] = { 76, 25, 530, 25 },
   },
   [2178] = {
     ["end"] = {
@@ -19440,6 +21987,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3702 },
     },
+    ["xp"] = 910,
+    ["rep"] = { 69, 100 },
   },
   [2198] = {
     ["end"] = {
@@ -19451,6 +22000,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 7666, 7666 },
     },
+    ["xp"] = 3300,
   },
   [2199] = {
     ["end"] = {
@@ -19466,6 +22016,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6826 },
     },
+    ["xp"] = 2450,
+    ["rep"] = { 54, 75 },
   },
   [2200] = {
     ["end"] = {
@@ -19478,6 +22030,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6826 },
     },
+    ["xp"] = 2550,
+    ["rep"] = { 54, 75 },
   },
   [2201] = {
     ["end"] = {
@@ -19494,6 +22048,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6912 },
     },
+    ["xp"] = 3600,
   },
   [2202] = {
     ["end"] = {
@@ -19509,6 +22064,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6868 },
     },
+    ["xp"] = 3450,
+    ["rep"] = { 530, 100 },
   },
   [2203] = {
     ["end"] = {
@@ -19525,6 +22082,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6868 },
     },
+    ["xp"] = 3750,
+    ["rep"] = { 530, 100 },
   },
   [2204] = {
     ["end"] = {
@@ -19541,6 +22100,7 @@ UnrealQuestData["quests"] = {
       ["O"] = { 112877 },
       ["U"] = { 6826 },
     },
+    ["xp"] = 930,
   },
   [2205] = {
     ["class"] = 8,
@@ -19553,6 +22113,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 917 },
     },
+    ["xp"] = 210,
   },
   [2206] = {
     ["class"] = 8,
@@ -19568,6 +22129,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 332 },
     },
+    ["xp"] = 840,
   },
   [2218] = {
     ["class"] = 8,
@@ -19580,6 +22142,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1234 },
     },
+    ["xp"] = 420,
   },
   [2238] = {
     ["class"] = 8,
@@ -19591,6 +22154,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5165 },
     },
+    ["xp"] = 840,
   },
   [2239] = {
     ["class"] = 8,
@@ -19604,6 +22168,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6886 },
     },
+    ["xp"] = 840,
   },
   [2240] = {
     ["end"] = {
@@ -19618,6 +22183,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6906 },
     },
+    ["xp"] = 3900,
+    ["rep"] = { 47, 150 },
   },
   [2241] = {
     ["class"] = 8,
@@ -19630,6 +22197,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3599 },
     },
+    ["xp"] = 420,
   },
   [2242] = {
     ["class"] = 8,
@@ -19645,6 +22213,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4163 },
     },
+    ["xp"] = 840,
   },
   [2258] = {
     ["end"] = {
@@ -19659,6 +22228,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6868 },
     },
+    ["xp"] = 3000,
+    ["rep"] = { 530, 100 },
   },
   [2259] = {
     ["class"] = 8,
@@ -19671,6 +22242,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3599 },
     },
+    ["xp"] = 115,
   },
   [2260] = {
     ["class"] = 8,
@@ -19684,6 +22256,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4214 },
     },
+    ["xp"] = 580,
   },
   [2278] = {
     ["end"] = {
@@ -19694,6 +22267,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 131474 },
     },
+    ["xp"] = 4200,
   },
   [2279] = {
     ["end"] = {
@@ -19706,6 +22280,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 131474 },
     },
+    ["xp"] = 5250,
+    ["rep"] = { 47, 150 },
   },
   [2280] = {
     ["end"] = {
@@ -19718,6 +22294,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 131474 },
     },
+    ["xp"] = 5250,
+    ["rep"] = { 81, 150 },
   },
   [2281] = {
     ["class"] = 8,
@@ -19730,6 +22308,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6946 },
     },
+    ["xp"] = 115,
   },
   [2282] = {
     ["class"] = 8,
@@ -19745,6 +22324,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6966 },
     },
+    ["xp"] = 1550,
   },
   [2283] = {
     ["end"] = {
@@ -19758,6 +22338,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6986 },
     },
+    ["xp"] = 2450,
+    ["rep"] = { 76, 75 },
   },
   [2284] = {
     ["end"] = {
@@ -19769,6 +22351,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6986 },
     },
+    ["xp"] = 2450,
+    ["rep"] = { 76, 75 },
   },
   [2298] = {
     ["class"] = 8,
@@ -19782,6 +22366,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5165 },
     },
+    ["xp"] = 115,
   },
   [2299] = {
     ["class"] = 8,
@@ -19794,6 +22379,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1234 },
     },
+    ["xp"] = 115,
   },
   [2300] = {
     ["class"] = 8,
@@ -19806,6 +22392,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 917 },
     },
+    ["xp"] = 115,
   },
   [2318] = {
     ["end"] = {
@@ -19817,6 +22404,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6912 },
     },
+    ["xp"] = 3450,
+    ["rep"] = { 530, 100 },
   },
   [2338] = {
     ["end"] = {
@@ -19828,6 +22417,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6868 },
     },
+    ["xp"] = 345,
+    ["rep"] = { 530, 10 },
   },
   [2339] = {
     ["end"] = {
@@ -19842,6 +22433,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6868 },
     },
+    ["xp"] = 3750,
+    ["rep"] = { 530, 100 },
   },
   [2340] = {
     ["end"] = {
@@ -19853,6 +22446,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6868 },
     },
+    ["xp"] = 1850,
+    ["rep"] = { 76, 50 },
   },
   [2341] = {
     ["end"] = {
@@ -19864,6 +22459,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6986 },
     },
+    ["xp"] = 5600,
+    ["rep"] = { 530, 100 },
   },
   [2342] = {
     ["end"] = {
@@ -19877,6 +22474,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5651 },
     },
+    ["xp"] = 3600,
+    ["rep"] = { 68, 100 },
   },
   [2358] = {
     ["class"] = 8,
@@ -19893,6 +22492,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7009 },
     },
+    ["xp"] = 1800,
   },
   [2359] = {
     ["class"] = 8,
@@ -19908,6 +22508,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7024 },
     },
+    ["xp"] = 1950,
   },
   [2360] = {
     ["class"] = 8,
@@ -19919,6 +22520,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 332 },
     },
+    ["xp"] = 390,
   },
   [2361] = {
     ["end"] = {
@@ -19930,6 +22532,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6826 },
     },
+    ["xp"] = 5600,
+    ["rep"] = { 54, 200 },
   },
   [2378] = {
     ["class"] = 8,
@@ -19942,6 +22546,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6467 },
     },
+    ["xp"] = 115,
   },
   [2379] = {
     ["class"] = 8,
@@ -19966,6 +22571,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3170 },
     },
+    ["xp"] = 115,
   },
   [2381] = {
     ["class"] = 8,
@@ -19982,6 +22588,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7161 },
     },
+    ["xp"] = 1350,
   },
   [2382] = {
     ["class"] = 8,
@@ -19994,6 +22601,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3402 },
     },
+    ["xp"] = 115,
   },
   [2383] = {
     ["class"] = 1,
@@ -20007,6 +22615,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3143 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 76, 50 },
   },
   [2398] = {
     ["end"] = {
@@ -20017,6 +22627,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1356 },
     },
+    ["xp"] = 315,
   },
   [2399] = {
     ["end"] = {
@@ -20028,6 +22639,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 7510 },
     },
+    ["xp"] = 85,
+    ["rep"] = { 69, 10 },
   },
   [2418] = {
     ["end"] = {
@@ -20041,6 +22654,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2817 },
     },
+    ["xp"] = 3500,
+    ["rep"] = { 21, 150, 87, -750 },
   },
   [2438] = {
     ["end"] = {
@@ -20054,6 +22669,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3567 },
     },
+    ["xp"] = 405,
+    ["rep"] = { 69, 75 },
   },
   [2439] = {
     ["end"] = {
@@ -20065,6 +22682,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5387 },
     },
+    ["xp"] = 420,
   },
   [2440] = {
     ["end"] = {
@@ -20076,6 +22694,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3978 },
     },
+    ["xp"] = 420,
+    ["rep"] = { 81, 10 },
   },
   [2458] = {
     ["class"] = 8,
@@ -20091,6 +22711,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3401 },
     },
+    ["xp"] = 1150,
   },
   [2459] = {
     ["end"] = {
@@ -20106,6 +22727,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3567 },
     },
+    ["xp"] = 880,
+    ["rep"] = { 69, 150 },
   },
   [2460] = {
     ["class"] = 8,
@@ -20117,6 +22740,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3401 },
     },
+    ["xp"] = 155,
   },
   [2478] = {
     ["class"] = 8,
@@ -20133,6 +22757,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7233 },
     },
+    ["xp"] = 1950,
   },
   [2479] = {
     ["class"] = 8,
@@ -20145,6 +22770,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3401 },
     },
+    ["xp"] = 1050,
   },
   [2480] = {
     ["class"] = 8,
@@ -20157,6 +22783,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2391 },
     },
+    ["xp"] = 155,
   },
   [2498] = {
     ["end"] = {
@@ -20168,6 +22795,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3517 },
     },
+    ["xp"] = 80,
+    ["rep"] = { 69, 10 },
   },
   [2499] = {
     ["end"] = {
@@ -20182,6 +22811,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2080 },
     },
+    ["xp"] = 980,
+    ["rep"] = { 69, 150 },
   },
   [2500] = {
     ["end"] = {
@@ -20195,6 +22826,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1470 },
     },
+    ["xp"] = 3000,
+    ["rep"] = { 47, 100 },
   },
   [2501] = {
     ["end"] = {
@@ -20210,6 +22843,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1470 },
     },
+    ["xp"] = 3750,
+    ["rep"] = { 47, 100 },
   },
   [2518] = {
     ["end"] = {
@@ -20224,6 +22859,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7313 },
     },
+    ["xp"] = 1150,
+    ["rep"] = { 69, 150 },
   },
   [2519] = {
     ["end"] = {
@@ -20234,6 +22871,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7316 },
     },
+    ["xp"] = 85,
+    ["rep"] = { 69, 10 },
   },
   [2520] = {
     ["end"] = {
@@ -20248,6 +22887,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7313 },
     },
+    ["xp"] = 910,
+    ["rep"] = { 69, 100 },
   },
   [2521] = {
     ["end"] = {
@@ -20261,6 +22902,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7363 },
     },
+    ["xp"] = 8450,
   },
   [2522] = {
     ["end"] = {
@@ -20275,6 +22917,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7363 },
     },
+    ["xp"] = 5650,
   },
   [2523] = {
     ["end"] = {
@@ -20288,6 +22931,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 171942 },
     },
+    ["xp"] = 560,
   },
   [2541] = {
     ["end"] = {
@@ -20301,6 +22945,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7317 },
     },
+    ["xp"] = 700,
+    ["rep"] = { 69, 100 },
   },
   [2561] = {
     ["end"] = {
@@ -20315,6 +22961,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7317 },
     },
+    ["xp"] = 1050,
+    ["rep"] = { 69, 150 },
   },
   [2581] = {
     ["end"] = {
@@ -20328,6 +22976,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7505 },
     },
+    ["xp"] = 4700,
   },
   [2582] = {
     ["end"] = {
@@ -20355,6 +23004,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7505 },
     },
+    ["xp"] = 4700,
   },
   [2584] = {
     ["end"] = {
@@ -20382,6 +23032,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7505 },
     },
+    ["xp"] = 4700,
   },
   [2586] = {
     ["end"] = {
@@ -20409,6 +23060,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7506 },
     },
+    ["xp"] = 4700,
   },
   [2602] = {
     ["end"] = {
@@ -20436,6 +23088,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7506 },
     },
+    ["xp"] = 4700,
   },
   [2604] = {
     ["end"] = {
@@ -20463,6 +23116,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7564 },
     },
+    ["xp"] = 4550,
+    ["rep"] = { 369, 100 },
   },
   [2606] = {
     ["end"] = {
@@ -20474,6 +23129,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7564 },
     },
+    ["xp"] = 455,
   },
   [2607] = {
     ["class"] = 8,
@@ -20498,6 +23154,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7207 },
     },
+    ["xp"] = 155,
   },
   [2609] = {
     ["class"] = 8,
@@ -20513,6 +23170,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7207 },
     },
+    ["xp"] = 1150,
   },
   [2621] = {
     ["end"] = {
@@ -20525,6 +23183,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7572 },
     },
+    ["xp"] = 1200,
   },
   [2622] = {
     ["end"] = {
@@ -20536,6 +23195,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7623 },
     },
+    ["xp"] = 1200,
   },
   [2623] = {
     ["end"] = {
@@ -20550,6 +23210,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7643 },
     },
+    ["xp"] = 5650,
   },
   [2641] = {
     ["end"] = {
@@ -20564,6 +23225,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7583 },
     },
+    ["xp"] = 4550,
+    ["rep"] = { 369, 100 },
   },
   [2661] = {
     ["end"] = {
@@ -20575,6 +23238,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7583 },
     },
+    ["xp"] = 455,
+    ["rep"] = { 369, 25 },
   },
   [2662] = {
     ["end"] = {
@@ -20600,6 +23265,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7572 },
     },
+    ["xp"] = 7550,
   },
   [2701] = {
     ["end"] = {
@@ -20611,6 +23277,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7750 },
     },
+    ["xp"] = 6000,
   },
   [2702] = {
     ["end"] = {
@@ -20622,6 +23289,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7572 },
     },
+    ["xp"] = 3000,
   },
   [2721] = {
     ["end"] = {
@@ -20633,6 +23301,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7572 },
     },
+    ["xp"] = 6200,
   },
   [2741] = {
     ["end"] = {
@@ -20646,6 +23315,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 142071 },
     },
+    ["xp"] = 4200,
+    ["rep"] = { 69, 100, 81, 100 },
   },
   [2742] = {
     ["end"] = {
@@ -20656,6 +23327,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7780 },
     },
+    ["xp"] = 4200,
+    ["rep"] = { 530, 100 },
   },
   [2743] = {
     ["end"] = {
@@ -20667,6 +23340,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7729 },
     },
+    ["xp"] = 3300,
   },
   [2744] = {
     ["end"] = {
@@ -20678,6 +23352,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7572 },
     },
+    ["xp"] = 6600,
   },
   [2745] = {
     ["end"] = {
@@ -20689,6 +23364,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 482 },
     },
+    ["xp"] = 250,
   },
   [2746] = {
     ["end"] = {
@@ -20703,6 +23379,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7766 },
     },
+    ["xp"] = 630,
+    ["rep"] = { 72, 25 },
   },
   [2747] = {
     ["end"] = {
@@ -20717,6 +23395,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7763 },
     },
+    ["rep"] = { 81, 10, 69, 10 },
   },
   [2748] = {
     ["end"] = {
@@ -20731,6 +23410,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7763 },
     },
+    ["rep"] = { 530, 10, 69, 10 },
   },
   [2749] = {
     ["end"] = {
@@ -20745,6 +23425,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7763 },
     },
+    ["rep"] = { 81, 10, 69, 10 },
   },
   [2750] = {
     ["end"] = {
@@ -20759,6 +23440,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7763 },
     },
+    ["rep"] = { 81, 10, 69, 10 },
   },
   [2751] = {
     ["end"] = {
@@ -20773,6 +23455,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7790 },
     },
+    ["xp"] = 2550,
   },
   [2752] = {
     ["end"] = {
@@ -20788,6 +23471,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7790 },
     },
+    ["xp"] = 2550,
   },
   [2753] = {
     ["end"] = {
@@ -20803,6 +23487,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7790 },
     },
+    ["xp"] = 2800,
   },
   [2754] = {
     ["end"] = {
@@ -20818,6 +23503,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7790 },
     },
+    ["xp"] = 2800,
   },
   [2755] = {
     ["end"] = {
@@ -20830,6 +23516,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7790 },
     },
+    ["xp"] = 280,
   },
   [2756] = {
     ["end"] = {
@@ -20844,6 +23531,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7792 },
     },
+    ["xp"] = 3150,
   },
   [2757] = {
     ["end"] = {
@@ -20856,6 +23544,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7793 },
     },
+    ["xp"] = 1550,
   },
   [2758] = {
     ["end"] = {
@@ -20870,6 +23559,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7798 },
     },
+    ["xp"] = 3150,
   },
   [2759] = {
     ["end"] = {
@@ -20882,6 +23572,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7798 },
     },
+    ["xp"] = 1550,
   },
   [2760] = {
     ["end"] = {
@@ -20894,6 +23585,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7794 },
     },
+    ["xp"] = 3150,
   },
   [2761] = {
     ["end"] = {
@@ -20909,6 +23601,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7802 },
     },
+    ["xp"] = 3900,
   },
   [2762] = {
     ["end"] = {
@@ -20924,6 +23617,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7802 },
     },
+    ["xp"] = 3900,
   },
   [2763] = {
     ["end"] = {
@@ -20939,6 +23633,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7802 },
     },
+    ["xp"] = 3900,
   },
   [2764] = {
     ["end"] = {
@@ -20951,6 +23646,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7802 },
     },
+    ["xp"] = 2900,
   },
   [2765] = {
     ["end"] = {
@@ -20963,6 +23659,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7802 },
     },
+    ["xp"] = 3900,
   },
   [2766] = {
     ["end"] = {
@@ -20973,6 +23670,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 8705, 8705, 8705 },
     },
+    ["xp"] = 3900,
+    ["rep"] = { 21, 100, 87, -500 },
   },
   [2767] = {
     ["end"] = {
@@ -20984,6 +23683,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7807 },
     },
+    ["xp"] = 4850,
+    ["rep"] = { 21, 150, 87, -750 },
   },
   [2768] = {
     ["end"] = {
@@ -20997,6 +23698,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7407 },
     },
+    ["xp"] = 6300,
+    ["rep"] = { 369, 200 },
   },
   [2769] = {
     ["end"] = {
@@ -21007,6 +23710,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6169 },
     },
+    ["xp"] = 405,
   },
   [2770] = {
     ["end"] = {
@@ -21021,6 +23725,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4453 },
     },
+    ["xp"] = 7100,
   },
   [2771] = {
     ["end"] = {
@@ -21036,6 +23741,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7804 },
     },
+    ["xp"] = 3900,
   },
   [2772] = {
     ["end"] = {
@@ -21051,6 +23757,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7804 },
     },
+    ["xp"] = 3900,
   },
   [2773] = {
     ["end"] = {
@@ -21066,6 +23773,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7804 },
     },
+    ["xp"] = 3900,
   },
   [2781] = {
     ["end"] = {
@@ -21079,6 +23787,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 150075, 142122 },
     },
+    ["xp"] = 5050,
+    ["rep"] = { 369, 150 },
   },
   [2782] = {
     ["end"] = {
@@ -21090,6 +23800,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 142127 },
     },
+    ["xp"] = 2100,
+    ["rep"] = { 68, 50 },
   },
   [2783] = {
     ["end"] = {
@@ -21101,6 +23813,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7826 },
     },
+    ["xp"] = 4500,
   },
   [2784] = {
     ["end"] = {
@@ -21112,6 +23825,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7572 },
     },
+    ["xp"] = 470,
   },
   [2801] = {
     ["end"] = {
@@ -21123,6 +23837,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7572 },
     },
+    ["xp"] = 600,
   },
   [2821] = {
     ["end"] = {
@@ -21136,6 +23851,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7852 },
     },
+    ["xp"] = 4050,
+    ["rep"] = { 69, 100 },
   },
   [2822] = {
     ["end"] = {
@@ -21149,6 +23866,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7854 },
     },
+    ["xp"] = 4050,
+    ["rep"] = { 81, 100 },
   },
   [2841] = {
     ["end"] = {
@@ -21162,6 +23881,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3412 },
     },
+    ["xp"] = 2750,
+    ["rep"] = { 76, 100 },
   },
   [2842] = {
     ["end"] = {
@@ -21173,6 +23894,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3413 },
     },
+    ["xp"] = 275,
   },
   [2843] = {
     ["end"] = {
@@ -21194,6 +23916,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7765 },
     },
+    ["xp"] = 3400,
   },
   [2845] = {
     ["end"] = {
@@ -21209,6 +23932,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7774 },
     },
+    ["xp"] = 4550,
   },
   [2846] = {
     ["end"] = {
@@ -21223,6 +23947,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6546 },
     },
+    ["xp"] = 6050,
   },
   [2847] = {
     ["end"] = {
@@ -21237,6 +23962,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7852 },
     },
+    ["xp"] = 1950,
   },
   [2848] = {
     ["end"] = {
@@ -21252,6 +23978,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7852 },
     },
+    ["xp"] = 2900,
   },
   [2849] = {
     ["end"] = {
@@ -21267,6 +23994,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7852 },
     },
+    ["xp"] = 2900,
   },
   [2850] = {
     ["end"] = {
@@ -21282,6 +24010,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7852 },
     },
+    ["xp"] = 2900,
   },
   [2851] = {
     ["end"] = {
@@ -21296,6 +24025,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7852 },
     },
+    ["xp"] = 2900,
   },
   [2852] = {
     ["end"] = {
@@ -21310,6 +24040,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7852 },
     },
+    ["xp"] = 2900,
   },
   [2853] = {
     ["end"] = {
@@ -21322,6 +24053,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7852 },
     },
+    ["xp"] = 3900,
   },
   [2854] = {
     ["end"] = {
@@ -21336,6 +24068,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7854 },
     },
+    ["xp"] = 1950,
   },
   [2855] = {
     ["end"] = {
@@ -21351,6 +24084,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7854 },
     },
+    ["xp"] = 2900,
   },
   [2856] = {
     ["end"] = {
@@ -21366,6 +24100,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7854 },
     },
+    ["xp"] = 2900,
   },
   [2857] = {
     ["end"] = {
@@ -21381,6 +24116,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7854 },
     },
+    ["xp"] = 2900,
   },
   [2858] = {
     ["end"] = {
@@ -21395,6 +24131,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7854 },
     },
+    ["xp"] = 2900,
   },
   [2859] = {
     ["end"] = {
@@ -21409,6 +24146,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7854 },
     },
+    ["xp"] = 2900,
   },
   [2860] = {
     ["end"] = {
@@ -21421,6 +24159,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7854 },
     },
+    ["xp"] = 3900,
   },
   [2861] = {
     ["end"] = {
@@ -21431,6 +24170,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3048, 4568, 5144, 5497, 5885 },
     },
+    ["xp"] = 405,
   },
   [2862] = {
     ["end"] = {
@@ -21444,6 +24184,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7875 },
     },
+    ["xp"] = 2550,
+    ["rep"] = { 81, 75 },
   },
   [2863] = {
     ["end"] = {
@@ -21458,6 +24200,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7875 },
     },
+    ["xp"] = 2700,
+    ["rep"] = { 81, 75 },
   },
   [2864] = {
     ["end"] = {
@@ -21468,6 +24212,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 773 },
     },
+    ["xp"] = 390,
+    ["rep"] = { 369, 25 },
   },
   [2865] = {
     ["end"] = {
@@ -21482,6 +24228,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7876 },
     },
+    ["xp"] = 3900,
+    ["rep"] = { 369, 100 },
   },
   [2866] = {
     ["end"] = {
@@ -21492,6 +24240,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3936 },
     },
+    ["xp"] = 2700,
+    ["rep"] = { 69, 75 },
   },
   [2867] = {
     ["end"] = {
@@ -21503,6 +24253,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 142179 },
     },
+    ["xp"] = 1800,
+    ["rep"] = { 69, 50 },
   },
   [2868] = {
     ["lvl"] = 50,
@@ -21522,6 +24274,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7877 },
     },
+    ["xp"] = 2700,
+    ["rep"] = { 69, 75 },
   },
   [2870] = {
     ["end"] = {
@@ -21536,6 +24290,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7877 },
     },
+    ["xp"] = 2900,
+    ["rep"] = { 69, 75 },
   },
   [2871] = {
     ["end"] = {
@@ -21547,6 +24303,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7877 },
     },
+    ["xp"] = 3900,
+    ["rep"] = { 69, 100 },
   },
   [2872] = {
     ["end"] = {
@@ -21557,6 +24315,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2501 },
     },
+    ["xp"] = 390,
   },
   [2873] = {
     ["end"] = {
@@ -21571,6 +24330,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7881 },
     },
+    ["xp"] = 3900,
   },
   [2874] = {
     ["end"] = {
@@ -21582,6 +24342,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7881 },
     },
+    ["xp"] = 3900,
   },
   [2875] = {
     ["end"] = {
@@ -21595,6 +24356,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 150075, 142122 },
     },
+    ["xp"] = 3900,
+    ["rep"] = { 369, 100 },
   },
   [2876] = {
     ["end"] = {
@@ -21605,6 +24368,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 9250 },
     },
+    ["xp"] = 4850,
+    ["rep"] = { 369, 150 },
   },
   [2877] = {
     ["end"] = {
@@ -21618,6 +24383,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7884 },
     },
+    ["xp"] = 4400,
+    ["rep"] = { 471, 100 },
   },
   [2878] = {
     ["end"] = {
@@ -21631,6 +24398,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 174594 },
     },
+    ["xp"] = 560,
   },
   [2879] = {
     ["end"] = {
@@ -21646,6 +24414,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7764 },
     },
+    ["xp"] = 4700,
+    ["rep"] = { 69, 100 },
   },
   [2880] = {
     ["end"] = {
@@ -21659,6 +24429,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7884 },
     },
+    ["xp"] = 3900,
+    ["rep"] = { 471, 100 },
   },
   [2881] = {
     ["end"] = {
@@ -21673,6 +24445,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7884 },
     },
+    ["xp"] = 390,
+    ["rep"] = { 471, 25 },
   },
   [2882] = {
     ["end"] = {
@@ -21697,6 +24471,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7875 },
     },
+    ["xp"] = 1800,
+    ["rep"] = { 81, 50 },
   },
   [2903] = {
     ["end"] = {
@@ -21708,6 +24484,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 142195 },
     },
+    ["xp"] = 3600,
+    ["rep"] = { 81, 100 },
   },
   [2904] = {
     ["end"] = {
@@ -21718,6 +24496,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7850 },
     },
+    ["xp"] = 2450,
   },
   [2922] = {
     ["end"] = {
@@ -21732,6 +24511,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7944 },
     },
+    ["xp"] = 2650,
+    ["rep"] = { 54, 150 },
   },
   [2923] = {
     ["end"] = {
@@ -21742,6 +24523,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7917 },
     },
+    ["xp"] = 210,
+    ["rep"] = { 54, 25 },
   },
   [2924] = {
     ["end"] = {
@@ -21756,6 +24539,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6169 },
     },
+    ["xp"] = 3050,
+    ["rep"] = { 54, 150 },
   },
   [2925] = {
     ["end"] = {
@@ -21766,6 +24551,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6142 },
     },
+    ["xp"] = 245,
+    ["rep"] = { 54, 25 },
   },
   [2926] = {
     ["end"] = {
@@ -21781,6 +24568,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1268 },
     },
+    ["xp"] = 2200,
+    ["rep"] = { 54, 100 },
   },
   [2927] = {
     ["end"] = {
@@ -21791,6 +24580,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6569 },
     },
+    ["xp"] = 220,
+    ["rep"] = { 54, 10 },
   },
   [2928] = {
     ["end"] = {
@@ -21804,6 +24595,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6579 },
     },
+    ["xp"] = 2450,
+    ["rep"] = { 72, 100, 54, 100 },
   },
   [2929] = {
     ["end"] = {
@@ -21817,6 +24610,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7937 },
     },
+    ["xp"] = 2750,
+    ["rep"] = { 54, 100 },
   },
   [2930] = {
     ["end"] = {
@@ -21831,6 +24626,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7950 },
     },
+    ["xp"] = 3650,
+    ["rep"] = { 54, 200 },
   },
   [2931] = {
     ["end"] = {
@@ -21841,6 +24638,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4077 },
     },
+    ["xp"] = 230,
+    ["rep"] = { 54, 10 },
   },
   [2932] = {
     ["end"] = {
@@ -21855,6 +24654,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2497 },
     },
+    ["xp"] = 3450,
+    ["rep"] = { 530, 100 },
   },
   [2933] = {
     ["end"] = {
@@ -21878,6 +24679,8 @@ UnrealQuestData["quests"] = {
         [12] = 142714,
       },
     },
+    ["xp"] = 3600,
+    ["rep"] = { 68, 100 },
   },
   [2934] = {
     ["end"] = {
@@ -21892,6 +24695,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2216 },
     },
+    ["xp"] = 3900,
+    ["rep"] = { 68, 100 },
   },
   [2935] = {
     ["end"] = {
@@ -21903,6 +24708,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2216 },
     },
+    ["xp"] = 2900,
+    ["rep"] = { 530, 75 },
   },
   [2936] = {
     ["end"] = {
@@ -21915,6 +24722,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3188 },
     },
+    ["xp"] = 4850,
+    ["rep"] = { 530, 150 },
   },
   [2937] = {
     ["end"] = {
@@ -21930,6 +24739,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3188 },
     },
+    ["xp"] = 8450,
+    ["rep"] = { 68, 200 },
   },
   [2938] = {
     ["end"] = {
@@ -21941,6 +24752,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2216 },
     },
+    ["xp"] = 8450,
+    ["rep"] = { 68, 200 },
   },
   [2939] = {
     ["end"] = {
@@ -21951,6 +24764,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7764 },
     },
+    ["xp"] = 420,
+    ["rep"] = { 69, 25 },
   },
   [2940] = {
     ["end"] = {
@@ -21962,6 +24777,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 142958 },
     },
+    ["xp"] = 420,
+    ["rep"] = { 69, 25 },
   },
   [2941] = {
     ["end"] = {
@@ -21973,6 +24790,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7907 },
     },
+    ["xp"] = 1100,
   },
   [2942] = {
     ["end"] = {
@@ -21987,6 +24805,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 144063 },
     },
+    ["xp"] = 4700,
+    ["rep"] = { 69, 100 },
   },
   [2943] = {
     ["end"] = {
@@ -21998,6 +24818,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7907 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 69, 75 },
   },
   [2944] = {
     ["end"] = {
@@ -22013,6 +24835,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7763 },
     },
+    ["xp"] = 4400,
+    ["rep"] = { 69, 100 },
   },
   [2945] = {
     ["end"] = {
@@ -22023,6 +24847,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 9326 },
     },
+    ["xp"] = 2700,
   },
   [2946] = {
     ["end"] = {
@@ -22034,6 +24859,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2916 },
     },
+    ["xp"] = 4700,
+    ["rep"] = { 47, 100 },
   },
   [2947] = {
     ["end"] = {
@@ -22046,6 +24873,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 142487 },
     },
+    ["xp"] = 2700,
   },
   [2948] = {
     ["end"] = {
@@ -22060,6 +24888,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6826 },
     },
+    ["xp"] = 2750,
+    ["rep"] = { 47, 100, 54, 100 },
   },
   [2949] = {
     ["end"] = {
@@ -22072,6 +24902,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 142487 },
     },
+    ["xp"] = 2700,
   },
   [2950] = {
     ["end"] = {
@@ -22086,6 +24917,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3412 },
     },
+    ["xp"] = 2750,
+    ["rep"] = { 76, 100 },
   },
   [2951] = {
     ["end"] = {
@@ -22110,6 +24943,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 142487 },
     },
+    ["xp"] = 2450,
   },
   [2953] = {
     ["end"] = {
@@ -22134,6 +24968,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7918 },
     },
+    ["xp"] = 4700,
   },
   [2962] = {
     ["end"] = {
@@ -22149,6 +24984,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1268 },
     },
+    ["xp"] = 2450,
   },
   [2963] = {
     ["end"] = {
@@ -22160,6 +24996,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5387 },
     },
+    ["xp"] = 470,
+    ["rep"] = { 47, 10 },
   },
   [2964] = {
     ["end"] = {
@@ -22171,6 +25009,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2916 },
     },
+    ["xp"] = 4700,
+    ["rep"] = { 47, 100 },
   },
   [2965] = {
     ["end"] = {
@@ -22182,6 +25022,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3978 },
     },
+    ["xp"] = 470,
+    ["rep"] = { 81, 10 },
   },
   [2966] = {
     ["end"] = {
@@ -22193,6 +25035,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5770 },
     },
+    ["xp"] = 4700,
+    ["rep"] = { 81, 100 },
   },
   [2967] = {
     ["end"] = {
@@ -22205,6 +25049,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 142343 },
     },
+    ["xp"] = 470,
+    ["rep"] = { 81, 10 },
   },
   [2968] = {
     ["end"] = {
@@ -22216,6 +25062,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5770 },
     },
+    ["xp"] = 4700,
+    ["rep"] = { 81, 100 },
   },
   [2969] = {
     ["end"] = {
@@ -22226,6 +25074,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7956 },
     },
+    ["xp"] = 3150,
+    ["rep"] = { 69, 75 },
   },
   [2970] = {
     ["end"] = {
@@ -22240,10 +25090,13 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7957 },
     },
+    ["xp"] = 3150,
+    ["rep"] = { 69, 75 },
   },
   [2971] = {
     ["lvl"] = 32,
     ["min"] = 23,
+    ["xp"] = 3200,
   },
   [2972] = {
     ["end"] = {
@@ -22255,6 +25108,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7957 },
     },
+    ["xp"] = 5250,
+    ["rep"] = { 69, 150 },
   },
   [2973] = {
     ["end"] = {
@@ -22268,6 +25123,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4544 },
     },
+    ["xp"] = 3900,
+    ["rep"] = { 76, 100 },
   },
   [2974] = {
     ["end"] = {
@@ -22282,6 +25139,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4544 },
     },
+    ["xp"] = 3900,
+    ["rep"] = { 76, 100 },
   },
   [2975] = {
     ["end"] = {
@@ -22296,6 +25155,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7777 },
     },
+    ["xp"] = 2700,
+    ["rep"] = { 76, 75 },
   },
   [2976] = {
     ["end"] = {
@@ -22307,6 +25168,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4544 },
     },
+    ["xp"] = 4850,
+    ["rep"] = { 76, 150 },
   },
   [2977] = {
     ["end"] = {
@@ -22319,6 +25182,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 142343 },
     },
+    ["xp"] = 470,
+    ["rep"] = { 47, 10 },
   },
   [2978] = {
     ["end"] = {
@@ -22329,6 +25194,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 9370 },
     },
+    ["xp"] = 1800,
+    ["rep"] = { 76, 50 },
   },
   [2979] = {
     ["end"] = {
@@ -22343,6 +25210,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7777 },
     },
+    ["xp"] = 4050,
+    ["rep"] = { 76, 100 },
   },
   [2980] = {
     ["end"] = {
@@ -22357,6 +25226,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7777 },
     },
+    ["xp"] = 3750,
+    ["rep"] = { 76, 100 },
   },
   [2981] = {
     ["end"] = {
@@ -22367,6 +25238,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4485 },
     },
+    ["xp"] = 890,
+    ["rep"] = { 76, 25 },
   },
   [2982] = {
     ["end"] = {
@@ -22380,6 +25253,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7900 },
     },
+    ["xp"] = 3750,
+    ["rep"] = { 69, 100 },
   },
   [2983] = {
     ["class"] = 64,
@@ -22391,6 +25266,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3173 },
     },
+    ["xp"] = 420,
   },
   [2984] = {
     ["class"] = 64,
@@ -22402,6 +25278,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3066 },
     },
+    ["xp"] = 420,
   },
   [2985] = {
     ["class"] = 64,
@@ -22410,11 +25287,13 @@ UnrealQuestData["quests"] = {
     },
     ["lvl"] = 20,
     ["min"] = 20,
+    ["xp"] = 780,
   },
   [2986] = {
     ["class"] = 64,
     ["lvl"] = 20,
     ["min"] = 20,
+    ["xp"] = 780,
   },
   [2987] = {
     ["end"] = {
@@ -22429,6 +25308,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8021 },
     },
+    ["xp"] = 3600,
+    ["rep"] = { 76, 100 },
   },
   [2988] = {
     ["end"] = {
@@ -22442,6 +25323,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5636 },
     },
+    ["xp"] = 3900,
+    ["rep"] = { 471, 100 },
   },
   [2989] = {
     ["end"] = {
@@ -22456,6 +25339,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5636 },
     },
+    ["xp"] = 4400,
+    ["rep"] = { 471, 100 },
   },
   [2990] = {
     ["end"] = {
@@ -22467,6 +25352,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5636 },
     },
+    ["xp"] = 2100,
+    ["rep"] = { 471, 50, 47, 50 },
   },
   [2991] = {
     ["end"] = {
@@ -22481,6 +25368,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8022 },
     },
+    ["xp"] = 5250,
+    ["rep"] = { 471, 150, 47, 150 },
   },
   [2992] = {
     ["end"] = {
@@ -22492,6 +25381,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8022 },
     },
+    ["xp"] = 1050,
+    ["rep"] = { 471, 25, 47, 25 },
   },
   [2993] = {
     ["end"] = {
@@ -22503,6 +25394,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8022 },
     },
+    ["xp"] = 2100,
+    ["rep"] = { 471, 50 },
   },
   [2994] = {
     ["end"] = {
@@ -22520,6 +25413,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5636 },
     },
+    ["xp"] = 7350,
+    ["rep"] = { 471, 200 },
   },
   [2995] = {
     ["end"] = {
@@ -22533,6 +25428,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7825 },
     },
+    ["xp"] = 3150,
+    ["rep"] = { 68, 100 },
   },
   [2996] = {
     ["class"] = 256,
@@ -22545,6 +25442,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5875 },
     },
+    ["xp"] = 610,
   },
   [2997] = {
     ["class"] = 2,
@@ -22558,6 +25456,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1232 },
     },
+    ["xp"] = 90,
   },
   [2998] = {
     ["class"] = 2,
@@ -22571,6 +25470,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 927 },
     },
+    ["xp"] = 225,
   },
   [2999] = {
     ["class"] = 2,
@@ -22584,6 +25484,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5149 },
     },
+    ["xp"] = 90,
   },
   [3000] = {
     ["class"] = 2,
@@ -22597,6 +25498,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 928 },
     },
+    ["xp"] = 225,
   },
   [3001] = {
     ["class"] = 256,
@@ -22609,6 +25511,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5675 },
     },
+    ["xp"] = 610,
   },
   [3002] = {
     ["end"] = {
@@ -22620,6 +25523,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7777 },
     },
+    ["xp"] = 2100,
+    ["rep"] = { 530, 50 },
   },
   [3022] = {
     ["end"] = {
@@ -22631,6 +25536,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7763 },
     },
+    ["xp"] = 2100,
   },
   [3042] = {
     ["end"] = {
@@ -22644,6 +25550,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7804 },
     },
+    ["xp"] = 3900,
   },
   [3062] = {
     ["end"] = {
@@ -22658,6 +25565,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7776 },
     },
+    ["xp"] = 5900,
+    ["rep"] = { 81, 150 },
   },
   [3063] = {
     ["end"] = {
@@ -22671,6 +25580,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7776 },
     },
+    ["xp"] = 3550,
+    ["rep"] = { 81, 75 },
   },
   [3064] = {
     ["lvl"] = 45,
@@ -22688,6 +25599,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3143 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 530, 50 },
   },
   [3082] = {
     ["class"] = 4,
@@ -22701,6 +25614,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3143 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 530, 50 },
   },
   [3083] = {
     ["class"] = 8,
@@ -22714,6 +25629,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3143 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 530, 50 },
   },
   [3084] = {
     ["class"] = 64,
@@ -22727,6 +25644,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3143 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 530, 50 },
   },
   [3085] = {
     ["class"] = 16,
@@ -22740,6 +25659,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3143 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 530, 50 },
   },
   [3086] = {
     ["class"] = 128,
@@ -22753,6 +25674,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3143 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 530, 50 },
   },
   [3087] = {
     ["class"] = 4,
@@ -22766,6 +25689,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3143 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 76, 50 },
   },
   [3088] = {
     ["class"] = 8,
@@ -22779,6 +25704,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3143 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 76, 50 },
   },
   [3089] = {
     ["class"] = 64,
@@ -22792,6 +25719,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3143 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 76, 50 },
   },
   [3090] = {
     ["class"] = 256,
@@ -22805,6 +25734,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3143 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 76, 50 },
   },
   [3091] = {
     ["class"] = 1,
@@ -22818,6 +25749,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2980 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 81, 50 },
   },
   [3092] = {
     ["class"] = 4,
@@ -22831,6 +25764,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2980 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 81, 50 },
   },
   [3093] = {
     ["class"] = 64,
@@ -22844,6 +25779,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2980 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 81, 50 },
   },
   [3094] = {
     ["class"] = 1024,
@@ -22857,6 +25794,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2980 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 81, 50 },
   },
   [3095] = {
     ["class"] = 1,
@@ -22870,6 +25809,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1569 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 68, 50 },
   },
   [3096] = {
     ["class"] = 8,
@@ -22883,6 +25824,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1569 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 68, 50 },
   },
   [3097] = {
     ["class"] = 16,
@@ -22896,6 +25839,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1569 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 68, 50 },
   },
   [3098] = {
     ["class"] = 128,
@@ -22909,6 +25854,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1569 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 68, 50 },
   },
   [3099] = {
     ["class"] = 256,
@@ -22922,6 +25869,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1569 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 68, 50 },
   },
   [3100] = {
     ["class"] = 1,
@@ -22935,6 +25884,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 197 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 72, 50 },
   },
   [3101] = {
     ["class"] = 2,
@@ -22948,6 +25899,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 197 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 72, 50 },
   },
   [3102] = {
     ["class"] = 8,
@@ -22961,6 +25914,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 197 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 72, 50 },
   },
   [3103] = {
     ["class"] = 16,
@@ -22974,6 +25929,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 197 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 72, 50 },
   },
   [3104] = {
     ["class"] = 128,
@@ -22987,6 +25944,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 197 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 72, 50 },
   },
   [3105] = {
     ["class"] = 256,
@@ -23000,6 +25959,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 197 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 72, 50 },
   },
   [3106] = {
     ["class"] = 1,
@@ -23013,6 +25974,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 658 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 47, 50 },
   },
   [3107] = {
     ["class"] = 2,
@@ -23026,6 +25989,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 658 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 47, 50 },
   },
   [3108] = {
     ["class"] = 4,
@@ -23039,6 +26004,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 658 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 47, 50 },
   },
   [3109] = {
     ["class"] = 8,
@@ -23052,6 +26019,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 658 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 47, 50 },
   },
   [3110] = {
     ["class"] = 16,
@@ -23065,6 +26034,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 658 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 47, 50 },
   },
   [3111] = {
     ["lvl"] = 1,
@@ -23087,6 +26058,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 658 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 54, 50 },
   },
   [3113] = {
     ["class"] = 8,
@@ -23100,6 +26073,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 658 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 54, 50 },
   },
   [3114] = {
     ["class"] = 128,
@@ -23113,6 +26088,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 658 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 54, 50 },
   },
   [3115] = {
     ["class"] = 256,
@@ -23126,6 +26103,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 658 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 54, 50 },
   },
   [3116] = {
     ["class"] = 1,
@@ -23139,6 +26118,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2079 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 69, 50 },
   },
   [3117] = {
     ["class"] = 4,
@@ -23152,6 +26133,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2079 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 69, 50 },
   },
   [3118] = {
     ["class"] = 8,
@@ -23165,6 +26148,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2079 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 69, 50 },
   },
   [3119] = {
     ["class"] = 16,
@@ -23178,6 +26163,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2079 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 69, 50 },
   },
   [3120] = {
     ["class"] = 1024,
@@ -23191,6 +26178,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2079 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 69, 50 },
   },
   [3121] = {
     ["end"] = {
@@ -23201,6 +26190,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8115 },
     },
+    ["xp"] = 1950,
+    ["rep"] = { 76, 50 },
   },
   [3122] = {
     ["end"] = {
@@ -23212,6 +26203,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3216 },
     },
+    ["xp"] = 970,
+    ["rep"] = { 530, 25 },
   },
   [3123] = {
     ["end"] = {
@@ -23227,6 +26220,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8115 },
     },
+    ["xp"] = 4200,
+    ["rep"] = { 530, 100 },
   },
   [3124] = {
     ["end"] = {
@@ -23242,6 +26237,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8115 },
     },
+    ["xp"] = 4200,
+    ["rep"] = { 530, 100 },
   },
   [3125] = {
     ["end"] = {
@@ -23257,6 +26254,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8115 },
     },
+    ["xp"] = 3900,
+    ["rep"] = { 530, 100 },
   },
   [3126] = {
     ["end"] = {
@@ -23272,6 +26271,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8115 },
     },
+    ["xp"] = 4700,
+    ["rep"] = { 530, 100 },
   },
   [3127] = {
     ["end"] = {
@@ -23287,6 +26288,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8115 },
     },
+    ["xp"] = 4700,
+    ["rep"] = { 530, 100 },
   },
   [3128] = {
     ["end"] = {
@@ -23301,6 +26304,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8115 },
     },
+    ["xp"] = 4700,
+    ["rep"] = { 530, 100 },
   },
   [3129] = {
     ["end"] = {
@@ -23312,6 +26317,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8115 },
     },
+    ["xp"] = 4700,
+    ["rep"] = { 530, 100 },
   },
   [3130] = {
     ["end"] = {
@@ -23323,6 +26330,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3936 },
     },
+    ["xp"] = 360,
+    ["rep"] = { 69, 25 },
   },
   [3141] = {
     ["end"] = {
@@ -23334,6 +26343,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7783 },
     },
+    ["xp"] = 600,
   },
   [3161] = {
     ["end"] = {
@@ -23347,6 +26357,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7771 },
     },
+    ["xp"] = 4400,
+    ["rep"] = { 369, 100 },
   },
   [3181] = {
     ["end"] = {
@@ -23358,6 +26370,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 10000 },
     },
+    ["xp"] = 5450,
+    ["rep"] = { 47, 150 },
   },
   [3182] = {
     ["end"] = {
@@ -23369,6 +26383,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3836 },
     },
+    ["xp"] = 4400,
+    ["rep"] = { 47, 100 },
   },
   [3201] = {
     ["end"] = {
@@ -23380,6 +26396,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8256 },
     },
+    ["xp"] = 4400,
+    ["rep"] = { 47, 100 },
   },
   [3221] = {
     ["end"] = {
@@ -23391,6 +26409,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1952 },
     },
+    ["xp"] = 90,
+    ["rep"] = { 68, 10 },
   },
   [3241] = {
     ["lvl"] = 11,
@@ -23406,6 +26426,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3338 },
     },
+    ["xp"] = 135,
+    ["rep"] = { 81, 10 },
   },
   [3281] = {
     ["end"] = {
@@ -23420,6 +26442,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3464 },
     },
+    ["xp"] = 1350,
+    ["rep"] = { 76, 100 },
   },
   [3301] = {
     ["end"] = {
@@ -23431,6 +26455,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3448 },
     },
+    ["xp"] = 1050,
+    ["rep"] = { 81, 100 },
   },
   [3321] = {
     ["end"] = {
@@ -23443,6 +26469,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7804 },
     },
+    ["xp"] = 7100,
   },
   [3341] = {
     ["end"] = {
@@ -23456,6 +26483,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2308 },
     },
+    ["xp"] = 4300,
+    ["rep"] = { 68, 150 },
   },
   [3361] = {
     ["end"] = {
@@ -23469,6 +26498,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8416 },
     },
+    ["xp"] = 250,
+    ["rep"] = { 47, 100, 54, 100 },
   },
   [3362] = {
     ["end"] = {
@@ -23482,6 +26513,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7876 },
     },
+    ["xp"] = 4700,
+    ["rep"] = { 369, 100 },
   },
   [3363] = {
     ["end"] = {
@@ -23495,6 +26528,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 174595 },
     },
+    ["xp"] = 560,
   },
   [3364] = {
     ["end"] = {
@@ -23505,6 +26539,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12738 },
     },
+    ["xp"] = 225,
+    ["rep"] = { 47, 50, 54, 50 },
   },
   [3365] = {
     ["end"] = {
@@ -23516,6 +26552,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 836 },
     },
+    ["xp"] = 450,
+    ["rep"] = { 47, 100, 54, 100 },
   },
   [3366] = {
     ["end"] = {
@@ -23523,6 +26561,7 @@ UnrealQuestData["quests"] = {
     },
     ["lvl"] = 25,
     ["min"] = 15,
+    ["xp"] = 2550,
   },
   [3367] = {
     ["end"] = {
@@ -23534,6 +26573,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8284 },
     },
+    ["xp"] = 4400,
+    ["rep"] = { 47, 100 },
   },
   [3368] = {
     ["end"] = {
@@ -23545,6 +26586,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 175704 },
     },
+    ["xp"] = 4400,
+    ["rep"] = { 47, 100 },
   },
   [3369] = {
     ["end"] = {
@@ -23557,6 +26600,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8418 },
     },
+    ["xp"] = 2000,
+    ["rep"] = { 81, 100 },
   },
   [3370] = {
     ["end"] = {
@@ -23569,6 +26614,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8418 },
     },
+    ["xp"] = 2000,
+    ["rep"] = { 69, 100 },
   },
   [3371] = {
     ["end"] = {
@@ -23580,6 +26627,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8256 },
     },
+    ["xp"] = 5650,
+    ["rep"] = { 47, 100 },
   },
   [3372] = {
     ["end"] = {
@@ -23595,6 +26644,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8417 },
     },
+    ["xp"] = 5100,
+    ["rep"] = { 47, 100 },
   },
   [3373] = {
     ["end"] = {
@@ -23605,6 +26656,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 10454, 10454 },
     },
+    ["xp"] = 2800,
   },
   [3374] = {
     ["end"] = {
@@ -23619,6 +26671,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 10589 },
     },
+    ["xp"] = 560,
   },
   [3375] = {
     ["end"] = {
@@ -23646,6 +26699,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3209 },
     },
+    ["xp"] = 670,
+    ["rep"] = { 81, 200 },
   },
   [3377] = {
     ["end"] = {
@@ -23656,6 +26711,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8436 },
     },
+    ["xp"] = 470,
   },
   [3378] = {
     ["end"] = {
@@ -23670,6 +26726,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8436 },
     },
+    ["xp"] = 5900,
+    ["rep"] = { 69, 150 },
   },
   [3379] = {
     ["end"] = {
@@ -23684,6 +26742,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8439 },
     },
+    ["xp"] = 4700,
   },
   [3380] = {
     ["end"] = {
@@ -23694,6 +26753,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8115 },
     },
+    ["xp"] = 3650,
   },
   [3381] = {
     ["end"] = {
@@ -23707,6 +26767,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8395 },
     },
+    ["xp"] = 2200,
   },
   [3382] = {
     ["end"] = {
@@ -23717,6 +26778,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8380 },
     },
+    ["xp"] = 600,
   },
   [3383] = {
     ["lvl"] = 55,
@@ -23724,6 +26786,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["U"] = { 8387, 8388, 8389, 8394 },
     },
+    ["xp"] = 5650,
   },
   [3384] = {
     ["lvl"] = 55,
@@ -23731,6 +26794,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 10478 },
     },
+    ["xp"] = 560,
   },
   [3385] = {
     ["end"] = {
@@ -23747,6 +26811,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8439 },
     },
+    ["xp"] = 4700,
   },
   [3401] = {
     ["lvl"] = 48,
@@ -23763,6 +26828,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8439 },
     },
+    ["xp"] = 4700,
   },
   [3403] = {
     ["lvl"] = 48,
@@ -23811,6 +26877,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8479 },
     },
+    ["xp"] = 440,
   },
   [3442] = {
     ["end"] = {
@@ -23825,6 +26892,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8479 },
     },
+    ["xp"] = 4400,
   },
   [3443] = {
     ["end"] = {
@@ -23839,6 +26907,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8479 },
     },
+    ["xp"] = 4400,
   },
   [3444] = {
     ["end"] = {
@@ -23853,6 +26922,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7771 },
     },
+    ["xp"] = 4900,
   },
   [3445] = {
     ["end"] = {
@@ -23863,6 +26933,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7900 },
     },
+    ["xp"] = 3650,
   },
   [3446] = {
     ["end"] = {
@@ -23874,6 +26945,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7771 },
     },
+    ["xp"] = 4900,
   },
   [3447] = {
     ["end"] = {
@@ -23885,6 +26957,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7771 },
     },
+    ["xp"] = 6100,
   },
   [3448] = {
     ["end"] = {
@@ -23895,6 +26968,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2916 },
     },
+    ["xp"] = 510,
   },
   [3449] = {
     ["end"] = {
@@ -23909,6 +26983,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8507 },
     },
+    ["xp"] = 2550,
+    ["rep"] = { 47, 50 },
   },
   [3450] = {
     ["end"] = {
@@ -23920,6 +26996,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8507 },
     },
+    ["xp"] = 510,
   },
   [3451] = {
     ["end"] = {
@@ -23931,6 +27008,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8517 },
     },
+    ["xp"] = 510,
   },
   [3452] = {
     ["end"] = {
@@ -23945,6 +27023,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8479 },
     },
+    ["xp"] = 4700,
   },
   [3453] = {
     ["end"] = {
@@ -23956,6 +27035,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8479 },
     },
+    ["xp"] = 470,
   },
   [3454] = {
     ["end"] = {
@@ -23967,6 +27047,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8479 },
     },
+    ["xp"] = 4700,
   },
   [3461] = {
     ["end"] = {
@@ -23978,6 +27059,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8392 },
     },
+    ["xp"] = 7600,
+    ["rep"] = { 47, 200 },
   },
   [3462] = {
     ["end"] = {
@@ -23989,6 +27072,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8479 },
     },
+    ["xp"] = 470,
   },
   [3463] = {
     ["end"] = {
@@ -24004,6 +27088,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8509 },
     },
+    ["xp"] = 7600,
   },
   [3481] = {
     ["end"] = {
@@ -24015,6 +27100,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 149502 },
     },
+    ["xp"] = 470,
   },
   [3482] = {
     ["lvl"] = 35,
@@ -24022,6 +27108,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 10590 },
     },
+    ["xp"] = 275,
   },
   [3483] = {
     ["end"] = {
@@ -24046,6 +27133,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7363 },
     },
+    ["xp"] = 5650,
   },
   [3502] = {
     ["end"] = {
@@ -24081,6 +27169,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4485 },
     },
+    ["xp"] = 2650,
+    ["rep"] = { 76, 50 },
   },
   [3505] = {
     ["end"] = {
@@ -24096,6 +27186,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8576 },
     },
+    ["xp"] = 3950,
+    ["rep"] = { 76, 75 },
   },
   [3506] = {
     ["end"] = {
@@ -24110,6 +27202,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 151286 },
     },
+    ["xp"] = 4350,
+    ["rep"] = { 76, 75 },
   },
   [3507] = {
     ["end"] = {
@@ -24121,6 +27215,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8576 },
     },
+    ["xp"] = 7300,
+    ["rep"] = { 76, 150 },
   },
   [3508] = {
     ["end"] = {
@@ -24132,6 +27228,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7783 },
     },
+    ["xp"] = 3100,
   },
   [3509] = {
     ["end"] = {
@@ -24143,6 +27240,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7783 },
     },
+    ["xp"] = 6200,
   },
   [3510] = {
     ["end"] = {
@@ -24157,6 +27255,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6134 },
     },
+    ["xp"] = 6200,
   },
   [3511] = {
     ["end"] = {
@@ -24168,6 +27267,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6134 },
     },
+    ["xp"] = 3100,
   },
   [3512] = {
     ["end"] = {
@@ -24179,6 +27279,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5353 },
     },
+    ["xp"] = 4200,
   },
   [3513] = {
     ["end"] = {
@@ -24189,6 +27290,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 10621 },
     },
+    ["xp"] = 2550,
+    ["rep"] = { 76, 150 },
   },
   [3514] = {
     ["end"] = {
@@ -24204,10 +27307,13 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8582 },
     },
+    ["xp"] = 2950,
+    ["rep"] = { 76, 150 },
   },
   [3515] = {
     ["lvl"] = 42,
     ["min"] = 45,
+    ["xp"] = 3450,
   },
   [3516] = {
     ["lvl"] = 10,
@@ -24226,6 +27332,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8587 },
     },
+    ["xp"] = 5100,
   },
   [3518] = {
     ["end"] = {
@@ -24237,6 +27344,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8587 },
     },
+    ["xp"] = 2550,
   },
   [3519] = {
     ["end"] = {
@@ -24248,6 +27356,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8584 },
     },
+    ["xp"] = 90,
+    ["rep"] = { 69, 25 },
   },
   [3520] = {
     ["end"] = {
@@ -24262,6 +27372,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8579 },
     },
+    ["xp"] = 3750,
   },
   [3521] = {
     ["end"] = {
@@ -24276,6 +27387,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8583 },
     },
+    ["xp"] = 355,
+    ["rep"] = { 69, 100 },
   },
   [3522] = {
     ["end"] = {
@@ -24287,6 +27400,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8583 },
     },
+    ["xp"] = 445,
+    ["rep"] = { 69, 150 },
   },
   [3523] = {
     ["end"] = {
@@ -24297,6 +27412,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8516 },
     },
+    ["xp"] = 285,
   },
   [3524] = {
     ["end"] = {
@@ -24310,6 +27426,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10219 },
     },
+    ["xp"] = 680,
+    ["rep"] = { 69, 75 },
   },
   [3525] = {
     ["end"] = {
@@ -24323,6 +27441,7 @@ UnrealQuestData["quests"] = {
       ["O"] = { 152097 },
       ["U"] = { 8516 },
     },
+    ["xp"] = 4250,
   },
   [3526] = {
     ["close"] = { 3526, 3629, 3630, 3632, 3633, 3634, 3635, 3637, 4181 },
@@ -24335,6 +27454,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4586 },
     },
+    ["xp"] = 420,
   },
   [3527] = {
     ["end"] = {
@@ -24349,6 +27469,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8579 },
     },
+    ["xp"] = 5250,
   },
   [3528] = {
     ["end"] = {
@@ -24364,6 +27485,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8579 },
     },
+    ["xp"] = 7900,
   },
   [3529] = {
     ["lvl"] = 52,
@@ -24379,6 +27501,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8587 },
     },
+    ["xp"] = 2550,
   },
   [3542] = {
     ["end"] = {
@@ -24390,6 +27513,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8587 },
     },
+    ["xp"] = 2550,
   },
   [3561] = {
     ["end"] = {
@@ -24401,6 +27525,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8587 },
     },
+    ["xp"] = 2550,
   },
   [3562] = {
     ["end"] = {
@@ -24412,6 +27537,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4046 },
     },
+    ["xp"] = 3800,
   },
   [3563] = {
     ["end"] = {
@@ -24423,6 +27549,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8659 },
     },
+    ["xp"] = 3800,
   },
   [3564] = {
     ["end"] = {
@@ -24434,6 +27561,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6522 },
     },
+    ["xp"] = 3800,
   },
   [3565] = {
     ["end"] = {
@@ -24445,6 +27573,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8379 },
     },
+    ["xp"] = 3800,
   },
   [3566] = {
     ["end"] = {
@@ -24459,6 +27588,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8417 },
     },
+    ["xp"] = 7600,
+    ["rep"] = { 47, 200 },
   },
   [3567] = {
     ["end"] = {
@@ -24482,6 +27613,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8390 },
     },
+    ["xp"] = 2550,
+    ["rep"] = { 68, 50 },
   },
   [3569] = {
     ["end"] = {
@@ -24493,6 +27626,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8390 },
     },
+    ["xp"] = 510,
   },
   [3570] = {
     ["end"] = {
@@ -24504,6 +27638,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8390 },
     },
+    ["xp"] = 5100,
+    ["rep"] = { 68, 100 },
   },
   [3581] = {
     ["lvl"] = 60,
@@ -24522,6 +27658,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8420 },
     },
+    ["xp"] = 6550,
+    ["rep"] = { 21, 150, 87, -750 },
   },
   [3602] = {
     ["end"] = {
@@ -24536,6 +27674,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7783 },
     },
+    ["xp"] = 7750,
   },
   [3621] = {
     ["end"] = {
@@ -24547,6 +27686,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7783 },
     },
+    ["xp"] = 4650,
   },
   [3622] = {
     ["lvl"] = 41,
@@ -24562,6 +27702,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7802 },
     },
+    ["xp"] = 620,
   },
   [3626] = {
     ["end"] = {
@@ -24573,6 +27714,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7802 },
     },
+    ["xp"] = 1550,
   },
   [3627] = {
     ["end"] = {
@@ -24587,6 +27729,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7572 },
     },
+    ["xp"] = 8300,
   },
   [3628] = {
     ["end"] = {
@@ -24602,6 +27745,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7572 },
     },
+    ["xp"] = 9950,
   },
   [3629] = {
     ["close"] = { 3526, 3629, 3630, 3632, 3633, 3634, 3635, 3637, 4181 },
@@ -24614,6 +27758,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5174 },
     },
+    ["xp"] = 420,
   },
   [3630] = {
     ["close"] = { 3526, 3629, 3630, 3632, 3633, 3634, 3635, 3637, 4181 },
@@ -24626,6 +27771,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5518 },
     },
+    ["xp"] = 420,
   },
   [3631] = {
     ["class"] = 256,
@@ -24638,6 +27784,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3326 },
     },
+    ["xp"] = 315,
   },
   [3632] = {
     ["close"] = { 3526, 3629, 3630, 3632, 3633, 3634, 3635, 3637, 4181 },
@@ -24650,6 +27797,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5174 },
     },
+    ["xp"] = 420,
   },
   [3633] = {
     ["close"] = { 3526, 3629, 3630, 3632, 3633, 3634, 3635, 3637, 4181 },
@@ -24662,6 +27810,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3494 },
     },
+    ["xp"] = 420,
   },
   [3634] = {
     ["close"] = { 3526, 3629, 3630, 3632, 3633, 3634, 3635, 3637, 4181 },
@@ -24675,6 +27824,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3494 },
     },
+    ["xp"] = 420,
   },
   [3635] = {
     ["close"] = { 3526, 3629, 3630, 3632, 3633, 3634, 3635, 3637, 4181 },
@@ -24687,6 +27837,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4586 },
     },
+    ["xp"] = 420,
   },
   [3636] = {
     ["end"] = {
@@ -24700,6 +27851,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1284 },
     },
+    ["xp"] = 4300,
+    ["rep"] = { 72, 150 },
   },
   [3637] = {
     ["close"] = { 3526, 3629, 3630, 3632, 3633, 3634, 3635, 3637, 4181 },
@@ -24713,6 +27866,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3494 },
     },
+    ["xp"] = 420,
   },
   [3638] = {
     ["close"] = { 3638, 3640, 3642 },
@@ -24728,6 +27882,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8126 },
     },
+    ["xp"] = 420,
   },
   [3639] = {
     ["end"] = {
@@ -24743,6 +27898,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8126 },
     },
+    ["xp"] = 3150,
+    ["rep"] = { 550, 75 },
   },
   [3640] = {
     ["close"] = { 3638, 3640, 3642 },
@@ -24758,6 +27915,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7944 },
     },
+    ["xp"] = 420,
   },
   [3641] = {
     ["end"] = {
@@ -24773,6 +27931,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7944 },
     },
+    ["xp"] = 3150,
+    ["rep"] = { 551, 75 },
   },
   [3642] = {
     ["close"] = { 3638, 3640, 3642 },
@@ -24788,6 +27948,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7406 },
     },
+    ["xp"] = 420,
   },
   [3643] = {
     ["end"] = {
@@ -24803,6 +27964,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7406 },
     },
+    ["xp"] = 3150,
+    ["rep"] = { 551, 75 },
   },
   [3644] = {
     ["end"] = {
@@ -24864,6 +28027,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7916 },
     },
+    ["xp"] = 4200,
+    ["rep"] = { 69, 100 },
   },
   [3681] = {
     ["class"] = 2,
@@ -24877,6 +28042,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5149 },
     },
+    ["xp"] = 225,
   },
   [3701] = {
     ["end"] = {
@@ -24891,6 +28057,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8879 },
     },
+    ["xp"] = 5450,
+    ["rep"] = { 47, 100 },
   },
   [3702] = {
     ["end"] = {
@@ -24901,6 +28069,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8879 },
     },
+    ["xp"] = 540,
+    ["rep"] = { 47, 10 },
   },
   [3721] = {
     ["end"] = {
@@ -24912,6 +28082,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7406 },
     },
+    ["xp"] = 7100,
+    ["rep"] = { 21, 200, 87, -1000 },
   },
   [3741] = {
     ["end"] = {
@@ -24925,6 +28097,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8965 },
     },
+    ["xp"] = 1350,
+    ["rep"] = { 72, 100 },
   },
   [3761] = {
     ["end"] = {
@@ -24939,6 +28113,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5769 },
     },
+    ["xp"] = 4700,
+    ["rep"] = { 81, 100 },
   },
   [3762] = {
     ["close"] = { 936, 3762, 3784 },
@@ -24950,6 +28126,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6746 },
     },
+    ["xp"] = 470,
+    ["rep"] = { 81, 10 },
   },
   [3763] = {
     ["close"] = { 3763, 3789, 3790 },
@@ -24961,6 +28139,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6735 },
     },
+    ["xp"] = 470,
+    ["rep"] = { 69, 10 },
   },
   [3764] = {
     ["end"] = {
@@ -24975,6 +28155,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3516 },
     },
+    ["xp"] = 4700,
+    ["rep"] = { 69, 100 },
   },
   [3765] = {
     ["end"] = {
@@ -24985,6 +28167,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4984 },
     },
+    ["xp"] = 1450,
+    ["rep"] = { 69, 75 },
   },
   [3781] = {
     ["end"] = {
@@ -24996,6 +28180,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3516 },
     },
+    ["xp"] = 470,
+    ["rep"] = { 69, 10 },
   },
   [3782] = {
     ["end"] = {
@@ -25007,6 +28193,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5769 },
     },
+    ["xp"] = 470,
+    ["rep"] = { 81, 10 },
   },
   [3783] = {
     ["end"] = {
@@ -25020,6 +28208,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10305 },
     },
+    ["xp"] = 4350,
+    ["rep"] = { 577, 75 },
   },
   [3784] = {
     ["close"] = { 936, 3762, 3784 },
@@ -25031,6 +28221,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6741 },
     },
+    ["xp"] = 470,
+    ["rep"] = { 81, 10 },
   },
   [3785] = {
     ["end"] = {
@@ -25045,6 +28237,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4217 },
     },
+    ["xp"] = 4700,
+    ["rep"] = { 69, 100 },
   },
   [3786] = {
     ["end"] = {
@@ -25059,6 +28253,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9087 },
     },
+    ["xp"] = 4700,
+    ["rep"] = { 81, 100 },
   },
   [3787] = {
     ["end"] = {
@@ -25070,6 +28266,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5566 },
     },
+    ["xp"] = 1200,
+    ["rep"] = { 69, 25 },
   },
   [3788] = {
     ["end"] = {
@@ -25081,6 +28279,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7736 },
     },
+    ["xp"] = 470,
+    ["rep"] = { 69, 25 },
   },
   [3789] = {
     ["close"] = { 3763, 3789, 3790 },
@@ -25092,6 +28292,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6740 },
     },
+    ["xp"] = 470,
+    ["rep"] = { 69, 10 },
   },
   [3790] = {
     ["close"] = { 3763, 3789, 3790 },
@@ -25103,6 +28305,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5111 },
     },
+    ["xp"] = 470,
+    ["rep"] = { 69, 10 },
   },
   [3791] = {
     ["end"] = {
@@ -25116,6 +28320,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7879 },
     },
+    ["xp"] = 4700,
+    ["rep"] = { 69, 100 },
   },
   [3792] = {
     ["end"] = {
@@ -25130,6 +28336,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7879 },
     },
+    ["xp"] = 560,
+    ["rep"] = { 69, 25 },
   },
   [3801] = {
     ["end"] = {
@@ -25140,6 +28348,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8888 },
     },
+    ["xp"] = 510,
   },
   [3802] = {
     ["end"] = {
@@ -25154,6 +28363,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8888 },
     },
+    ["xp"] = 5100,
   },
   [3803] = {
     ["end"] = {
@@ -25168,6 +28378,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4217 },
     },
+    ["xp"] = 560,
+    ["rep"] = { 69, 50 },
   },
   [3804] = {
     ["end"] = {
@@ -25182,6 +28394,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9087 },
     },
+    ["xp"] = 560,
+    ["rep"] = { 81, 50 },
   },
   [3821] = {
     ["end"] = {
@@ -25192,6 +28406,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9082 },
     },
+    ["xp"] = 5100,
+    ["rep"] = { 530, 100 },
   },
   [3822] = {
     ["end"] = {
@@ -25206,6 +28422,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9136 },
     },
+    ["xp"] = 5250,
+    ["rep"] = { 76, 100 },
   },
   [3823] = {
     ["end"] = {
@@ -25219,6 +28437,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9177 },
     },
+    ["xp"] = 5100,
+    ["rep"] = { 47, 100 },
   },
   [3824] = {
     ["end"] = {
@@ -25233,6 +28453,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9177 },
     },
+    ["xp"] = 5250,
+    ["rep"] = { 47, 100 },
   },
   [3825] = {
     ["end"] = {
@@ -25248,6 +28470,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9177 },
     },
+    ["xp"] = 5250,
+    ["rep"] = { 47, 100 },
   },
   [3841] = {
     ["end"] = {
@@ -25259,6 +28483,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7956 },
     },
+    ["xp"] = 1050,
+    ["rep"] = { 69, 25 },
   },
   [3842] = {
     ["end"] = {
@@ -25273,6 +28499,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9238 },
     },
+    ["xp"] = 2100,
+    ["rep"] = { 69, 50 },
   },
   [3843] = {
     ["end"] = {
@@ -25284,6 +28512,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9238 },
     },
+    ["xp"] = 4200,
+    ["rep"] = { 69, 100, 471, 100 },
   },
   [3844] = {
     ["end"] = {
@@ -25294,6 +28524,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 161505 },
     },
+    ["xp"] = 1250,
   },
   [3845] = {
     ["end"] = {
@@ -25308,6 +28539,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 161504 },
     },
+    ["xp"] = 5100,
   },
   [3861] = {
     ["end"] = {
@@ -25322,6 +28554,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 620 },
     },
+    ["xp"] = 10,
   },
   [3881] = {
     ["end"] = {
@@ -25335,6 +28568,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9270 },
     },
+    ["xp"] = 5250,
   },
   [3882] = {
     ["end"] = {
@@ -25348,6 +28582,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9272 },
     },
+    ["xp"] = 4900,
   },
   [3883] = {
     ["end"] = {
@@ -25362,6 +28597,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9271 },
     },
+    ["xp"] = 5100,
   },
   [3884] = {
     ["end"] = {
@@ -25372,10 +28608,12 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 11116, 11116 },
     },
+    ["xp"] = 3550,
   },
   [3885] = {
     ["lvl"] = 55,
     ["min"] = 50,
+    ["xp"] = 8450,
   },
   [3901] = {
     ["end"] = {
@@ -25390,6 +28628,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1569 },
     },
+    ["xp"] = 250,
+    ["rep"] = { 68, 100 },
   },
   [3902] = {
     ["end"] = {
@@ -25404,6 +28644,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1740 },
     },
+    ["xp"] = 315,
+    ["rep"] = { 68, 150 },
   },
   [3903] = {
     ["end"] = {
@@ -25415,6 +28657,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 823 },
     },
+    ["xp"] = 35,
+    ["rep"] = { 72, 10 },
   },
   [3904] = {
     ["end"] = {
@@ -25429,6 +28673,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9296 },
     },
+    ["xp"] = 180,
+    ["rep"] = { 72, 50 },
   },
   [3905] = {
     ["end"] = {
@@ -25440,6 +28686,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9296 },
     },
+    ["xp"] = 355,
+    ["rep"] = { 72, 100 },
   },
   [3906] = {
     ["end"] = {
@@ -25453,6 +28701,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9084 },
     },
+    ["xp"] = 5100,
+    ["rep"] = { 81, 100 },
   },
   [3907] = {
     ["end"] = {
@@ -25468,6 +28718,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9084 },
     },
+    ["xp"] = 7300,
+    ["rep"] = { 81, 150 },
   },
   [3908] = {
     ["end"] = {
@@ -25479,6 +28731,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8737 },
     },
+    ["xp"] = 5100,
   },
   [3909] = {
     ["end"] = {
@@ -25494,6 +28747,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9298 },
     },
+    ["xp"] = 5100,
   },
   [3911] = {
     ["lvl"] = 54,
@@ -25502,6 +28756,8 @@ UnrealQuestData["quests"] = {
       ["I"] = { 11129 },
     },
     ["race"] = 255,
+    ["xp"] = 5450,
+    ["rep"] = { 68, 100 },
   },
   [3912] = {
     ["end"] = {
@@ -25513,6 +28769,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9298 },
     },
+    ["xp"] = 5100,
   },
   [3913] = {
     ["end"] = {
@@ -25524,6 +28781,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9299 },
     },
+    ["xp"] = 2550,
   },
   [3914] = {
     ["end"] = {
@@ -25535,6 +28793,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 148504 },
     },
+    ["xp"] = 5100,
   },
   [3921] = {
     ["end"] = {
@@ -25547,6 +28806,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3442 },
     },
+    ["xp"] = 490,
+    ["rep"] = { 470, 50, 67, 25 },
   },
   [3922] = {
     ["end"] = {
@@ -25561,6 +28822,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9316 },
     },
+    ["xp"] = 1050,
+    ["rep"] = { 470, 100, 67, 50 },
   },
   [3923] = {
     ["end"] = {
@@ -25572,6 +28835,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9316 },
     },
+    ["xp"] = 340,
+    ["rep"] = { 470, 25, 67, 10 },
   },
   [3924] = {
     ["end"] = {
@@ -25586,6 +28851,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9317 },
     },
+    ["xp"] = 1800,
+    ["rep"] = { 470, 150, 67, 75 },
   },
   [3941] = {
     ["end"] = {
@@ -25597,6 +28864,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8737 },
     },
+    ["xp"] = 1250,
   },
   [3942] = {
     ["end"] = {
@@ -25608,6 +28876,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9117 },
     },
+    ["xp"] = 5450,
   },
   [3961] = {
     ["end"] = {
@@ -25622,6 +28891,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9117 },
     },
+    ["xp"] = 2700,
   },
   [3962] = {
     ["end"] = {
@@ -25638,6 +28908,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8737 },
     },
+    ["xp"] = 7300,
   },
   [3981] = {
     ["end"] = {
@@ -25649,6 +28920,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9081 },
     },
+    ["xp"] = 5100,
+    ["rep"] = { 76, 100 },
   },
   [3982] = {
     ["end"] = {
@@ -25660,6 +28933,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9020 },
     },
+    ["xp"] = 5450,
+    ["rep"] = { 76, 100 },
   },
   [4001] = {
     ["end"] = {
@@ -25671,6 +28946,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9020 },
     },
+    ["xp"] = 6800,
+    ["rep"] = { 76, 150 },
   },
   [4002] = {
     ["end"] = {
@@ -25682,6 +28959,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4949 },
     },
+    ["xp"] = 540,
   },
   [4003] = {
     ["end"] = {
@@ -25696,6 +28974,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4949 },
     },
+    ["xp"] = 8050,
   },
   [4004] = {
     ["end"] = {
@@ -25707,6 +28986,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8929 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 67, 200 },
   },
   [4005] = {
     ["end"] = {
@@ -25722,6 +29003,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9116 },
     },
+    ["xp"] = 5450,
   },
   [4021] = {
     ["end"] = {
@@ -25736,6 +29018,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3389 },
     },
+    ["xp"] = 1950,
+    ["rep"] = { 76, 150 },
   },
   [4022] = {
     ["close"] = { 4022, 4023 },
@@ -25750,6 +29034,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9459 },
     },
+    ["xp"] = 5450,
   },
   [4023] = {
     ["close"] = { 4022, 4023 },
@@ -25764,6 +29049,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9459 },
     },
+    ["xp"] = 5450,
   },
   [4024] = {
     ["end"] = {
@@ -25779,6 +29065,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9459 },
     },
+    ["xp"] = 6200,
   },
   [4041] = {
     ["end"] = {
@@ -25806,6 +29093,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9079 },
     },
+    ["xp"] = 5450,
+    ["rep"] = { 68, 100 },
   },
   [4062] = {
     ["end"] = {
@@ -25817,6 +29106,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9079 },
     },
+    ["xp"] = 1350,
   },
   [4063] = {
     ["end"] = {
@@ -25831,6 +29121,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2921 },
     },
+    ["xp"] = 6200,
   },
   [4081] = {
     ["end"] = {
@@ -25844,6 +29135,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 164867 },
     },
+    ["xp"] = 5100,
+    ["rep"] = { 76, 100 },
   },
   [4082] = {
     ["end"] = {
@@ -25858,6 +29151,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 164868 },
     },
+    ["xp"] = 5450,
+    ["rep"] = { 76, 100 },
   },
   [4083] = {
     ["end"] = {
@@ -25871,6 +29166,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 164869 },
     },
+    ["xp"] = 5650,
   },
   [4084] = {
     ["end"] = {
@@ -25885,6 +29181,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9116 },
     },
+    ["xp"] = 5450,
   },
   [4101] = {
     ["end"] = {
@@ -25899,6 +29196,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9528 },
     },
+    ["xp"] = 5650,
   },
   [4102] = {
     ["end"] = {
@@ -25913,6 +29211,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9529 },
     },
+    ["xp"] = 5650,
   },
   [4103] = {
     ["end"] = {
@@ -26084,6 +29383,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 164886 },
     },
+    ["xp"] = 560,
   },
   [4114] = {
     ["end"] = {
@@ -26097,6 +29397,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 174596 },
     },
+    ["xp"] = 560,
   },
   [4115] = {
     ["end"] = {
@@ -26110,6 +29411,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 164887 },
     },
+    ["xp"] = 560,
   },
   [4116] = {
     ["end"] = {
@@ -26123,6 +29425,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 174597 },
     },
+    ["xp"] = 560,
   },
   [4117] = {
     ["end"] = {
@@ -26136,6 +29439,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 164888 },
     },
+    ["xp"] = 560,
   },
   [4118] = {
     ["end"] = {
@@ -26149,6 +29453,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 174598 },
     },
+    ["xp"] = 560,
   },
   [4119] = {
     ["end"] = {
@@ -26162,6 +29467,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 164885 },
     },
+    ["xp"] = 560,
   },
   [4120] = {
     ["end"] = {
@@ -26175,6 +29481,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7776 },
     },
+    ["xp"] = 5100,
+    ["rep"] = { 81, 100 },
   },
   [4121] = {
     ["end"] = {
@@ -26190,6 +29498,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9520 },
     },
+    ["xp"] = 7750,
+    ["rep"] = { 76, 150 },
   },
   [4122] = {
     ["end"] = {
@@ -26204,6 +29514,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9080 },
     },
+    ["xp"] = 6200,
   },
   [4123] = {
     ["end"] = {
@@ -26217,6 +29528,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9536 },
     },
+    ["xp"] = 5650,
   },
   [4124] = {
     ["end"] = {
@@ -26227,6 +29539,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7877 },
     },
+    ["xp"] = 360,
   },
   [4125] = {
     ["end"] = {
@@ -26238,6 +29551,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7880 },
     },
+    ["xp"] = 2700,
+    ["rep"] = { 69, 75 },
   },
   [4126] = {
     ["end"] = {
@@ -26252,6 +29567,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1267 },
     },
+    ["xp"] = 7050,
   },
   [4127] = {
     ["end"] = {
@@ -26263,6 +29579,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 164909 },
     },
+    ["xp"] = 375,
   },
   [4128] = {
     ["end"] = {
@@ -26273,6 +29590,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9540 },
     },
+    ["xp"] = 560,
   },
   [4129] = {
     ["end"] = {
@@ -26284,6 +29602,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7880 },
     },
+    ["xp"] = 375,
   },
   [4130] = {
     ["end"] = {
@@ -26295,6 +29614,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7879 },
     },
+    ["xp"] = 375,
   },
   [4131] = {
     ["end"] = {
@@ -26306,6 +29626,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7880 },
     },
+    ["xp"] = 2800,
+    ["rep"] = { 69, 75 },
   },
   [4132] = {
     ["end"] = {
@@ -26320,6 +29642,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9077 },
     },
+    ["xp"] = 7750,
+    ["rep"] = { 76, 150 },
   },
   [4133] = {
     ["end"] = {
@@ -26330,6 +29654,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5204 },
     },
+    ["xp"] = 560,
   },
   [4134] = {
     ["end"] = {
@@ -26344,6 +29669,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9078 },
     },
+    ["xp"] = 5650,
   },
   [4135] = {
     ["end"] = {
@@ -26355,6 +29681,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 164953 },
     },
+    ["xp"] = 3050,
+    ["rep"] = { 69, 75 },
   },
   [4136] = {
     ["end"] = {
@@ -26369,6 +29697,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9544 },
     },
+    ["xp"] = 2650,
   },
   [4141] = {
     ["end"] = {
@@ -26382,6 +29711,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9119 },
     },
+    ["xp"] = 5100,
   },
   [4142] = {
     ["end"] = {
@@ -26393,6 +29723,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9119 },
     },
+    ["xp"] = 3800,
   },
   [4143] = {
     ["end"] = {
@@ -26407,6 +29738,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7775 },
     },
+    ["xp"] = 5100,
   },
   [4144] = {
     ["end"] = {
@@ -26421,6 +29753,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9119 },
     },
+    ["xp"] = 3950,
   },
   [4145] = {
     ["end"] = {
@@ -26434,6 +29767,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9118 },
     },
+    ["xp"] = 5100,
   },
   [4146] = {
     ["end"] = {
@@ -26448,6 +29782,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8496 },
     },
+    ["xp"] = 5100,
   },
   [4147] = {
     ["end"] = {
@@ -26459,6 +29794,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9118 },
     },
+    ["xp"] = 2550,
   },
   [4148] = {
     ["end"] = {
@@ -26473,6 +29809,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9118 },
     },
+    ["xp"] = 3950,
   },
   [4161] = {
     ["end"] = {
@@ -26487,6 +29824,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6286 },
     },
+    ["xp"] = 630,
+    ["rep"] = { 69, 100 },
   },
   [4181] = {
     ["close"] = { 3526, 3629, 3630, 3632, 3633, 3634, 3635, 3637, 4181 },
@@ -26499,6 +29838,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5518 },
     },
+    ["xp"] = 420,
   },
   [4182] = {
     ["end"] = {
@@ -26512,6 +29852,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9562 },
     },
+    ["xp"] = 5450,
+    ["rep"] = { 69, 100 },
   },
   [4183] = {
     ["end"] = {
@@ -26523,6 +29865,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9562 },
     },
+    ["xp"] = 4100,
+    ["rep"] = { 69, 75 },
   },
   [4184] = {
     ["end"] = {
@@ -26534,6 +29878,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 344 },
     },
+    ["xp"] = 4100,
+    ["rep"] = { 72, 75 },
   },
   [4185] = {
     ["end"] = {
@@ -26545,6 +29891,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1748 },
     },
+    ["xp"] = 540,
   },
   [4186] = {
     ["end"] = {
@@ -26556,6 +29903,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1748 },
     },
+    ["xp"] = 5450,
+    ["rep"] = { 72, 100 },
   },
   [4201] = {
     ["end"] = {
@@ -26570,6 +29919,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9500 },
     },
+    ["xp"] = 5450,
   },
   [4221] = {
     ["end"] = {
@@ -26583,6 +29933,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 174604 },
     },
+    ["xp"] = 560,
   },
   [4222] = {
     ["end"] = {
@@ -26596,6 +29947,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 174603 },
     },
+    ["xp"] = 560,
   },
   [4223] = {
     ["end"] = {
@@ -26607,6 +29959,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 344 },
     },
+    ["xp"] = 540,
   },
   [4224] = {
     ["end"] = {
@@ -26618,6 +29971,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9560 },
     },
+    ["xp"] = 540,
   },
   [4241] = {
     ["end"] = {
@@ -26629,6 +29983,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9560 },
     },
+    ["xp"] = 5450,
+    ["rep"] = { 72, 100 },
   },
   [4242] = {
     ["end"] = {
@@ -26640,6 +29996,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9023 },
     },
+    ["xp"] = 5450,
+    ["rep"] = { 72, 100 },
   },
   [4243] = {
     ["end"] = {
@@ -26650,6 +30008,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9618 },
     },
+    ["xp"] = 2650,
   },
   [4244] = {
     ["end"] = {
@@ -26664,6 +30023,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9623 },
     },
+    ["xp"] = 3950,
   },
   [4245] = {
     ["end"] = {
@@ -26675,6 +30035,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9623 },
     },
+    ["xp"] = 6550,
   },
   [4261] = {
     ["end"] = {
@@ -26686,6 +30047,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9598 },
     },
+    ["xp"] = 7300,
+    ["rep"] = { 69, 150 },
   },
   [4262] = {
     ["end"] = {
@@ -26699,6 +30062,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9561 },
     },
+    ["xp"] = 5100,
+    ["rep"] = { 54, 100 },
   },
   [4263] = {
     ["end"] = {
@@ -26713,6 +30078,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9561 },
     },
+    ["xp"] = 5800,
+    ["rep"] = { 54, 100 },
   },
   [4264] = {
     ["end"] = {
@@ -26724,6 +30091,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 11446 },
     },
+    ["xp"] = 6200,
+    ["rep"] = { 72, 100 },
   },
   [4265] = {
     ["end"] = {
@@ -26735,6 +30104,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 164954 },
     },
+    ["xp"] = 4050,
+    ["rep"] = { 69, 100 },
   },
   [4266] = {
     ["end"] = {
@@ -26746,6 +30117,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7880 },
     },
+    ["xp"] = 6050,
+    ["rep"] = { 469, 200 },
   },
   [4267] = {
     ["end"] = {
@@ -26757,6 +30130,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3936 },
     },
+    ["xp"] = 405,
   },
   [4281] = {
     ["end"] = {
@@ -26767,6 +30141,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 11463, 11463 },
     },
+    ["xp"] = 2800,
+    ["rep"] = { 69, 75 },
   },
   [4282] = {
     ["end"] = {
@@ -26781,6 +30157,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9023 },
     },
+    ["xp"] = 6200,
+    ["rep"] = { 72, 100 },
   },
   [4283] = {
     ["end"] = {
@@ -26794,6 +30172,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9177 },
     },
+    ["xp"] = 5800,
+    ["rep"] = { 47, 100 },
   },
   [4284] = {
     ["end"] = {
@@ -26807,6 +30187,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9117 },
     },
+    ["xp"] = 5250,
   },
   [4285] = {
     ["end"] = {
@@ -26818,6 +30199,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9117 },
     },
+    ["xp"] = 3950,
   },
   [4286] = {
     ["end"] = {
@@ -26831,6 +30213,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9177 },
     },
+    ["xp"] = 5800,
+    ["rep"] = { 47, 100 },
   },
   [4287] = {
     ["end"] = {
@@ -26842,6 +30226,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9117 },
     },
+    ["xp"] = 3950,
   },
   [4288] = {
     ["end"] = {
@@ -26853,6 +30238,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9117 },
     },
+    ["xp"] = 3950,
   },
   [4289] = {
     ["end"] = {
@@ -26866,6 +30252,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9619 },
     },
+    ["xp"] = 5650,
   },
   [4290] = {
     ["end"] = {
@@ -26879,6 +30266,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9619 },
     },
+    ["xp"] = 5250,
   },
   [4291] = {
     ["end"] = {
@@ -26893,6 +30281,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9619 },
     },
+    ["xp"] = 5250,
   },
   [4292] = {
     ["end"] = {
@@ -26907,6 +30296,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9619 },
     },
+    ["xp"] = 7300,
   },
   [4293] = {
     ["end"] = {
@@ -26920,6 +30310,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10136 },
     },
+    ["xp"] = 5100,
+    ["rep"] = { 68, 100 },
   },
   [4294] = {
     ["end"] = {
@@ -26933,6 +30325,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10136 },
     },
+    ["xp"] = 5800,
+    ["rep"] = { 68, 100 },
   },
   [4295] = {
     ["end"] = {
@@ -26959,6 +30353,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9536 },
     },
+    ["xp"] = 2350,
   },
   [4297] = {
     ["end"] = {
@@ -26973,6 +30368,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9660 },
     },
+    ["xp"] = 4200,
+    ["rep"] = { 69, 100, 471, 100 },
   },
   [4298] = {
     ["end"] = {
@@ -26984,6 +30381,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9660 },
     },
+    ["xp"] = 440,
+    ["rep"] = { 69, 25, 471, 25 },
   },
   [4299] = {
     ["lvl"] = 50,
@@ -26992,6 +30391,7 @@ UnrealQuestData["quests"] = {
       ["IR"] = { 11473 },
     },
     ["race"] = 255,
+    ["xp"] = 4700,
   },
   [4300] = {
     ["end"] = {
@@ -27005,6 +30405,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8659 },
     },
+    ["xp"] = 5100,
+    ["rep"] = { 530, 100 },
   },
   [4301] = {
     ["end"] = {
@@ -27019,6 +30421,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9619 },
     },
+    ["xp"] = 5650,
   },
   [4321] = {
     ["end"] = {
@@ -27030,6 +30433,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9117 },
     },
+    ["xp"] = 530,
   },
   [4322] = {
     ["end"] = {
@@ -27041,6 +30445,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9023 },
     },
+    ["xp"] = 7750,
+    ["rep"] = { 72, 150 },
   },
   [4323] = {
     ["lvl"] = 26,
@@ -27048,6 +30454,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 11507 },
     },
+    ["xp"] = 2100,
   },
   [4324] = {
     ["end"] = {
@@ -27069,6 +30476,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2784 },
     },
+    ["xp"] = 6400,
+    ["rep"] = { 47, 100 },
   },
   [4342] = {
     ["end"] = {
@@ -27080,6 +30489,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9021 },
     },
+    ["xp"] = 1600,
   },
   [4343] = {
     ["end"] = {
@@ -27093,6 +30503,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 174602 },
     },
+    ["xp"] = 560,
   },
   [4361] = {
     ["end"] = {
@@ -27104,6 +30515,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9021 },
     },
+    ["xp"] = 6400,
   },
   [4362] = {
     ["end"] = {
@@ -27118,6 +30530,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2784 },
     },
+    ["xp"] = 8050,
+    ["rep"] = { 47, 150 },
   },
   [4363] = {
     ["end"] = {
@@ -27129,6 +30543,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8929 },
     },
+    ["xp"] = 9650,
   },
   [4381] = {
     ["end"] = {
@@ -27226,6 +30641,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 171939 },
     },
+    ["xp"] = 560,
   },
   [4402] = {
     ["end"] = {
@@ -27240,6 +30656,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9796 },
     },
+    ["xp"] = 380,
+    ["rep"] = { 76, 200, 530, 200 },
   },
   [4403] = {
     ["end"] = {
@@ -27253,6 +30671,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 174601 },
     },
+    ["xp"] = 560,
   },
   [4421] = {
     ["end"] = {
@@ -27267,6 +30686,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9116 },
     },
+    ["xp"] = 5450,
   },
   [4441] = {
     ["end"] = {
@@ -27283,6 +30703,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9116 },
     },
+    ["xp"] = 5450,
   },
   [4442] = {
     ["end"] = {
@@ -27295,6 +30716,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9116 },
     },
+    ["xp"] = 5450,
   },
   [4443] = {
     ["end"] = {
@@ -27308,6 +30730,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 173284 },
     },
+    ["xp"] = 560,
   },
   [4444] = {
     ["end"] = {
@@ -27321,6 +30744,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 174605 },
     },
+    ["xp"] = 560,
   },
   [4445] = {
     ["end"] = {
@@ -27334,6 +30758,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 174606 },
     },
+    ["xp"] = 560,
   },
   [4446] = {
     ["end"] = {
@@ -27347,6 +30772,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 174607 },
     },
+    ["xp"] = 560,
   },
   [4447] = {
     ["end"] = {
@@ -27360,6 +30786,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 173324 },
     },
+    ["xp"] = 560,
   },
   [4448] = {
     ["end"] = {
@@ -27373,6 +30800,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 174608 },
     },
+    ["xp"] = 560,
   },
   [4449] = {
     ["end"] = {
@@ -27387,6 +30815,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 173265 },
     },
+    ["xp"] = 3900,
   },
   [4450] = {
     ["end"] = {
@@ -27401,6 +30830,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 173265 },
     },
+    ["xp"] = 5050,
+    ["rep"] = { 369, 150 },
   },
   [4451] = {
     ["end"] = {
@@ -27411,6 +30842,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 11818 },
     },
+    ["xp"] = 5250,
   },
   [4461] = {
     ["end"] = {
@@ -27424,6 +30856,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 174686 },
     },
+    ["xp"] = 560,
   },
   [4462] = {
     ["end"] = {
@@ -27437,6 +30870,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 174684 },
     },
+    ["xp"] = 560,
   },
   [4463] = {
     ["end"] = {
@@ -27463,6 +30897,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 174712 },
     },
+    ["xp"] = 560,
   },
   [4465] = {
     ["end"] = {
@@ -27476,6 +30911,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 174713 },
     },
+    ["xp"] = 560,
   },
   [4466] = {
     ["end"] = {
@@ -27489,6 +30925,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 174708 },
     },
+    ["xp"] = 560,
   },
   [4467] = {
     ["end"] = {
@@ -27566,6 +31003,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5491 },
     },
+    ["xp"] = 315,
   },
   [4486] = {
     ["class"] = 2,
@@ -27578,6 +31016,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5149 },
     },
+    ["xp"] = 315,
   },
   [4487] = {
     ["class"] = 256,
@@ -27590,6 +31029,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5172 },
     },
+    ["xp"] = 315,
   },
   [4488] = {
     ["class"] = 256,
@@ -27602,6 +31042,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 461 },
     },
+    ["xp"] = 315,
   },
   [4489] = {
     ["class"] = 256,
@@ -27614,6 +31055,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4563 },
     },
+    ["xp"] = 315,
   },
   [4490] = {
     ["class"] = 256,
@@ -27626,6 +31068,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6251 },
     },
+    ["xp"] = 315,
   },
   [4491] = {
     ["end"] = {
@@ -27640,6 +31083,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9999 },
     },
+    ["xp"] = 5650,
   },
   [4492] = {
     ["end"] = {
@@ -27650,6 +31094,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9997 },
     },
+    ["xp"] = 2800,
   },
   [4493] = {
     ["end"] = {
@@ -27660,6 +31105,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7740 },
     },
+    ["xp"] = 530,
+    ["rep"] = { 69, 10 },
   },
   [4494] = {
     ["end"] = {
@@ -27670,6 +31117,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7010 },
     },
+    ["xp"] = 530,
+    ["rep"] = { 76, 10 },
   },
   [4495] = {
     ["end"] = {
@@ -27680,6 +31129,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8583 },
     },
+    ["xp"] = 270,
+    ["rep"] = { 69, 75 },
   },
   [4496] = {
     ["end"] = {
@@ -27694,6 +31145,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5594 },
     },
+    ["xp"] = 5250,
+    ["rep"] = { 369, 100 },
   },
   [4501] = {
     ["end"] = {
@@ -27707,6 +31160,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 174682 },
     },
+    ["xp"] = 5650,
   },
   [4502] = {
     ["end"] = {
@@ -27720,6 +31174,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8496 },
     },
+    ["xp"] = 5650,
+    ["rep"] = { 470, 100 },
   },
   [4503] = {
     ["end"] = {
@@ -27733,6 +31189,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9998 },
     },
+    ["xp"] = 4900,
   },
   [4504] = {
     ["end"] = {
@@ -27746,6 +31203,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7876 },
     },
+    ["xp"] = 5450,
+    ["rep"] = { 369, 100 },
   },
   [4505] = {
     ["end"] = {
@@ -27761,6 +31220,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9996 },
     },
+    ["xp"] = 5450,
+    ["rep"] = { 68, 100 },
   },
   [4506] = {
     ["end"] = {
@@ -27775,6 +31236,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9996 },
     },
+    ["xp"] = 5450,
+    ["rep"] = { 68, 100 },
   },
   [4507] = {
     ["end"] = {
@@ -27790,6 +31253,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5594 },
     },
+    ["xp"] = 5450,
   },
   [4508] = {
     ["end"] = {
@@ -27802,6 +31266,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5594 },
     },
+    ["xp"] = 540,
+    ["rep"] = { 69, 25 },
   },
   [4509] = {
     ["end"] = {
@@ -27814,6 +31280,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5594 },
     },
+    ["xp"] = 540,
+    ["rep"] = { 530, 10 },
   },
   [4510] = {
     ["end"] = {
@@ -27825,6 +31293,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7740 },
     },
+    ["xp"] = 8150,
+    ["rep"] = { 469, 200 },
   },
   [4511] = {
     ["end"] = {
@@ -27836,6 +31306,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7010 },
     },
+    ["xp"] = 8150,
+    ["rep"] = { 67, 200 },
   },
   [4512] = {
     ["end"] = {
@@ -27849,6 +31321,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9616 },
     },
+    ["xp"] = 6350,
+    ["rep"] = { 54, 150 },
   },
   [4513] = {
     ["end"] = {
@@ -27863,6 +31337,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9616 },
     },
+    ["xp"] = 6800,
+    ["rep"] = { 54, 150 },
   },
   [4521] = {
     ["end"] = {
@@ -27876,6 +31352,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10306 },
     },
+    ["xp"] = 5800,
+    ["rep"] = { 76, 100 },
   },
   [4542] = {
     ["end"] = {
@@ -27886,6 +31364,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10079 },
     },
+    ["xp"] = 510,
+    ["rep"] = { 81, 25 },
   },
   [4561] = {
     ["end"] = {
@@ -27909,6 +31389,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3845 },
     },
+    ["xp"] = 590,
+    ["rep"] = { 69, 25 },
   },
   [4601] = {
     ["end"] = {
@@ -27974,6 +31456,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 175084 },
     },
+    ["xp"] = 2450,
   },
   [4606] = {
     ["end"] = {
@@ -27985,6 +31468,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 175085 },
     },
+    ["xp"] = 2450,
   },
   [4621] = {
     ["end"] = {
@@ -27999,6 +31483,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2546 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 87, 200, 21, -1000 },
   },
   [4641] = {
     ["end"] = {
@@ -28009,6 +31495,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10176 },
     },
+    ["xp"] = 40,
+    ["rep"] = { 76, 50, 530, 50 },
   },
   [4642] = {
     ["end"] = {
@@ -28023,6 +31511,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10136 },
     },
+    ["xp"] = 7050,
+    ["rep"] = { 68, 150 },
   },
   [4661] = {
     ["end"] = {
@@ -28050,6 +31540,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10219 },
     },
+    ["xp"] = 980,
+    ["rep"] = { 69, 100 },
   },
   [4701] = {
     ["end"] = {
@@ -28063,6 +31555,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9562 },
     },
+    ["xp"] = 6400,
+    ["rep"] = { 69, 100 },
   },
   [4721] = {
     ["end"] = {
@@ -28077,6 +31571,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10306 },
     },
+    ["xp"] = 6400,
+    ["rep"] = { 76, 100 },
   },
   [4722] = {
     ["end"] = {
@@ -28088,6 +31584,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 176190 },
     },
+    ["xp"] = 455,
+    ["rep"] = { 69, 50 },
   },
   [4723] = {
     ["end"] = {
@@ -28099,6 +31597,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 175233 },
     },
+    ["xp"] = 455,
+    ["rep"] = { 69, 50 },
   },
   [4724] = {
     ["end"] = {
@@ -28112,6 +31612,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9081 },
     },
+    ["xp"] = 6400,
+    ["rep"] = { 76, 100 },
   },
   [4725] = {
     ["end"] = {
@@ -28123,6 +31625,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 176197 },
     },
+    ["xp"] = 540,
+    ["rep"] = { 69, 50 },
   },
   [4726] = {
     ["end"] = {
@@ -28137,6 +31641,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10267 },
     },
+    ["xp"] = 5100,
+    ["rep"] = { 169, 100 },
   },
   [4727] = {
     ["end"] = {
@@ -28148,6 +31654,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 176196 },
     },
+    ["xp"] = 540,
+    ["rep"] = { 69, 50 },
   },
   [4728] = {
     ["end"] = {
@@ -28159,6 +31667,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 175226 },
     },
+    ["xp"] = 490,
+    ["rep"] = { 69, 50 },
   },
   [4729] = {
     ["end"] = {
@@ -28173,6 +31683,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10260 },
     },
+    ["xp"] = 6400,
   },
   [4730] = {
     ["end"] = {
@@ -28184,6 +31695,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 175227 },
     },
+    ["xp"] = 580,
+    ["rep"] = { 69, 50 },
   },
   [4731] = {
     ["end"] = {
@@ -28195,6 +31708,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 176198 },
     },
+    ["xp"] = 730,
+    ["rep"] = { 69, 50 },
   },
   [4732] = {
     ["end"] = {
@@ -28206,6 +31721,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 176191 },
     },
+    ["xp"] = 730,
+    ["rep"] = { 69, 50 },
   },
   [4733] = {
     ["end"] = {
@@ -28217,6 +31734,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 175230 },
     },
+    ["xp"] = 730,
+    ["rep"] = { 69, 50 },
   },
   [4734] = {
     ["end"] = {
@@ -28228,6 +31747,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10267 },
     },
+    ["xp"] = 8300,
+    ["rep"] = { 169, 150 },
   },
   [4735] = {
     ["end"] = {
@@ -28243,6 +31764,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10267 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 169, 200 },
   },
   [4736] = {
     ["class"] = 256,
@@ -28255,6 +31778,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5172 },
     },
+    ["xp"] = 630,
   },
   [4737] = {
     ["class"] = 256,
@@ -28267,6 +31791,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3326 },
     },
+    ["xp"] = 630,
   },
   [4738] = {
     ["class"] = 256,
@@ -28279,6 +31804,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 461 },
     },
+    ["xp"] = 630,
   },
   [4739] = {
     ["class"] = 256,
@@ -28291,6 +31817,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4563 },
     },
+    ["xp"] = 630,
   },
   [4740] = {
     ["end"] = {
@@ -28304,6 +31831,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 175320 },
     },
+    ["xp"] = 1700,
+    ["rep"] = { 69, 150 },
   },
   [4741] = {
     ["end"] = {
@@ -28318,6 +31847,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10306 },
     },
+    ["xp"] = 6200,
+    ["rep"] = { 76, 100 },
   },
   [4742] = {
     ["end"] = {
@@ -28331,6 +31862,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10296 },
     },
+    ["xp"] = 8300,
   },
   [4743] = {
     ["end"] = {
@@ -28345,6 +31877,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10296 },
     },
+    ["xp"] = 9950,
   },
   [4761] = {
     ["end"] = {
@@ -28356,6 +31889,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3693 },
     },
+    ["xp"] = 105,
+    ["rep"] = { 69, 10 },
   },
   [4762] = {
     ["end"] = {
@@ -28371,6 +31906,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3649 },
     },
+    ["xp"] = 800,
+    ["rep"] = { 69, 75 },
   },
   [4763] = {
     ["end"] = {
@@ -28386,6 +31923,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3649 },
     },
+    ["xp"] = 1700,
+    ["rep"] = { 69, 150 },
   },
   [4764] = {
     ["end"] = {
@@ -28400,6 +31939,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9565 },
     },
+    ["xp"] = 1650,
+    ["rep"] = { 72, 25 },
   },
   [4765] = {
     ["end"] = {
@@ -28411,6 +31952,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9565 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 72, 100 },
   },
   [4766] = {
     ["end"] = {
@@ -28421,6 +31964,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2285 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 72, 10 },
   },
   [4767] = {
     ["end"] = {
@@ -28434,6 +31979,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10377 },
     },
+    ["xp"] = 1750,
+    ["rep"] = { 81, 75 },
   },
   [4768] = {
     ["end"] = {
@@ -28448,6 +31995,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9078 },
     },
+    ["xp"] = 8300,
+    ["rep"] = { 68, 150 },
   },
   [4769] = {
     ["end"] = {
@@ -28458,6 +32007,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5204 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 68, 10 },
   },
   [4770] = {
     ["end"] = {
@@ -28468,6 +32019,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10427 },
     },
+    ["xp"] = 2350,
+    ["rep"] = { 81, 100 },
   },
   [4771] = {
     ["end"] = {
@@ -28483,6 +32036,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11035 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 529, 200 },
   },
   [4781] = {
     ["class"] = 256,
@@ -28498,6 +32053,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6266 },
     },
+    ["xp"] = 2000,
   },
   [4782] = {
     ["class"] = 256,
@@ -28510,6 +32066,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2670 },
     },
+    ["xp"] = 1350,
   },
   [4783] = {
     ["class"] = 256,
@@ -28525,6 +32082,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6266 },
     },
+    ["xp"] = 2850,
   },
   [4784] = {
     ["class"] = 256,
@@ -28540,6 +32098,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6266 },
     },
+    ["xp"] = 2100,
   },
   [4785] = {
     ["class"] = 256,
@@ -28564,6 +32123,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6266 },
     },
+    ["xp"] = 3550,
   },
   [4787] = {
     ["end"] = {
@@ -28578,6 +32138,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8579 },
     },
+    ["xp"] = 5900,
   },
   [4788] = {
     ["end"] = {
@@ -28592,6 +32153,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10460 },
     },
+    ["xp"] = 7750,
   },
   [4801] = {
     ["end"] = {
@@ -28701,6 +32263,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10267 },
     },
+    ["xp"] = 2700,
+    ["rep"] = { 577, 50 },
   },
   [4809] = {
     ["end"] = {
@@ -28715,6 +32279,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10468 },
     },
+    ["xp"] = 5450,
+    ["rep"] = { 577, 100 },
   },
   [4810] = {
     ["end"] = {
@@ -28726,6 +32292,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10468 },
     },
+    ["xp"] = 2700,
+    ["rep"] = { 169, 50 },
   },
   [4811] = {
     ["end"] = {
@@ -28739,6 +32307,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2930 },
     },
+    ["xp"] = 490,
+    ["rep"] = { 69, 50 },
   },
   [4812] = {
     ["end"] = {
@@ -28754,6 +32324,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2930 },
     },
+    ["xp"] = 490,
+    ["rep"] = { 69, 50 },
   },
   [4813] = {
     ["end"] = {
@@ -28765,6 +32337,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 175524 },
     },
+    ["xp"] = 980,
+    ["rep"] = { 69, 100 },
   },
   [4821] = {
     ["end"] = {
@@ -28778,6 +32352,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10539 },
     },
+    ["xp"] = 2100,
+    ["rep"] = { 81, 100 },
   },
   [4822] = {
     ["end"] = {
@@ -28792,6 +32368,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14305 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 469, 75 },
   },
   [4841] = {
     ["end"] = {
@@ -28806,6 +32384,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10537 },
     },
+    ["xp"] = 2000,
+    ["rep"] = { 81, 100 },
   },
   [4842] = {
     ["end"] = {
@@ -28820,6 +32400,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9298 },
     },
+    ["xp"] = 5800,
+    ["rep"] = { 577, 100 },
   },
   [4861] = {
     ["end"] = {
@@ -28831,6 +32413,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10301 },
     },
+    ["xp"] = 3200,
   },
   [4862] = {
     ["end"] = {
@@ -28844,6 +32427,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10260 },
     },
+    ["xp"] = 6400,
   },
   [4863] = {
     ["end"] = {
@@ -28855,6 +32439,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 175587 },
     },
+    ["xp"] = 3200,
   },
   [4864] = {
     ["end"] = {
@@ -28869,6 +32454,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 175586 },
     },
+    ["xp"] = 6400,
+    ["rep"] = { 47, 100 },
   },
   [4865] = {
     ["end"] = {
@@ -28880,6 +32467,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10539 },
     },
+    ["xp"] = 1050,
+    ["rep"] = { 81, 50 },
   },
   [4866] = {
     ["end"] = {
@@ -28890,6 +32479,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9563 },
     },
+    ["xp"] = 9950,
   },
   [4867] = {
     ["end"] = {
@@ -28903,6 +32493,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10799 },
     },
+    ["xp"] = 9950,
   },
   [4881] = {
     ["end"] = {
@@ -28913,6 +32504,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 12564 },
     },
+    ["xp"] = 2300,
+    ["rep"] = { 81, 100 },
   },
   [4882] = {
     ["end"] = {
@@ -28923,6 +32516,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 12558 },
     },
+    ["xp"] = 3200,
+    ["rep"] = { 76, 50 },
   },
   [4883] = {
     ["end"] = {
@@ -28934,6 +32529,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10306 },
     },
+    ["xp"] = 6400,
+    ["rep"] = { 81, 100 },
   },
   [4901] = {
     ["end"] = {
@@ -28945,6 +32542,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10300 },
     },
+    ["xp"] = 4800,
+    ["rep"] = { 69, 75 },
   },
   [4902] = {
     ["end"] = {
@@ -28956,6 +32555,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7916 },
     },
+    ["xp"] = 6000,
+    ["rep"] = { 469, 100 },
   },
   [4903] = {
     ["end"] = {
@@ -28970,6 +32571,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 12563 },
     },
+    ["xp"] = 8300,
+    ["rep"] = { 76, 150 },
   },
   [4904] = {
     ["end"] = {
@@ -28980,6 +32583,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10646 },
     },
+    ["xp"] = 2350,
+    ["rep"] = { 81, 100 },
   },
   [4905] = {
   },
@@ -28997,6 +32602,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9116 },
     },
+    ["xp"] = 5450,
   },
   [4907] = {
     ["end"] = {
@@ -29008,6 +32614,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10468 },
     },
+    ["xp"] = 660,
   },
   [4921] = {
     ["end"] = {
@@ -29021,6 +32628,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3432 },
     },
+    ["xp"] = 1150,
+    ["rep"] = { 76, 75 },
   },
   [4941] = {
     ["end"] = {
@@ -29032,6 +32641,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9077 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 76, 100 },
   },
   [4961] = {
     ["class"] = 256,
@@ -29047,6 +32658,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6546 },
     },
+    ["xp"] = 2350,
   },
   [4962] = {
     ["class"] = 256,
@@ -29063,6 +32675,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6254 },
     },
+    ["xp"] = 2350,
   },
   [4963] = {
     ["class"] = 256,
@@ -29078,6 +32691,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6252 },
     },
+    ["xp"] = 2350,
   },
   [4964] = {
     ["class"] = 256,
@@ -29090,6 +32704,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6266 },
     },
+    ["xp"] = 3900,
   },
   [4965] = {
     ["class"] = 256,
@@ -29102,6 +32717,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5172 },
     },
+    ["xp"] = 1350,
   },
   [4966] = {
     ["end"] = {
@@ -29113,6 +32729,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10638 },
     },
+    ["xp"] = 2300,
+    ["rep"] = { 81, 100 },
   },
   [4967] = {
     ["class"] = 256,
@@ -29125,6 +32743,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3326 },
     },
+    ["xp"] = 1350,
   },
   [4968] = {
     ["class"] = 256,
@@ -29137,6 +32756,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 461 },
     },
+    ["xp"] = 1350,
   },
   [4969] = {
     ["class"] = 256,
@@ -29149,6 +32769,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4563 },
     },
+    ["xp"] = 1350,
   },
   [4970] = {
     ["end"] = {
@@ -29162,6 +32783,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10618 },
     },
+    ["rep"] = { 589, 50 },
   },
   [4971] = {
     ["end"] = {
@@ -29176,6 +32798,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10667 },
     },
+    ["xp"] = 5800,
   },
   [4972] = {
     ["end"] = {
@@ -29190,6 +32813,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10667 },
     },
+    ["xp"] = 5800,
   },
   [4973] = {
     ["end"] = {
@@ -29204,6 +32828,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10667 },
     },
+    ["xp"] = 580,
   },
   [4974] = {
     ["end"] = {
@@ -29218,6 +32843,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4949 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 76, 200, 530, 200, 68, 200, 81, 200 },
   },
   [4975] = {
     ["class"] = 256,
@@ -29230,6 +32857,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6266 },
     },
+    ["xp"] = 3900,
   },
   [4976] = {
     ["class"] = 256,
@@ -29242,6 +32870,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6546 },
     },
+    ["xp"] = 1550,
   },
   [4981] = {
     ["end"] = {
@@ -29252,6 +32881,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9080 },
     },
+    ["xp"] = 6400,
+    ["rep"] = { 21, 100, 87, -500 },
   },
   [4982] = {
     ["end"] = {
@@ -29266,6 +32897,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10257 },
     },
+    ["xp"] = 6400,
   },
   [4983] = {
     ["end"] = {
@@ -29277,6 +32909,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10257 },
     },
+    ["xp"] = 6400,
+    ["rep"] = { 76, 100 },
   },
   [4984] = {
     ["end"] = {
@@ -29290,6 +32924,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10739 },
     },
+    ["xp"] = 4100,
+    ["rep"] = { 609, 75 },
   },
   [4985] = {
     ["end"] = {
@@ -29304,6 +32940,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10739 },
     },
+    ["xp"] = 4350,
+    ["rep"] = { 609, 75 },
   },
   [4986] = {
     ["end"] = {
@@ -29316,6 +32954,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10739 },
     },
+    ["xp"] = 5800,
+    ["rep"] = { 69, 100 },
   },
   [4987] = {
     ["end"] = {
@@ -29328,6 +32968,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10739 },
     },
+    ["xp"] = 5800,
+    ["rep"] = { 81, 100 },
   },
   [5001] = {
     ["end"] = {
@@ -29342,6 +32984,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10257 },
     },
+    ["xp"] = 6400,
   },
   [5002] = {
     ["end"] = {
@@ -29353,6 +32996,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10257 },
     },
+    ["xp"] = 6400,
+    ["rep"] = { 72, 100 },
   },
   [5021] = {
     ["end"] = {
@@ -29363,6 +33008,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10778 },
     },
+    ["xp"] = 2550,
   },
   [5022] = {
     ["end"] = {
@@ -29375,6 +33021,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 175894 },
     },
+    ["xp"] = 2550,
+    ["rep"] = { 72, 50 },
   },
   [5023] = {
     ["end"] = {
@@ -29387,6 +33035,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 175894 },
     },
+    ["xp"] = 2550,
   },
   [5041] = {
     ["end"] = {
@@ -29400,6 +33049,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3429 },
     },
+    ["xp"] = 980,
+    ["rep"] = { 76, 100 },
   },
   [5042] = {
     ["end"] = {
@@ -29480,6 +33131,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10776 },
     },
+    ["xp"] = 6600,
   },
   [5048] = {
     ["end"] = {
@@ -29491,6 +33143,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10782 },
     },
+    ["xp"] = 5100,
+    ["rep"] = { 72, 100 },
   },
   [5049] = {
     ["end"] = {
@@ -29502,6 +33156,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10781 },
     },
+    ["xp"] = 5100,
+    ["rep"] = { 68, 100 },
   },
   [5050] = {
     ["end"] = {
@@ -29513,6 +33169,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3520, 8403 },
     },
+    ["xp"] = 2550,
   },
   [5051] = {
     ["end"] = {
@@ -29527,6 +33184,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10778 },
     },
+    ["xp"] = 5450,
   },
   [5052] = {
     ["end"] = {
@@ -29541,6 +33199,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3430 },
     },
+    ["xp"] = 1250,
+    ["rep"] = { 76, 75 },
   },
   [5053] = {
     ["lvl"] = 1,
@@ -29558,6 +33218,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10303 },
     },
+    ["xp"] = 5800,
+    ["rep"] = { 81, 100 },
   },
   [5055] = {
     ["end"] = {
@@ -29572,6 +33234,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10303 },
     },
+    ["xp"] = 6200,
+    ["rep"] = { 81, 100 },
   },
   [5056] = {
     ["end"] = {
@@ -29588,6 +33252,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10303 },
     },
+    ["xp"] = 8300,
+    ["rep"] = { 81, 150 },
   },
   [5057] = {
     ["end"] = {
@@ -29599,6 +33265,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10303 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 81, 50 },
   },
   [5058] = {
     ["end"] = {
@@ -29635,6 +33303,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 175924 },
     },
+    ["xp"] = 7050,
   },
   [5061] = {
     ["class"] = 1024,
@@ -29648,6 +33317,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11802 },
     },
+    ["xp"] = 1150,
+    ["rep"] = { 609, 100 },
   },
   [5062] = {
     ["end"] = {
@@ -29662,6 +33333,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10428 },
     },
+    ["xp"] = 2200,
   },
   [5063] = {
     ["end"] = {
@@ -29690,6 +33362,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10537 },
     },
+    ["xp"] = 2300,
+    ["rep"] = { 81, 100 },
   },
   [5065] = {
     ["end"] = {
@@ -29704,6 +33378,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10460 },
     },
+    ["xp"] = 7750,
   },
   [5066] = {
     ["close"] = { 5066, 5090, 5091 },
@@ -29715,6 +33390,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2198 },
     },
+    ["xp"] = 470,
+    ["rep"] = { 72, 10 },
   },
   [5067] = {
     ["end"] = {
@@ -29757,6 +33434,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9560 },
     },
+    ["xp"] = 8300,
+    ["rep"] = { 72, 150 },
   },
   [5082] = {
     ["end"] = {
@@ -29771,6 +33450,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9298 },
     },
+    ["xp"] = 5800,
+    ["rep"] = { 577, 100 },
   },
   [5083] = {
     ["end"] = {
@@ -29781,6 +33462,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 12771 },
     },
+    ["xp"] = 2900,
+    ["rep"] = { 577, 50 },
   },
   [5084] = {
     ["end"] = {
@@ -29792,6 +33475,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9298 },
     },
+    ["xp"] = 4350,
+    ["rep"] = { 577, 75 },
   },
   [5085] = {
     ["end"] = {
@@ -29803,6 +33488,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 176091 },
     },
+    ["xp"] = 4350,
+    ["rep"] = { 577, 75 },
   },
   [5086] = {
     ["end"] = {
@@ -29817,6 +33504,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9298 },
     },
+    ["xp"] = 5800,
+    ["rep"] = { 577, 100 },
   },
   [5087] = {
     ["end"] = {
@@ -29831,6 +33520,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9298 },
     },
+    ["xp"] = 6000,
+    ["rep"] = { 577, 100 },
   },
   [5088] = {
     ["end"] = {
@@ -29846,6 +33537,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4046 },
     },
+    ["xp"] = 2300,
+    ["rep"] = { 81, 100 },
   },
   [5089] = {
     ["end"] = {
@@ -29857,6 +33550,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 12780 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 72, 100 },
   },
   [5090] = {
     ["close"] = { 5066, 5090, 5091 },
@@ -29868,6 +33563,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10877 },
     },
+    ["xp"] = 470,
+    ["rep"] = { 72, 10 },
   },
   [5091] = {
     ["close"] = { 5066, 5090, 5091 },
@@ -29879,6 +33576,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10878 },
     },
+    ["xp"] = 470,
+    ["rep"] = { 72, 10 },
   },
   [5092] = {
     ["end"] = {
@@ -29893,6 +33592,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10838 },
     },
+    ["xp"] = 5100,
+    ["rep"] = { 72, 100 },
   },
   [5093] = {
     ["close"] = { 5093, 5094, 5095 },
@@ -29904,6 +33605,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10880 },
     },
+    ["xp"] = 470,
+    ["rep"] = { 68, 10 },
   },
   [5094] = {
     ["close"] = { 5093, 5094, 5095 },
@@ -29915,6 +33618,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10879 },
     },
+    ["xp"] = 470,
+    ["rep"] = { 68, 10 },
   },
   [5095] = {
     ["close"] = { 5093, 5094, 5095 },
@@ -29926,6 +33631,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10881 },
     },
+    ["xp"] = 470,
+    ["rep"] = { 68, 10 },
   },
   [5096] = {
     ["end"] = {
@@ -29942,6 +33649,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10837 },
     },
+    ["xp"] = 5250,
+    ["rep"] = { 68, 100 },
   },
   [5097] = {
     ["end"] = {
@@ -29957,6 +33666,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10838 },
     },
+    ["xp"] = 5800,
+    ["rep"] = { 72, 100 },
   },
   [5098] = {
     ["end"] = {
@@ -29972,6 +33683,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10837 },
     },
+    ["xp"] = 5800,
+    ["rep"] = { 68, 100 },
   },
   [5101] = {
     ["lvl"] = 5,
@@ -29979,6 +33692,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["U"] = { 1933 },
     },
+    ["xp"] = 450,
   },
   [5102] = {
     ["end"] = {
@@ -29993,6 +33707,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9560 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 469, 200 },
   },
   [5103] = {
     ["end"] = {
@@ -30004,6 +33720,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 176090 },
     },
+    ["xp"] = 6600,
   },
   [5121] = {
     ["end"] = {
@@ -30018,6 +33735,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9298 },
     },
+    ["xp"] = 6400,
+    ["rep"] = { 577, 100 },
   },
   [5122] = {
     ["end"] = {
@@ -30042,6 +33761,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 12842 },
     },
+    ["xp"] = 3200,
+    ["rep"] = { 577, 50 },
   },
   [5124] = {
     ["end"] = {
@@ -30056,6 +33777,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10637 },
     },
+    ["xp"] = 8300,
   },
   [5125] = {
     ["end"] = {
@@ -30066,6 +33788,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10917 },
     },
+    ["xp"] = 9950,
   },
   [5126] = {
     ["end"] = {
@@ -30077,6 +33800,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10918 },
     },
+    ["xp"] = 660,
   },
   [5127] = {
     ["end"] = {
@@ -30093,6 +33817,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10918 },
     },
+    ["xp"] = 8300,
   },
   [5128] = {
     ["end"] = {
@@ -30104,6 +33829,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9298 },
     },
+    ["xp"] = 6400,
+    ["rep"] = { 577, 100 },
   },
   [5141] = {
     ["close"] = { 5141, 5143, 5144 },
@@ -30119,6 +33846,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7866 },
     },
+    ["xp"] = 4200,
+    ["rep"] = { 86, 200 },
   },
   [5142] = {
     ["close"] = { 5142, 5601 },
@@ -30130,6 +33859,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10927 },
     },
+    ["xp"] = 2800,
   },
   [5143] = {
     ["close"] = { 5141, 5143, 5144 },
@@ -30146,6 +33876,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7870 },
     },
+    ["xp"] = 4200,
+    ["rep"] = { 549, 200 },
   },
   [5144] = {
     ["close"] = { 5141, 5143, 5144 },
@@ -30161,6 +33893,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7868 },
     },
+    ["xp"] = 4200,
+    ["rep"] = { 83, 200 },
   },
   [5145] = {
     ["close"] = { 5145, 5146, 5148 },
@@ -30176,6 +33910,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7867 },
     },
+    ["xp"] = 4200,
+    ["rep"] = { 86, 200 },
   },
   [5146] = {
     ["close"] = { 5145, 5146, 5148 },
@@ -30191,6 +33927,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7869 },
     },
+    ["xp"] = 4200,
+    ["rep"] = { 83, 200 },
   },
   [5147] = {
     ["end"] = {
@@ -30205,6 +33943,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 176115 },
     },
+    ["xp"] = 2350,
+    ["rep"] = { 81, 100 },
   },
   [5148] = {
     ["close"] = { 5145, 5146, 5148 },
@@ -30221,6 +33961,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7871 },
     },
+    ["xp"] = 4200,
+    ["rep"] = { 549, 200 },
   },
   [5149] = {
     ["end"] = {
@@ -30235,6 +33977,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10926 },
     },
+    ["xp"] = 2800,
   },
   [5150] = {
     ["end"] = {
@@ -30261,6 +34004,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10941 },
     },
+    ["xp"] = 3050,
   },
   [5152] = {
     ["end"] = {
@@ -30272,6 +34016,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10926 },
     },
+    ["xp"] = 2900,
   },
   [5153] = {
     ["end"] = {
@@ -30286,6 +34031,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10927 },
     },
+    ["xp"] = 4350,
   },
   [5154] = {
     ["end"] = {
@@ -30300,6 +34046,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10667 },
     },
+    ["xp"] = 5800,
   },
   [5155] = {
     ["end"] = {
@@ -30313,6 +34060,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10922 },
     },
+    ["xp"] = 4900,
   },
   [5156] = {
     ["end"] = {
@@ -30327,6 +34075,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10921 },
     },
+    ["xp"] = 6800,
   },
   [5157] = {
     ["end"] = {
@@ -30342,6 +34091,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10922 },
     },
+    ["xp"] = 3800,
   },
   [5158] = {
     ["end"] = {
@@ -30353,6 +34103,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10922 },
     },
+    ["xp"] = 2550,
   },
   [5159] = {
     ["end"] = {
@@ -30367,6 +34118,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5901 },
     },
+    ["xp"] = 2700,
   },
   [5160] = {
     ["end"] = {
@@ -30377,6 +34129,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10740 },
     },
+    ["xp"] = 6600,
   },
   [5161] = {
     ["end"] = {
@@ -30388,6 +34141,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10929 },
     },
+    ["xp"] = 660,
   },
   [5162] = {
     ["end"] = {
@@ -30399,6 +34153,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10929 },
     },
+    ["xp"] = 6600,
   },
   [5163] = {
     ["end"] = {
@@ -30414,6 +34169,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10305 },
     },
+    ["xp"] = 7750,
+    ["rep"] = { 577, 150 },
   },
   [5164] = {
     ["end"] = {
@@ -30425,6 +34182,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10976 },
     },
+    ["xp"] = 660,
   },
   [5165] = {
     ["end"] = {
@@ -30440,6 +34198,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10922 },
     },
+    ["xp"] = 5650,
   },
   [5166] = {
     ["end"] = {
@@ -30454,6 +34213,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 176192 },
     },
+    ["xp"] = 9950,
   },
   [5167] = {
     ["end"] = {
@@ -30468,6 +34228,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 176192 },
     },
+    ["xp"] = 9950,
   },
   [5168] = {
     ["end"] = {
@@ -30482,6 +34243,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11063 },
     },
+    ["xp"] = 5800,
   },
   [5181] = {
     ["end"] = {
@@ -30496,6 +34258,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11063 },
     },
+    ["xp"] = 6000,
+    ["rep"] = { 529, 100 },
   },
   [5201] = {
     ["end"] = {
@@ -30509,6 +34273,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10618 },
     },
+    ["rep"] = { 589, 50 },
   },
   [5202] = {
     ["end"] = {
@@ -30519,6 +34284,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 13140 },
     },
+    ["xp"] = 5650,
   },
   [5203] = {
     ["end"] = {
@@ -30530,6 +34296,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11016 },
     },
+    ["xp"] = 5650,
   },
   [5204] = {
     ["end"] = {
@@ -30544,6 +34311,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11019 },
     },
+    ["xp"] = 4500,
   },
   [5205] = {
     ["lvl"] = 49,
@@ -30562,6 +34330,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11063 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 529, 100 },
   },
   [5207] = {
     ["lvl"] = 49,
@@ -30585,6 +34355,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10667 },
     },
+    ["xp"] = 2900,
+    ["rep"] = { 529, 50 },
   },
   [5211] = {
     ["end"] = {
@@ -30599,6 +34371,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11063 },
     },
+    ["xp"] = 5650,
   },
   [5212] = {
     ["end"] = {
@@ -30612,6 +34385,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11035 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 529, 100 },
   },
   [5213] = {
     ["end"] = {
@@ -30626,6 +34401,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11035 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 529, 100 },
   },
   [5214] = {
     ["end"] = {
@@ -30639,6 +34416,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11033 },
     },
+    ["xp"] = 8300,
   },
   [5215] = {
     ["end"] = {
@@ -30650,6 +34428,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10838 },
     },
+    ["xp"] = 530,
+    ["rep"] = { 72, 10 },
   },
   [5216] = {
     ["end"] = {
@@ -30664,6 +34444,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11053 },
     },
+    ["xp"] = 5250,
+    ["rep"] = { 72, 100, 529, 100 },
   },
   [5217] = {
     ["end"] = {
@@ -30675,6 +34457,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 176361 },
     },
+    ["xp"] = 2650,
+    ["rep"] = { 72, 50, 529, 50 },
   },
   [5218] = {
     ["end"] = {
@@ -30688,6 +34472,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 176361 },
     },
+    ["xp"] = 530,
+    ["rep"] = { 529, 25 },
   },
   [5219] = {
     ["end"] = {
@@ -30702,6 +34488,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11053 },
     },
+    ["xp"] = 5650,
+    ["rep"] = { 72, 100, 529, 100 },
   },
   [5220] = {
     ["end"] = {
@@ -30713,6 +34501,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 177289 },
     },
+    ["xp"] = 2800,
+    ["rep"] = { 72, 50, 529, 50 },
   },
   [5221] = {
     ["end"] = {
@@ -30726,6 +34516,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 177289 },
     },
+    ["xp"] = 560,
+    ["rep"] = { 529, 25 },
   },
   [5222] = {
     ["end"] = {
@@ -30740,6 +34532,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11053 },
     },
+    ["xp"] = 5650,
+    ["rep"] = { 72, 100, 529, 100 },
   },
   [5223] = {
     ["end"] = {
@@ -30751,6 +34545,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 176393 },
     },
+    ["xp"] = 2800,
+    ["rep"] = { 72, 50, 529, 50 },
   },
   [5224] = {
     ["end"] = {
@@ -30764,6 +34560,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 176393 },
     },
+    ["xp"] = 560,
+    ["rep"] = { 529, 25 },
   },
   [5225] = {
     ["end"] = {
@@ -30778,6 +34576,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11053 },
     },
+    ["xp"] = 6200,
+    ["rep"] = { 72, 100, 529, 100 },
   },
   [5226] = {
     ["end"] = {
@@ -30789,6 +34589,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 176392 },
     },
+    ["xp"] = 3100,
+    ["rep"] = { 72, 50, 529, 50 },
   },
   [5227] = {
     ["end"] = {
@@ -30802,6 +34604,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 176392 },
     },
+    ["xp"] = 620,
+    ["rep"] = { 529, 25 },
   },
   [5228] = {
     ["end"] = {
@@ -30813,6 +34617,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10837 },
     },
+    ["xp"] = 530,
+    ["rep"] = { 68, 10 },
   },
   [5229] = {
     ["end"] = {
@@ -30827,6 +34633,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11055 },
     },
+    ["xp"] = 5250,
+    ["rep"] = { 68, 100, 529, 100 },
   },
   [5230] = {
     ["end"] = {
@@ -30838,6 +34646,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 176361 },
     },
+    ["xp"] = 2650,
+    ["rep"] = { 68, 50, 529, 50 },
   },
   [5231] = {
     ["end"] = {
@@ -30852,6 +34662,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11055 },
     },
+    ["xp"] = 5650,
+    ["rep"] = { 68, 100, 529, 100 },
   },
   [5232] = {
     ["end"] = {
@@ -30863,6 +34675,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 177289 },
     },
+    ["xp"] = 2800,
+    ["rep"] = { 68, 50, 529, 50 },
   },
   [5233] = {
     ["end"] = {
@@ -30877,6 +34691,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11055 },
     },
+    ["xp"] = 5650,
+    ["rep"] = { 68, 100, 529, 100 },
   },
   [5234] = {
     ["end"] = {
@@ -30888,6 +34704,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 176393 },
     },
+    ["xp"] = 2800,
+    ["rep"] = { 68, 50, 529, 50 },
   },
   [5235] = {
     ["end"] = {
@@ -30902,6 +34720,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11055 },
     },
+    ["xp"] = 6200,
+    ["rep"] = { 68, 100, 529, 100 },
   },
   [5236] = {
     ["end"] = {
@@ -30913,6 +34733,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 176392 },
     },
+    ["xp"] = 3100,
+    ["rep"] = { 68, 50, 529, 50 },
   },
   [5237] = {
     ["end"] = {
@@ -30924,6 +34746,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10838 },
     },
+    ["xp"] = 9300,
+    ["rep"] = { 469, 200, 529, 200 },
   },
   [5238] = {
     ["end"] = {
@@ -30935,6 +34759,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10837 },
     },
+    ["xp"] = 9300,
+    ["rep"] = { 67, 200, 529, 200 },
   },
   [5241] = {
     ["end"] = {
@@ -30946,6 +34772,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10926 },
     },
+    ["xp"] = 2900,
   },
   [5242] = {
     ["end"] = {
@@ -30961,6 +34788,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10922 },
     },
+    ["xp"] = 9300,
   },
   [5243] = {
     ["end"] = {
@@ -30974,6 +34802,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11036 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 529, 100 },
   },
   [5244] = {
     ["end"] = {
@@ -30985,6 +34815,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11079 },
     },
+    ["xp"] = 580,
+    ["rep"] = { 47, 10 },
   },
   [5245] = {
     ["end"] = {
@@ -30999,6 +34831,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10301 },
     },
+    ["xp"] = 5800,
+    ["rep"] = { 469, 25 },
   },
   [5246] = {
     ["end"] = {
@@ -31013,6 +34847,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10304 },
     },
+    ["xp"] = 5800,
+    ["rep"] = { 469, 25 },
   },
   [5247] = {
     ["end"] = {
@@ -31028,6 +34864,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10304 },
     },
+    ["xp"] = 6000,
+    ["rep"] = { 469, 25 },
   },
   [5248] = {
     ["end"] = {
@@ -31039,6 +34877,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10304 },
     },
+    ["xp"] = 4650,
+    ["rep"] = { 469, 25 },
   },
   [5249] = {
     ["close"] = { 5249, 5250 },
@@ -31051,6 +34891,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10924 },
     },
+    ["xp"] = 580,
+    ["rep"] = { 69, 10 },
   },
   [5250] = {
     ["close"] = { 5249, 5250 },
@@ -31062,6 +34904,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7907 },
     },
+    ["xp"] = 580,
+    ["rep"] = { 69, 10 },
   },
   [5251] = {
     ["end"] = {
@@ -31076,6 +34920,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11039 },
     },
+    ["xp"] = 8300,
+    ["rep"] = { 529, 150 },
   },
   [5252] = {
     ["end"] = {
@@ -31087,6 +34933,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10684 },
     },
+    ["xp"] = 4650,
+    ["rep"] = { 469, 25 },
   },
   [5253] = {
     ["end"] = {
@@ -31098,6 +34946,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11079 },
     },
+    ["xp"] = 6200,
+    ["rep"] = { 469, 100 },
   },
   [5261] = {
     ["end"] = {
@@ -31109,6 +34959,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 823 },
     },
+    ["xp"] = 85,
+    ["rep"] = { 72, 50 },
   },
   [5262] = {
     ["end"] = {
@@ -31120,6 +34972,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 13250 },
     },
+    ["xp"] = 8300,
+    ["rep"] = { 529, 150 },
   },
   [5263] = {
     ["end"] = {
@@ -31134,6 +34988,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11039 },
     },
+    ["xp"] = 8300,
+    ["rep"] = { 529, 150 },
   },
   [5264] = {
     ["end"] = {
@@ -31145,6 +35001,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11039 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 529, 100 },
   },
   [5265] = {
     ["end"] = {
@@ -31156,6 +35014,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11034 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 529, 200 },
   },
   [5281] = {
     ["end"] = {
@@ -31166,6 +35026,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11038 },
     },
+    ["xp"] = 6600,
   },
   [5282] = {
     ["end"] = {
@@ -31181,6 +35042,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11140 },
     },
+    ["xp"] = 8300,
   },
   [5283] = {
     ["close"] = { 5283, 5284 },
@@ -31196,6 +35058,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5164 },
     },
+    ["xp"] = 3150,
   },
   [5284] = {
     ["close"] = { 5283, 5284 },
@@ -31211,6 +35074,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11146 },
     },
+    ["xp"] = 3150,
   },
   [5301] = {
     ["close"] = { 5301, 5302 },
@@ -31226,6 +35090,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11177 },
     },
+    ["xp"] = 3150,
   },
   [5302] = {
     ["close"] = { 5301, 5302 },
@@ -31241,6 +35106,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11178 },
     },
+    ["xp"] = 3150,
   },
   [5305] = {
     ["end"] = {
@@ -31255,6 +35121,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11191 },
     },
+    ["xp"] = 8300,
   },
   [5306] = {
     ["end"] = {
@@ -31269,6 +35136,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11192 },
     },
+    ["xp"] = 8300,
   },
   [5307] = {
     ["end"] = {
@@ -31283,6 +35151,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11193 },
     },
+    ["xp"] = 8300,
   },
   [5321] = {
     ["end"] = {
@@ -31297,6 +35166,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11218 },
     },
+    ["xp"] = 1550,
+    ["rep"] = { 69, 100 },
   },
   [5341] = {
     ["end"] = {
@@ -31310,6 +35181,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11022 },
     },
+    ["xp"] = 6600,
   },
   [5342] = {
     ["end"] = {
@@ -31324,6 +35196,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11022 },
     },
+    ["xp"] = 8300,
   },
   [5343] = {
     ["end"] = {
@@ -31337,6 +35210,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11023 },
     },
+    ["xp"] = 6600,
   },
   [5344] = {
     ["end"] = {
@@ -31351,6 +35225,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11023 },
     },
+    ["xp"] = 8300,
   },
   [5361] = {
     ["end"] = {
@@ -31361,6 +35236,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10537 },
     },
+    ["xp"] = 2050,
+    ["rep"] = { 81, 75 },
   },
   [5381] = {
     ["end"] = {
@@ -31375,6 +35252,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11624 },
     },
+    ["xp"] = 2850,
+    ["rep"] = { 81, 100 },
   },
   [5382] = {
     ["end"] = {
@@ -31389,11 +35268,13 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11216 },
     },
+    ["xp"] = 6600,
   },
   [5383] = {
     ["lvl"] = 60,
     ["min"] = 55,
     ["race"] = 255,
+    ["xp"] = 6600,
   },
   [5384] = {
     ["end"] = {
@@ -31408,6 +35289,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11216 },
     },
+    ["xp"] = 8300,
   },
   [5385] = {
     ["end"] = {
@@ -31419,6 +35301,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11020 },
     },
+    ["xp"] = 7550,
   },
   [5386] = {
     ["end"] = {
@@ -31432,6 +35315,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11259 },
     },
+    ["xp"] = 2100,
+    ["rep"] = { 81, 75 },
   },
   [5401] = {
     ["close"] = { 5401, 5405, 5503 },
@@ -31443,6 +35328,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10840 },
     },
+    ["xp"] = 560,
+    ["rep"] = { 529, 10 },
   },
   [5402] = {
     ["end"] = {
@@ -31456,6 +35343,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10840 },
     },
+    ["xp"] = 560,
+    ["rep"] = { 529, 25 },
   },
   [5403] = {
     ["end"] = {
@@ -31469,6 +35358,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10840 },
     },
+    ["xp"] = 560,
+    ["rep"] = { 529, 25 },
   },
   [5404] = {
     ["end"] = {
@@ -31482,6 +35373,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10840 },
     },
+    ["xp"] = 560,
+    ["rep"] = { 529, 25 },
   },
   [5405] = {
     ["close"] = { 5401, 5405, 5503 },
@@ -31493,6 +35386,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10839 },
     },
+    ["xp"] = 560,
+    ["rep"] = { 529, 10 },
   },
   [5406] = {
     ["end"] = {
@@ -31506,6 +35401,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10839 },
     },
+    ["xp"] = 560,
+    ["rep"] = { 529, 25 },
   },
   [5407] = {
     ["end"] = {
@@ -31519,6 +35416,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10839 },
     },
+    ["xp"] = 560,
+    ["rep"] = { 529, 25 },
   },
   [5408] = {
     ["end"] = {
@@ -31532,6 +35431,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10839 },
     },
+    ["xp"] = 560,
+    ["rep"] = { 529, 25 },
   },
   [5421] = {
     ["end"] = {
@@ -31558,6 +35459,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11378 },
     },
+    ["xp"] = 445,
+    ["rep"] = { 76, 150, 530, 150 },
   },
   [5461] = {
     ["end"] = {
@@ -31572,6 +35475,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11286 },
     },
+    ["xp"] = 6600,
   },
   [5462] = {
     ["end"] = {
@@ -31583,6 +35487,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11286 },
     },
+    ["xp"] = 4950,
   },
   [5463] = {
     ["end"] = {
@@ -31594,6 +35499,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11036 },
     },
+    ["xp"] = 6600,
   },
   [5464] = {
     ["end"] = {
@@ -31605,6 +35511,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 176631 },
     },
+    ["xp"] = 8300,
+    ["rep"] = { 529, 150 },
   },
   [5465] = {
     ["end"] = {
@@ -31616,6 +35524,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11036 },
     },
+    ["xp"] = 4950,
   },
   [5466] = {
     ["end"] = {
@@ -31631,6 +35540,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11286 },
     },
+    ["xp"] = 9950,
   },
   [5481] = {
     ["end"] = {
@@ -31644,6 +35554,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10666 },
     },
+    ["xp"] = 225,
+    ["rep"] = { 68, 50 },
   },
   [5482] = {
     ["end"] = {
@@ -31658,6 +35570,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10665 },
     },
+    ["xp"] = 540,
+    ["rep"] = { 68, 100 },
   },
   [5501] = {
     ["end"] = {
@@ -31671,6 +35585,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11438 },
     },
+    ["xp"] = 2250,
+    ["rep"] = { 470, 75 },
   },
   [5502] = {
     ["end"] = {
@@ -31686,6 +35602,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14444 },
     },
+    ["xp"] = 1650,
+    ["rep"] = { 67, 200 },
   },
   [5503] = {
     ["close"] = { 5401, 5405, 5503 },
@@ -31697,6 +35615,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11039 },
     },
+    ["xp"] = 560,
+    ["rep"] = { 529, 10 },
   },
   [5504] = {
     ["close"] = { 5504, 5507, 5513 },
@@ -31711,6 +35631,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10856 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 529, 100 },
   },
   [5505] = {
     ["end"] = {
@@ -31722,6 +35644,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11056 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 72, 200 },
   },
   [5506] = {
     ["lvl"] = 56,
@@ -31740,6 +35664,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10857 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 529, 100 },
   },
   [5508] = {
     ["end"] = {
@@ -31753,6 +35679,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11039 },
     },
+    ["xp"] = 560,
+    ["rep"] = { 529, 25 },
   },
   [5509] = {
     ["end"] = {
@@ -31766,6 +35694,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11039 },
     },
+    ["xp"] = 560,
+    ["rep"] = { 529, 25 },
   },
   [5510] = {
     ["end"] = {
@@ -31779,6 +35709,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11039 },
     },
+    ["xp"] = 560,
+    ["rep"] = { 529, 25 },
   },
   [5511] = {
     ["end"] = {
@@ -31790,6 +35722,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11057 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 68, 200 },
   },
   [5512] = {
     ["lvl"] = 56,
@@ -31808,6 +35742,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11536 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 529, 100 },
   },
   [5514] = {
     ["end"] = {
@@ -31819,6 +35755,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11057 },
     },
+    ["xp"] = 600,
   },
   [5515] = {
     ["end"] = {
@@ -31833,6 +35770,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11216 },
     },
+    ["xp"] = 6600,
   },
   [5516] = {
     ["lvl"] = 58,
@@ -31851,6 +35789,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11536 },
     },
+    ["xp"] = 8300,
+    ["rep"] = { 529, 150 },
   },
   [5518] = {
     ["end"] = {
@@ -31864,6 +35804,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14338 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 169, 100 },
   },
   [5519] = {
     ["end"] = {
@@ -31878,6 +35820,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14338 },
     },
+    ["rep"] = { 169, 50 },
   },
   [5520] = {
     ["lvl"] = 58,
@@ -31896,6 +35839,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10857 },
     },
+    ["xp"] = 8300,
+    ["rep"] = { 529, 150 },
   },
   [5522] = {
     ["end"] = {
@@ -31907,6 +35852,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10267 },
     },
+    ["xp"] = 4950,
+    ["rep"] = { 529, 75 },
   },
   [5523] = {
     ["lvl"] = 58,
@@ -31925,6 +35872,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10856 },
     },
+    ["xp"] = 8300,
+    ["rep"] = { 529, 150 },
   },
   [5525] = {
     ["end"] = {
@@ -31938,6 +35887,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14338 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 169, 150 },
   },
   [5526] = {
     ["end"] = {
@@ -31952,6 +35903,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11801 },
     },
+    ["xp"] = 8300,
+    ["rep"] = { 609, 150 },
   },
   [5527] = {
     ["end"] = {
@@ -31965,6 +35918,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11801 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [5528] = {
     ["end"] = {
@@ -31988,6 +35943,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11035 },
     },
+    ["xp"] = 6200,
+    ["rep"] = { 529, 100 },
   },
   [5530] = {
     ["lvl"] = 60,
@@ -32006,6 +35963,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11036 },
     },
+    ["xp"] = 1650,
+    ["rep"] = { 529, 25 },
   },
   [5532] = {
     ["lvl"] = 58,
@@ -32024,6 +35983,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10838 },
     },
+    ["xp"] = 560,
   },
   [5534] = {
     ["end"] = {
@@ -32038,6 +35998,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8420 },
     },
+    ["xp"] = 6550,
+    ["rep"] = { 21, 150, 87, -750 },
   },
   [5535] = {
     ["end"] = {
@@ -32051,6 +36013,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11548 },
     },
+    ["xp"] = 4200,
   },
   [5536] = {
     ["end"] = {
@@ -32064,6 +36027,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11548 },
     },
+    ["xp"] = 4200,
   },
   [5537] = {
     ["end"] = {
@@ -32078,6 +36042,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11056 },
     },
+    ["xp"] = 4500,
   },
   [5538] = {
     ["end"] = {
@@ -32089,6 +36054,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11056 },
     },
+    ["xp"] = 600,
   },
   [5541] = {
     ["end"] = {
@@ -32102,6 +36068,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1694 },
     },
+    ["xp"] = 540,
+    ["rep"] = { 47, 100, 54, 100 },
   },
   [5542] = {
     ["end"] = {
@@ -32115,6 +36083,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1855 },
     },
+    ["xp"] = 5800,
   },
   [5543] = {
     ["end"] = {
@@ -32128,6 +36097,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1855 },
     },
+    ["xp"] = 5800,
   },
   [5544] = {
     ["end"] = {
@@ -32141,6 +36111,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1855 },
     },
+    ["xp"] = 5800,
   },
   [5545] = {
     ["end"] = {
@@ -32154,6 +36125,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10616 },
     },
+    ["xp"] = 780,
   },
   [5561] = {
     ["end"] = {
@@ -32167,6 +36139,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11596 },
     },
+    ["xp"] = 2000,
+    ["rep"] = { 470, 75 },
   },
   [5581] = {
     ["end"] = {
@@ -32182,6 +36156,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11624 },
     },
+    ["xp"] = 3550,
+    ["rep"] = { 81, 150 },
   },
   [5582] = {
     ["end"] = {
@@ -32193,6 +36169,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 13920 },
     },
+    ["rep"] = { 529, 50 },
   },
   [5601] = {
     ["close"] = { 5142, 5601 },
@@ -32204,6 +36181,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11629 },
     },
+    ["xp"] = 560,
   },
   [5621] = {
     ["class"] = 16,
@@ -32220,6 +36198,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3600 },
     },
+    ["xp"] = 270,
   },
   [5622] = {
     ["class"] = 16,
@@ -32232,6 +36211,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3595 },
     },
+    ["xp"] = 90,
   },
   [5623] = {
     ["class"] = 16,
@@ -32244,6 +36224,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 375 },
     },
+    ["xp"] = 90,
   },
   [5624] = {
     ["class"] = 16,
@@ -32260,6 +36241,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 377 },
     },
+    ["xp"] = 270,
   },
   [5625] = {
     ["class"] = 16,
@@ -32276,6 +36258,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1226 },
     },
+    ["xp"] = 270,
   },
   [5626] = {
     ["class"] = 16,
@@ -32288,6 +36271,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 837 },
     },
+    ["xp"] = 90,
   },
   [5627] = {
     ["class"] = 16,
@@ -32314,6 +36298,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 377 },
     },
+    ["xp"] = 210,
   },
   [5629] = {
     ["class"] = 16,
@@ -32327,6 +36312,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3600 },
     },
+    ["xp"] = 210,
   },
   [5630] = {
     ["class"] = 16,
@@ -32340,6 +36326,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1226 },
     },
+    ["xp"] = 210,
   },
   [5631] = {
     ["class"] = 16,
@@ -32353,6 +36340,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5489 },
     },
+    ["xp"] = 210,
   },
   [5632] = {
     ["class"] = 16,
@@ -32366,6 +36354,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11397 },
     },
+    ["xp"] = 210,
   },
   [5633] = {
     ["class"] = 16,
@@ -32379,6 +36368,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5142 },
     },
+    ["xp"] = 210,
   },
   [5634] = {
     ["class"] = 16,
@@ -32405,6 +36395,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 377 },
     },
+    ["xp"] = 210,
   },
   [5636] = {
     ["class"] = 16,
@@ -32418,6 +36409,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3600 },
     },
+    ["xp"] = 210,
   },
   [5637] = {
     ["class"] = 16,
@@ -32431,6 +36423,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1226 },
     },
+    ["xp"] = 210,
   },
   [5638] = {
     ["class"] = 16,
@@ -32444,6 +36437,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11397 },
     },
+    ["xp"] = 210,
   },
   [5639] = {
     ["class"] = 16,
@@ -32470,6 +36464,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11401 },
     },
+    ["xp"] = 210,
   },
   [5641] = {
     ["class"] = 16,
@@ -32496,6 +36491,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3044 },
     },
+    ["xp"] = 390,
   },
   [5643] = {
     ["class"] = 16,
@@ -32509,6 +36505,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4606 },
     },
+    ["xp"] = 390,
   },
   [5644] = {
     ["class"] = 16,
@@ -32522,6 +36519,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3044 },
     },
+    ["xp"] = 390,
   },
   [5645] = {
     ["class"] = 16,
@@ -32535,6 +36533,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 376 },
     },
+    ["xp"] = 390,
   },
   [5646] = {
     ["class"] = 16,
@@ -32548,6 +36547,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6018 },
     },
+    ["xp"] = 390,
   },
   [5647] = {
     ["class"] = 16,
@@ -32561,6 +36561,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11401 },
     },
+    ["xp"] = 390,
   },
   [5648] = {
     ["class"] = 16,
@@ -32577,6 +36578,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3706 },
     },
+    ["xp"] = 270,
   },
   [5649] = {
     ["class"] = 16,
@@ -32589,6 +36591,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3707 },
     },
+    ["xp"] = 90,
   },
   [5650] = {
     ["class"] = 16,
@@ -32605,6 +36608,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2129 },
     },
+    ["xp"] = 270,
   },
   [5651] = {
     ["class"] = 16,
@@ -32617,6 +36621,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2123 },
     },
+    ["xp"] = 90,
   },
   [5652] = {
     ["class"] = 16,
@@ -32643,6 +36648,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3706 },
     },
+    ["xp"] = 210,
   },
   [5655] = {
     ["class"] = 16,
@@ -32656,6 +36662,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11407 },
     },
+    ["xp"] = 210,
   },
   [5656] = {
     ["class"] = 16,
@@ -32669,6 +36676,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3044 },
     },
+    ["xp"] = 210,
   },
   [5657] = {
     ["class"] = 16,
@@ -32682,6 +36690,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4606 },
     },
+    ["xp"] = 210,
   },
   [5658] = {
     ["class"] = 16,
@@ -32702,6 +36711,7 @@ UnrealQuestData["quests"] = {
     ["lvl"] = 10,
     ["min"] = 10,
     ["race"] = 144,
+    ["xp"] = 210,
   },
   [5660] = {
     ["class"] = 16,
@@ -32715,6 +36725,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3706 },
     },
+    ["xp"] = 210,
   },
   [5661] = {
     ["class"] = 16,
@@ -32728,6 +36739,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11407 },
     },
+    ["xp"] = 210,
   },
   [5662] = {
     ["class"] = 16,
@@ -32741,6 +36753,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6018 },
     },
+    ["xp"] = 210,
   },
   [5663] = {
     ["class"] = 16,
@@ -32754,6 +36767,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3044 },
     },
+    ["xp"] = 210,
   },
   [5672] = {
     ["class"] = 16,
@@ -32780,6 +36794,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 376 },
     },
+    ["xp"] = 390,
   },
   [5674] = {
     ["class"] = 16,
@@ -32793,6 +36808,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3600 },
     },
+    ["xp"] = 390,
   },
   [5675] = {
     ["class"] = 16,
@@ -32806,6 +36822,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11406 },
     },
+    ["xp"] = 390,
   },
   [5676] = {
     ["class"] = 16,
@@ -32832,6 +36849,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11406 },
     },
+    ["xp"] = 390,
   },
   [5678] = {
     ["class"] = 16,
@@ -32845,6 +36863,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11401 },
     },
+    ["xp"] = 390,
   },
   [5679] = {
     ["class"] = 16,
@@ -32881,6 +36900,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11711 },
     },
+    ["xp"] = 1050,
+    ["rep"] = { 69, 100 },
   },
   [5721] = {
     ["end"] = {
@@ -32896,6 +36917,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10667 },
     },
+    ["xp"] = 8300,
   },
   [5722] = {
     ["end"] = {
@@ -32906,6 +36928,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11833 },
     },
+    ["xp"] = 880,
   },
   [5723] = {
     ["end"] = {
@@ -32919,6 +36942,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11833 },
     },
+    ["xp"] = 1050,
+    ["rep"] = { 81, 100 },
   },
   [5724] = {
     ["end"] = {
@@ -32930,6 +36955,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11834 },
     },
+    ["xp"] = 1450,
+    ["rep"] = { 81, 150 },
   },
   [5725] = {
     ["end"] = {
@@ -32943,6 +36970,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2425 },
     },
+    ["xp"] = 1450,
+    ["rep"] = { 68, 150 },
   },
   [5726] = {
     ["end"] = {
@@ -32956,6 +36985,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4949 },
     },
+    ["xp"] = 910,
+    ["rep"] = { 76, 100 },
   },
   [5727] = {
     ["end"] = {
@@ -32967,6 +36998,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4949 },
     },
+    ["xp"] = 455,
+    ["rep"] = { 76, 50 },
   },
   [5728] = {
     ["end"] = {
@@ -32981,6 +37014,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4949 },
     },
+    ["xp"] = 1150,
+    ["rep"] = { 76, 100 },
   },
   [5729] = {
     ["end"] = {
@@ -32992,6 +37027,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4949 },
     },
+    ["xp"] = 105,
   },
   [5730] = {
     ["end"] = {
@@ -33003,6 +37039,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3216 },
     },
+    ["xp"] = 1450,
+    ["rep"] = { 76, 150 },
   },
   [5741] = {
     ["end"] = {
@@ -33016,6 +37054,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11863 },
     },
+    ["xp"] = 2650,
+    ["rep"] = { 529, 100 },
   },
   [5742] = {
     ["end"] = {
@@ -33027,6 +37067,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1855 },
     },
+    ["xp"] = 580,
   },
   [5761] = {
     ["end"] = {
@@ -33040,6 +37081,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3216 },
     },
+    ["xp"] = 1150,
   },
   [5762] = {
     ["end"] = {
@@ -33050,6 +37092,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4452 },
     },
+    ["xp"] = 1250,
   },
   [5763] = {
     ["end"] = {
@@ -33060,6 +37103,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11877 },
     },
+    ["xp"] = 1250,
   },
   [5781] = {
     ["end"] = {
@@ -33074,6 +37118,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1855 },
     },
+    ["xp"] = 6000,
   },
   [5801] = {
     ["end"] = {
@@ -33089,6 +37134,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5411 },
     },
+    ["xp"] = 4500,
   },
   [5802] = {
     ["end"] = {
@@ -33104,6 +37150,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5411 },
     },
+    ["xp"] = 4500,
   },
   [5803] = {
     ["end"] = {
@@ -33118,6 +37165,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11056 },
     },
+    ["xp"] = 4950,
   },
   [5804] = {
     ["end"] = {
@@ -33132,6 +37180,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11057 },
     },
+    ["xp"] = 4950,
   },
   [5805] = {
     ["end"] = {
@@ -33152,6 +37201,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11625 },
     },
+    ["xp"] = 2750,
+    ["rep"] = { 470, 100 },
   },
   [5841] = {
     ["end"] = {
@@ -33206,6 +37257,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1855 },
     },
+    ["xp"] = 6200,
   },
   [5846] = {
     ["end"] = {
@@ -33217,6 +37269,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1855 },
     },
+    ["xp"] = 6200,
   },
   [5847] = {
     ["end"] = {
@@ -33241,6 +37294,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11936 },
     },
+    ["xp"] = 6600,
   },
   [5861] = {
     ["end"] = {
@@ -33252,6 +37306,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1855 },
     },
+    ["xp"] = 4950,
   },
   [5862] = {
     ["end"] = {
@@ -33263,6 +37318,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11872 },
     },
+    ["xp"] = 6600,
   },
   [5863] = {
     ["end"] = {
@@ -33276,6 +37332,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11758 },
     },
+    ["xp"] = 4550,
+    ["rep"] = { 369, 100 },
   },
   [5881] = {
     ["end"] = {
@@ -33286,6 +37344,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11860 },
     },
+    ["xp"] = 1150,
+    ["rep"] = { 81, 50 },
   },
   [5882] = {
     ["end"] = {
@@ -33300,6 +37360,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9528 },
     },
+    ["xp"] = 4200,
   },
   [5883] = {
     ["end"] = {
@@ -33315,6 +37376,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9528 },
     },
+    ["xp"] = 4200,
   },
   [5884] = {
     ["end"] = {
@@ -33330,6 +37392,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9528 },
     },
+    ["xp"] = 4200,
   },
   [5885] = {
     ["end"] = {
@@ -33345,6 +37408,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9528 },
     },
+    ["xp"] = 4200,
   },
   [5886] = {
     ["end"] = {
@@ -33360,6 +37424,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9528 },
     },
+    ["xp"] = 4200,
   },
   [5887] = {
     ["end"] = {
@@ -33374,6 +37439,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9529 },
     },
+    ["xp"] = 4200,
   },
   [5888] = {
     ["end"] = {
@@ -33389,6 +37455,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9529 },
     },
+    ["xp"] = 4200,
   },
   [5889] = {
     ["end"] = {
@@ -33404,6 +37471,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9529 },
     },
+    ["xp"] = 4200,
   },
   [5890] = {
     ["end"] = {
@@ -33419,6 +37487,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9529 },
     },
+    ["xp"] = 4200,
   },
   [5891] = {
     ["end"] = {
@@ -33434,6 +37503,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9529 },
     },
+    ["xp"] = 4200,
   },
   [5892] = {
     ["end"] = {
@@ -33447,6 +37517,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12096 },
     },
+    ["rep"] = { 47, 25 },
   },
   [5893] = {
     ["end"] = {
@@ -33460,6 +37531,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12097 },
     },
+    ["rep"] = { 76, 25 },
   },
   [5901] = {
     ["end"] = {
@@ -33473,6 +37545,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11615 },
     },
+    ["xp"] = 5650,
   },
   [5902] = {
     ["end"] = {
@@ -33484,6 +37557,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11615 },
     },
+    ["xp"] = 2800,
   },
   [5903] = {
     ["end"] = {
@@ -33497,6 +37571,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11616 },
     },
+    ["xp"] = 5650,
   },
   [5904] = {
     ["end"] = {
@@ -33508,6 +37583,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11616 },
     },
+    ["xp"] = 2800,
   },
   [5921] = {
     ["class"] = 1024,
@@ -33521,6 +37597,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4217 },
     },
+    ["xp"] = 210,
+    ["rep"] = { 609, 25 },
   },
   [5922] = {
     ["class"] = 1024,
@@ -33534,6 +37612,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3033 },
     },
+    ["xp"] = 210,
+    ["rep"] = { 609, 25 },
   },
   [5923] = {
     ["class"] = 1024,
@@ -33547,6 +37627,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4218 },
     },
+    ["xp"] = 85,
+    ["rep"] = { 609, 25 },
   },
   [5924] = {
     ["class"] = 1024,
@@ -33560,6 +37642,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5505 },
     },
+    ["xp"] = 85,
+    ["rep"] = { 609, 25 },
   },
   [5925] = {
     ["class"] = 1024,
@@ -33573,6 +37657,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3602 },
     },
+    ["xp"] = 85,
+    ["rep"] = { 609, 25 },
   },
   [5926] = {
     ["class"] = 1024,
@@ -33586,6 +37672,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6746 },
     },
+    ["xp"] = 85,
+    ["rep"] = { 609, 25 },
   },
   [5927] = {
     ["class"] = 1024,
@@ -33596,6 +37684,8 @@ UnrealQuestData["quests"] = {
     ["lvl"] = 10,
     ["min"] = 10,
     ["race"] = 32,
+    ["xp"] = 85,
+    ["rep"] = { 609, 25 },
   },
   [5928] = {
     ["class"] = 1024,
@@ -33609,6 +37699,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3064 },
     },
+    ["xp"] = 85,
+    ["rep"] = { 609, 25 },
   },
   [5929] = {
     ["class"] = 1024,
@@ -33622,6 +37714,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11802 },
     },
+    ["xp"] = 420,
+    ["rep"] = { 609, 50 },
   },
   [5930] = {
     ["class"] = 1024,
@@ -33635,6 +37729,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11802 },
     },
+    ["xp"] = 420,
+    ["rep"] = { 609, 50 },
   },
   [5931] = {
     ["class"] = 1024,
@@ -33648,6 +37744,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11802 },
     },
+    ["xp"] = 85,
   },
   [5932] = {
     ["class"] = 1024,
@@ -33661,6 +37758,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11802 },
     },
+    ["xp"] = 85,
   },
   [5941] = {
     ["end"] = {
@@ -33672,6 +37770,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11063 },
     },
+    ["xp"] = 3300,
   },
   [5942] = {
     ["end"] = {
@@ -33683,6 +37782,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10926 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 529, 200 },
   },
   [5943] = {
     ["end"] = {
@@ -33693,6 +37794,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11626 },
     },
+    ["xp"] = 2850,
+    ["rep"] = { 470, 100 },
   },
   [5944] = {
     ["end"] = {
@@ -33704,6 +37807,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1842 },
     },
+    ["xp"] = 9950,
   },
   [5961] = {
     ["end"] = {
@@ -33714,6 +37818,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10181 },
     },
+    ["xp"] = 1450,
+    ["rep"] = { 68, 25 },
   },
   [5981] = {
     ["end"] = {
@@ -33727,6 +37833,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10618 },
     },
+    ["rep"] = { 589, 50 },
   },
   [6000] = {
     ["lvl"] = 50,
@@ -33747,6 +37854,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4217 },
     },
+    ["xp"] = 840,
+    ["rep"] = { 609, 100 },
   },
   [6002] = {
     ["class"] = 1024,
@@ -33763,6 +37872,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3033 },
     },
+    ["xp"] = 840,
+    ["rep"] = { 609, 100 },
   },
   [6004] = {
     ["end"] = {
@@ -33776,6 +37887,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11610 },
     },
+    ["xp"] = 5800,
   },
   [6021] = {
     ["end"] = {
@@ -33789,6 +37901,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11038 },
     },
+    ["xp"] = 4200,
+    ["rep"] = { 529, 75 },
   },
   [6022] = {
     ["end"] = {
@@ -33802,6 +37916,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11878 },
     },
+    ["xp"] = 6200,
+    ["rep"] = { 68, 100 },
   },
   [6023] = {
     ["end"] = {
@@ -33816,6 +37932,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11610 },
     },
+    ["xp"] = 6000,
   },
   [6024] = {
     ["end"] = {
@@ -33829,6 +37946,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 177667 },
     },
+    ["xp"] = 6600,
   },
   [6025] = {
     ["end"] = {
@@ -33843,6 +37961,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11610 },
     },
+    ["xp"] = 6200,
   },
   [6026] = {
     ["end"] = {
@@ -33856,6 +37975,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11033 },
     },
+    ["xp"] = 6200,
   },
   [6027] = {
     ["end"] = {
@@ -33870,6 +37990,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11863 },
     },
+    ["xp"] = 3550,
+    ["rep"] = { 529, 150 },
   },
   [6028] = {
     ["end"] = {
@@ -33881,6 +38003,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10431 },
     },
+    ["xp"] = 2550,
+    ["rep"] = { 529, 50, 577, 50 },
   },
   [6029] = {
     ["end"] = {
@@ -33892,6 +38016,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10431 },
     },
+    ["xp"] = 2550,
+    ["rep"] = { 529, 50, 577, 50 },
   },
   [6030] = {
     ["end"] = {
@@ -33902,6 +38028,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10431 },
     },
+    ["xp"] = 2550,
+    ["rep"] = { 529, 50, 577, 50 },
   },
   [6031] = {
     ["end"] = {
@@ -33915,6 +38043,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11557 },
     },
+    ["xp"] = 5650,
+    ["rep"] = { 576, 100 },
   },
   [6032] = {
     ["end"] = {
@@ -33929,6 +38059,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11557 },
     },
+    ["xp"] = 5650,
+    ["rep"] = { 576, 100 },
   },
   [6041] = {
     ["end"] = {
@@ -33944,6 +38076,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11033 },
     },
+    ["xp"] = 6200,
   },
   [6042] = {
     ["end"] = {
@@ -33957,6 +38090,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11878 },
     },
+    ["xp"] = 6200,
+    ["rep"] = { 68, 100 },
   },
   [6061] = {
     ["class"] = 4,
@@ -33973,6 +38108,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3065 },
     },
+    ["xp"] = 840,
   },
   [6062] = {
     ["class"] = 4,
@@ -33989,6 +38125,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3171 },
     },
+    ["xp"] = 840,
   },
   [6063] = {
     ["class"] = 4,
@@ -34005,6 +38142,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3601 },
     },
+    ["xp"] = 840,
   },
   [6064] = {
     ["class"] = 4,
@@ -34021,6 +38159,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1231 },
     },
+    ["xp"] = 840,
   },
   [6065] = {
     ["class"] = 4,
@@ -34034,6 +38173,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3038 },
     },
+    ["xp"] = 85,
   },
   [6066] = {
     ["class"] = 4,
@@ -34047,6 +38187,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3061 },
     },
+    ["xp"] = 85,
   },
   [6067] = {
     ["class"] = 4,
@@ -34060,6 +38201,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3171 },
     },
+    ["xp"] = 85,
   },
   [6068] = {
     ["class"] = 4,
@@ -34073,6 +38215,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3407 },
     },
+    ["xp"] = 85,
   },
   [6069] = {
     ["class"] = 4,
@@ -34086,6 +38229,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11814 },
     },
+    ["xp"] = 85,
   },
   [6070] = {
     ["class"] = 4,
@@ -34099,6 +38243,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3038 },
     },
+    ["xp"] = 85,
   },
   [6071] = {
     ["class"] = 4,
@@ -34112,6 +38257,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4146 },
     },
+    ["xp"] = 85,
   },
   [6072] = {
     ["class"] = 4,
@@ -34125,6 +38271,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3596 },
     },
+    ["xp"] = 85,
   },
   [6073] = {
     ["class"] = 4,
@@ -34138,6 +38285,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5515 },
     },
+    ["xp"] = 85,
   },
   [6074] = {
     ["class"] = 4,
@@ -34151,6 +38299,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5116 },
     },
+    ["xp"] = 85,
   },
   [6075] = {
     ["class"] = 4,
@@ -34164,6 +38313,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11807 },
     },
+    ["xp"] = 85,
   },
   [6076] = {
     ["class"] = 4,
@@ -34177,6 +38327,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5515 },
     },
+    ["xp"] = 85,
   },
   [6081] = {
     ["class"] = 4,
@@ -34190,6 +38341,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3171 },
     },
+    ["xp"] = 420,
   },
   [6082] = {
     ["class"] = 4,
@@ -34206,6 +38358,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3171 },
     },
+    ["xp"] = 840,
   },
   [6083] = {
     ["class"] = 4,
@@ -34222,6 +38375,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3171 },
     },
+    ["xp"] = 840,
   },
   [6084] = {
     ["class"] = 4,
@@ -34238,6 +38392,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1231 },
     },
+    ["xp"] = 840,
   },
   [6085] = {
     ["class"] = 4,
@@ -34253,6 +38408,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1231 },
     },
+    ["xp"] = 840,
   },
   [6086] = {
     ["class"] = 4,
@@ -34266,6 +38422,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1231 },
     },
+    ["xp"] = 420,
   },
   [6087] = {
     ["class"] = 4,
@@ -34282,6 +38439,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3065 },
     },
+    ["xp"] = 840,
   },
   [6088] = {
     ["class"] = 4,
@@ -34298,6 +38456,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3065 },
     },
+    ["xp"] = 840,
   },
   [6089] = {
     ["class"] = 4,
@@ -34311,6 +38470,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3065 },
     },
+    ["xp"] = 420,
   },
   [6101] = {
     ["class"] = 4,
@@ -34327,6 +38487,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3601 },
     },
+    ["xp"] = 840,
   },
   [6102] = {
     ["class"] = 4,
@@ -34343,6 +38504,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3601 },
     },
+    ["xp"] = 840,
   },
   [6103] = {
     ["class"] = 4,
@@ -34356,6 +38518,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3601 },
     },
+    ["xp"] = 420,
   },
   [6121] = {
     ["class"] = 1024,
@@ -34368,6 +38531,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4217 },
     },
+    ["xp"] = 100,
+    ["rep"] = { 609, 10 },
   },
   [6122] = {
     ["class"] = 1024,
@@ -34385,6 +38550,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11802 },
     },
+    ["xp"] = 740,
+    ["rep"] = { 609, 75 },
   },
   [6123] = {
     ["class"] = 1024,
@@ -34401,6 +38568,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3702 },
     },
+    ["xp"] = 740,
+    ["rep"] = { 609, 75 },
   },
   [6124] = {
     ["class"] = 1024,
@@ -34416,6 +38585,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3702 },
     },
+    ["xp"] = 740,
+    ["rep"] = { 609, 75 },
   },
   [6125] = {
     ["class"] = 1024,
@@ -34429,6 +38600,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11802 },
     },
+    ["xp"] = 980,
+    ["rep"] = { 609, 100 },
   },
   [6126] = {
     ["class"] = 1024,
@@ -34441,6 +38614,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3033 },
     },
+    ["xp"] = 100,
+    ["rep"] = { 609, 10 },
   },
   [6127] = {
     ["class"] = 1024,
@@ -34458,6 +38633,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11802 },
     },
+    ["xp"] = 740,
+    ["rep"] = { 609, 75 },
   },
   [6128] = {
     ["class"] = 1024,
@@ -34474,6 +38651,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3448 },
     },
+    ["xp"] = 740,
+    ["rep"] = { 609, 75 },
   },
   [6129] = {
     ["class"] = 1024,
@@ -34490,6 +38669,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3448 },
     },
+    ["xp"] = 740,
+    ["rep"] = { 609, 75 },
   },
   [6130] = {
     ["class"] = 1024,
@@ -34503,6 +38684,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11802 },
     },
+    ["xp"] = 980,
+    ["rep"] = { 609, 100 },
   },
   [6131] = {
     ["end"] = {
@@ -34516,6 +38699,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11554 },
     },
+    ["rep"] = { 576, 100 },
   },
   [6132] = {
     ["end"] = {
@@ -34526,6 +38710,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12277 },
     },
+    ["xp"] = 2250,
   },
   [6133] = {
     ["end"] = {
@@ -34540,6 +38725,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11878 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 68, 100 },
   },
   [6134] = {
     ["end"] = {
@@ -34554,6 +38741,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6019 },
     },
+    ["xp"] = 2250,
   },
   [6135] = {
     ["end"] = {
@@ -34567,6 +38755,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11878 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 68, 100 },
   },
   [6136] = {
     ["end"] = {
@@ -34580,6 +38770,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11878 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 68, 100 },
   },
   [6141] = {
     ["end"] = {
@@ -34590,6 +38782,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12336 },
     },
+    ["xp"] = 300,
   },
   [6142] = {
     ["end"] = {
@@ -34603,6 +38796,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12031 },
     },
+    ["xp"] = 2750,
+    ["rep"] = { 530, 100 },
   },
   [6143] = {
     ["end"] = {
@@ -34616,6 +38811,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12340 },
     },
+    ["xp"] = 2800,
+    ["rep"] = { 530, 100 },
   },
   [6144] = {
     ["end"] = {
@@ -34626,6 +38823,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11878 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 68, 10 },
   },
   [6145] = {
     ["end"] = {
@@ -34640,6 +38839,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2425 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 68, 100 },
   },
   [6146] = {
     ["end"] = {
@@ -34654,6 +38855,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11878 },
     },
+    ["xp"] = 6600,
   },
   [6147] = {
     ["end"] = {
@@ -34665,6 +38867,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11898 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 68, 50 },
   },
   [6148] = {
     ["end"] = {
@@ -34679,6 +38883,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11878 },
     },
+    ["xp"] = 8300,
+    ["rep"] = { 68, 150 },
   },
   [6161] = {
     ["end"] = {
@@ -34692,6 +38898,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 177787 },
     },
+    ["xp"] = 2800,
   },
   [6162] = {
     ["end"] = {
@@ -34705,6 +38912,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9620 },
     },
+    ["xp"] = 4900,
+    ["rep"] = { 76, 100 },
   },
   [6163] = {
     ["end"] = {
@@ -34718,6 +38927,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11878 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 68, 100 },
   },
   [6164] = {
     ["end"] = {
@@ -34731,6 +38942,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12384 },
     },
+    ["xp"] = 1400,
   },
   [6165] = {
     ["lvl"] = 58,
@@ -34746,6 +38958,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 491 },
     },
+    ["xp"] = 210,
+    ["rep"] = { 72, 25 },
   },
   [6182] = {
     ["end"] = {
@@ -34756,6 +38970,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1748 },
     },
+    ["xp"] = 660,
   },
   [6183] = {
     ["end"] = {
@@ -34767,6 +38982,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 332 },
     },
+    ["xp"] = 660,
   },
   [6184] = {
     ["end"] = {
@@ -34778,6 +38994,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 332 },
     },
+    ["xp"] = 4950,
   },
   [6185] = {
     ["end"] = {
@@ -34793,6 +39010,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12425 },
     },
+    ["xp"] = 8300,
   },
   [6186] = {
     ["end"] = {
@@ -34804,6 +39022,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12425 },
     },
+    ["xp"] = 6600,
   },
   [6187] = {
     ["end"] = {
@@ -34818,6 +39037,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1748 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 72, 200 },
   },
   [6201] = {
     ["lvl"] = 65,
@@ -34838,6 +39059,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11554 },
     },
+    ["rep"] = { 576, 150 },
   },
   [6241] = {
     ["end"] = {
@@ -34851,6 +39073,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11556 },
     },
+    ["rep"] = { 576, 75 },
   },
   [6261] = {
     ["end"] = {
@@ -34862,6 +39085,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1323 },
     },
+    ["xp"] = 210,
+    ["rep"] = { 72, 25 },
   },
   [6281] = {
     ["end"] = {
@@ -34873,6 +39098,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 523 },
     },
+    ["xp"] = 420,
+    ["rep"] = { 72, 50 },
   },
   [6282] = {
     ["end"] = {
@@ -34886,6 +39113,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11860 },
     },
+    ["xp"] = 2100,
+    ["rep"] = { 81, 100 },
   },
   [6283] = {
     ["end"] = {
@@ -34900,6 +39129,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11860 },
     },
+    ["xp"] = 2100,
+    ["rep"] = { 81, 100 },
   },
   [6284] = {
     ["end"] = {
@@ -34914,6 +39145,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 177904 },
     },
+    ["xp"] = 1650,
+    ["rep"] = { 81, 100 },
   },
   [6285] = {
     ["end"] = {
@@ -34925,6 +39158,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 352 },
     },
+    ["xp"] = 1050,
+    ["rep"] = { 72, 150 },
   },
   [6301] = {
     ["end"] = {
@@ -34938,6 +39173,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11864 },
     },
+    ["xp"] = 1400,
+    ["rep"] = { 81, 75 },
   },
   [6321] = {
     ["end"] = {
@@ -34949,6 +39186,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6389 },
     },
+    ["xp"] = 210,
+    ["rep"] = { 68, 25 },
   },
   [6322] = {
     ["end"] = {
@@ -34960,6 +39199,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4556 },
     },
+    ["xp"] = 210,
+    ["rep"] = { 68, 25 },
   },
   [6323] = {
     ["end"] = {
@@ -34971,6 +39212,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2226 },
     },
+    ["xp"] = 420,
+    ["rep"] = { 68, 50 },
   },
   [6324] = {
     ["end"] = {
@@ -34982,6 +39225,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4551 },
     },
+    ["xp"] = 1050,
+    ["rep"] = { 68, 150 },
   },
   [6341] = {
     ["end"] = {
@@ -34994,6 +39239,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10118 },
     },
+    ["xp"] = 210,
+    ["rep"] = { 69, 25 },
   },
   [6342] = {
     ["end"] = {
@@ -35005,6 +39252,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3838 },
     },
+    ["xp"] = 420,
+    ["rep"] = { 69, 50 },
   },
   [6343] = {
     ["end"] = {
@@ -35016,6 +39265,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4200 },
     },
+    ["xp"] = 1050,
+    ["rep"] = { 69, 150 },
   },
   [6344] = {
     ["end"] = {
@@ -35027,6 +39278,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4241 },
     },
+    ["xp"] = 210,
+    ["rep"] = { 69, 25 },
   },
   [6361] = {
     ["end"] = {
@@ -35038,6 +39291,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3483 },
     },
+    ["xp"] = 210,
+    ["rep"] = { 81, 25 },
   },
   [6362] = {
     ["end"] = {
@@ -35049,6 +39304,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3615 },
     },
+    ["xp"] = 420,
+    ["rep"] = { 81, 50 },
   },
   [6363] = {
     ["end"] = {
@@ -35060,6 +39317,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8359 },
     },
+    ["xp"] = 210,
+    ["rep"] = { 81, 25 },
   },
   [6364] = {
     ["end"] = {
@@ -35071,6 +39330,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2995 },
     },
+    ["xp"] = 1050,
+    ["rep"] = { 81, 150 },
   },
   [6365] = {
     ["end"] = {
@@ -35082,6 +39343,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3489 },
     },
+    ["xp"] = 210,
+    ["rep"] = { 76, 25, 530, 25 },
   },
   [6381] = {
     ["end"] = {
@@ -35097,6 +39360,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11864 },
     },
+    ["xp"] = 2000,
+    ["rep"] = { 81, 100 },
   },
   [6382] = {
     ["close"] = { 235, 742, 6382 },
@@ -35108,6 +39373,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3387 },
     },
+    ["xp"] = 390,
+    ["rep"] = { 81, 25 },
   },
   [6383] = {
     ["end"] = {
@@ -35130,6 +39397,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3615 },
     },
+    ["xp"] = 420,
+    ["rep"] = { 76, 50, 530, 50 },
   },
   [6385] = {
     ["end"] = {
@@ -35141,6 +39410,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6929 },
     },
+    ["xp"] = 210,
+    ["rep"] = { 76, 25, 530, 25 },
   },
   [6386] = {
     ["end"] = {
@@ -35152,6 +39423,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3310 },
     },
+    ["xp"] = 1050,
+    ["rep"] = { 76, 150, 530, 150 },
   },
   [6387] = {
     ["end"] = {
@@ -35163,6 +39436,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1681 },
     },
+    ["xp"] = 210,
+    ["rep"] = { 47, 25, 54, 25 },
   },
   [6388] = {
     ["end"] = {
@@ -35174,6 +39449,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4256 },
     },
+    ["xp"] = 210,
+    ["rep"] = { 47, 25, 54, 25 },
   },
   [6389] = {
     ["end"] = {
@@ -35185,6 +39462,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 177491 },
     },
+    ["xp"] = 5650,
   },
   [6390] = {
     ["end"] = {
@@ -35196,6 +39474,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 177491 },
     },
+    ["xp"] = 5650,
   },
   [6391] = {
     ["end"] = {
@@ -35207,6 +39486,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1572 },
     },
+    ["xp"] = 420,
+    ["rep"] = { 47, 50, 54, 50 },
   },
   [6392] = {
     ["end"] = {
@@ -35218,6 +39499,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1573 },
     },
+    ["xp"] = 1050,
+    ["rep"] = { 47, 150, 54, 150 },
   },
   [6393] = {
     ["end"] = {
@@ -35231,6 +39514,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11862 },
     },
+    ["xp"] = 2000,
   },
   [6394] = {
     ["end"] = {
@@ -35245,6 +39529,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11378 },
     },
+    ["xp"] = 445,
+    ["rep"] = { 76, 150, 530, 150 },
   },
   [6395] = {
     ["end"] = {
@@ -35261,6 +39547,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1661 },
     },
+    ["xp"] = 450,
+    ["rep"] = { 68, 100 },
   },
   [6401] = {
     ["end"] = {
@@ -35272,6 +39560,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11857 },
     },
+    ["xp"] = 1000,
+    ["rep"] = { 81, 75 },
   },
   [6402] = {
     ["end"] = {
@@ -35283,6 +39573,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9560 },
     },
+    ["xp"] = 660,
   },
   [6403] = {
     ["end"] = {
@@ -35294,6 +39585,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12580 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 72, 200 },
   },
   [6421] = {
     ["end"] = {
@@ -35308,6 +39601,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11861 },
     },
+    ["xp"] = 1350,
+    ["rep"] = { 81, 100 },
   },
   [6441] = {
     ["end"] = {
@@ -35321,6 +39616,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12724 },
     },
+    ["xp"] = 2100,
+    ["rep"] = { 470, 100 },
   },
   [6442] = {
     ["end"] = {
@@ -35334,6 +39631,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12719 },
     },
+    ["xp"] = 1450,
+    ["rep"] = { 530, 100 },
   },
   [6461] = {
     ["end"] = {
@@ -35347,6 +39646,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12816 },
     },
+    ["xp"] = 1450,
+    ["rep"] = { 530, 100 },
   },
   [6462] = {
     ["end"] = {
@@ -35360,6 +39661,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12721 },
     },
+    ["xp"] = 1950,
+    ["rep"] = { 530, 100 },
   },
   [6481] = {
     ["end"] = {
@@ -35375,6 +39678,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11861 },
     },
+    ["xp"] = 1550,
+    ["rep"] = { 81, 100 },
   },
   [6482] = {
     ["end"] = {
@@ -35385,6 +39690,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12818 },
     },
+    ["xp"] = 2400,
+    ["rep"] = { 81, 150 },
   },
   [6501] = {
     ["end"] = {
@@ -35396,6 +39703,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1748 },
     },
+    ["xp"] = 6600,
   },
   [6502] = {
     ["end"] = {
@@ -35410,6 +39718,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10929 },
     },
+    ["xp"] = 8300,
   },
   [6503] = {
     ["end"] = {
@@ -35423,6 +39732,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12867 },
     },
+    ["xp"] = 1950,
+    ["rep"] = { 530, 100 },
   },
   [6504] = {
     ["end"] = {
@@ -35436,6 +39747,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12718 },
     },
+    ["xp"] = 3650,
+    ["rep"] = { 76, 100 },
   },
   [6521] = {
     ["end"] = {
@@ -35450,6 +39763,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2425 },
     },
+    ["xp"] = 3500,
   },
   [6522] = {
     ["end"] = {
@@ -35460,6 +39774,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 17008 },
     },
+    ["xp"] = 2800,
   },
   [6523] = {
     ["end"] = {
@@ -35470,6 +39785,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11856 },
     },
+    ["xp"] = 1350,
   },
   [6541] = {
     ["close"] = { 6541, 6542 },
@@ -35481,6 +39797,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3429 },
     },
+    ["xp"] = 145,
   },
   [6542] = {
     ["close"] = { 6541, 6542 },
@@ -35492,6 +39809,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11821 },
     },
+    ["xp"] = 145,
   },
   [6543] = {
     ["end"] = {
@@ -35506,6 +39824,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8582 },
     },
+    ["xp"] = 1800,
+    ["rep"] = { 76, 150 },
   },
   [6544] = {
     ["end"] = {
@@ -35516,6 +39836,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12858 },
     },
+    ["xp"] = 2400,
+    ["rep"] = { 76, 150 },
   },
   [6545] = {
     ["end"] = {
@@ -35571,6 +39893,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11857 },
     },
+    ["xp"] = 1350,
+    ["rep"] = { 81, 100 },
   },
   [6561] = {
     ["end"] = {
@@ -35585,6 +39909,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4787 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 529, 200, 81, 200 },
   },
   [6562] = {
     ["end"] = {
@@ -35595,6 +39921,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11862 },
     },
+    ["xp"] = 435,
+    ["rep"] = { 530, 25 },
   },
   [6563] = {
     ["end"] = {
@@ -35609,6 +39937,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12736 },
     },
+    ["xp"] = 1750,
+    ["rep"] = { 530, 100 },
   },
   [6564] = {
     ["end"] = {
@@ -35619,6 +39949,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 16790 },
     },
+    ["xp"] = 1300,
+    ["rep"] = { 530, 75 },
   },
   [6565] = {
     ["end"] = {
@@ -35633,6 +39965,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12736 },
     },
+    ["xp"] = 2650,
+    ["rep"] = { 530, 150 },
   },
   [6566] = {
     ["end"] = {
@@ -35644,6 +39978,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4949 },
     },
+    ["xp"] = 660,
   },
   [6567] = {
     ["end"] = {
@@ -35655,6 +39990,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4949 },
     },
+    ["xp"] = 3300,
   },
   [6568] = {
     ["end"] = {
@@ -35666,6 +40002,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10182 },
     },
+    ["xp"] = 4950,
   },
   [6569] = {
     ["end"] = {
@@ -35680,6 +40017,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11872 },
     },
+    ["xp"] = 6600,
   },
   [6570] = {
     ["end"] = {
@@ -35691,6 +40029,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11872 },
     },
+    ["xp"] = 4950,
   },
   [6571] = {
     ["end"] = {
@@ -35704,6 +40043,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11820 },
     },
+    ["xp"] = 2750,
+    ["rep"] = { 76, 150 },
   },
   [6581] = {
     ["end"] = {
@@ -35732,6 +40073,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10321 },
     },
+    ["xp"] = 6600,
   },
   [6583] = {
     ["end"] = {
@@ -35746,6 +40088,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10321 },
     },
+    ["xp"] = 6600,
   },
   [6584] = {
     ["end"] = {
@@ -35760,6 +40103,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10321 },
     },
+    ["xp"] = 6600,
   },
   [6585] = {
     ["end"] = {
@@ -35774,6 +40118,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10321 },
     },
+    ["xp"] = 6600,
   },
   [6601] = {
     ["end"] = {
@@ -35785,6 +40130,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10321 },
     },
+    ["xp"] = 4950,
   },
   [6602] = {
     ["end"] = {
@@ -35799,6 +40145,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10182 },
     },
+    ["xp"] = 9950,
   },
   [6603] = {
     ["end"] = {
@@ -35809,6 +40156,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11754 },
     },
+    ["xp"] = 580,
   },
   [6604] = {
     ["end"] = {
@@ -35820,6 +40168,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11755 },
     },
+    ["xp"] = 640,
   },
   [6605] = {
     ["end"] = {
@@ -35831,6 +40180,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11755 },
     },
+    ["xp"] = 540,
+    ["rep"] = { 68, 10 },
   },
   [6606] = {
     ["end"] = {
@@ -35842,6 +40193,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11755 },
     },
+    ["xp"] = 660,
   },
   [6607] = {
     ["end"] = {
@@ -35857,6 +40209,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12919 },
     },
+    ["xp"] = 3900,
   },
   [6608] = {
     ["end"] = {
@@ -35868,6 +40221,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3332 },
     },
+    ["xp"] = 970,
   },
   [6609] = {
     ["end"] = {
@@ -35879,6 +40233,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5161 },
     },
+    ["xp"] = 970,
   },
   [6610] = {
     ["end"] = {
@@ -35894,6 +40249,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8125 },
     },
+    ["xp"] = 3900,
   },
   [6611] = {
     ["end"] = {
@@ -35905,6 +40261,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3399 },
     },
+    ["xp"] = 970,
   },
   [6612] = {
     ["end"] = {
@@ -35916,6 +40273,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5159 },
     },
+    ["xp"] = 970,
   },
   [6621] = {
     ["end"] = {
@@ -35931,6 +40289,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12757 },
     },
+    ["xp"] = 2650,
   },
   [6622] = {
     ["end"] = {
@@ -35943,6 +40302,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12920 },
     },
+    ["xp"] = 3900,
   },
   [6623] = {
     ["end"] = {
@@ -35954,6 +40314,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3373 },
     },
+    ["xp"] = 970,
   },
   [6624] = {
     ["end"] = {
@@ -35966,6 +40327,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12939 },
     },
+    ["xp"] = 3900,
   },
   [6625] = {
     ["end"] = {
@@ -35977,6 +40339,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5150 },
     },
+    ["xp"] = 970,
   },
   [6626] = {
     ["end"] = {
@@ -35990,6 +40353,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12866 },
     },
+    ["xp"] = 3450,
   },
   [6627] = {
     ["end"] = {
@@ -36001,6 +40365,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4489 },
     },
+    ["xp"] = 245,
   },
   [6628] = {
     ["end"] = {
@@ -36012,6 +40377,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4488 },
     },
+    ["xp"] = 245,
   },
   [6629] = {
     ["end"] = {
@@ -36026,6 +40392,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11857 },
     },
+    ["xp"] = 1350,
   },
   [6641] = {
     ["end"] = {
@@ -36036,6 +40403,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12717 },
     },
+    ["xp"] = 2300,
   },
   [6642] = {
     ["end"] = {
@@ -36049,6 +40417,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12944 },
     },
+    ["rep"] = { 59, 50 },
   },
   [6643] = {
     ["end"] = {
@@ -36062,6 +40431,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12944 },
     },
+    ["rep"] = { 59, 200 },
   },
   [6644] = {
     ["end"] = {
@@ -36075,6 +40445,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12944 },
     },
+    ["rep"] = { 59, 200 },
   },
   [6645] = {
     ["end"] = {
@@ -36088,6 +40459,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12944 },
     },
+    ["rep"] = { 59, 150 },
   },
   [6646] = {
     ["end"] = {
@@ -36101,6 +40473,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12944 },
     },
+    ["rep"] = { 59, 200 },
   },
   [6661] = {
     ["end"] = {
@@ -36115,6 +40488,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 17115 },
       ["U"] = { 12997 },
     },
+    ["xp"] = 910,
   },
   [6662] = {
     ["end"] = {
@@ -36127,6 +40501,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 17116 },
       ["U"] = { 12997 },
     },
+    ["xp"] = 90,
   },
   [6681] = {
     ["class"] = 8,
@@ -36141,6 +40516,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 17126 },
     },
+    ["xp"] = 1950,
+    ["rep"] = { 349, 100 },
   },
   [6701] = {
     ["class"] = 8,
@@ -36156,6 +40533,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6766 },
     },
+    ["rep"] = { 349, 100 },
   },
   [6721] = {
     ["class"] = 4,
@@ -36169,6 +40547,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5117 },
     },
+    ["xp"] = 85,
   },
   [6722] = {
     ["class"] = 4,
@@ -36182,6 +40561,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1231 },
     },
+    ["xp"] = 85,
   },
   [6741] = {
     ["end"] = {
@@ -36196,6 +40576,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13176 },
     },
+    ["rep"] = { 76, 10 },
   },
   [6761] = {
     ["end"] = {
@@ -36207,6 +40588,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3516 },
     },
+    ["xp"] = 560,
+    ["rep"] = { 69, 10 },
   },
   [6762] = {
     ["end"] = {
@@ -36218,6 +40601,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4217 },
     },
+    ["xp"] = 1400,
+    ["rep"] = { 609, 25 },
   },
   [6781] = {
     ["end"] = {
@@ -36232,6 +40617,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13257 },
     },
+    ["rep"] = { 47, 10 },
   },
   [6801] = {
     ["end"] = {
@@ -36245,6 +40631,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13236 },
     },
+    ["rep"] = { 76, 10 },
   },
   [6804] = {
     ["end"] = {
@@ -36258,6 +40645,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13278 },
     },
+    ["xp"] = 4350,
+    ["rep"] = { 67, 100 },
   },
   [6805] = {
     ["end"] = {
@@ -36271,6 +40660,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13278 },
     },
+    ["xp"] = 6000,
   },
   [6821] = {
     ["end"] = {
@@ -36285,6 +40675,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13278 },
     },
+    ["xp"] = 8300,
   },
   [6822] = {
     ["end"] = {
@@ -36299,6 +40690,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13278 },
     },
+    ["xp"] = 9950,
   },
   [6823] = {
     ["end"] = {
@@ -36310,6 +40702,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13278 },
     },
+    ["xp"] = 9950,
   },
   [6824] = {
     ["end"] = {
@@ -36324,6 +40717,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13278 },
     },
+    ["xp"] = 9950,
   },
   [6825] = {
     ["end"] = {
@@ -36337,6 +40731,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13179 },
     },
+    ["rep"] = { 76, 10 },
   },
   [6826] = {
     ["end"] = {
@@ -36350,6 +40745,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13180 },
     },
+    ["rep"] = { 76, 10 },
   },
   [6827] = {
     ["end"] = {
@@ -36363,10 +40759,12 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13181 },
     },
+    ["rep"] = { 76, 10 },
   },
   [6841] = {
     ["lvl"] = 55,
     ["min"] = 54,
+    ["xp"] = 2800,
   },
   [6842] = {
     ["lvl"] = 58,
@@ -36382,6 +40780,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13220 },
     },
+    ["xp"] = 3000,
+    ["rep"] = { 609, 50 },
   },
   [6845] = {
     ["end"] = {
@@ -36393,6 +40793,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11939 },
     },
+    ["xp"] = 7550,
+    ["rep"] = { 609, 150 },
   },
   [6846] = {
     ["end"] = {
@@ -36406,6 +40808,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13446 },
     },
+    ["rep"] = { 730, 10, 47, 10 },
   },
   [6847] = {
     ["end"] = {
@@ -36417,6 +40820,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13151 },
     },
+    ["rep"] = { 729, 75 },
   },
   [6848] = {
     ["end"] = {
@@ -36428,6 +40832,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13151 },
     },
+    ["rep"] = { 730, 75 },
   },
   [6861] = {
     ["end"] = {
@@ -36442,6 +40847,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13377 },
     },
+    ["rep"] = { 729, 25, 76, 10 },
   },
   [6862] = {
     ["end"] = {
@@ -36456,6 +40862,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13377 },
     },
+    ["rep"] = { 730, 25, 47, 10 },
   },
   [6881] = {
     ["end"] = {
@@ -36469,6 +40876,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13442 },
     },
+    ["rep"] = { 47, 10 },
   },
   [6901] = {
     ["end"] = {
@@ -36482,6 +40890,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13449 },
     },
+    ["rep"] = { 729, 10, 76, 10 },
   },
   [6921] = {
     ["end"] = {
@@ -36495,6 +40904,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12736 },
     },
+    ["xp"] = 2750,
+    ["rep"] = { 530, 150 },
   },
   [6922] = {
     ["end"] = {
@@ -36506,6 +40917,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 16782, 16782 },
     },
+    ["xp"] = 3050,
+    ["rep"] = { 530, 150 },
   },
   [6941] = {
     ["end"] = {
@@ -36519,6 +40932,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13439 },
     },
+    ["rep"] = { 47, 10 },
   },
   [6942] = {
     ["end"] = {
@@ -36532,6 +40946,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13438 },
     },
+    ["rep"] = { 47, 10 },
   },
   [6943] = {
     ["end"] = {
@@ -36545,6 +40960,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13437 },
     },
+    ["rep"] = { 47, 10 },
   },
   [6961] = {
     ["close"] = { 6961, 7021, 7024 },
@@ -36558,6 +40974,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13418 },
     },
+    ["xp"] = 660,
   },
   [6962] = {
     ["end"] = {
@@ -36573,6 +40990,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13445 },
     },
+    ["xp"] = 1650,
+    ["rep"] = { 169, 25 },
   },
   [6963] = {
     ["end"] = {
@@ -36585,6 +41004,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13418 },
     },
+    ["xp"] = 1650,
+    ["rep"] = { 169, 50 },
   },
   [6964] = {
     ["end"] = {
@@ -36596,6 +41017,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9550 },
     },
+    ["xp"] = 660,
   },
   [6981] = {
     ["end"] = {
@@ -36606,6 +41028,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 10441 },
     },
+    ["xp"] = 2650,
   },
   [6982] = {
     ["end"] = {
@@ -36619,6 +41042,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12096 },
     },
+    ["rep"] = { 47, 25 },
   },
   [6983] = {
     ["end"] = {
@@ -36634,6 +41058,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13636 },
     },
+    ["xp"] = 3300,
   },
   [6984] = {
     ["end"] = {
@@ -36646,6 +41071,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13418 },
     },
+    ["xp"] = 4950,
+    ["rep"] = { 169, 100 },
   },
   [6985] = {
     ["end"] = {
@@ -36659,6 +41086,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12097 },
     },
+    ["rep"] = { 76, 25 },
   },
   [7001] = {
     ["end"] = {
@@ -36672,6 +41100,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13616 },
     },
+    ["rep"] = { 76, 10 },
   },
   [7002] = {
     ["end"] = {
@@ -36685,6 +41114,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13441 },
     },
+    ["rep"] = { 76, 10 },
   },
   [7003] = {
     ["end"] = {
@@ -36699,6 +41129,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14637 },
     },
+    ["xp"] = 4400,
+    ["rep"] = { 169, 150 },
   },
   [7021] = {
     ["close"] = { 6961, 7021, 7024 },
@@ -36712,6 +41144,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13431 },
     },
+    ["xp"] = 660,
   },
   [7022] = {
     ["close"] = { 7022, 7023 },
@@ -36725,6 +41158,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13433 },
     },
+    ["xp"] = 660,
   },
   [7023] = {
     ["close"] = { 7022, 7023 },
@@ -36738,6 +41172,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13435 },
     },
+    ["xp"] = 660,
   },
   [7024] = {
     ["close"] = { 6961, 7021, 7024 },
@@ -36751,6 +41186,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13429 },
     },
+    ["xp"] = 660,
   },
   [7025] = {
     ["end"] = {
@@ -36766,6 +41202,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13444 },
     },
+    ["xp"] = 1650,
+    ["rep"] = { 169, 25 },
   },
   [7026] = {
     ["end"] = {
@@ -36779,6 +41217,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13577 },
     },
+    ["rep"] = { 47, 10 },
   },
   [7027] = {
     ["end"] = {
@@ -36792,6 +41231,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13617 },
     },
+    ["rep"] = { 47, 10 },
   },
   [7028] = {
     ["end"] = {
@@ -36805,6 +41245,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13656 },
     },
+    ["xp"] = 5250,
   },
   [7029] = {
     ["end"] = {
@@ -36820,6 +41261,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11823 },
     },
+    ["xp"] = 5250,
   },
   [7041] = {
     ["end"] = {
@@ -36835,6 +41277,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11715 },
     },
+    ["xp"] = 5250,
   },
   [7042] = {
     ["end"] = {
@@ -36847,6 +41290,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13433 },
     },
+    ["xp"] = 1650,
   },
   [7043] = {
     ["end"] = {
@@ -36862,6 +41306,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13636 },
     },
+    ["xp"] = 3300,
   },
   [7044] = {
     ["end"] = {
@@ -36875,6 +41320,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13697 },
     },
+    ["xp"] = 3400,
   },
   [7045] = {
     ["end"] = {
@@ -36887,6 +41333,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13433 },
     },
+    ["xp"] = 4950,
+    ["rep"] = { 169, 100 },
   },
   [7046] = {
     ["end"] = {
@@ -36898,6 +41346,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13716 },
     },
+    ["xp"] = 5700,
   },
   [7061] = {
     ["end"] = {
@@ -36909,6 +41358,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13417 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 81, 200 },
   },
   [7062] = {
     ["end"] = {
@@ -36920,6 +41371,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1365 },
     },
+    ["xp"] = 660,
   },
   [7063] = {
     ["end"] = {
@@ -36931,6 +41383,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2916 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 47, 200 },
   },
   [7064] = {
     ["end"] = {
@@ -36945,6 +41399,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13699 },
     },
+    ["xp"] = 6100,
+    ["rep"] = { 609, 150 },
   },
   [7065] = {
     ["end"] = {
@@ -36959,6 +41415,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13698 },
     },
+    ["xp"] = 6100,
+    ["rep"] = { 609, 150 },
   },
   [7066] = {
     ["end"] = {
@@ -36969,6 +41427,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 12238 },
     },
+    ["xp"] = 6100,
+    ["rep"] = { 609, 150 },
   },
   [7067] = {
     ["end"] = {
@@ -36982,6 +41442,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13717 },
     },
+    ["xp"] = 5450,
   },
   [7068] = {
     ["end"] = {
@@ -36995,6 +41456,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7311 },
     },
+    ["xp"] = 3450,
+    ["rep"] = { 530, 150 },
   },
   [7069] = {
   },
@@ -37010,6 +41473,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4967 },
     },
+    ["xp"] = 3450,
+    ["rep"] = { 72, 150 },
   },
   [7081] = {
     ["end"] = {
@@ -37023,6 +41488,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13777 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 730, 100, 47, 100 },
   },
   [7082] = {
     ["end"] = {
@@ -37036,6 +41503,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13776 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 729, 100, 76, 100 },
   },
   [7101] = {
     ["end"] = {
@@ -37049,6 +41518,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13776 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 729, 100, 76, 100 },
   },
   [7102] = {
     ["end"] = {
@@ -37062,6 +41533,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13777 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 730, 100, 47, 100 },
   },
   [7121] = {
     ["end"] = {
@@ -37072,6 +41545,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13797 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 730, 10, 47, 10 },
   },
   [7122] = {
     ["end"] = {
@@ -37085,6 +41560,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13777 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 730, 100, 47, 100 },
   },
   [7123] = {
     ["end"] = {
@@ -37095,6 +41572,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13798 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 729, 10, 76, 10 },
   },
   [7124] = {
     ["end"] = {
@@ -37108,6 +41587,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13776 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 729, 100, 76, 100 },
   },
   [7141] = {
     ["end"] = {
@@ -37119,6 +41600,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13816 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 730, 200, 47, 200 },
   },
   [7142] = {
     ["end"] = {
@@ -37130,6 +41613,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13817 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 729, 200, 76, 200 },
   },
   [7161] = {
     ["end"] = {
@@ -37143,6 +41628,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13840 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 729, 100, 76, 100 },
   },
   [7162] = {
     ["end"] = {
@@ -37156,6 +41643,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13841 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 730, 100, 47, 100 },
   },
   [7163] = {
     ["end"] = {
@@ -37170,6 +41659,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13840 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 729, 100, 76, 100 },
   },
   [7164] = {
     ["end"] = {
@@ -37184,6 +41675,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13840 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 729, 100, 76, 100 },
   },
   [7165] = {
     ["end"] = {
@@ -37198,6 +41691,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13840 },
     },
+    ["xp"] = 8300,
+    ["rep"] = { 729, 150, 76, 150 },
   },
   [7166] = {
     ["end"] = {
@@ -37212,6 +41707,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13840 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 729, 200, 76, 200 },
   },
   [7167] = {
     ["end"] = {
@@ -37226,6 +41723,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13840 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 729, 200, 76, 200 },
   },
   [7168] = {
     ["end"] = {
@@ -37240,6 +41739,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13841 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 730, 100, 47, 100 },
   },
   [7169] = {
     ["end"] = {
@@ -37254,6 +41755,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13841 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 730, 100, 47, 100 },
   },
   [7170] = {
     ["end"] = {
@@ -37268,6 +41771,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13841 },
     },
+    ["xp"] = 8300,
+    ["rep"] = { 730, 150, 47, 150 },
   },
   [7171] = {
     ["end"] = {
@@ -37282,6 +41787,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13841 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 730, 200, 47, 200 },
   },
   [7172] = {
     ["end"] = {
@@ -37296,6 +41803,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13841 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 47, 200, 730, 200 },
   },
   [7181] = {
     ["end"] = {
@@ -37309,6 +41818,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13840 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 729, 200, 76, 100 },
   },
   [7201] = {
     ["end"] = {
@@ -37323,6 +41834,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9078 },
     },
+    ["xp"] = 5450,
+    ["rep"] = { 68, 100 },
   },
   [7202] = {
     ["end"] = {
@@ -37336,14 +41849,18 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13841 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 730, 200, 47, 100 },
   },
   [7221] = {
     ["lvl"] = 60,
     ["min"] = 51,
+    ["xp"] = 660,
   },
   [7222] = {
     ["lvl"] = 60,
     ["min"] = 51,
+    ["xp"] = 660,
   },
   [7223] = {
     ["end"] = {
@@ -37357,6 +41874,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13257 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 730, 100, 47, 100 },
   },
   [7224] = {
     ["end"] = {
@@ -37370,6 +41889,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13176 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 729, 100, 76, 100 },
   },
   [7241] = {
     ["end"] = {
@@ -37380,6 +41901,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13842 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 729, 100, 76, 100 },
   },
   [7261] = {
     ["end"] = {
@@ -37390,6 +41913,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13843 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 730, 100, 47, 100 },
   },
   [7281] = {
     ["end"] = {
@@ -37403,6 +41928,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13154 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 729, 100, 68, 100, 76, 100 },
   },
   [7282] = {
     ["end"] = {
@@ -37416,6 +41943,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13320 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 730, 100, 47, 100, 72, 100 },
   },
   [7301] = {
     ["end"] = {
@@ -37429,6 +41958,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13319 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 730, 100, 47, 100 },
   },
   [7302] = {
     ["end"] = {
@@ -37442,6 +41973,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13153 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 729, 100, 76, 100 },
   },
   [7321] = {
     ["end"] = {
@@ -37456,6 +41989,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2393 },
     },
+    ["xp"] = 2500,
+    ["rep"] = { 68, 100 },
   },
   [7341] = {
     ["end"] = {
@@ -37496,6 +42031,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14185 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 729, 250, 530, 250 },
   },
   [7362] = {
     ["end"] = {
@@ -37510,6 +42047,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14186 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 729, 250, 81, 250 },
   },
   [7363] = {
     ["end"] = {
@@ -37524,6 +42063,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13154 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 729, 250, 68, 250 },
   },
   [7364] = {
     ["end"] = {
@@ -37538,6 +42079,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14188 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 730, 250, 54, 250 },
   },
   [7365] = {
     ["end"] = {
@@ -37552,6 +42095,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14187 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 730, 500, 69, 500 },
   },
   [7366] = {
     ["end"] = {
@@ -37566,6 +42111,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13320 },
     },
+    ["rep"] = { 730, 500, 72, 500 },
   },
   [7367] = {
     ["end"] = {
@@ -37579,6 +42125,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13598 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 730, 100, 47, 100 },
   },
   [7368] = {
     ["end"] = {
@@ -37592,6 +42140,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13597 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 729, 100, 76, 100 },
   },
   [7381] = {
     ["end"] = {
@@ -37622,6 +42172,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13841 },
     },
+    ["rep"] = { 47, 25, 730, 25 },
   },
   [7383] = {
     ["end"] = {
@@ -37637,6 +42188,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3515 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 69, 75 },
   },
   [7385] = {
     ["end"] = {
@@ -37650,6 +42203,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13236 },
     },
+    ["rep"] = { 76, 50 },
   },
   [7386] = {
     ["end"] = {
@@ -37663,6 +42217,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13442 },
     },
+    ["rep"] = { 47, 50 },
   },
   [7401] = {
     ["end"] = {
@@ -37677,6 +42232,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 179438 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 729, 250, 76, 250 },
   },
   [7402] = {
     ["end"] = {
@@ -37691,6 +42248,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 179437 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 730, 500, 47, 500 },
   },
   [7421] = {
     ["end"] = {
@@ -37706,6 +42265,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14185 },
     },
+    ["xp"] = 1900,
+    ["rep"] = { 530, 10 },
   },
   [7422] = {
     ["end"] = {
@@ -37721,6 +42282,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14186 },
     },
+    ["xp"] = 1900,
+    ["rep"] = { 81, 10, 530, 2 },
   },
   [7423] = {
     ["end"] = {
@@ -37736,6 +42299,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13154 },
     },
+    ["xp"] = 1900,
+    ["rep"] = { 68, 10, 530, 2 },
   },
   [7424] = {
     ["end"] = {
@@ -37751,6 +42316,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14188 },
     },
+    ["xp"] = 1900,
+    ["rep"] = { 54, 10 },
   },
   [7425] = {
     ["end"] = {
@@ -37766,6 +42333,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14187 },
     },
+    ["xp"] = 1900,
+    ["rep"] = { 69, 10, 54, 2 },
   },
   [7426] = {
     ["end"] = {
@@ -37781,6 +42350,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13320 },
     },
+    ["xp"] = 1900,
+    ["rep"] = { 72, 10, 54, 2 },
   },
   [7427] = {
     ["end"] = {
@@ -37796,6 +42367,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13448 },
     },
+    ["xp"] = 1900,
+    ["rep"] = { 76, 10, 530, 2 },
   },
   [7428] = {
     ["end"] = {
@@ -37811,6 +42384,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13447 },
     },
+    ["xp"] = 1900,
+    ["rep"] = { 47, 10, 54, 2 },
   },
   [7429] = {
     ["end"] = {
@@ -37825,6 +42400,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14338 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 169, 150 },
   },
   [7441] = {
     ["end"] = {
@@ -37838,6 +42415,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14355 },
     },
+    ["xp"] = 7750,
+    ["rep"] = { 809, 200 },
   },
   [7461] = {
     ["end"] = {
@@ -37851,6 +42430,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14358 },
     },
+    ["xp"] = 9950,
   },
   [7462] = {
     ["end"] = {
@@ -37863,6 +42443,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14358 },
     },
+    ["xp"] = 660,
   },
   [7463] = {
     ["class"] = 128,
@@ -37877,6 +42458,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14368 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 809, 200 },
   },
   [7478] = {
     ["end"] = {
@@ -37892,6 +42475,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14368 },
     },
+    ["rep"] = { 809, 200 },
   },
   [7479] = {
     ["end"] = {
@@ -37907,6 +42491,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14368 },
     },
+    ["rep"] = { 809, 200 },
   },
   [7480] = {
     ["end"] = {
@@ -37922,6 +42507,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14368 },
     },
+    ["rep"] = { 809, 200 },
   },
   [7481] = {
     ["end"] = {
@@ -37932,6 +42518,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14373 },
     },
+    ["xp"] = 8300,
   },
   [7482] = {
     ["end"] = {
@@ -37942,6 +42529,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14374 },
     },
+    ["xp"] = 8300,
   },
   [7483] = {
     ["end"] = {
@@ -37956,6 +42544,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14368 },
     },
+    ["xp"] = 1650,
+    ["rep"] = { 809, 200 },
   },
   [7484] = {
     ["end"] = {
@@ -37970,6 +42560,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14368 },
     },
+    ["xp"] = 1650,
+    ["rep"] = { 809, 200 },
   },
   [7485] = {
     ["end"] = {
@@ -37984,6 +42576,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14368 },
     },
+    ["xp"] = 1650,
+    ["rep"] = { 809, 200 },
   },
   [7486] = {
     ["end"] = {
@@ -37994,6 +42588,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13278 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 749, 200 },
   },
   [7487] = {
     ["end"] = {
@@ -38007,6 +42603,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14387 },
     },
+    ["xp"] = 6600,
   },
   [7488] = {
     ["end"] = {
@@ -38021,6 +42618,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7877 },
     },
+    ["xp"] = 7550,
+    ["rep"] = { 469, 150 },
   },
   [7489] = {
     ["end"] = {
@@ -38035,6 +42634,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7776 },
     },
+    ["xp"] = 7550,
+    ["rep"] = { 67, 150 },
   },
   [7490] = {
     ["end"] = {
@@ -38045,6 +42646,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 18422 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 76, 200 },
   },
   [7491] = {
     ["end"] = {
@@ -38056,6 +42659,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4949 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 76, 200 },
   },
   [7492] = {
     ["end"] = {
@@ -38066,6 +42671,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10879, 10880, 10881 },
     },
+    ["xp"] = 1500,
   },
   [7493] = {
     ["end"] = {
@@ -38088,6 +42694,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2198, 10878, 10877 },
     },
+    ["xp"] = 1500,
   },
   [7495] = {
     ["end"] = {
@@ -38098,6 +42705,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 18423 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 72, 200 },
   },
   [7496] = {
     ["end"] = {
@@ -38109,6 +42718,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1748 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 72, 200 },
   },
   [7497] = {
     ["end"] = {
@@ -38131,6 +42742,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 18356 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 809, 200 },
   },
   [7499] = {
     ["end"] = {
@@ -38141,6 +42754,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 18357 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 809, 200 },
   },
   [7500] = {
     ["end"] = {
@@ -38151,6 +42766,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 18358 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 809, 200 },
   },
   [7501] = {
     ["end"] = {
@@ -38161,6 +42778,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 18359 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 809, 200 },
   },
   [7502] = {
     ["end"] = {
@@ -38171,6 +42790,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 18360 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 809, 200 },
   },
   [7503] = {
     ["end"] = {
@@ -38181,6 +42802,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 18361 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 809, 200 },
   },
   [7504] = {
     ["end"] = {
@@ -38191,6 +42814,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 18362 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 809, 200 },
   },
   [7505] = {
     ["end"] = {
@@ -38201,6 +42826,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 18363 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 809, 200 },
   },
   [7506] = {
     ["class"] = 1024,
@@ -38212,6 +42839,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 18364 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 809, 200 },
   },
   [7507] = {
     ["end"] = {
@@ -38222,6 +42851,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 18401 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 809, 200 },
   },
   [7508] = {
     ["end"] = {
@@ -38249,6 +42880,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14368 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 809, 200 },
   },
   [7521] = {
     ["lvl"] = 60,
@@ -38256,6 +42889,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 17771, 18563, 18564, 18566 },
     },
+    ["xp"] = 100,
   },
   [7541] = {
     ["end"] = {
@@ -38267,6 +42901,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4047 },
     },
+    ["xp"] = 1550,
+    ["rep"] = { 76, 150 },
   },
   [7562] = {
     ["class"] = 256,
@@ -38278,6 +42914,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5520, 5815, 6382, 5753 },
     },
+    ["xp"] = 620,
   },
   [7563] = {
     ["class"] = 256,
@@ -38293,6 +42930,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14436 },
     },
+    ["xp"] = 7750,
   },
   [7564] = {
     ["class"] = 256,
@@ -38305,6 +42943,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14436 },
     },
+    ["xp"] = 3100,
   },
   [7581] = {
     ["class"] = 256,
@@ -38319,6 +42958,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14463 },
     },
+    ["xp"] = 6600,
   },
   [7582] = {
     ["class"] = 256,
@@ -38333,6 +42973,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14463 },
     },
+    ["xp"] = 6600,
   },
   [7583] = {
     ["class"] = 256,
@@ -38349,6 +42990,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14463 },
     },
+    ["xp"] = 6600,
   },
   [7601] = {
     ["class"] = 256,
@@ -38375,6 +43017,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14470 },
     },
+    ["xp"] = 5650,
   },
   [7603] = {
     ["class"] = 256,
@@ -38391,6 +43034,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14470 },
     },
+    ["xp"] = 7050,
   },
   [7604] = {
     ["end"] = {
@@ -38404,6 +43048,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 18628 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 59, 200, 59, 200, 59, 200, 59, 200 },
   },
   [7621] = {
     ["class"] = 16,
@@ -38427,6 +43073,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14494 },
     },
+    ["xp"] = 9950,
   },
   [7623] = {
     ["class"] = 256,
@@ -38439,6 +43086,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14437 },
     },
+    ["xp"] = 6200,
   },
   [7624] = {
     ["class"] = 256,
@@ -38454,6 +43102,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9516 },
     },
+    ["xp"] = 6200,
   },
   [7625] = {
     ["class"] = 256,
@@ -38469,6 +43118,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9516 },
     },
+    ["xp"] = 6600,
   },
   [7626] = {
     ["class"] = 256,
@@ -38484,6 +43134,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14436 },
     },
+    ["xp"] = 6600,
   },
   [7627] = {
     ["class"] = 256,
@@ -38499,6 +43150,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14436 },
     },
+    ["xp"] = 6600,
   },
   [7628] = {
     ["class"] = 256,
@@ -38514,6 +43166,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14436 },
     },
+    ["xp"] = 6600,
   },
   [7629] = {
     ["class"] = 256,
@@ -38530,6 +43183,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14437 },
     },
+    ["xp"] = 6600,
   },
   [7630] = {
     ["class"] = 256,
@@ -38545,6 +43199,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14437 },
     },
+    ["xp"] = 6600,
   },
   [7631] = {
     ["class"] = 256,
@@ -38557,6 +43212,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14436 },
     },
+    ["xp"] = 6600,
   },
   [7632] = {
     ["class"] = 4,
@@ -38568,6 +43224,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 18703 },
     },
+    ["xp"] = 9950,
   },
   [7633] = {
     ["class"] = 4,
@@ -38595,6 +43252,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14526 },
     },
+    ["xp"] = 9950,
   },
   [7635] = {
     ["class"] = 4,
@@ -38610,6 +43268,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14525 },
     },
+    ["xp"] = 9950,
   },
   [7636] = {
     ["class"] = 4,
@@ -38625,6 +43284,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14524 },
     },
+    ["xp"] = 9950,
   },
   [7637] = {
     ["class"] = 2,
@@ -38636,6 +43296,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 928 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 47, 150 },
   },
   [7638] = {
     ["class"] = 2,
@@ -38648,6 +43310,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6171 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 72, 10 },
   },
   [7639] = {
     ["class"] = 2,
@@ -38660,6 +43324,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11406 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 72, 50 },
   },
   [7640] = {
     ["class"] = 2,
@@ -38676,6 +43342,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 928 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 72, 100 },
   },
   [7641] = {
     ["class"] = 2,
@@ -38687,6 +43355,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 928 },
     },
+    ["xp"] = 660,
   },
   [7642] = {
     ["class"] = 2,
@@ -38702,6 +43371,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1416 },
     },
+    ["xp"] = 1650,
+    ["rep"] = { 47, 100 },
   },
   [7643] = {
     ["class"] = 2,
@@ -38716,6 +43387,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 928 },
     },
+    ["xp"] = 4950,
   },
   [7644] = {
     ["class"] = 2,
@@ -38728,6 +43400,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14566 },
     },
+    ["xp"] = 8300,
+    ["rep"] = { 72, 150 },
   },
   [7645] = {
     ["class"] = 2,
@@ -38743,6 +43417,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2357 },
     },
+    ["xp"] = 660,
   },
   [7646] = {
     ["class"] = 2,
@@ -38758,6 +43433,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 928 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 72, 50 },
   },
   [7647] = {
     ["class"] = 2,
@@ -38774,6 +43451,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 928 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 72, 200 },
   },
   [7648] = {
     ["class"] = 2,
@@ -38786,6 +43465,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1416 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 72, 100 },
   },
   [7649] = {
     ["end"] = {
@@ -38797,6 +43478,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 18769 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 809, 200 },
   },
   [7650] = {
     ["end"] = {
@@ -38808,6 +43491,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 18770 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 809, 200 },
   },
   [7651] = {
     ["end"] = {
@@ -38819,6 +43504,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 18771 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 809, 200 },
   },
   [7652] = {
     ["end"] = {
@@ -38830,6 +43517,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14567 },
     },
+    ["rep"] = { 59, 100 },
   },
   [7653] = {
     ["end"] = {
@@ -38845,6 +43533,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14567 },
     },
+    ["rep"] = { 59, 100 },
   },
   [7654] = {
     ["end"] = {
@@ -38860,6 +43549,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14567 },
     },
+    ["rep"] = { 59, 150 },
   },
   [7655] = {
     ["end"] = {
@@ -38875,6 +43565,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14567 },
     },
+    ["rep"] = { 59, 100 },
   },
   [7656] = {
     ["end"] = {
@@ -38890,6 +43581,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14567 },
     },
+    ["rep"] = { 59, 200 },
   },
   [7657] = {
     ["end"] = {
@@ -38905,6 +43597,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14567 },
     },
+    ["rep"] = { 59, 200 },
   },
   [7658] = {
     ["end"] = {
@@ -38920,6 +43613,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14567 },
     },
+    ["rep"] = { 59, 200 },
   },
   [7659] = {
     ["end"] = {
@@ -38935,6 +43629,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14567 },
     },
+    ["rep"] = { 59, 100 },
   },
   [7660] = {
     ["end"] = {
@@ -39045,6 +43740,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13417 },
     },
+    ["xp"] = 4950,
+    ["rep"] = { 67, 150 },
   },
   [7668] = {
     ["class"] = 64,
@@ -39061,6 +43758,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13417 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 67, 200 },
   },
   [7669] = {
     ["class"] = 64,
@@ -39085,6 +43784,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 5149 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 72, 10 },
   },
   [7671] = {
     ["end"] = {
@@ -39201,10 +43902,12 @@ UnrealQuestData["quests"] = {
   [7681] = {
     ["lvl"] = 10,
     ["min"] = 10,
+    ["xp"] = 210,
   },
   [7682] = {
     ["lvl"] = 10,
     ["min"] = 10,
+    ["xp"] = 210,
   },
   [7701] = {
     ["end"] = {
@@ -39218,6 +43921,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 179827 },
     },
+    ["xp"] = 4700,
+    ["rep"] = { 59, 100 },
   },
   [7703] = {
     ["end"] = {
@@ -39231,6 +43936,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14325 },
     },
+    ["xp"] = 8300,
   },
   [7704] = {
     ["lvl"] = 50,
@@ -39238,6 +43944,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 18950 },
     },
+    ["xp"] = 4700,
+    ["rep"] = { 59, 100 },
   },
   [7721] = {
     ["end"] = {
@@ -39251,6 +43959,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14637 },
     },
+    ["xp"] = 4400,
+    ["rep"] = { 169, 150 },
   },
   [7722] = {
     ["end"] = {
@@ -39264,6 +43974,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14624 },
     },
+    ["xp"] = 4700,
+    ["rep"] = { 59, 100 },
   },
   [7723] = {
     ["end"] = {
@@ -39277,6 +43989,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14627 },
     },
+    ["xp"] = 4550,
+    ["rep"] = { 59, 100 },
   },
   [7724] = {
     ["end"] = {
@@ -39290,6 +44004,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14627 },
     },
+    ["xp"] = 4550,
+    ["rep"] = { 59, 100 },
   },
   [7725] = {
     ["end"] = {
@@ -39305,6 +44021,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14637 },
     },
+    ["xp"] = 560,
+    ["rep"] = { 169, 25 },
   },
   [7726] = {
     ["end"] = {
@@ -39319,6 +44037,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14637 },
     },
+    ["xp"] = 560,
+    ["rep"] = { 169, 25 },
   },
   [7727] = {
     ["end"] = {
@@ -39332,6 +44052,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14627 },
     },
+    ["xp"] = 4550,
+    ["rep"] = { 59, 100 },
   },
   [7728] = {
     ["end"] = {
@@ -39345,6 +44067,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 179827 },
     },
+    ["xp"] = 4400,
+    ["rep"] = { 59, 100 },
   },
   [7729] = {
     ["end"] = {
@@ -39358,6 +44082,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 179827 },
     },
+    ["xp"] = 4400,
+    ["rep"] = { 59, 100 },
   },
   [7730] = {
     ["end"] = {
@@ -39372,6 +44098,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7875 },
     },
+    ["xp"] = 3900,
+    ["rep"] = { 67, 100 },
   },
   [7731] = {
     ["end"] = {
@@ -39386,6 +44114,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7875 },
     },
+    ["xp"] = 4200,
+    ["rep"] = { 67, 150 },
   },
   [7732] = {
     ["end"] = {
@@ -39397,6 +44127,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7875 },
     },
+    ["xp"] = 4400,
+    ["rep"] = { 67, 50 },
   },
   [7733] = {
     ["end"] = {
@@ -39411,6 +44143,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7852 },
     },
+    ["xp"] = 4400,
+    ["rep"] = { 69, 100 },
   },
   [7734] = {
     ["end"] = {
@@ -39425,6 +44159,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7854 },
     },
+    ["xp"] = 4400,
+    ["rep"] = { 81, 100 },
   },
   [7735] = {
     ["end"] = {
@@ -39435,6 +44171,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 18969 },
     },
+    ["xp"] = 2200,
+    ["rep"] = { 69, 100 },
   },
   [7736] = {
     ["end"] = {
@@ -39449,6 +44187,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14624 },
     },
+    ["rep"] = { 59, 25 },
   },
   [7737] = {
     ["end"] = {
@@ -39463,6 +44202,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14624 },
     },
+    ["rep"] = { 59, 25 },
   },
   [7738] = {
     ["end"] = {
@@ -39473,6 +44213,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 18972 },
     },
+    ["xp"] = 440,
+    ["rep"] = { 81, 100 },
   },
   [7761] = {
     ["end"] = {
@@ -39483,6 +44225,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 18987 },
     },
+    ["xp"] = 6600,
   },
   [7781] = {
     ["end"] = {
@@ -39493,6 +44236,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 19003 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 72, 200, 47, 200, 69, 200, 54, 200 },
   },
   [7782] = {
     ["end"] = {
@@ -39504,6 +44249,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1748 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 72, 200, 47, 200, 69, 200, 54, 200 },
   },
   [7783] = {
     ["end"] = {
@@ -39514,6 +44261,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 19002 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 76, 200, 530, 200, 81, 200, 68, 200 },
   },
   [7784] = {
     ["end"] = {
@@ -39525,6 +44274,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 4949 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 76, 200, 530, 200, 81, 200, 68, 200 },
   },
   [7785] = {
     ["end"] = {
@@ -39549,6 +44300,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14347 },
     },
+    ["xp"] = 9950,
   },
   [7787] = {
     ["end"] = {
@@ -39560,6 +44312,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 19018 },
     },
+    ["xp"] = 9950,
   },
   [7788] = {
     ["close"] = { 7788, 7871, 7872, 7873, 8291 },
@@ -39575,6 +44328,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14733 },
     },
+    ["xp"] = 2000,
+    ["rep"] = { 890, 500 },
   },
   [7789] = {
     ["close"] = { 7789, 7874, 7875, 7876, 8294 },
@@ -39590,6 +44345,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14781 },
     },
+    ["xp"] = 2000,
+    ["rep"] = { 889, 200, 889, 200, 889, 200, 889, 200 },
   },
   [7790] = {
     ["obj"] = {
@@ -39608,6 +44365,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14722 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 72, 150 },
   },
   [7792] = {
     ["end"] = {
@@ -39621,6 +44380,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14725 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 69, 150 },
   },
   [7793] = {
     ["end"] = {
@@ -39634,6 +44395,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14722 },
     },
+    ["xp"] = 1650,
+    ["rep"] = { 72, 150 },
   },
   [7794] = {
     ["end"] = {
@@ -39647,6 +44410,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14722 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 72, 150 },
   },
   [7795] = {
     ["end"] = {
@@ -39661,6 +44426,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14722 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 72, 150 },
   },
   [7796] = {
     ["end"] = {
@@ -39675,6 +44442,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14722 },
     },
+    ["rep"] = { 72, 50 },
   },
   [7797] = {
     ["lvl"] = 1,
@@ -39692,6 +44460,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14725 },
     },
+    ["xp"] = 1650,
+    ["rep"] = { 69, 150 },
   },
   [7799] = {
     ["end"] = {
@@ -39705,6 +44475,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14725 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 69, 150 },
   },
   [7800] = {
     ["end"] = {
@@ -39719,6 +44491,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14725 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 69, 150 },
   },
   [7801] = {
     ["end"] = {
@@ -39733,6 +44507,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14725 },
     },
+    ["rep"] = { 69, 50 },
   },
   [7802] = {
     ["end"] = {
@@ -39746,6 +44521,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14723 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 47, 150 },
   },
   [7803] = {
     ["end"] = {
@@ -39759,6 +44536,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14723 },
     },
+    ["xp"] = 1650,
+    ["rep"] = { 47, 150 },
   },
   [7804] = {
     ["end"] = {
@@ -39772,6 +44551,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14723 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 47, 150 },
   },
   [7805] = {
     ["end"] = {
@@ -39786,6 +44567,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14723 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 47, 150 },
   },
   [7806] = {
     ["end"] = {
@@ -39800,6 +44583,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14723 },
     },
+    ["rep"] = { 47, 50 },
   },
   [7807] = {
     ["end"] = {
@@ -39813,6 +44597,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14724 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 54, 150 },
   },
   [7808] = {
     ["end"] = {
@@ -39826,6 +44612,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14724 },
     },
+    ["xp"] = 1650,
+    ["rep"] = { 54, 150 },
   },
   [7809] = {
     ["end"] = {
@@ -39839,6 +44627,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14724 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 54, 150 },
   },
   [7810] = {
     ["end"] = {
@@ -39849,6 +44639,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 18706 },
     },
+    ["xp"] = 560,
   },
   [7811] = {
     ["end"] = {
@@ -39863,6 +44654,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14724 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 54, 150 },
   },
   [7812] = {
     ["end"] = {
@@ -39877,6 +44670,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14724 },
     },
+    ["rep"] = { 54, 50 },
   },
   [7813] = {
     ["end"] = {
@@ -39890,6 +44684,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14729 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 68, 150 },
   },
   [7814] = {
     ["end"] = {
@@ -39903,6 +44699,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14729 },
     },
+    ["xp"] = 1650,
+    ["rep"] = { 68, 150 },
   },
   [7815] = {
     ["end"] = {
@@ -39916,6 +44714,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14740 },
     },
+    ["xp"] = 4700,
+    ["rep"] = { 893, 100 },
   },
   [7816] = {
     ["end"] = {
@@ -39929,6 +44729,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14740 },
     },
+    ["xp"] = 4400,
+    ["rep"] = { 893, 100 },
   },
   [7817] = {
     ["end"] = {
@@ -39942,6 +44744,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14729 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 68, 150 },
   },
   [7818] = {
     ["end"] = {
@@ -39956,6 +44760,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14729 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 68, 150 },
   },
   [7819] = {
     ["end"] = {
@@ -39970,6 +44776,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14729 },
     },
+    ["rep"] = { 68, 50 },
   },
   [7820] = {
     ["end"] = {
@@ -39983,6 +44790,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14728 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 81, 150 },
   },
   [7821] = {
     ["end"] = {
@@ -39996,6 +44805,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14728 },
     },
+    ["xp"] = 1650,
+    ["rep"] = { 81, 150 },
   },
   [7822] = {
     ["end"] = {
@@ -40009,6 +44820,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14728 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 81, 150 },
   },
   [7823] = {
     ["end"] = {
@@ -40023,6 +44836,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14728 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 81, 150 },
   },
   [7824] = {
     ["end"] = {
@@ -40037,6 +44852,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14726 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 76, 150 },
   },
   [7825] = {
     ["end"] = {
@@ -40051,6 +44868,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14728 },
     },
+    ["rep"] = { 81, 50 },
   },
   [7826] = {
     ["end"] = {
@@ -40064,6 +44882,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14726 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 76, 150 },
   },
   [7827] = {
     ["end"] = {
@@ -40077,6 +44897,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14726 },
     },
+    ["xp"] = 1650,
+    ["rep"] = { 76, 150 },
   },
   [7828] = {
     ["end"] = {
@@ -40090,6 +44912,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14741 },
     },
+    ["xp"] = 4400,
+    ["rep"] = { 893, 100 },
   },
   [7829] = {
     ["end"] = {
@@ -40103,6 +44927,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14741 },
     },
+    ["xp"] = 4400,
+    ["rep"] = { 893, 100 },
   },
   [7830] = {
     ["end"] = {
@@ -40116,6 +44942,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14741 },
     },
+    ["xp"] = 4400,
+    ["rep"] = { 893, 100 },
   },
   [7831] = {
     ["end"] = {
@@ -40129,6 +44957,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14726 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 76, 150 },
   },
   [7832] = {
     ["end"] = {
@@ -40143,6 +44973,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14726 },
     },
+    ["rep"] = { 76, 50 },
   },
   [7833] = {
     ["end"] = {
@@ -40156,6 +44987,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14727 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 530, 150 },
   },
   [7834] = {
     ["end"] = {
@@ -40169,6 +45002,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14727 },
     },
+    ["xp"] = 1650,
+    ["rep"] = { 530, 150 },
   },
   [7835] = {
     ["end"] = {
@@ -40182,6 +45017,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14727 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 530, 150 },
   },
   [7836] = {
     ["end"] = {
@@ -40196,6 +45033,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14727 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 530, 150 },
   },
   [7837] = {
     ["end"] = {
@@ -40210,6 +45049,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14727 },
     },
+    ["rep"] = { 530, 50 },
   },
   [7838] = {
     ["end"] = {
@@ -40236,6 +45076,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14737 },
     },
+    ["xp"] = 4400,
+    ["rep"] = { 893, 100 },
   },
   [7840] = {
     ["end"] = {
@@ -40249,6 +45091,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14731 },
     },
+    ["xp"] = 4550,
+    ["rep"] = { 893, 100 },
   },
   [7841] = {
     ["end"] = {
@@ -40262,6 +45106,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14738 },
     },
+    ["xp"] = 4400,
+    ["rep"] = { 893, 100 },
   },
   [7842] = {
     ["end"] = {
@@ -40276,6 +45122,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14738 },
     },
+    ["xp"] = 5450,
+    ["rep"] = { 893, 150 },
   },
   [7843] = {
     ["end"] = {
@@ -40290,6 +45138,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14738 },
     },
+    ["xp"] = 5900,
+    ["rep"] = { 893, 200 },
   },
   [7844] = {
     ["end"] = {
@@ -40303,6 +45153,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14739 },
     },
+    ["xp"] = 4400,
+    ["rep"] = { 893, 100 },
   },
   [7845] = {
     ["end"] = {
@@ -40313,6 +45165,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14736 },
     },
+    ["xp"] = 4900,
+    ["rep"] = { 893, 150 },
   },
   [7846] = {
     ["end"] = {
@@ -40327,6 +45181,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14757 },
     },
+    ["xp"] = 6100,
+    ["rep"] = { 893, 200 },
   },
   [7847] = {
     ["end"] = {
@@ -40338,6 +45194,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14757 },
     },
+    ["xp"] = 4900,
+    ["rep"] = { 893, 200 },
   },
   [7848] = {
     ["end"] = {
@@ -40351,6 +45209,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14387 },
     },
+    ["xp"] = 6600,
   },
   [7849] = {
     ["end"] = {
@@ -40364,6 +45223,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14741 },
     },
+    ["xp"] = 5900,
+    ["rep"] = { 893, 150 },
   },
   [7850] = {
     ["end"] = {
@@ -40377,6 +45238,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14736 },
     },
+    ["xp"] = 5900,
+    ["rep"] = { 893, 150 },
   },
   [7861] = {
     ["end"] = {
@@ -40390,6 +45253,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 179913 },
     },
+    ["xp"] = 6100,
+    ["rep"] = { 893, 200 },
   },
   [7862] = {
     ["end"] = {
@@ -40403,6 +45268,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 179913 },
     },
+    ["xp"] = 6100,
+    ["rep"] = { 893, 200 },
   },
   [7863] = {
     ["close"] = { 7863, 7864, 7865 },
@@ -40415,6 +45282,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14753 },
     },
+    ["xp"] = 270,
+    ["rep"] = { 890, 10 },
   },
   [7864] = {
     ["close"] = { 7863, 7864, 7865 },
@@ -40426,6 +45295,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14753 },
     },
+    ["xp"] = 375,
+    ["rep"] = { 890, 10 },
   },
   [7865] = {
     ["close"] = { 7863, 7864, 7865 },
@@ -40437,6 +45308,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14753 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 890, 10 },
   },
   [7866] = {
     ["close"] = { 7866, 7867, 7868 },
@@ -40448,6 +45321,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14754 },
     },
+    ["xp"] = 270,
+    ["rep"] = { 889, 10 },
   },
   [7867] = {
     ["close"] = { 7866, 7867, 7868 },
@@ -40459,6 +45334,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14754 },
     },
+    ["xp"] = 375,
+    ["rep"] = { 889, 10 },
   },
   [7868] = {
     ["close"] = { 7866, 7867, 7868 },
@@ -40470,6 +45347,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14754 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 889, 10 },
   },
   [7871] = {
     ["close"] = { 7788, 7871, 7872, 7873, 8291 },
@@ -40485,6 +45364,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14733 },
     },
+    ["xp"] = 2750,
+    ["rep"] = { 890, 200, 890, 200, 890, 200, 890, 200 },
   },
   [7872] = {
     ["close"] = { 7788, 7871, 7872, 7873, 8291 },
@@ -40500,6 +45381,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14733 },
     },
+    ["xp"] = 3900,
+    ["rep"] = { 890, 200, 890, 200, 890, 200, 890, 200 },
   },
   [7873] = {
     ["close"] = { 7788, 7871, 7872, 7873, 8291 },
@@ -40515,6 +45398,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14733 },
     },
+    ["xp"] = 5650,
+    ["rep"] = { 890, 200, 890, 200, 890, 200, 890, 200 },
   },
   [7874] = {
     ["close"] = { 7789, 7874, 7875, 7876, 8294 },
@@ -40530,6 +45415,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14781 },
     },
+    ["xp"] = 2750,
+    ["rep"] = { 889, 200, 889, 200, 889, 200, 889, 200 },
   },
   [7875] = {
     ["end"] = {
@@ -40544,6 +45431,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14781 },
     },
+    ["xp"] = 3900,
+    ["rep"] = { 889, 200, 889, 200, 889, 200, 889, 200 },
   },
   [7876] = {
     ["close"] = { 7789, 7874, 7875, 7876, 8294 },
@@ -40559,6 +45448,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14781 },
     },
+    ["xp"] = 5650,
+    ["rep"] = { 889, 200, 889, 200, 889, 200, 889, 200 },
   },
   [7877] = {
     ["end"] = {
@@ -40570,6 +45461,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14358 },
     },
+    ["xp"] = 660,
   },
   [7881] = {
     ["end"] = {
@@ -40584,6 +45476,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14833 },
     },
+    ["rep"] = { 909, 100 },
   },
   [7882] = {
     ["end"] = {
@@ -40598,6 +45491,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14833 },
     },
+    ["rep"] = { 909, 100 },
   },
   [7883] = {
     ["end"] = {
@@ -40612,6 +45506,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14833 },
     },
+    ["rep"] = { 909, 100 },
   },
   [7884] = {
     ["end"] = {
@@ -40626,6 +45521,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14833 },
     },
+    ["rep"] = { 909, 100 },
   },
   [7885] = {
     ["end"] = {
@@ -40640,6 +45536,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14833 },
     },
+    ["rep"] = { 909, 100 },
   },
   [7886] = {
     ["close"] = { 7886, 7887, 7888, 7921 },
@@ -40656,6 +45553,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14733 },
     },
+    ["rep"] = { 890, 75 },
   },
   [7887] = {
     ["end"] = {
@@ -40670,6 +45568,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14733 },
     },
+    ["rep"] = { 890, 75 },
   },
   [7888] = {
     ["end"] = {
@@ -40684,6 +45583,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14733 },
     },
+    ["rep"] = { 890, 75 },
   },
   [7889] = {
     ["end"] = {
@@ -40698,6 +45598,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14832 },
     },
+    ["rep"] = { 909, 100 },
   },
   [7890] = {
     ["end"] = {
@@ -40712,6 +45613,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14832 },
     },
+    ["rep"] = { 909, 100 },
   },
   [7891] = {
     ["end"] = {
@@ -40726,6 +45628,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14832 },
     },
+    ["rep"] = { 909, 100 },
   },
   [7892] = {
     ["end"] = {
@@ -40740,6 +45643,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14832 },
     },
+    ["rep"] = { 909, 100 },
   },
   [7893] = {
     ["end"] = {
@@ -40754,6 +45658,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14832 },
     },
+    ["rep"] = { 909, 100 },
   },
   [7894] = {
     ["end"] = {
@@ -40768,6 +45673,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14841 },
     },
+    ["rep"] = { 909, 100 },
   },
   [7895] = {
     ["end"] = {
@@ -40782,6 +45688,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14841 },
     },
+    ["rep"] = { 909, 100 },
   },
   [7896] = {
     ["end"] = {
@@ -40796,6 +45703,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14841 },
     },
+    ["rep"] = { 909, 100 },
   },
   [7897] = {
     ["end"] = {
@@ -40810,6 +45718,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14841 },
     },
+    ["rep"] = { 909, 100 },
   },
   [7898] = {
     ["end"] = {
@@ -40824,6 +45733,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14841 },
     },
+    ["rep"] = { 909, 100 },
   },
   [7899] = {
     ["end"] = {
@@ -40838,6 +45748,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14829 },
     },
+    ["rep"] = { 909, 100 },
   },
   [7900] = {
     ["end"] = {
@@ -40852,6 +45763,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14829 },
     },
+    ["rep"] = { 909, 100 },
   },
   [7901] = {
     ["end"] = {
@@ -40866,6 +45778,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14829 },
     },
+    ["rep"] = { 909, 100 },
   },
   [7902] = {
     ["end"] = {
@@ -40880,6 +45793,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14829 },
     },
+    ["rep"] = { 909, 100 },
   },
   [7903] = {
     ["end"] = {
@@ -40894,6 +45808,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14829 },
     },
+    ["rep"] = { 909, 100 },
   },
   [7904] = {
     ["lvl"] = 60,
@@ -40912,6 +45827,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14842 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 909, 50 },
   },
   [7907] = {
     ["end"] = {
@@ -40922,10 +45839,13 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 19228 },
     },
+    ["xp"] = 560,
+    ["rep"] = { 909, 150 },
   },
   [7908] = {
     ["lvl"] = 55,
     ["min"] = 1,
+    ["xp"] = 560,
   },
   [7921] = {
     ["close"] = { 7886, 7887, 7888, 7921 },
@@ -40942,6 +45862,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14733 },
     },
+    ["rep"] = { 890, 75 },
   },
   [7922] = {
     ["close"] = { 7922, 7923, 7924, 7925 },
@@ -40958,6 +45879,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14781 },
     },
+    ["rep"] = { 889, 75 },
   },
   [7923] = {
     ["end"] = {
@@ -40972,6 +45894,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14781 },
     },
+    ["rep"] = { 889, 75 },
   },
   [7924] = {
     ["end"] = {
@@ -40986,6 +45909,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14781 },
     },
+    ["rep"] = { 889, 75 },
   },
   [7925] = {
     ["end"] = {
@@ -41000,6 +45924,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14781 },
     },
+    ["rep"] = { 889, 75 },
   },
   [7926] = {
     ["end"] = {
@@ -41011,6 +45936,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14843 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 909, 50 },
   },
   [7927] = {
     ["end"] = {
@@ -41021,6 +45948,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 19277 },
     },
+    ["xp"] = 560,
+    ["rep"] = { 909, 150 },
   },
   [7928] = {
     ["end"] = {
@@ -41031,6 +45960,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 19257 },
     },
+    ["xp"] = 560,
+    ["rep"] = { 909, 150 },
   },
   [7929] = {
     ["end"] = {
@@ -41041,6 +45972,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 19267 },
     },
+    ["xp"] = 560,
+    ["rep"] = { 909, 150 },
   },
   [7930] = {
     ["end"] = {
@@ -41149,6 +46082,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 19423 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 909, 50 },
   },
   [7938] = {
     ["end"] = {
@@ -41159,6 +46094,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 19424 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 909, 50 },
   },
   [7939] = {
     ["end"] = {
@@ -41243,6 +46180,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 19443 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 909, 50 },
   },
   [7945] = {
     ["end"] = {
@@ -41253,6 +46192,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 19452 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 909, 50 },
   },
   [7946] = {
     ["end"] = {
@@ -41274,6 +46215,8 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["U"] = { 14886, 16479 },
     },
+    ["xp"] = 20,
+    ["rep"] = { 72, 25 },
   },
   [7962] = {
     ["lvl"] = 1,
@@ -41281,6 +46224,8 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 19482 },
     },
+    ["xp"] = 100,
+    ["rep"] = { 72, 150 },
   },
   [7981] = {
     ["end"] = {
@@ -41391,6 +46336,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14902 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 100 },
   },
   [8042] = {
     ["class"] = 1,
@@ -41406,6 +46353,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14902 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 100 },
   },
   [8043] = {
     ["class"] = 1,
@@ -41421,6 +46370,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14902 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 100 },
   },
   [8044] = {
     ["class"] = 1,
@@ -41436,6 +46387,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14902 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 100 },
   },
   [8045] = {
     ["class"] = 2,
@@ -41447,6 +46400,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14902 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 100 },
   },
   [8046] = {
     ["class"] = 2,
@@ -41462,6 +46417,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14902 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 100 },
   },
   [8047] = {
     ["class"] = 2,
@@ -41477,6 +46434,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14902 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 100 },
   },
   [8048] = {
     ["class"] = 2,
@@ -41492,6 +46451,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14902 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 100 },
   },
   [8049] = {
     ["class"] = 16,
@@ -41503,6 +46464,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14903 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 100 },
   },
   [8050] = {
     ["class"] = 16,
@@ -41518,6 +46481,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14903 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 100 },
   },
   [8051] = {
     ["class"] = 16,
@@ -41533,6 +46498,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14903 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 100 },
   },
   [8052] = {
     ["class"] = 16,
@@ -41548,6 +46515,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14903 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 100 },
   },
   [8053] = {
     ["class"] = 2,
@@ -41562,6 +46531,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14902 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 150 },
   },
   [8054] = {
     ["class"] = 2,
@@ -41576,6 +46547,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14902 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 150 },
   },
   [8055] = {
     ["class"] = 2,
@@ -41590,6 +46563,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14902 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 150 },
   },
   [8056] = {
     ["class"] = 64,
@@ -41604,6 +46579,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14904 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 150 },
   },
   [8057] = {
     ["class"] = 1024,
@@ -41618,6 +46595,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14904 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 150 },
   },
   [8058] = {
     ["class"] = 1,
@@ -41632,6 +46611,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14902 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 150 },
   },
   [8059] = {
     ["class"] = 256,
@@ -41646,6 +46627,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14903 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 150 },
   },
   [8060] = {
     ["class"] = 128,
@@ -41660,6 +46643,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14903 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 150 },
   },
   [8061] = {
     ["class"] = 16,
@@ -41674,6 +46659,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14903 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 150 },
   },
   [8062] = {
     ["class"] = 4,
@@ -41688,6 +46675,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14905 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 150 },
   },
   [8063] = {
     ["class"] = 8,
@@ -41702,6 +46691,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14905 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 150 },
   },
   [8064] = {
     ["class"] = 1024,
@@ -41716,6 +46707,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14904 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 150 },
   },
   [8065] = {
     ["class"] = 1024,
@@ -41730,6 +46723,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14904 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 150 },
   },
   [8066] = {
     ["class"] = 4,
@@ -41745,6 +46740,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14905 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 150 },
   },
   [8067] = {
     ["class"] = 4,
@@ -41760,6 +46757,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14905 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 150 },
   },
   [8068] = {
     ["class"] = 128,
@@ -41775,6 +46774,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14903 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 150 },
   },
   [8069] = {
     ["class"] = 128,
@@ -41790,6 +46791,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14903 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 150 },
   },
   [8070] = {
     ["class"] = 16,
@@ -41805,6 +46808,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14903 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 150 },
   },
   [8071] = {
     ["class"] = 16,
@@ -41820,6 +46825,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14903 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 150 },
   },
   [8072] = {
     ["class"] = 8,
@@ -41835,6 +46842,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14905 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 150 },
   },
   [8073] = {
     ["class"] = 8,
@@ -41850,6 +46859,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14905 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 150 },
   },
   [8074] = {
     ["class"] = 64,
@@ -41865,6 +46876,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14904 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 150 },
   },
   [8075] = {
     ["class"] = 64,
@@ -41880,6 +46893,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14904 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 150 },
   },
   [8076] = {
     ["class"] = 256,
@@ -41895,6 +46910,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14903 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 150 },
   },
   [8077] = {
     ["class"] = 256,
@@ -41910,6 +46927,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14903 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 150 },
   },
   [8078] = {
     ["class"] = 1,
@@ -41925,6 +46944,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14902 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 150 },
   },
   [8079] = {
     ["class"] = 1,
@@ -41940,6 +46961,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14902 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 150 },
   },
   [8080] = {
     ["close"] = { 8080, 8154, 8155, 8156, 8297 },
@@ -41955,6 +46978,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14984 },
     },
+    ["xp"] = 5650,
+    ["rep"] = { 509, 200 },
   },
   [8081] = {
     ["end"] = {
@@ -41969,6 +46994,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14984 },
     },
+    ["rep"] = { 509, 75 },
   },
   [8101] = {
     ["class"] = 128,
@@ -41980,6 +47006,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14903 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 100 },
   },
   [8102] = {
     ["class"] = 128,
@@ -41995,6 +47023,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14903 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 100 },
   },
   [8103] = {
     ["class"] = 128,
@@ -42010,6 +47040,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14903 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 100 },
   },
   [8104] = {
     ["class"] = 128,
@@ -42025,6 +47057,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14903 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 100 },
   },
   [8105] = {
     ["close"] = { 8105, 8166, 8167, 8168 },
@@ -42039,6 +47073,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14983 },
     },
+    ["xp"] = 5650,
+    ["rep"] = { 509, 200 },
   },
   [8106] = {
     ["class"] = 256,
@@ -42050,6 +47086,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14903 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 100 },
   },
   [8107] = {
     ["class"] = 256,
@@ -42065,6 +47103,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14903 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 100 },
   },
   [8108] = {
     ["class"] = 256,
@@ -42080,6 +47120,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14903 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 100 },
   },
   [8109] = {
     ["class"] = 256,
@@ -42095,6 +47137,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14903 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 100 },
   },
   [8110] = {
     ["class"] = 1024,
@@ -42106,6 +47150,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14904 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 100 },
   },
   [8111] = {
     ["class"] = 1024,
@@ -42121,6 +47167,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14904 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 100 },
   },
   [8112] = {
     ["class"] = 1024,
@@ -42136,6 +47184,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14904 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 100 },
   },
   [8113] = {
     ["class"] = 1024,
@@ -42151,6 +47201,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14904 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 100 },
   },
   [8114] = {
     ["end"] = {
@@ -42161,6 +47213,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14983 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 509, 200, 509, 200, 509, 200, 509, 200 },
   },
   [8115] = {
     ["end"] = {
@@ -42172,6 +47226,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14983 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 509, 200 },
   },
   [8116] = {
     ["class"] = 64,
@@ -42183,6 +47239,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14904 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 100 },
   },
   [8117] = {
     ["class"] = 64,
@@ -42198,6 +47256,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14904 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 100 },
   },
   [8118] = {
     ["class"] = 64,
@@ -42213,6 +47273,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14904 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 100 },
   },
   [8119] = {
     ["class"] = 64,
@@ -42228,6 +47290,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14904 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 100 },
   },
   [8120] = {
     ["close"] = { 8120, 8169, 8170, 8171 },
@@ -42242,6 +47306,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15021 },
     },
+    ["xp"] = 5650,
+    ["rep"] = { 510, 200 },
   },
   [8121] = {
     ["end"] = {
@@ -42252,6 +47318,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15021 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 510, 200, 510, 200, 510, 200, 510, 200 },
   },
   [8122] = {
     ["end"] = {
@@ -42263,6 +47331,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15021 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 510, 200 },
   },
   [8123] = {
     ["end"] = {
@@ -42277,6 +47347,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15022 },
     },
+    ["xp"] = 5650,
+    ["rep"] = { 510, 200 },
   },
   [8124] = {
     ["end"] = {
@@ -42291,6 +47363,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15022 },
     },
+    ["rep"] = { 510, 75 },
   },
   [8141] = {
     ["class"] = 8,
@@ -42302,6 +47375,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14905 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 100 },
   },
   [8142] = {
     ["class"] = 8,
@@ -42317,6 +47392,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14905 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 100 },
   },
   [8143] = {
     ["class"] = 8,
@@ -42332,6 +47409,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14905 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 100 },
   },
   [8144] = {
     ["class"] = 8,
@@ -42347,6 +47426,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14905 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 100 },
   },
   [8145] = {
     ["class"] = 4,
@@ -42358,6 +47439,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14905 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 100 },
   },
   [8146] = {
     ["class"] = 4,
@@ -42373,6 +47456,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14905 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 100 },
   },
   [8147] = {
     ["class"] = 4,
@@ -42388,6 +47473,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14905 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 100 },
   },
   [8148] = {
     ["class"] = 4,
@@ -42403,6 +47490,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14905 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 100 },
   },
   [8149] = {
     ["end"] = {
@@ -42417,6 +47506,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15011 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 469, 200 },
   },
   [8150] = {
     ["end"] = {
@@ -42431,6 +47522,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15012 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 67, 200 },
   },
   [8151] = {
     ["class"] = 4,
@@ -42442,6 +47535,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3352, 3039, 4205, 5116, 5516 },
     },
+    ["xp"] = 510,
   },
   [8153] = {
     ["class"] = 4,
@@ -42457,6 +47551,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8405 },
     },
+    ["xp"] = 5100,
   },
   [8154] = {
     ["end"] = {
@@ -42471,6 +47566,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14984 },
     },
+    ["xp"] = 3900,
+    ["rep"] = { 509, 200 },
   },
   [8155] = {
     ["end"] = {
@@ -42485,6 +47582,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14984 },
     },
+    ["xp"] = 2000,
+    ["rep"] = { 509, 500 },
   },
   [8156] = {
     ["end"] = {
@@ -42499,6 +47598,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14984 },
     },
+    ["xp"] = 2750,
+    ["rep"] = { 509, 200 },
   },
   [8157] = {
     ["end"] = {
@@ -42513,6 +47614,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14984 },
     },
+    ["rep"] = { 509, 75 },
   },
   [8158] = {
     ["end"] = {
@@ -42527,6 +47629,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14984 },
     },
+    ["rep"] = { 509, 75 },
   },
   [8159] = {
     ["end"] = {
@@ -42541,6 +47644,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14984 },
     },
+    ["rep"] = { 509, 75 },
   },
   [8160] = {
     ["end"] = {
@@ -42555,6 +47659,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15022 },
     },
+    ["xp"] = 3900,
+    ["rep"] = { 510, 200 },
   },
   [8161] = {
     ["end"] = {
@@ -42569,6 +47675,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15022 },
     },
+    ["xp"] = 2750,
+    ["rep"] = { 510, 200 },
   },
   [8162] = {
     ["end"] = {
@@ -42583,6 +47691,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15022 },
     },
+    ["xp"] = 2000,
+    ["rep"] = { 510, 200 },
   },
   [8163] = {
     ["end"] = {
@@ -42597,6 +47707,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15022 },
     },
+    ["rep"] = { 510, 75 },
   },
   [8164] = {
     ["end"] = {
@@ -42611,6 +47722,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15022 },
     },
+    ["rep"] = { 510, 75 },
   },
   [8165] = {
     ["end"] = {
@@ -42625,6 +47737,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15022 },
     },
+    ["rep"] = { 510, 75 },
   },
   [8166] = {
     ["close"] = { 8105, 8166, 8167, 8168 },
@@ -42639,6 +47752,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14983 },
     },
+    ["xp"] = 3900,
+    ["rep"] = { 509, 200 },
   },
   [8167] = {
     ["close"] = { 8105, 8166, 8167, 8168 },
@@ -42653,6 +47768,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14983 },
     },
+    ["xp"] = 2750,
+    ["rep"] = { 509, 200 },
   },
   [8168] = {
     ["close"] = { 8105, 8166, 8167, 8168 },
@@ -42667,6 +47784,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14983 },
     },
+    ["xp"] = 2000,
+    ["rep"] = { 509, 200 },
   },
   [8169] = {
     ["close"] = { 8120, 8169, 8170, 8171 },
@@ -42681,6 +47800,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15021 },
     },
+    ["xp"] = 3900,
+    ["rep"] = { 510, 200 },
   },
   [8170] = {
     ["close"] = { 8120, 8169, 8170, 8171 },
@@ -42695,6 +47816,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15021 },
     },
+    ["xp"] = 2750,
+    ["rep"] = { 510, 200 },
   },
   [8171] = {
     ["close"] = { 8120, 8169, 8170, 8171 },
@@ -42709,6 +47832,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15021 },
     },
+    ["xp"] = 2000,
+    ["rep"] = { 510, 200 },
   },
   [8181] = {
     ["end"] = {
@@ -42720,6 +47845,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10460 },
     },
+    ["xp"] = 6200,
   },
   [8182] = {
     ["end"] = {
@@ -42731,6 +47857,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10460 },
     },
+    ["xp"] = 9300,
   },
   [8183] = {
     ["end"] = {
@@ -42741,6 +47868,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 19802 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 270, 200 },
   },
   [8184] = {
     ["class"] = 1,
@@ -42755,6 +47884,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15042 },
     },
+    ["rep"] = { 270, 100 },
   },
   [8185] = {
     ["class"] = 2,
@@ -42769,6 +47899,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15042 },
     },
+    ["rep"] = { 270, 100 },
   },
   [8186] = {
     ["class"] = 8,
@@ -42783,6 +47914,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15042 },
     },
+    ["rep"] = { 270, 100 },
   },
   [8187] = {
     ["class"] = 4,
@@ -42797,6 +47929,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15042 },
     },
+    ["rep"] = { 270, 100 },
   },
   [8188] = {
     ["class"] = 64,
@@ -42811,6 +47944,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15042 },
     },
+    ["rep"] = { 270, 100 },
   },
   [8189] = {
     ["class"] = 128,
@@ -42825,6 +47959,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15042 },
     },
+    ["rep"] = { 270, 100 },
   },
   [8190] = {
     ["class"] = 256,
@@ -42839,6 +47974,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15042 },
     },
+    ["rep"] = { 270, 100 },
   },
   [8191] = {
     ["class"] = 16,
@@ -42853,6 +47989,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15042 },
     },
+    ["rep"] = { 270, 100 },
   },
   [8192] = {
     ["class"] = 1024,
@@ -42867,6 +48004,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15042 },
     },
+    ["rep"] = { 270, 100 },
   },
   [8193] = {
     ["end"] = {
@@ -42910,6 +48048,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15070 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 270, 25 },
   },
   [8196] = {
     ["end"] = {
@@ -42936,6 +48076,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14910 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 270, 200 },
   },
   [8221] = {
     ["end"] = {
@@ -42965,6 +48107,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14829 },
     },
+    ["rep"] = { 909, 100 },
   },
   [8223] = {
     ["end"] = {
@@ -43021,6 +48164,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 19973 },
       ["O"] = { 180366 },
     },
+    ["xp"] = 660,
   },
   [8228] = {
     ["end"] = {
@@ -43060,6 +48204,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8405 },
     },
+    ["xp"] = 5100,
   },
   [8232] = {
     ["class"] = 4,
@@ -43075,6 +48220,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8405 },
     },
+    ["xp"] = 6350,
   },
   [8233] = {
     ["class"] = 8,
@@ -43086,6 +48232,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3328, 5165, 4583, 4163, 918 },
     },
+    ["xp"] = 510,
+    ["rep"] = { 349, 10 },
   },
   [8234] = {
     ["class"] = 8,
@@ -43101,6 +48249,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6768 },
     },
+    ["xp"] = 5100,
+    ["rep"] = { 349, 100 },
   },
   [8235] = {
     ["class"] = 8,
@@ -43116,6 +48266,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8379 },
     },
+    ["xp"] = 5100,
+    ["rep"] = { 349, 100 },
   },
   [8236] = {
     ["class"] = 8,
@@ -43131,6 +48283,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8379 },
     },
+    ["xp"] = 6350,
+    ["rep"] = { 349, 150 },
   },
   [8237] = {
     ["lvl"] = 50,
@@ -43148,6 +48302,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15070 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 270, 25 },
   },
   [8239] = {
     ["end"] = {
@@ -43161,6 +48317,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15070 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 270, 25 },
   },
   [8240] = {
     ["end"] = {
@@ -43171,6 +48329,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15070 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 270, 150 },
   },
   [8241] = {
     ["end"] = {
@@ -43185,6 +48345,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14624 },
     },
+    ["rep"] = { 59, 25 },
   },
   [8242] = {
     ["end"] = {
@@ -43199,6 +48360,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14624 },
     },
+    ["rep"] = { 59, 25 },
   },
   [8243] = {
     ["end"] = {
@@ -43238,6 +48400,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6707 },
     },
+    ["rep"] = { 349, 50, 70, -250 },
   },
   [8250] = {
     ["class"] = 128,
@@ -43249,6 +48412,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7312, 4567, 7311, 3047, 331 },
     },
+    ["xp"] = 510,
   },
   [8251] = {
     ["class"] = 128,
@@ -43264,6 +48428,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8379 },
     },
+    ["xp"] = 5100,
   },
   [8252] = {
     ["class"] = 128,
@@ -43279,6 +48444,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8379 },
     },
+    ["xp"] = 5100,
   },
   [8253] = {
     ["class"] = 128,
@@ -43294,6 +48460,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8379 },
     },
+    ["xp"] = 6350,
   },
   [8254] = {
     ["class"] = 16,
@@ -43305,6 +48472,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11406, 6018, 5489 },
     },
+    ["xp"] = 510,
   },
   [8255] = {
     ["class"] = 16,
@@ -43320,6 +48488,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8405 },
     },
+    ["xp"] = 5100,
   },
   [8256] = {
     ["class"] = 16,
@@ -43335,6 +48504,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8405 },
     },
+    ["xp"] = 5100,
   },
   [8257] = {
     ["class"] = 16,
@@ -43350,6 +48520,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8405 },
     },
+    ["xp"] = 6350,
   },
   [8258] = {
     ["class"] = 64,
@@ -43366,6 +48537,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13417 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 67, 200 },
   },
   [8259] = {
     ["end"] = {
@@ -43389,6 +48562,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15127 },
     },
+    ["xp"] = 270,
   },
   [8261] = {
     ["close"] = { 8260, 8261, 8262 },
@@ -43401,6 +48575,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15127 },
     },
+    ["xp"] = 380,
   },
   [8262] = {
     ["close"] = { 8260, 8261, 8262 },
@@ -43412,6 +48587,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15127 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 509, 10 },
   },
   [8263] = {
     ["close"] = { 8263, 8264, 8265 },
@@ -43423,6 +48600,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15126 },
     },
+    ["xp"] = 270,
+    ["rep"] = { 510, 10 },
   },
   [8264] = {
     ["close"] = { 8263, 8264, 8265 },
@@ -43434,6 +48613,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15126 },
     },
+    ["xp"] = 375,
+    ["rep"] = { 510, 10 },
   },
   [8265] = {
     ["close"] = { 8263, 8264, 8265 },
@@ -43445,6 +48626,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15126 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 510, 10 },
   },
   [8266] = {
     ["close"] = { 8266, 8269 },
@@ -43460,6 +48643,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14733 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 890, 50 },
   },
   [8267] = {
     ["close"] = { 8267, 8268 },
@@ -43475,6 +48660,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14781 },
     },
+    ["rep"] = { 889, 25 },
   },
   [8268] = {
     ["close"] = { 8267, 8268 },
@@ -43490,6 +48676,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14781 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 889, 50 },
   },
   [8269] = {
     ["close"] = { 8266, 8269 },
@@ -43505,6 +48693,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14733 },
     },
+    ["rep"] = { 890, 25 },
   },
   [8271] = {
     ["end"] = {
@@ -43516,6 +48705,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13816 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 730, 10, 47, 10 },
   },
   [8272] = {
     ["end"] = {
@@ -43527,6 +48718,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13817 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 729, 10, 76, 10 },
   },
   [8273] = {
     ["end"] = {
@@ -43538,6 +48731,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7825 },
     },
+    ["xp"] = 4200,
+    ["rep"] = { 68, 50 },
   },
   [8274] = {
     ["lvl"] = 5,
@@ -43557,6 +48752,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15187 },
     },
+    ["xp"] = 2800,
+    ["rep"] = { 609, 10 },
   },
   [8276] = {
     ["close"] = { 8275, 8276 },
@@ -43569,6 +48766,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15188 },
     },
+    ["xp"] = 2800,
+    ["rep"] = { 609, 10 },
   },
   [8277] = {
     ["end"] = {
@@ -43582,6 +48781,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15189 },
     },
+    ["xp"] = 5650,
+    ["rep"] = { 609, 75 },
   },
   [8278] = {
     ["end"] = {
@@ -43596,6 +48797,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15189 },
     },
+    ["xp"] = 6000,
+    ["rep"] = { 609, 100 },
   },
   [8279] = {
     ["end"] = {
@@ -43610,6 +48813,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15194 },
     },
+    ["xp"] = 8300,
+    ["rep"] = { 609, 100 },
   },
   [8280] = {
     ["end"] = {
@@ -43624,6 +48829,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15191 },
     },
+    ["xp"] = 5650,
+    ["rep"] = { 609, 75 },
   },
   [8281] = {
     ["end"] = {
@@ -43638,6 +48845,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15191 },
     },
+    ["xp"] = 6000,
+    ["rep"] = { 609, 100 },
   },
   [8282] = {
     ["end"] = {
@@ -43652,6 +48861,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15190 },
     },
+    ["xp"] = 6200,
+    ["rep"] = { 609, 100 },
   },
   [8283] = {
     ["end"] = {
@@ -43665,6 +48876,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 180448 },
     },
+    ["xp"] = 8050,
+    ["rep"] = { 609, 100 },
   },
   [8284] = {
     ["end"] = {
@@ -43678,6 +48891,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15183 },
     },
+    ["xp"] = 6200,
+    ["rep"] = { 609, 100 },
   },
   [8285] = {
     ["end"] = {
@@ -43689,6 +48904,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15183 },
     },
+    ["xp"] = 4800,
+    ["rep"] = { 609, 50 },
   },
   [8286] = {
     ["end"] = {
@@ -43702,6 +48919,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15180 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 910, 100 },
   },
   [8287] = {
     ["end"] = {
@@ -43713,6 +48932,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15194 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8288] = {
     ["end"] = {
@@ -43727,6 +48948,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15180 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 910, 200 },
   },
   [8289] = {
     ["end"] = {
@@ -43740,6 +48963,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14733 },
     },
+    ["rep"] = { 890, 75 },
   },
   [8290] = {
     ["lvl"] = 15,
@@ -43747,6 +48971,8 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 20558 },
     },
+    ["xp"] = 1050,
+    ["rep"] = { 890, 200 },
   },
   [8291] = {
     ["end"] = {
@@ -43761,6 +48987,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14733 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 890, 200, 890, 200, 890, 200, 890, 200 },
   },
   [8292] = {
     ["end"] = {
@@ -43775,6 +49003,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14733 },
     },
+    ["rep"] = { 890, 75 },
   },
   [8293] = {
     ["end"] = {
@@ -43789,6 +49018,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14781 },
     },
+    ["rep"] = { 889, 75 },
   },
   [8294] = {
     ["end"] = {
@@ -43803,6 +49033,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14781 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 889, 200, 889, 200, 889, 200, 889, 200 },
   },
   [8295] = {
     ["lvl"] = 15,
@@ -43810,6 +49042,8 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 20558 },
     },
+    ["xp"] = 1050,
+    ["rep"] = { 889, 200, 889, 200, 889, 200, 889, 200 },
   },
   [8296] = {
     ["end"] = {
@@ -43823,6 +49057,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14733 },
     },
+    ["rep"] = { 889, 75 },
   },
   [8297] = {
     ["end"] = {
@@ -43837,6 +49072,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14984 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 509, 200 },
   },
   [8298] = {
     ["end"] = {
@@ -43851,6 +49088,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14984 },
     },
+    ["rep"] = { 509, 75 },
   },
   [8299] = {
     ["end"] = {
@@ -43865,6 +49103,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15022 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 510, 200 },
   },
   [8300] = {
     ["end"] = {
@@ -43879,6 +49119,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15022 },
     },
+    ["rep"] = { 510, 75 },
   },
   [8301] = {
     ["end"] = {
@@ -43893,6 +49134,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15180 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 910, 200 },
   },
   [8302] = {
     ["end"] = {
@@ -43908,6 +49151,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15180 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 910, 200 },
   },
   [8303] = {
     ["end"] = {
@@ -43919,6 +49164,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15180 },
     },
+    ["rep"] = { 910, 200 },
   },
   [8304] = {
     ["end"] = {
@@ -43932,6 +49178,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15181 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8305] = {
     ["end"] = {
@@ -43943,6 +49191,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15192 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 910, 50 },
   },
   [8306] = {
     ["end"] = {
@@ -43957,6 +49207,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15181 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 609, 200 },
   },
   [8307] = {
     ["end"] = {
@@ -43968,6 +49220,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15174 },
     },
+    ["xp"] = 3000,
+    ["rep"] = { 609, 10 },
   },
   [8308] = {
     ["end"] = {
@@ -43978,6 +49232,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 20461 },
     },
+    ["xp"] = 8300,
+    ["rep"] = { 609, 100 },
   },
   [8309] = {
     ["end"] = {
@@ -43992,6 +49248,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15170 },
     },
+    ["xp"] = 8300,
+    ["rep"] = { 609, 100 },
   },
   [8310] = {
     ["end"] = {
@@ -44006,6 +49264,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15171 },
     },
+    ["xp"] = 8300,
+    ["rep"] = { 609, 100 },
   },
   [8311] = {
     ["end"] = {
@@ -44020,6 +49280,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15310 },
     },
+    ["xp"] = 1650,
+    ["rep"] = { 469, 100 },
   },
   [8312] = {
     ["end"] = {
@@ -44034,6 +49296,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15309 },
     },
+    ["xp"] = 1650,
+    ["rep"] = { 67, 100 },
   },
   [8313] = {
     ["end"] = {
@@ -44046,6 +49310,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 180503 },
     },
+    ["xp"] = 6000,
+    ["rep"] = { 609, 50 },
   },
   [8314] = {
     ["end"] = {
@@ -44058,6 +49324,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15170 },
     },
+    ["xp"] = 4950,
+    ["rep"] = { 609, 75 },
   },
   [8315] = {
     ["end"] = {
@@ -44073,6 +49341,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15183 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 609, 200 },
   },
   [8316] = {
     ["class"] = 1,
@@ -44085,6 +49355,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15183 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8317] = {
     ["end"] = {
@@ -44100,6 +49372,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15174 },
     },
+    ["xp"] = 3000,
+    ["rep"] = { 609, 50 },
   },
   [8318] = {
     ["end"] = {
@@ -44113,6 +49387,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15306 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8319] = {
     ["end"] = {
@@ -44127,6 +49403,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15306 },
     },
+    ["rep"] = { 609, 100 },
   },
   [8320] = {
     ["end"] = {
@@ -44140,6 +49417,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15270 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8321] = {
     ["end"] = {
@@ -44154,6 +49433,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15270 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 150 },
   },
   [8322] = {
     ["end"] = {
@@ -44165,6 +49446,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15197 },
     },
+    ["xp"] = 1650,
+    ["rep"] = { 67, 25 },
   },
   [8323] = {
     ["end"] = {
@@ -44179,6 +49462,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15194 },
     },
+    ["xp"] = 6400,
   },
   [8324] = {
     ["end"] = {
@@ -44203,6 +49487,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15270 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 25 },
   },
   [8332] = {
     ["end"] = {
@@ -44217,6 +49503,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15282 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 75 },
   },
   [8333] = {
     ["end"] = {
@@ -44245,6 +49533,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15282 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8342] = {
     ["end"] = {
@@ -44269,6 +49559,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15270 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 25 },
   },
   [8348] = {
     ["end"] = {
@@ -44283,6 +49575,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15306 },
     },
+    ["xp"] = 8300,
+    ["rep"] = { 609, 150 },
   },
   [8349] = {
     ["end"] = {
@@ -44294,6 +49588,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15282 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 25 },
   },
   [8351] = {
     ["end"] = {
@@ -44305,6 +49601,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15282 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 25 },
   },
   [8352] = {
     ["end"] = {
@@ -44319,6 +49617,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15306 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 609, 200 },
   },
   [8353] = {
     ["end"] = {
@@ -44452,6 +49752,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15306 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8362] = {
     ["end"] = {
@@ -44466,6 +49768,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15306 },
     },
+    ["rep"] = { 609, 50 },
   },
   [8363] = {
     ["end"] = {
@@ -44480,6 +49783,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15306 },
     },
+    ["rep"] = { 609, 100 },
   },
   [8364] = {
     ["end"] = {
@@ -44494,6 +49798,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15306 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 609, 150 },
   },
   [8365] = {
     ["end"] = {
@@ -44507,6 +49813,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15165 },
     },
+    ["xp"] = 3900,
+    ["rep"] = { 369, 100 },
   },
   [8366] = {
     ["end"] = {
@@ -44520,6 +49828,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7882 },
     },
+    ["xp"] = 3900,
+    ["rep"] = { 369, 100 },
   },
   [8367] = {
     ["end"] = {
@@ -44533,6 +49843,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15350 },
     },
+    ["xp"] = 8300,
+    ["rep"] = { 729, 200, 889, 150, 510, 150 },
   },
   [8368] = {
     ["end"] = {
@@ -44546,6 +49858,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15350 },
     },
+    ["xp"] = 1450,
+    ["rep"] = { 889, 100 },
   },
   [8369] = {
     ["end"] = {
@@ -44559,6 +49873,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15350 },
     },
+    ["xp"] = 8300,
+    ["rep"] = { 729, 150 },
   },
   [8370] = {
     ["end"] = {
@@ -44572,6 +49888,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15350 },
     },
+    ["xp"] = 2350,
+    ["rep"] = { 510, 100 },
   },
   [8371] = {
     ["end"] = {
@@ -44585,6 +49903,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15351 },
     },
+    ["xp"] = 8300,
+    ["rep"] = { 509, 150, 730, 200, 890, 150 },
   },
   [8372] = {
     ["end"] = {
@@ -44598,6 +49918,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15351 },
     },
+    ["xp"] = 1450,
+    ["rep"] = { 890, 100 },
   },
   [8373] = {
     ["end"] = {
@@ -44612,6 +49934,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15199 },
     },
+    ["xp"] = 1650,
+    ["rep"] = { 469, 100 },
   },
   [8374] = {
     ["end"] = {
@@ -44625,6 +49949,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15351 },
     },
+    ["xp"] = 2350,
+    ["rep"] = { 509, 100 },
   },
   [8375] = {
     ["end"] = {
@@ -44638,6 +49964,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15351 },
     },
+    ["xp"] = 8300,
+    ["rep"] = { 730, 150 },
   },
   [8376] = {
     ["class"] = 2,
@@ -44650,6 +49978,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15183 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8377] = {
     ["class"] = 4,
@@ -44662,6 +49992,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15183 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8378] = {
     ["class"] = 8,
@@ -44674,6 +50006,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15183 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8379] = {
     ["class"] = 16,
@@ -44686,6 +50020,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15183 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8380] = {
     ["class"] = 64,
@@ -44698,6 +50034,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15183 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 250 },
   },
   [8381] = {
     ["class"] = 384,
@@ -44710,6 +50048,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15183 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8382] = {
     ["class"] = 1024,
@@ -44722,6 +50062,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15183 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8383] = {
     ["end"] = {
@@ -44736,6 +50078,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15351 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 730, 100 },
   },
   [8384] = {
     ["end"] = {
@@ -44750,6 +50094,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15351 },
     },
+    ["xp"] = 1200,
+    ["rep"] = { 509, 50 },
   },
   [8385] = {
     ["end"] = {
@@ -44764,6 +50110,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15351 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 730, 150, 509, 100, 890, 100 },
   },
   [8386] = {
     ["end"] = {
@@ -44778,6 +50126,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15351 },
     },
+    ["xp"] = 730,
+    ["rep"] = { 890, 50 },
   },
   [8387] = {
     ["end"] = {
@@ -44792,6 +50142,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15350 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 729, 100 },
   },
   [8388] = {
     ["end"] = {
@@ -44806,6 +50158,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15350 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 729, 150, 889, 100, 510, 100 },
   },
   [8389] = {
     ["end"] = {
@@ -44820,6 +50174,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15350 },
     },
+    ["xp"] = 730,
+    ["rep"] = { 889, 50 },
   },
   [8390] = {
     ["end"] = {
@@ -44834,6 +50190,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15350 },
     },
+    ["xp"] = 1200,
+    ["rep"] = { 510, 50 },
   },
   [8391] = {
     ["end"] = {
@@ -44848,6 +50206,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15351 },
     },
+    ["xp"] = 1500,
+    ["rep"] = { 509, 50 },
   },
   [8392] = {
     ["end"] = {
@@ -44862,6 +50222,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15351 },
     },
+    ["xp"] = 2250,
+    ["rep"] = { 509, 50 },
   },
   [8393] = {
     ["end"] = {
@@ -44875,6 +50237,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15351 },
     },
+    ["xp"] = 3000,
+    ["rep"] = { 509, 100 },
   },
   [8394] = {
     ["end"] = {
@@ -44888,6 +50252,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15351 },
     },
+    ["xp"] = 4550,
+    ["rep"] = { 509, 100 },
   },
   [8395] = {
     ["end"] = {
@@ -44901,6 +50267,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15351 },
     },
+    ["xp"] = 6400,
+    ["rep"] = { 509, 100 },
   },
   [8396] = {
     ["end"] = {
@@ -44914,6 +50282,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15351 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 509, 100 },
   },
   [8397] = {
     ["end"] = {
@@ -44928,6 +50298,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15351 },
     },
+    ["xp"] = 3200,
+    ["rep"] = { 509, 50 },
   },
   [8398] = {
     ["end"] = {
@@ -44942,6 +50314,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15351 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 509, 50 },
   },
   [8399] = {
     ["end"] = {
@@ -44955,6 +50329,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15351 },
     },
+    ["xp"] = 2350,
+    ["rep"] = { 890, 100 },
   },
   [8400] = {
     ["end"] = {
@@ -44968,6 +50344,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15351 },
     },
+    ["xp"] = 3000,
+    ["rep"] = { 890, 100 },
   },
   [8401] = {
     ["end"] = {
@@ -44981,6 +50359,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15351 },
     },
+    ["xp"] = 4550,
+    ["rep"] = { 890, 100 },
   },
   [8402] = {
     ["end"] = {
@@ -44994,6 +50374,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15351 },
     },
+    ["xp"] = 6400,
+    ["rep"] = { 890, 100 },
   },
   [8403] = {
     ["end"] = {
@@ -45007,6 +50389,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15351 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 890, 100 },
   },
   [8404] = {
     ["end"] = {
@@ -45021,6 +50405,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15351 },
     },
+    ["xp"] = 1200,
+    ["rep"] = { 890, 50 },
   },
   [8405] = {
     ["end"] = {
@@ -45035,6 +50421,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15351 },
     },
+    ["xp"] = 1500,
+    ["rep"] = { 890, 50 },
   },
   [8406] = {
     ["end"] = {
@@ -45049,6 +50437,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15351 },
     },
+    ["xp"] = 2250,
+    ["rep"] = { 890, 50 },
   },
   [8407] = {
     ["end"] = {
@@ -45063,6 +50453,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15351 },
     },
+    ["xp"] = 3200,
+    ["rep"] = { 890, 50 },
   },
   [8408] = {
     ["end"] = {
@@ -45077,6 +50469,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15351 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 890, 50 },
   },
   [8409] = {
     ["end"] = {
@@ -45089,6 +50483,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 180570 },
     },
+    ["xp"] = 1650,
+    ["rep"] = { 67, 100 },
   },
   [8410] = {
     ["class"] = 64,
@@ -45103,6 +50499,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3032, 13417 },
     },
+    ["xp"] = 3800,
   },
   [8411] = {
     ["class"] = 64,
@@ -45117,6 +50514,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6176 },
     },
+    ["xp"] = 3800,
   },
   [8412] = {
     ["class"] = 64,
@@ -45132,6 +50530,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6176 },
     },
+    ["xp"] = 5100,
   },
   [8413] = {
     ["class"] = 64,
@@ -45147,6 +50546,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 6176 },
     },
+    ["xp"] = 6350,
   },
   [8414] = {
     ["class"] = 2,
@@ -45162,6 +50562,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10838 },
     },
+    ["xp"] = 5100,
+    ["rep"] = { 529, 100 },
   },
   [8415] = {
     ["class"] = 2,
@@ -45173,6 +50575,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 928, 5149 },
     },
+    ["xp"] = 510,
   },
   [8416] = {
     ["class"] = 2,
@@ -45185,6 +50588,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 1854 },
     },
+    ["xp"] = 2550,
+    ["rep"] = { 529, 50 },
   },
   [8417] = {
     ["class"] = 1,
@@ -45196,6 +50601,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3354, 4593, 5113, 5479, 7315 },
     },
+    ["xp"] = 510,
   },
   [8418] = {
     ["class"] = 2,
@@ -45211,6 +50617,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 10838 },
     },
+    ["xp"] = 6350,
+    ["rep"] = { 529, 150 },
   },
   [8419] = {
     ["class"] = 256,
@@ -45226,6 +50634,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 461, 3326, 4563, 5172 },
     },
+    ["xp"] = 3800,
   },
   [8420] = {
     ["class"] = 256,
@@ -45241,6 +50650,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14470 },
     },
+    ["xp"] = 3800,
   },
   [8421] = {
     ["class"] = 256,
@@ -45256,6 +50666,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14470 },
     },
+    ["xp"] = 5100,
   },
   [8422] = {
     ["class"] = 256,
@@ -45271,6 +50682,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 14470 },
     },
+    ["xp"] = 6350,
   },
   [8423] = {
     ["class"] = 1,
@@ -45286,6 +50698,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7572 },
     },
+    ["xp"] = 5100,
   },
   [8424] = {
     ["class"] = 1,
@@ -45301,6 +50714,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7572 },
     },
+    ["xp"] = 5100,
   },
   [8425] = {
     ["class"] = 1,
@@ -45316,6 +50730,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 7572 },
     },
+    ["xp"] = 6350,
   },
   [8426] = {
     ["end"] = {
@@ -45329,6 +50744,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15350 },
     },
+    ["xp"] = 2350,
+    ["rep"] = { 889, 100 },
   },
   [8427] = {
     ["end"] = {
@@ -45342,6 +50759,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15350 },
     },
+    ["xp"] = 3000,
+    ["rep"] = { 889, 100 },
   },
   [8428] = {
     ["end"] = {
@@ -45355,6 +50774,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15350 },
     },
+    ["xp"] = 4550,
+    ["rep"] = { 889, 100 },
   },
   [8429] = {
     ["end"] = {
@@ -45368,6 +50789,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15350 },
     },
+    ["xp"] = 6400,
+    ["rep"] = { 889, 100 },
   },
   [8430] = {
     ["end"] = {
@@ -45381,6 +50804,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15350 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 889, 100 },
   },
   [8431] = {
     ["end"] = {
@@ -45395,6 +50820,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15350 },
     },
+    ["xp"] = 1200,
+    ["rep"] = { 889, 50 },
   },
   [8432] = {
     ["end"] = {
@@ -45409,6 +50836,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15350 },
     },
+    ["xp"] = 1500,
+    ["rep"] = { 889, 50 },
   },
   [8433] = {
     ["end"] = {
@@ -45423,6 +50852,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15350 },
     },
+    ["xp"] = 2250,
+    ["rep"] = { 889, 50 },
   },
   [8434] = {
     ["end"] = {
@@ -45437,6 +50868,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15350 },
     },
+    ["xp"] = 3200,
+    ["rep"] = { 889, 50 },
   },
   [8435] = {
     ["end"] = {
@@ -45451,6 +50884,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15350 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 889, 50 },
   },
   [8436] = {
     ["end"] = {
@@ -45464,6 +50899,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15350 },
     },
+    ["xp"] = 3000,
+    ["rep"] = { 510, 100 },
   },
   [8437] = {
     ["end"] = {
@@ -45477,6 +50914,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15350 },
     },
+    ["xp"] = 4550,
+    ["rep"] = { 510, 100 },
   },
   [8438] = {
     ["end"] = {
@@ -45490,6 +50929,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15350 },
     },
+    ["xp"] = 6400,
+    ["rep"] = { 510, 100 },
   },
   [8439] = {
     ["end"] = {
@@ -45503,6 +50944,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15350 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 510, 100 },
   },
   [8440] = {
     ["end"] = {
@@ -45517,6 +50960,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15350 },
     },
+    ["xp"] = 1500,
+    ["rep"] = { 510, 50 },
   },
   [8441] = {
     ["end"] = {
@@ -45531,6 +50976,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15350 },
     },
+    ["xp"] = 2250,
+    ["rep"] = { 510, 50 },
   },
   [8442] = {
     ["end"] = {
@@ -45545,6 +50992,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15350 },
     },
+    ["xp"] = 3200,
+    ["rep"] = { 510, 50 },
   },
   [8443] = {
     ["end"] = {
@@ -45559,6 +51008,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15350 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 510, 50 },
   },
   [8444] = {
     ["lvl"] = 58,
@@ -45577,6 +51028,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 20644 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 609, 200 },
   },
   [8447] = {
     ["end"] = {
@@ -45588,6 +51041,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11832 },
     },
+    ["rep"] = { 609, 200 },
   },
   [8458] = {
     ["lvl"] = 33,
@@ -45595,6 +51049,8 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 6441 },
     },
+    ["xp"] = 2650,
+    ["rep"] = { 68, 100 },
   },
   [8459] = {
     ["lvl"] = 1,
@@ -45612,6 +51068,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11554 },
     },
+    ["xp"] = 4400,
+    ["rep"] = { 576, 150 },
   },
   [8461] = {
     ["end"] = {
@@ -45625,6 +51083,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15395 },
     },
+    ["xp"] = 5650,
+    ["rep"] = { 576, 150 },
   },
   [8462] = {
     ["end"] = {
@@ -45636,6 +51096,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11554 },
     },
+    ["xp"] = 560,
+    ["rep"] = { 576, 25 },
   },
   [8464] = {
     ["end"] = {
@@ -45649,6 +51111,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11556 },
     },
+    ["xp"] = 6200,
+    ["rep"] = { 576, 150 },
   },
   [8465] = {
     ["end"] = {
@@ -45660,6 +51124,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15395 },
     },
+    ["xp"] = 560,
+    ["rep"] = { 576, 25 },
   },
   [8466] = {
     ["end"] = {
@@ -45674,6 +51140,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11554 },
     },
+    ["xp"] = 560,
+    ["rep"] = { 576, 50 },
   },
   [8467] = {
     ["end"] = {
@@ -45688,6 +51156,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15395 },
     },
+    ["xp"] = 560,
+    ["rep"] = { 576, 50 },
   },
   [8469] = {
     ["end"] = {
@@ -45702,6 +51172,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11556 },
     },
+    ["xp"] = 580,
+    ["rep"] = { 576, 50 },
   },
   [8470] = {
     ["end"] = {
@@ -45712,6 +51184,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 20741 },
     },
+    ["xp"] = 5650,
+    ["rep"] = { 576, 150 },
   },
   [8471] = {
     ["end"] = {
@@ -45722,6 +51196,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 20742 },
     },
+    ["xp"] = 5800,
+    ["rep"] = { 576, 150 },
   },
   [8481] = {
     ["end"] = {
@@ -45736,6 +51212,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11555 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 576, 200 },
   },
   [8484] = {
     ["end"] = {
@@ -45748,6 +51226,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11555 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 469, 500 },
   },
   [8485] = {
     ["end"] = {
@@ -45760,6 +51240,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11555 },
     },
+    ["xp"] = 9950,
   },
   [8492] = {
     ["end"] = {
@@ -45833,6 +51314,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 20806 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8497] = {
     ["end"] = {
@@ -45846,6 +51329,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 20807 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8498] = {
     ["end"] = {
@@ -45859,6 +51344,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 20943 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8499] = {
     ["end"] = {
@@ -45902,6 +51389,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 20941 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8502] = {
     ["end"] = {
@@ -45915,6 +51404,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 20942 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8503] = {
     ["end"] = {
@@ -45990,6 +51481,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15540 },
     },
+    ["rep"] = { 609, 25 },
   },
   [8508] = {
     ["end"] = {
@@ -46166,6 +51658,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 180633 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 910, 200 },
   },
   [8520] = {
     ["end"] = {
@@ -46366,6 +51860,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 21165 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8535] = {
     ["end"] = {
@@ -46379,6 +51875,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 20947 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8536] = {
     ["end"] = {
@@ -46392,6 +51890,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 21751 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8537] = {
     ["end"] = {
@@ -46405,6 +51905,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 20945 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8538] = {
     ["end"] = {
@@ -46418,6 +51920,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 20948 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 100 },
   },
   [8539] = {
     ["end"] = {
@@ -46431,6 +51935,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 21249 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8540] = {
     ["end"] = {
@@ -46444,6 +51950,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 20939 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8541] = {
     ["end"] = {
@@ -46457,6 +51965,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 20940 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8542] = {
     ["end"] = {
@@ -46501,6 +52011,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15502 },
     },
+    ["xp"] = 9950,
   },
   [8545] = {
     ["end"] = {
@@ -46545,6 +52056,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15176 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 609, 50 },
   },
   [8549] = {
     ["end"] = {
@@ -46588,6 +52101,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2500 },
     },
+    ["xp"] = 3150,
+    ["rep"] = { 21, 75, 87, -375 },
   },
   [8552] = {
     ["end"] = {
@@ -46598,6 +52113,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 3985 },
     },
+    ["xp"] = 2350,
+    ["rep"] = { 21, 50, 87, -250 },
   },
   [8553] = {
     ["end"] = {
@@ -46609,6 +52126,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2500 },
     },
+    ["xp"] = 470,
   },
   [8554] = {
     ["end"] = {
@@ -46623,6 +52141,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2594 },
     },
+    ["xp"] = 7100,
+    ["rep"] = { 21, 200, 87, -1000 },
   },
   [8555] = {
     ["end"] = {
@@ -46634,6 +52154,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15192 },
     },
+    ["xp"] = 650,
+    ["rep"] = { 910, 10 },
   },
   [8556] = {
     ["class"] = 1,
@@ -46649,6 +52171,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15498 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8557] = {
     ["class"] = 1,
@@ -46664,6 +52188,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15500 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8558] = {
     ["class"] = 1,
@@ -46679,6 +52205,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15499 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8559] = {
     ["class"] = 1,
@@ -46693,6 +52221,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15503 },
     },
+    ["xp"] = 9950,
   },
   [8560] = {
     ["class"] = 1,
@@ -46707,6 +52236,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15503 },
     },
+    ["xp"] = 9950,
   },
   [8561] = {
     ["class"] = 1,
@@ -46721,6 +52251,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15502 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 910, 200 },
   },
   [8562] = {
     ["class"] = 1,
@@ -46735,6 +52267,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15504 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 910, 200 },
   },
   [8565] = {
     ["end"] = {
@@ -46827,6 +52361,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15176 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 609, 50 },
   },
   [8573] = {
     ["end"] = {
@@ -46841,6 +52377,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15176 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 609, 50 },
   },
   [8574] = {
     ["end"] = {
@@ -46855,6 +52393,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15176 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 609, 50 },
   },
   [8575] = {
     ["end"] = {
@@ -46865,6 +52405,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 20949 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 910, 10 },
   },
   [8576] = {
     ["end"] = {
@@ -46876,6 +52418,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11811 },
     },
+    ["xp"] = 650,
+    ["rep"] = { 910, 10 },
   },
   [8577] = {
     ["end"] = {
@@ -46887,6 +52431,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11811 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 910, 10 },
   },
   [8578] = {
     ["end"] = {
@@ -46901,6 +52447,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 180642 },
     },
+    ["xp"] = 8300,
+    ["rep"] = { 910, 10 },
   },
   [8579] = {
     ["end"] = {
@@ -46914,6 +52462,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15503 },
     },
+    ["xp"] = 6600,
   },
   [8580] = {
     ["end"] = {
@@ -46985,6 +52534,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11811 },
     },
+    ["xp"] = 650,
   },
   [8585] = {
     ["end"] = {
@@ -46999,6 +52549,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8125 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 369, 200 },
   },
   [8586] = {
     ["end"] = {
@@ -47013,6 +52565,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8125 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 910, 500 },
   },
   [8587] = {
     ["end"] = {
@@ -47024,6 +52578,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8125 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 910, 500 },
   },
   [8588] = {
     ["end"] = {
@@ -47098,6 +52654,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15502 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 910, 200 },
   },
   [8593] = {
     ["class"] = 16,
@@ -47112,6 +52670,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15503 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 910, 200 },
   },
   [8594] = {
     ["class"] = 16,
@@ -47126,6 +52686,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15502 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 910, 200 },
   },
   [8595] = {
     ["end"] = {
@@ -47140,6 +52702,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15503 },
     },
+    ["xp"] = 3300,
   },
   [8596] = {
     ["class"] = 16,
@@ -47154,6 +52717,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15503 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 910, 200 },
   },
   [8597] = {
     ["end"] = {
@@ -47165,6 +52730,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11811 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 910, 10 },
   },
   [8598] = {
     ["end"] = {
@@ -47176,6 +52743,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 180652 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 910, 10 },
   },
   [8599] = {
     ["end"] = {
@@ -47187,6 +52756,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15526 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 910, 10 },
   },
   [8600] = {
     ["end"] = {
@@ -47232,6 +52803,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15502 },
     },
+    ["xp"] = 9950,
   },
   [8603] = {
     ["class"] = 16,
@@ -47246,6 +52818,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15504 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 910, 200 },
   },
   [8604] = {
     ["end"] = {
@@ -47290,6 +52864,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11811 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 910, 25 },
   },
   [8607] = {
     ["end"] = {
@@ -47458,6 +53034,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15549 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8620] = {
     ["end"] = {
@@ -47472,6 +53049,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11811 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 910, 75 },
   },
   [8621] = {
     ["class"] = 64,
@@ -47487,6 +53066,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15503 },
     },
+    ["xp"] = 9950,
   },
   [8622] = {
     ["class"] = 64,
@@ -47501,6 +53081,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15504 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 910, 200 },
   },
   [8623] = {
     ["class"] = 64,
@@ -47516,6 +53098,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15502 },
     },
+    ["xp"] = 9950,
   },
   [8624] = {
     ["class"] = 64,
@@ -47531,6 +53114,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15503 },
     },
+    ["xp"] = 9950,
   },
   [8625] = {
     ["class"] = 128,
@@ -47545,6 +53129,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15502 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 910, 200 },
   },
   [8626] = {
     ["class"] = 4,
@@ -47559,6 +53145,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15503 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 910, 200 },
   },
   [8627] = {
     ["class"] = 2,
@@ -47573,6 +53161,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15504 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 910, 200 },
   },
   [8628] = {
     ["class"] = 2,
@@ -47587,6 +53177,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15502 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 910, 200 },
   },
   [8629] = {
     ["class"] = 2,
@@ -47601,6 +53193,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15503 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 910, 200 },
   },
   [8630] = {
     ["class"] = 2,
@@ -47615,6 +53209,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15502 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 910, 200 },
   },
   [8631] = {
     ["class"] = 128,
@@ -47629,6 +53225,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15503 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 910, 200 },
   },
   [8632] = {
     ["class"] = 128,
@@ -47643,6 +53241,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15502 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 910, 200 },
   },
   [8633] = {
     ["class"] = 128,
@@ -47657,6 +53257,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15504 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 910, 200 },
   },
   [8634] = {
     ["class"] = 128,
@@ -47671,6 +53273,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15503 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 910, 200 },
   },
   [8635] = {
     ["end"] = {
@@ -47682,6 +53286,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15556 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8636] = {
     ["end"] = {
@@ -47693,6 +53298,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15557 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8637] = {
     ["class"] = 8,
@@ -47707,6 +53313,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15503 },
     },
+    ["xp"] = 9950,
   },
   [8638] = {
     ["class"] = 8,
@@ -47721,6 +53328,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15504 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 910, 200 },
   },
   [8639] = {
     ["class"] = 8,
@@ -47735,6 +53344,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15502 },
     },
+    ["xp"] = 9950,
   },
   [8640] = {
     ["class"] = 8,
@@ -47749,6 +53359,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15503 },
     },
+    ["xp"] = 9950,
   },
   [8641] = {
     ["class"] = 8,
@@ -47763,6 +53374,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15502 },
     },
+    ["xp"] = 9950,
   },
   [8642] = {
     ["end"] = {
@@ -47774,6 +53386,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15558 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8643] = {
     ["end"] = {
@@ -47785,6 +53398,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15559 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8644] = {
     ["end"] = {
@@ -47796,6 +53410,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15560 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8645] = {
     ["end"] = {
@@ -47807,6 +53422,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15561 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8646] = {
     ["end"] = {
@@ -47818,6 +53434,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15562 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8647] = {
     ["end"] = {
@@ -47829,6 +53446,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15563 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8648] = {
     ["end"] = {
@@ -47840,6 +53458,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15564 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8649] = {
     ["end"] = {
@@ -47851,6 +53470,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15565 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8650] = {
     ["end"] = {
@@ -47862,6 +53482,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15566 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8651] = {
     ["end"] = {
@@ -47873,6 +53494,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15567 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8652] = {
     ["end"] = {
@@ -47884,6 +53506,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15568 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8653] = {
     ["end"] = {
@@ -47895,6 +53518,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15569 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8654] = {
     ["end"] = {
@@ -47906,6 +53530,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15570 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8655] = {
     ["class"] = 2,
@@ -47920,6 +53545,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15503 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 910, 200 },
   },
   [8656] = {
     ["class"] = 4,
@@ -47934,6 +53561,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15504 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 910, 200 },
   },
   [8657] = {
     ["class"] = 4,
@@ -47948,6 +53577,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15502 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 910, 200 },
   },
   [8658] = {
     ["class"] = 4,
@@ -47962,6 +53593,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15503 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 910, 200 },
   },
   [8659] = {
     ["class"] = 4,
@@ -47976,6 +53609,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15502 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 910, 200 },
   },
   [8660] = {
     ["class"] = 256,
@@ -47990,6 +53625,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15503 },
     },
+    ["xp"] = 9950,
   },
   [8661] = {
     ["class"] = 256,
@@ -48004,6 +53640,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15504 },
     },
+    ["xp"] = 9950,
   },
   [8662] = {
     ["class"] = 256,
@@ -48018,6 +53655,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15502 },
     },
+    ["xp"] = 9950,
   },
   [8663] = {
     ["class"] = 256,
@@ -48032,6 +53670,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15503 },
     },
+    ["xp"] = 9950,
   },
   [8664] = {
     ["class"] = 256,
@@ -48046,6 +53685,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15502 },
     },
+    ["xp"] = 9950,
   },
   [8665] = {
     ["class"] = 1024,
@@ -48060,6 +53700,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15503 },
     },
+    ["xp"] = 9950,
   },
   [8666] = {
     ["class"] = 1024,
@@ -48074,6 +53715,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15504 },
     },
+    ["xp"] = 9950,
   },
   [8667] = {
     ["class"] = 1024,
@@ -48088,6 +53730,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15502 },
     },
+    ["xp"] = 9950,
   },
   [8668] = {
     ["class"] = 1024,
@@ -48102,6 +53745,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15503 },
     },
+    ["xp"] = 9950,
   },
   [8669] = {
     ["class"] = 1024,
@@ -48116,6 +53760,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15502 },
     },
+    ["xp"] = 9950,
   },
   [8670] = {
     ["end"] = {
@@ -48127,6 +53772,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15572 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8671] = {
     ["end"] = {
@@ -48138,6 +53784,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15573 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8672] = {
     ["end"] = {
@@ -48149,6 +53796,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15574 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8673] = {
     ["end"] = {
@@ -48160,6 +53808,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15575 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8674] = {
     ["end"] = {
@@ -48171,6 +53820,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15576 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8675] = {
     ["end"] = {
@@ -48182,6 +53832,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15577 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8676] = {
     ["end"] = {
@@ -48193,6 +53844,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15578 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8677] = {
     ["end"] = {
@@ -48204,6 +53856,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15579 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8678] = {
     ["end"] = {
@@ -48215,6 +53868,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15580 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8679] = {
     ["end"] = {
@@ -48226,6 +53880,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15581 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8680] = {
     ["end"] = {
@@ -48237,6 +53892,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15582 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8681] = {
     ["end"] = {
@@ -48248,6 +53904,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15583 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8682] = {
     ["end"] = {
@@ -48259,6 +53916,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15584 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8683] = {
     ["end"] = {
@@ -48270,6 +53928,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15585 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8684] = {
     ["end"] = {
@@ -48281,6 +53940,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15586 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8685] = {
     ["end"] = {
@@ -48292,6 +53952,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15587 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8686] = {
     ["end"] = {
@@ -48303,6 +53964,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15588 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8687] = {
     ["end"] = {
@@ -48316,6 +53978,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 21251 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8688] = {
     ["end"] = {
@@ -48327,6 +53991,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15592 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8689] = {
     ["class"] = 16,
@@ -48342,6 +54007,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15500 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8690] = {
     ["class"] = 64,
@@ -48357,6 +54024,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15500 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8691] = {
     ["class"] = 128,
@@ -48372,6 +54041,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15500 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8692] = {
     ["class"] = 1024,
@@ -48387,6 +54058,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15500 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8693] = {
     ["class"] = 8,
@@ -48402,6 +54075,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15500 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8694] = {
     ["class"] = 256,
@@ -48417,6 +54092,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15500 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8695] = {
     ["class"] = 2,
@@ -48432,6 +54109,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15500 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8696] = {
     ["class"] = 4,
@@ -48447,6 +54126,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15500 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8697] = {
     ["class"] = 16,
@@ -48462,6 +54143,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15498 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8698] = {
     ["class"] = 64,
@@ -48477,6 +54160,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15498 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8699] = {
     ["class"] = 128,
@@ -48492,6 +54177,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15498 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8700] = {
     ["class"] = 1024,
@@ -48507,6 +54194,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15498 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8701] = {
     ["class"] = 8,
@@ -48522,6 +54211,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15498 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8702] = {
     ["class"] = 256,
@@ -48537,6 +54228,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15498 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8703] = {
     ["class"] = 2,
@@ -48552,6 +54245,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15498 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8704] = {
     ["class"] = 4,
@@ -48567,6 +54262,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15498 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8705] = {
     ["class"] = 16,
@@ -48582,6 +54279,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15499 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8706] = {
     ["class"] = 64,
@@ -48597,6 +54296,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15499 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8707] = {
     ["class"] = 128,
@@ -48612,6 +54313,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15499 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8708] = {
     ["class"] = 1024,
@@ -48627,6 +54330,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15499 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8709] = {
     ["class"] = 8,
@@ -48642,6 +54347,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15499 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8710] = {
     ["class"] = 256,
@@ -48657,6 +54364,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15499 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8711] = {
     ["class"] = 2,
@@ -48672,6 +54381,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15499 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8712] = {
     ["class"] = 4,
@@ -48687,6 +54398,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15499 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8713] = {
     ["end"] = {
@@ -48698,6 +54411,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15593 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8714] = {
     ["end"] = {
@@ -48709,6 +54423,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15594 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8715] = {
     ["end"] = {
@@ -48720,6 +54435,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15595 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8716] = {
     ["end"] = {
@@ -48731,6 +54447,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15596 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8717] = {
     ["end"] = {
@@ -48742,6 +54459,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15597 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8718] = {
     ["end"] = {
@@ -48753,6 +54471,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15598 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8719] = {
     ["end"] = {
@@ -48764,6 +54483,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15599 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8720] = {
     ["end"] = {
@@ -48775,6 +54495,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15600 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8721] = {
     ["end"] = {
@@ -48786,6 +54507,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15601 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8722] = {
     ["end"] = {
@@ -48797,6 +54519,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15602 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8723] = {
     ["end"] = {
@@ -48808,6 +54531,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15603 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8724] = {
     ["end"] = {
@@ -48819,6 +54543,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15604 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8725] = {
     ["end"] = {
@@ -48830,6 +54555,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15605 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8726] = {
     ["end"] = {
@@ -48841,6 +54567,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15606 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8727] = {
     ["end"] = {
@@ -48852,6 +54579,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15607 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8728] = {
     ["end"] = {
@@ -48866,6 +54594,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11811 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 910, 100 },
   },
   [8729] = {
     ["end"] = {
@@ -48881,6 +54611,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11811 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 910, 500 },
   },
   [8730] = {
     ["end"] = {
@@ -48895,6 +54627,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13020 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 910, 200 },
   },
   [8731] = {
     ["end"] = {
@@ -48910,6 +54644,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15540 },
     },
+    ["rep"] = { 609, 25 },
   },
   [8732] = {
     ["end"] = {
@@ -48936,6 +54671,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15362 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 910, 25, 609, 25 },
   },
   [8734] = {
     ["end"] = {
@@ -48947,6 +54684,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15624 },
     },
+    ["xp"] = 1650,
+    ["rep"] = { 910, 10, 609, 150 },
   },
   [8735] = {
     ["end"] = {
@@ -48961,6 +54700,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11832 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 910, 100, 609, 100 },
   },
   [8736] = {
     ["end"] = {
@@ -48972,6 +54713,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11832 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 910, 500 },
   },
   [8737] = {
     ["end"] = {
@@ -48985,6 +54728,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 21245 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8738] = {
     ["end"] = {
@@ -48998,6 +54743,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 21166 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8739] = {
     ["end"] = {
@@ -49011,6 +54758,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 21167 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8740] = {
     ["end"] = {
@@ -49024,6 +54773,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 20944 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8741] = {
     ["end"] = {
@@ -49035,6 +54786,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11832 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 910, 250 },
   },
   [8742] = {
     ["end"] = {
@@ -49046,6 +54799,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15192 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 910, 500 },
   },
   [8743] = {
     ["end"] = {
@@ -49061,6 +54816,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["O"] = { 180717 },
     },
+    ["rep"] = { 910, 500 },
   },
   [8744] = {
     ["end"] = {
@@ -49084,6 +54840,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15693 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 910, 500 },
   },
   [8746] = {
     ["end"] = {
@@ -49099,6 +54857,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13418 },
     },
+    ["xp"] = 4950,
+    ["rep"] = { 169, 200 },
   },
   [8747] = {
     ["close"] = { 8747, 8752, 8757 },
@@ -49110,6 +54870,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15192 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 910, 100 },
   },
   [8748] = {
     ["close"] = { 8748, 8753, 8758 },
@@ -49125,6 +54887,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15192 },
     },
+    ["xp"] = 6600,
   },
   [8749] = {
     ["close"] = { 8749, 8754, 8759 },
@@ -49140,6 +54903,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15192 },
     },
+    ["xp"] = 6600,
   },
   [8750] = {
     ["close"] = { 8750, 8755, 8760 },
@@ -49155,6 +54919,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15192 },
     },
+    ["xp"] = 6600,
   },
   [8751] = {
     ["close"] = { 8751, 8756, 8761 },
@@ -49170,6 +54935,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15192 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 910, 100 },
   },
   [8752] = {
     ["close"] = { 8747, 8752, 8757 },
@@ -49181,6 +54948,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15192 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 910, 100 },
   },
   [8753] = {
     ["close"] = { 8748, 8753, 8758 },
@@ -49196,6 +54965,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15192 },
     },
+    ["xp"] = 6600,
   },
   [8754] = {
     ["close"] = { 8749, 8754, 8759 },
@@ -49211,6 +54981,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15192 },
     },
+    ["xp"] = 6600,
   },
   [8755] = {
     ["close"] = { 8750, 8755, 8760 },
@@ -49226,6 +54997,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15192 },
     },
+    ["xp"] = 6600,
   },
   [8756] = {
     ["close"] = { 8751, 8756, 8761 },
@@ -49241,6 +55013,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15192 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 910, 100 },
   },
   [8757] = {
     ["close"] = { 8747, 8752, 8757 },
@@ -49252,6 +55026,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15192 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 910, 100 },
   },
   [8758] = {
     ["close"] = { 8748, 8753, 8758 },
@@ -49267,6 +55043,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15192 },
     },
+    ["xp"] = 6600,
   },
   [8759] = {
     ["close"] = { 8749, 8754, 8759 },
@@ -49282,6 +55059,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15192 },
     },
+    ["xp"] = 6600,
   },
   [8760] = {
     ["close"] = { 8750, 8755, 8760 },
@@ -49297,6 +55075,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15192 },
     },
+    ["xp"] = 6600,
   },
   [8761] = {
     ["close"] = { 8751, 8756, 8761 },
@@ -49312,6 +55091,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15192 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 910, 100 },
   },
   [8762] = {
     ["end"] = {
@@ -49327,6 +55108,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 13433 },
     },
+    ["xp"] = 4950,
+    ["rep"] = { 169, 200 },
   },
   [8763] = {
     ["end"] = {
@@ -49432,6 +55215,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 21749 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8771] = {
     ["end"] = {
@@ -49445,6 +55230,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 21750 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8772] = {
     ["end"] = {
@@ -49458,6 +55245,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 21250 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8773] = {
     ["end"] = {
@@ -49471,6 +55260,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 21248 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8774] = {
     ["end"] = {
@@ -49484,6 +55275,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 21252 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8775] = {
     ["end"] = {
@@ -49497,6 +55290,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 21253 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8776] = {
     ["end"] = {
@@ -49510,6 +55305,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 21255 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8777] = {
     ["end"] = {
@@ -49523,6 +55320,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 21256 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8778] = {
     ["end"] = {
@@ -49536,6 +55335,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 21257 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8779] = {
     ["end"] = {
@@ -49549,6 +55350,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 21259 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8780] = {
     ["end"] = {
@@ -49562,6 +55365,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 21263 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8781] = {
     ["end"] = {
@@ -49575,6 +55380,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 21260 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8782] = {
     ["end"] = {
@@ -49588,6 +55395,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 21262 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8783] = {
     ["end"] = {
@@ -49601,6 +55410,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 21265 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8784] = {
     ["end"] = {
@@ -49611,6 +55422,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 21230 },
     },
+    ["xp"] = 6600,
   },
   [8785] = {
     ["end"] = {
@@ -49624,6 +55436,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 21258 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8786] = {
     ["end"] = {
@@ -49637,6 +55451,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 21261 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8787] = {
     ["end"] = {
@@ -49650,6 +55466,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 21264 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8788] = {
     ["class"] = 1494,
@@ -49675,6 +55493,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15380 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 910, 200 },
   },
   [8790] = {
     ["end"] = {
@@ -49688,6 +55508,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15378 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 910, 200 },
   },
   [8791] = {
     ["end"] = {
@@ -49698,6 +55520,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 21220 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 609, 200, 910, 200 },
   },
   [8792] = {
     ["close"] = { 8792, 8793, 8794 },
@@ -49710,18 +55534,21 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15702, 15703, 15704 },
     },
+    ["xp"] = 660,
   },
   [8793] = {
     ["close"] = { 8792, 8793, 8794 },
     ["event"] = 22,
     ["lvl"] = 60,
     ["min"] = 1,
+    ["xp"] = 660,
   },
   [8794] = {
     ["close"] = { 8792, 8793, 8794 },
     ["event"] = 22,
     ["lvl"] = 60,
     ["min"] = 1,
+    ["xp"] = 660,
   },
   [8795] = {
     ["close"] = { 8795, 8796, 8797 },
@@ -49734,6 +55561,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15707, 15708, 15709 },
     },
+    ["xp"] = 660,
   },
   [8796] = {
     ["close"] = { 8795, 8796, 8797 },
@@ -49743,6 +55571,7 @@ UnrealQuestData["quests"] = {
     ["event"] = 22,
     ["lvl"] = 60,
     ["min"] = 1,
+    ["xp"] = 660,
   },
   [8797] = {
     ["close"] = { 8795, 8796, 8797 },
@@ -49752,6 +55581,7 @@ UnrealQuestData["quests"] = {
     ["event"] = 22,
     ["lvl"] = 60,
     ["min"] = 1,
+    ["xp"] = 660,
   },
   [8798] = {
     ["end"] = {
@@ -49791,6 +55621,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15540 },
     },
+    ["rep"] = { 609, 10 },
   },
   [8801] = {
     ["end"] = {
@@ -49801,6 +55632,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 21221 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 609, 200, 910, 200 },
   },
   [8802] = {
     ["end"] = {
@@ -49812,6 +55645,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15379 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 609, 200 },
   },
   [8803] = {
     ["end"] = {
@@ -49836,6 +55671,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 21378 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8805] = {
     ["end"] = {
@@ -49849,6 +55686,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 21379 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8806] = {
     ["end"] = {
@@ -49862,6 +55701,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 21380 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8807] = {
     ["end"] = {
@@ -49875,6 +55716,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 21382 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8808] = {
     ["end"] = {
@@ -49888,6 +55731,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 21384 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8809] = {
     ["end"] = {
@@ -49901,6 +55746,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 21381 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8810] = {
     ["end"] = {
@@ -49914,6 +55761,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 21385 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 50 },
   },
   [8811] = {
     ["end"] = {
@@ -49928,6 +55777,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15762 },
     },
+    ["rep"] = { 69, 5 },
   },
   [8812] = {
     ["end"] = {
@@ -49942,6 +55792,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15763 },
     },
+    ["rep"] = { 54, 5 },
   },
   [8813] = {
     ["end"] = {
@@ -49956,6 +55807,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15764 },
     },
+    ["rep"] = { 47, 5 },
   },
   [8814] = {
     ["end"] = {
@@ -49970,6 +55822,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15766 },
     },
+    ["rep"] = { 72, 5 },
   },
   [8815] = {
     ["end"] = {
@@ -49984,6 +55837,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15765 },
     },
+    ["rep"] = { 76, 5 },
   },
   [8816] = {
     ["end"] = {
@@ -49998,6 +55852,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15761 },
     },
+    ["rep"] = { 530, 5 },
   },
   [8817] = {
     ["end"] = {
@@ -50012,6 +55867,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15768 },
     },
+    ["rep"] = { 68, 5 },
   },
   [8818] = {
     ["end"] = {
@@ -50026,6 +55882,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15767 },
     },
+    ["rep"] = { 81, 5 },
   },
   [8819] = {
     ["end"] = {
@@ -50040,6 +55897,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15762 },
     },
+    ["rep"] = { 69, 75 },
   },
   [8820] = {
     ["end"] = {
@@ -50054,6 +55912,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15763 },
     },
+    ["rep"] = { 54, 75 },
   },
   [8821] = {
     ["end"] = {
@@ -50068,6 +55927,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15764 },
     },
+    ["rep"] = { 47, 75 },
   },
   [8822] = {
     ["end"] = {
@@ -50082,6 +55942,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15766 },
     },
+    ["rep"] = { 72, 75 },
   },
   [8823] = {
     ["end"] = {
@@ -50096,6 +55957,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15765 },
     },
+    ["rep"] = { 76, 75 },
   },
   [8824] = {
     ["end"] = {
@@ -50110,6 +55972,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15761 },
     },
+    ["rep"] = { 530, 75 },
   },
   [8825] = {
     ["end"] = {
@@ -50124,6 +55987,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15767 },
     },
+    ["rep"] = { 81, 75 },
   },
   [8826] = {
     ["end"] = {
@@ -50138,6 +56002,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15768 },
     },
+    ["rep"] = { 68, 75 },
   },
   [8827] = {
     ["end"] = {
@@ -50150,6 +56015,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15732 },
     },
+    ["xp"] = 10,
   },
   [8828] = {
     ["end"] = {
@@ -50162,6 +56028,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15732 },
     },
+    ["xp"] = 10,
   },
   [8829] = {
     ["end"] = {
@@ -50175,6 +56042,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 21514 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 609, 100 },
   },
   [8830] = {
     ["end"] = {
@@ -50190,6 +56059,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15731 },
     },
+    ["rep"] = { 69, 5 },
   },
   [8831] = {
     ["end"] = {
@@ -50205,6 +56075,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15731 },
     },
+    ["rep"] = { 69, 75 },
   },
   [8832] = {
     ["end"] = {
@@ -50220,6 +56091,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15738 },
     },
+    ["rep"] = { 68, 5 },
   },
   [8833] = {
     ["end"] = {
@@ -50235,6 +56107,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15738 },
     },
+    ["rep"] = { 68, 75 },
   },
   [8834] = {
     ["end"] = {
@@ -50250,6 +56123,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15734 },
     },
+    ["rep"] = { 47, 5 },
   },
   [8835] = {
     ["end"] = {
@@ -50265,6 +56139,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15734 },
     },
+    ["rep"] = { 47, 75 },
   },
   [8836] = {
     ["end"] = {
@@ -50280,6 +56155,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15735 },
     },
+    ["rep"] = { 72, 5 },
   },
   [8837] = {
     ["end"] = {
@@ -50295,6 +56171,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15735 },
     },
+    ["rep"] = { 72, 75 },
   },
   [8838] = {
     ["end"] = {
@@ -50310,6 +56187,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15733 },
     },
+    ["rep"] = { 54, 5 },
   },
   [8839] = {
     ["end"] = {
@@ -50325,6 +56203,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15733 },
     },
+    ["rep"] = { 54, 75 },
   },
   [8840] = {
     ["end"] = {
@@ -50340,6 +56219,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15736 },
     },
+    ["rep"] = { 76, 5 },
   },
   [8841] = {
     ["end"] = {
@@ -50355,6 +56235,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15736 },
     },
+    ["rep"] = { 76, 75 },
   },
   [8842] = {
     ["end"] = {
@@ -50370,6 +56251,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15739 },
     },
+    ["rep"] = { 81, 5 },
   },
   [8843] = {
     ["end"] = {
@@ -50385,6 +56267,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15739 },
     },
+    ["rep"] = { 81, 75 },
   },
   [8844] = {
     ["end"] = {
@@ -50400,6 +56283,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15737 },
     },
+    ["rep"] = { 530, 5 },
   },
   [8845] = {
     ["end"] = {
@@ -50415,6 +56299,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15737 },
     },
+    ["rep"] = { 530, 75 },
   },
   [8846] = {
     ["end"] = {
@@ -50570,6 +56455,7 @@ UnrealQuestData["quests"] = {
     ["obj"] = {
       ["I"] = { 7079, 19440, 20452 },
     },
+    ["rep"] = { 609, 50 },
   },
   [8857] = {
     ["end"] = {
@@ -50581,6 +56467,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15798 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 21, 200, 21, 200, 21, 200, 21, 200 },
   },
   [8858] = {
     ["end"] = {
@@ -50592,6 +56480,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15799 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 59, 200, 59, 200, 59, 200, 59, 200 },
   },
   [8859] = {
     ["end"] = {
@@ -50603,6 +56493,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15797 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 529, 200, 529, 200, 529, 200, 529, 200 },
   },
   [8860] = {
     ["end"] = {
@@ -50615,6 +56507,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15732 },
     },
+    ["rep"] = { 72, 100 },
   },
   [8861] = {
     ["end"] = {
@@ -50627,6 +56520,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15732 },
     },
+    ["rep"] = { 81, 100 },
   },
   [8862] = {
     ["end"] = {
@@ -50694,6 +56588,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15871 },
     },
+    ["rep"] = { 67, 50, 469, 50 },
   },
   [8867] = {
     ["end"] = {
@@ -50709,6 +56604,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15895 },
     },
+    ["rep"] = { 609, 50 },
   },
   [8868] = {
     ["end"] = {
@@ -50720,6 +56616,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15864 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [8869] = {
     ["lvl"] = 60,
@@ -50728,6 +56626,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 13351 },
     },
     ["skill"] = 164,
+    ["xp"] = 8300,
   },
   [8870] = {
     ["close"] = { 8870, 8871, 8872, 8873, 8874, 8875 },
@@ -50741,6 +56640,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15892 },
     },
+    ["rep"] = { 609, 5 },
   },
   [8871] = {
     ["close"] = { 8870, 8871, 8872, 8873, 8874, 8875 },
@@ -50754,6 +56654,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15892 },
     },
+    ["rep"] = { 609, 5 },
   },
   [8872] = {
     ["close"] = { 8870, 8871, 8872, 8873, 8874, 8875 },
@@ -50767,6 +56668,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15892 },
     },
+    ["rep"] = { 609, 5 },
   },
   [8873] = {
     ["close"] = { 8870, 8871, 8872, 8873, 8874, 8875 },
@@ -50780,6 +56682,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15891 },
     },
+    ["rep"] = { 609, 5 },
   },
   [8874] = {
     ["close"] = { 8870, 8871, 8872, 8873, 8874, 8875 },
@@ -50793,6 +56696,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15891 },
     },
+    ["rep"] = { 609, 5 },
   },
   [8875] = {
     ["close"] = { 8870, 8871, 8872, 8873, 8874, 8875 },
@@ -50806,6 +56710,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15891 },
     },
+    ["rep"] = { 609, 5 },
   },
   [8876] = {
     ["end"] = {
@@ -50916,6 +56821,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15895 },
     },
+    ["xp"] = 660,
   },
   [8893] = {
     ["end"] = {
@@ -51052,6 +56958,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16013 },
     },
+    ["xp"] = 6600,
   },
   [8906] = {
     ["class"] = 4,
@@ -51067,6 +56974,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16013 },
     },
+    ["xp"] = 6600,
   },
   [8907] = {
     ["class"] = 128,
@@ -51081,6 +56989,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16013 },
     },
+    ["xp"] = 6600,
   },
   [8908] = {
     ["class"] = 2,
@@ -51095,6 +57004,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16013 },
     },
+    ["xp"] = 6600,
   },
   [8909] = {
     ["class"] = 16,
@@ -51110,6 +57020,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16013 },
     },
+    ["xp"] = 6600,
   },
   [8910] = {
     ["class"] = 8,
@@ -51125,6 +57036,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16013 },
     },
+    ["xp"] = 6600,
   },
   [8911] = {
     ["class"] = 256,
@@ -51140,6 +57052,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16013 },
     },
+    ["xp"] = 6600,
   },
   [8912] = {
     ["class"] = 1,
@@ -51155,6 +57068,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16013 },
     },
+    ["xp"] = 6600,
   },
   [8913] = {
     ["class"] = 1024,
@@ -51170,6 +57084,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16012 },
     },
+    ["xp"] = 6600,
   },
   [8914] = {
     ["class"] = 4,
@@ -51185,6 +57100,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16012 },
     },
+    ["xp"] = 6600,
   },
   [8915] = {
     ["class"] = 128,
@@ -51200,6 +57116,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16012 },
     },
+    ["xp"] = 6600,
   },
   [8916] = {
     ["class"] = 16,
@@ -51215,6 +57132,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16012 },
     },
+    ["xp"] = 6600,
   },
   [8917] = {
     ["class"] = 8,
@@ -51230,6 +57148,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16012 },
     },
+    ["xp"] = 6600,
   },
   [8918] = {
     ["class"] = 64,
@@ -51245,6 +57164,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16012 },
     },
+    ["xp"] = 6600,
   },
   [8919] = {
     ["class"] = 256,
@@ -51260,6 +57180,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16012 },
     },
+    ["xp"] = 6600,
   },
   [8920] = {
     ["class"] = 1,
@@ -51275,6 +57196,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16012 },
     },
+    ["xp"] = 6600,
   },
   [8921] = {
     ["end"] = {
@@ -51289,6 +57211,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16014 },
     },
+    ["xp"] = 6600,
   },
   [8922] = {
     ["end"] = {
@@ -51299,6 +57222,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16013 },
     },
+    ["xp"] = 6600,
   },
   [8923] = {
     ["end"] = {
@@ -51309,6 +57233,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16012 },
     },
+    ["xp"] = 6600,
   },
   [8924] = {
     ["end"] = {
@@ -51323,6 +57248,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16014 },
     },
+    ["xp"] = 6600,
   },
   [8925] = {
     ["end"] = {
@@ -51337,6 +57263,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16014 },
     },
+    ["xp"] = 6600,
   },
   [8926] = {
     ["class"] = 1024,
@@ -51352,6 +57279,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16013 },
     },
+    ["xp"] = 9950,
   },
   [8927] = {
     ["class"] = 1024,
@@ -51367,6 +57295,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16012 },
     },
+    ["xp"] = 9950,
   },
   [8928] = {
     ["end"] = {
@@ -51381,6 +57310,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16014 },
     },
+    ["xp"] = 3300,
   },
   [8929] = {
     ["end"] = {
@@ -51393,6 +57323,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16013 },
     },
+    ["xp"] = 6600,
   },
   [8930] = {
     ["end"] = {
@@ -51405,6 +57336,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16012 },
     },
+    ["xp"] = 6600,
   },
   [8931] = {
     ["class"] = 4,
@@ -51421,6 +57353,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16013 },
     },
+    ["xp"] = 9950,
   },
   [8932] = {
     ["class"] = 128,
@@ -51437,6 +57370,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16013 },
     },
+    ["xp"] = 9950,
   },
   [8933] = {
     ["class"] = 2,
@@ -51453,6 +57387,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16013 },
     },
+    ["xp"] = 9950,
   },
   [8934] = {
     ["class"] = 16,
@@ -51469,6 +57404,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16013 },
     },
+    ["xp"] = 9950,
   },
   [8935] = {
     ["class"] = 8,
@@ -51485,6 +57421,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16013 },
     },
+    ["xp"] = 9950,
   },
   [8936] = {
     ["class"] = 256,
@@ -51500,6 +57437,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16013 },
     },
+    ["xp"] = 9950,
   },
   [8937] = {
     ["class"] = 1,
@@ -51516,6 +57454,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16013 },
     },
+    ["xp"] = 9950,
   },
   [8938] = {
     ["class"] = 4,
@@ -51532,6 +57471,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16012 },
     },
+    ["xp"] = 9950,
   },
   [8939] = {
     ["class"] = 128,
@@ -51547,6 +57487,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16012 },
     },
+    ["xp"] = 9950,
   },
   [8940] = {
     ["class"] = 16,
@@ -51563,6 +57504,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16012 },
     },
+    ["xp"] = 9950,
   },
   [8941] = {
     ["class"] = 8,
@@ -51579,6 +57521,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16012 },
     },
+    ["xp"] = 9950,
   },
   [8942] = {
     ["class"] = 64,
@@ -51595,6 +57538,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16012 },
     },
+    ["xp"] = 9950,
   },
   [8943] = {
     ["class"] = 256,
@@ -51610,6 +57554,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16012 },
     },
+    ["xp"] = 9950,
   },
   [8944] = {
     ["class"] = 1,
@@ -51626,6 +57571,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16012 },
     },
+    ["xp"] = 9950,
   },
   [8945] = {
     ["end"] = {
@@ -51640,6 +57586,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16016 },
     },
+    ["xp"] = 8300,
   },
   [8946] = {
     ["end"] = {
@@ -51651,6 +57598,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16031 },
     },
+    ["xp"] = 6600,
   },
   [8947] = {
     ["end"] = {
@@ -51665,6 +57613,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16016 },
     },
+    ["xp"] = 6600,
   },
   [8948] = {
     ["end"] = {
@@ -51677,6 +57626,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16016 },
     },
+    ["xp"] = 6600,
   },
   [8949] = {
     ["end"] = {
@@ -51692,6 +57642,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16032 },
     },
+    ["xp"] = 6600,
   },
   [8950] = {
     ["end"] = {
@@ -51706,6 +57657,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16032 },
     },
+    ["xp"] = 6600,
   },
   [8951] = {
     ["class"] = 1024,
@@ -51722,6 +57674,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16016 },
     },
+    ["xp"] = 9950,
   },
   [8952] = {
     ["class"] = 4,
@@ -51738,6 +57691,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16016 },
     },
+    ["xp"] = 9950,
   },
   [8953] = {
     ["class"] = 128,
@@ -51754,6 +57708,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16016 },
     },
+    ["xp"] = 9950,
   },
   [8954] = {
     ["class"] = 2,
@@ -51770,6 +57725,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16016 },
     },
+    ["xp"] = 9950,
   },
   [8955] = {
     ["class"] = 16,
@@ -51786,6 +57742,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16016 },
     },
+    ["xp"] = 9950,
   },
   [8956] = {
     ["class"] = 8,
@@ -51802,6 +57759,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16016 },
     },
+    ["xp"] = 9950,
   },
   [8957] = {
     ["class"] = 64,
@@ -51818,6 +57776,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16016 },
     },
+    ["xp"] = 9950,
   },
   [8958] = {
     ["class"] = 256,
@@ -51834,6 +57793,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16016 },
     },
+    ["xp"] = 9950,
   },
   [8959] = {
     ["class"] = 1,
@@ -51850,6 +57810,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16016 },
     },
+    ["xp"] = 9950,
   },
   [8960] = {
     ["end"] = {
@@ -51861,6 +57822,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16013 },
     },
+    ["xp"] = 1650,
   },
   [8961] = {
     ["end"] = {
@@ -51875,6 +57837,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16033 },
     },
+    ["xp"] = 6600,
   },
   [8962] = {
     ["class"] = 129,
@@ -51892,6 +57855,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16033 },
     },
+    ["xp"] = 6600,
   },
   [8963] = {
     ["class"] = 1280,
@@ -51908,6 +57872,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16033 },
     },
+    ["xp"] = 6600,
   },
   [8964] = {
     ["class"] = 12,
@@ -51925,6 +57890,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16033 },
     },
+    ["xp"] = 6600,
   },
   [8965] = {
     ["class"] = 82,
@@ -51942,6 +57908,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16033 },
     },
+    ["xp"] = 6600,
   },
   [8966] = {
     ["class"] = 129,
@@ -51960,6 +57927,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16033 },
     },
+    ["xp"] = 8300,
   },
   [8967] = {
     ["class"] = 1280,
@@ -51978,6 +57946,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16033 },
     },
+    ["xp"] = 8300,
   },
   [8968] = {
     ["class"] = 12,
@@ -51996,6 +57965,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16033 },
     },
+    ["xp"] = 8300,
   },
   [8969] = {
     ["class"] = 82,
@@ -52014,6 +57984,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16033 },
     },
+    ["xp"] = 8300,
   },
   [8970] = {
     ["end"] = {
@@ -52028,6 +57999,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16033 },
     },
+    ["xp"] = 6600,
   },
   [8971] = {
     ["lvl"] = 10,
@@ -52083,6 +58055,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16014 },
     },
+    ["xp"] = 6600,
   },
   [8978] = {
     ["end"] = {
@@ -52095,6 +58068,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16014 },
     },
+    ["xp"] = 6600,
   },
   [8979] = {
     ["end"] = {
@@ -52190,6 +58164,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16033 },
     },
+    ["xp"] = 6600,
   },
   [8986] = {
     ["class"] = 1090,
@@ -52205,6 +58180,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16033 },
     },
+    ["xp"] = 6600,
   },
   [8987] = {
     ["class"] = 144,
@@ -52220,6 +58196,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16033 },
     },
+    ["xp"] = 6600,
   },
   [8988] = {
     ["class"] = 260,
@@ -52236,6 +58213,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16033 },
     },
+    ["xp"] = 6600,
   },
   [8989] = {
     ["class"] = 1090,
@@ -52254,6 +58232,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16033 },
     },
+    ["xp"] = 8300,
   },
   [8990] = {
     ["class"] = 9,
@@ -52272,6 +58251,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16033 },
     },
+    ["xp"] = 8300,
   },
   [8991] = {
     ["class"] = 144,
@@ -52290,6 +58270,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16033 },
     },
+    ["xp"] = 8300,
   },
   [8992] = {
     ["class"] = 260,
@@ -52308,6 +58289,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16033 },
     },
+    ["xp"] = 8300,
   },
   [8993] = {
     ["end"] = {
@@ -52338,6 +58320,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16033 },
     },
+    ["xp"] = 6600,
   },
   [8995] = {
     ["end"] = {
@@ -52354,6 +58337,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16033 },
     },
+    ["xp"] = 9950,
   },
   [8996] = {
     ["end"] = {
@@ -52369,6 +58353,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16073 },
     },
+    ["xp"] = 660,
   },
   [8997] = {
     ["end"] = {
@@ -52381,6 +58366,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16033 },
     },
+    ["xp"] = 660,
   },
   [8998] = {
     ["end"] = {
@@ -52393,6 +58379,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16033 },
     },
+    ["xp"] = 660,
   },
   [8999] = {
     ["class"] = 1024,
@@ -52409,6 +58396,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16013 },
     },
+    ["xp"] = 1650,
   },
   [9000] = {
     ["class"] = 4,
@@ -52425,6 +58413,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16013 },
     },
+    ["xp"] = 1650,
   },
   [9001] = {
     ["class"] = 128,
@@ -52441,6 +58430,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16013 },
     },
+    ["xp"] = 1650,
   },
   [9002] = {
     ["class"] = 2,
@@ -52457,6 +58447,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16013 },
     },
+    ["xp"] = 1650,
   },
   [9003] = {
     ["class"] = 16,
@@ -52473,6 +58464,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16013 },
     },
+    ["xp"] = 1650,
   },
   [9004] = {
     ["class"] = 8,
@@ -52489,6 +58481,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16013 },
     },
+    ["xp"] = 1650,
   },
   [9005] = {
     ["class"] = 256,
@@ -52505,6 +58498,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16013 },
     },
+    ["xp"] = 1650,
   },
   [9006] = {
     ["class"] = 1,
@@ -52521,6 +58515,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16013 },
     },
+    ["xp"] = 1650,
   },
   [9007] = {
     ["class"] = 1024,
@@ -52537,6 +58532,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16012 },
     },
+    ["xp"] = 1650,
   },
   [9008] = {
     ["class"] = 4,
@@ -52553,6 +58549,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16012 },
     },
+    ["xp"] = 1650,
   },
   [9009] = {
     ["class"] = 16,
@@ -52569,6 +58566,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16012 },
     },
+    ["xp"] = 1650,
   },
   [9010] = {
     ["class"] = 8,
@@ -52585,6 +58583,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16012 },
     },
+    ["xp"] = 1650,
   },
   [9011] = {
     ["class"] = 64,
@@ -52601,6 +58600,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16012 },
     },
+    ["xp"] = 1650,
   },
   [9012] = {
     ["class"] = 256,
@@ -52617,6 +58617,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16012 },
     },
+    ["xp"] = 1650,
   },
   [9013] = {
     ["class"] = 1,
@@ -52633,6 +58634,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16012 },
     },
+    ["xp"] = 1650,
   },
   [9014] = {
     ["class"] = 128,
@@ -52649,6 +58651,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16012 },
     },
+    ["xp"] = 1650,
   },
   [9015] = {
     ["end"] = {
@@ -52665,6 +58668,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16032 },
     },
+    ["xp"] = 6600,
   },
   [9016] = {
     ["class"] = 1024,
@@ -52681,6 +58685,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16016 },
     },
+    ["xp"] = 9950,
   },
   [9017] = {
     ["class"] = 4,
@@ -52697,6 +58702,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16016 },
     },
+    ["xp"] = 9950,
   },
   [9018] = {
     ["class"] = 128,
@@ -52714,6 +58720,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16016 },
     },
+    ["xp"] = 9950,
   },
   [9019] = {
     ["class"] = 16,
@@ -52730,6 +58737,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16016 },
     },
+    ["xp"] = 9950,
   },
   [9020] = {
     ["class"] = 8,
@@ -52746,6 +58754,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16016 },
     },
+    ["xp"] = 9950,
   },
   [9021] = {
     ["class"] = 256,
@@ -52762,6 +58771,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16016 },
     },
+    ["xp"] = 9950,
   },
   [9022] = {
     ["class"] = 1,
@@ -52778,6 +58788,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16016 },
     },
+    ["xp"] = 9950,
   },
   [9023] = {
     ["end"] = {
@@ -52791,6 +58802,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16091 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [9024] = {
     ["end"] = {
@@ -52871,6 +58884,7 @@ UnrealQuestData["quests"] = {
     ["lvl"] = 60,
     ["min"] = 58,
     ["race"] = 255,
+    ["xp"] = 6600,
   },
   [9032] = {
     ["end"] = {
@@ -52882,6 +58896,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16012 },
     },
+    ["xp"] = 1650,
   },
   [9033] = {
     ["end"] = {
@@ -52896,6 +58911,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16115 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 529, 200 },
   },
   [9034] = {
     ["class"] = 1,
@@ -52911,6 +58928,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16112 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9036] = {
     ["class"] = 1,
@@ -52926,6 +58944,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16112 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9037] = {
     ["class"] = 1,
@@ -52941,6 +58960,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16112 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9038] = {
     ["class"] = 1,
@@ -52956,6 +58976,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16112 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9039] = {
     ["class"] = 1,
@@ -52971,6 +58992,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16112 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9040] = {
     ["class"] = 1,
@@ -52986,6 +59008,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16112 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9041] = {
     ["class"] = 1,
@@ -53001,6 +59024,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16112 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9042] = {
     ["class"] = 1,
@@ -53016,6 +59040,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16112 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9043] = {
     ["class"] = 2,
@@ -53031,6 +59056,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16115 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9044] = {
     ["class"] = 2,
@@ -53046,6 +59072,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16115 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9045] = {
     ["class"] = 2,
@@ -53061,6 +59088,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16115 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9046] = {
     ["class"] = 2,
@@ -53076,6 +59104,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16115 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9047] = {
     ["class"] = 2,
@@ -53091,6 +59120,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16115 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9048] = {
     ["class"] = 2,
@@ -53106,6 +59136,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16115 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9049] = {
     ["class"] = 2,
@@ -53121,6 +59152,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16115 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9050] = {
     ["class"] = 2,
@@ -53136,6 +59168,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16115 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9051] = {
     ["class"] = 1024,
@@ -53151,6 +59184,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9619 },
     },
+    ["xp"] = 5100,
   },
   [9052] = {
     ["class"] = 1024,
@@ -53166,6 +59200,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9619 },
     },
+    ["xp"] = 5100,
   },
   [9053] = {
     ["class"] = 1024,
@@ -53181,6 +59216,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 9619 },
     },
+    ["xp"] = 6350,
   },
   [9054] = {
     ["class"] = 4,
@@ -53196,6 +59232,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16132 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9055] = {
     ["class"] = 4,
@@ -53211,6 +59248,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16132 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9056] = {
     ["class"] = 4,
@@ -53226,6 +59264,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16132 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9057] = {
     ["class"] = 4,
@@ -53241,6 +59280,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16132 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9058] = {
     ["class"] = 4,
@@ -53256,6 +59296,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16132 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9059] = {
     ["class"] = 4,
@@ -53271,6 +59312,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16132 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9060] = {
     ["class"] = 4,
@@ -53286,6 +59328,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16132 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9061] = {
     ["class"] = 4,
@@ -53301,6 +59344,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16132 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9063] = {
     ["class"] = 1024,
@@ -53312,11 +59356,14 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 3033, 4217, 5505, 12042 },
     },
+    ["xp"] = 510,
   },
   [9065] = {
     ["lvl"] = 4,
     ["min"] = 1,
     ["race"] = 255,
+    ["xp"] = 540,
+    ["rep"] = { 529, 75, 87, -500 },
   },
   [9068] = {
     ["class"] = 64,
@@ -53332,6 +59379,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16134 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9069] = {
     ["class"] = 64,
@@ -53347,6 +59395,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16134 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9070] = {
     ["class"] = 64,
@@ -53377,6 +59426,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16134 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9072] = {
     ["class"] = 64,
@@ -53392,6 +59442,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16134 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9073] = {
     ["class"] = 64,
@@ -53407,6 +59458,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16134 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9074] = {
     ["class"] = 64,
@@ -53422,6 +59474,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16134 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9075] = {
     ["class"] = 64,
@@ -53437,6 +59490,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16134 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9077] = {
     ["class"] = 8,
@@ -53452,6 +59506,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16131 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9078] = {
     ["class"] = 8,
@@ -53467,6 +59522,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16131 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9079] = {
     ["class"] = 8,
@@ -53482,6 +59538,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16131 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9080] = {
     ["class"] = 8,
@@ -53497,6 +59554,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16131 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9081] = {
     ["class"] = 8,
@@ -53512,6 +59570,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16131 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9082] = {
     ["class"] = 8,
@@ -53527,6 +59586,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16131 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9083] = {
     ["class"] = 8,
@@ -53542,6 +59602,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16131 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9084] = {
     ["class"] = 8,
@@ -53557,6 +59618,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16131 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9085] = {
     ["end"] = {
@@ -53572,6 +59634,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16361 },
     },
+    ["rep"] = { 529, 50 },
   },
   [9086] = {
     ["class"] = 1024,
@@ -53632,6 +59695,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16135 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9090] = {
     ["class"] = 1024,
@@ -53647,6 +59711,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16135 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9091] = {
     ["class"] = 1024,
@@ -53662,6 +59727,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16135 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9092] = {
     ["class"] = 1024,
@@ -53677,6 +59743,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16135 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9093] = {
     ["class"] = 1024,
@@ -53692,6 +59759,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16135 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9094] = {
     ["end"] = {
@@ -53723,6 +59791,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16116 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9096] = {
     ["class"] = 128,
@@ -53738,6 +59807,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16116 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9097] = {
     ["class"] = 128,
@@ -53753,6 +59823,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16116 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9098] = {
     ["class"] = 128,
@@ -53768,6 +59839,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16116 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9099] = {
     ["class"] = 128,
@@ -53783,6 +59855,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16116 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9100] = {
     ["class"] = 128,
@@ -53798,6 +59871,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16116 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9101] = {
     ["class"] = 128,
@@ -53813,6 +59887,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16116 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9102] = {
     ["class"] = 128,
@@ -53828,6 +59903,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16116 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9103] = {
     ["class"] = 256,
@@ -53858,6 +59934,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16133 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9105] = {
     ["class"] = 256,
@@ -53888,6 +59965,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16133 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9107] = {
     ["class"] = 256,
@@ -53903,6 +59981,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16133 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9108] = {
     ["class"] = 256,
@@ -53918,6 +59997,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16133 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9109] = {
     ["class"] = 256,
@@ -53933,6 +60013,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16133 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9110] = {
     ["class"] = 256,
@@ -53963,6 +60044,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16113 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9112] = {
     ["class"] = 16,
@@ -53978,6 +60060,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16113 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9113] = {
     ["class"] = 16,
@@ -53993,6 +60076,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16113 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9114] = {
     ["class"] = 16,
@@ -54008,6 +60092,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16113 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9115] = {
     ["class"] = 16,
@@ -54023,6 +60108,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16113 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9116] = {
     ["class"] = 16,
@@ -54038,6 +60124,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16113 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9117] = {
     ["class"] = 16,
@@ -54053,6 +60140,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16113 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9118] = {
     ["class"] = 16,
@@ -54068,6 +60156,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16113 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9120] = {
     ["end"] = {
@@ -54078,6 +60167,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 22520 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 529, 200, 529, 200, 529, 200, 529, 200 },
   },
   [9121] = {
     ["close"] = { 9121, 9122, 9123 },
@@ -54092,6 +60183,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16116 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9122] = {
     ["close"] = { 9121, 9122, 9123 },
@@ -54106,6 +60198,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16116 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9123] = {
     ["close"] = { 9121, 9122, 9123 },
@@ -54117,6 +60210,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16116 },
     },
+    ["rep"] = { 529, 200 },
   },
   [9124] = {
     ["end"] = {
@@ -54130,6 +60224,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16132 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 529, 200 },
   },
   [9125] = {
     ["end"] = {
@@ -54144,6 +60240,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16132 },
     },
+    ["rep"] = { 529, 10 },
   },
   [9126] = {
     ["end"] = {
@@ -54157,6 +60254,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16131 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 529, 200 },
   },
   [9127] = {
     ["end"] = {
@@ -54171,6 +60270,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16131 },
     },
+    ["rep"] = { 529, 10 },
   },
   [9128] = {
     ["end"] = {
@@ -54184,6 +60284,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16116 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 529, 200 },
   },
   [9129] = {
     ["end"] = {
@@ -54198,6 +60300,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16116 },
     },
+    ["rep"] = { 529, 10 },
   },
   [9131] = {
     ["end"] = {
@@ -54211,6 +60314,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16112 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 529, 200 },
   },
   [9132] = {
     ["end"] = {
@@ -54225,6 +60330,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16112 },
     },
+    ["rep"] = { 529, 10 },
   },
   [9136] = {
     ["end"] = {
@@ -54238,6 +60344,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16135 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 529, 200 },
   },
   [9137] = {
     ["end"] = {
@@ -54252,6 +60360,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16135 },
     },
+    ["rep"] = { 529, 10 },
   },
   [9141] = {
     ["end"] = {
@@ -54265,6 +60374,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16212 },
     },
+    ["xp"] = 3300,
+    ["rep"] = { 529, 200 },
   },
   [9142] = {
     ["end"] = {
@@ -54279,6 +60390,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16212 },
     },
+    ["rep"] = { 529, 10 },
   },
   [9153] = {
     ["end"] = {
@@ -54293,6 +60405,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16361 },
     },
+    ["rep"] = { 529, 50 },
   },
   [9154] = {
     ["end"] = {
@@ -54304,6 +60417,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16241, 16255 },
     },
+    ["rep"] = { 529, 25 },
   },
   [9165] = {
     ["end"] = {
@@ -54317,6 +60431,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16226 },
     },
+    ["rep"] = { 529, 10 },
   },
   [9178] = {
     ["end"] = {
@@ -54330,6 +60445,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 22600 },
     },
+    ["rep"] = { 529, 50 },
   },
   [9179] = {
     ["end"] = {
@@ -54343,6 +60459,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 22601 },
     },
+    ["rep"] = { 529, 50 },
   },
   [9181] = {
     ["end"] = {
@@ -54356,6 +60473,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 22602 },
     },
+    ["rep"] = { 529, 50 },
   },
   [9182] = {
     ["end"] = {
@@ -54369,6 +60487,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 22603 },
     },
+    ["rep"] = { 529, 50 },
   },
   [9183] = {
     ["end"] = {
@@ -54382,6 +60501,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 22604 },
     },
+    ["rep"] = { 529, 50 },
   },
   [9184] = {
     ["end"] = {
@@ -54395,6 +60515,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 22605 },
     },
+    ["rep"] = { 529, 50 },
   },
   [9185] = {
     ["end"] = {
@@ -54408,6 +60529,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 22606 },
     },
+    ["rep"] = { 529, 50 },
   },
   [9186] = {
     ["end"] = {
@@ -54421,6 +60543,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 22607 },
     },
+    ["rep"] = { 529, 50 },
   },
   [9187] = {
     ["end"] = {
@@ -54434,6 +60557,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 22608 },
     },
+    ["rep"] = { 529, 50 },
   },
   [9188] = {
     ["end"] = {
@@ -54447,6 +60571,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 22609 },
     },
+    ["rep"] = { 529, 50 },
   },
   [9190] = {
     ["end"] = {
@@ -54460,6 +60585,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 22610 },
     },
+    ["rep"] = { 529, 50 },
   },
   [9191] = {
     ["end"] = {
@@ -54473,6 +60599,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 22611 },
     },
+    ["rep"] = { 529, 50 },
   },
   [9194] = {
     ["end"] = {
@@ -54486,6 +60613,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 22612 },
     },
+    ["rep"] = { 529, 50 },
   },
   [9195] = {
     ["end"] = {
@@ -54499,6 +60627,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 22613 },
     },
+    ["rep"] = { 529, 50 },
   },
   [9196] = {
     ["end"] = {
@@ -54512,6 +60641,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 22614 },
     },
+    ["rep"] = { 529, 50 },
   },
   [9197] = {
     ["end"] = {
@@ -54525,6 +60655,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 22615 },
     },
+    ["rep"] = { 529, 50 },
   },
   [9198] = {
     ["end"] = {
@@ -54538,6 +60669,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 22616 },
     },
+    ["rep"] = { 529, 50 },
   },
   [9200] = {
     ["end"] = {
@@ -54551,6 +60683,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 22617 },
     },
+    ["rep"] = { 529, 50 },
   },
   [9201] = {
     ["end"] = {
@@ -54564,6 +60697,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 22620 },
     },
+    ["rep"] = { 529, 50 },
   },
   [9202] = {
     ["end"] = {
@@ -54577,6 +60711,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 22618 },
     },
+    ["rep"] = { 529, 50 },
   },
   [9203] = {
     ["end"] = {
@@ -54590,6 +60725,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 22621 },
     },
+    ["rep"] = { 529, 50 },
   },
   [9204] = {
     ["end"] = {
@@ -54603,6 +60739,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 22622 },
     },
+    ["rep"] = { 529, 50 },
   },
   [9205] = {
     ["end"] = {
@@ -54616,6 +60753,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 22623 },
     },
+    ["rep"] = { 529, 50 },
   },
   [9206] = {
     ["end"] = {
@@ -54629,6 +60767,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 22624 },
     },
+    ["rep"] = { 529, 50 },
   },
   [9208] = {
     ["end"] = {
@@ -54642,6 +60781,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15042 },
     },
+    ["rep"] = { 270, 200 },
   },
   [9209] = {
     ["end"] = {
@@ -54655,6 +60795,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15042 },
     },
+    ["rep"] = { 270, 200 },
   },
   [9210] = {
     ["end"] = {
@@ -54668,6 +60809,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15042 },
     },
+    ["rep"] = { 270, 200 },
   },
   [9211] = {
     ["end"] = {
@@ -54681,6 +60823,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16133 },
     },
+    ["rep"] = { 529, 100 },
   },
   [9213] = {
     ["end"] = {
@@ -54694,6 +60837,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16133 },
     },
+    ["rep"] = { 529, 100 },
   },
   [9221] = {
     ["end"] = {
@@ -54707,6 +60851,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11536 },
     },
+    ["rep"] = { 529, 100 },
   },
   [9222] = {
     ["end"] = {
@@ -54720,6 +60865,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11536 },
     },
+    ["rep"] = { 529, 100 },
   },
   [9223] = {
     ["end"] = {
@@ -54733,6 +60879,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11536 },
     },
+    ["rep"] = { 529, 100 },
   },
   [9224] = {
     ["end"] = {
@@ -54746,6 +60893,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11536 },
     },
+    ["rep"] = { 529, 100 },
   },
   [9225] = {
     ["end"] = {
@@ -54759,6 +60907,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11536 },
     },
+    ["rep"] = { 529, 100 },
   },
   [9226] = {
     ["end"] = {
@@ -54772,6 +60921,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11536 },
     },
+    ["rep"] = { 529, 100 },
   },
   [9227] = {
     ["end"] = {
@@ -54785,6 +60935,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11536 },
     },
+    ["rep"] = { 529, 100 },
   },
   [9228] = {
     ["end"] = {
@@ -54798,6 +60949,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 11536 },
     },
+    ["rep"] = { 529, 100 },
   },
   [9229] = {
     ["end"] = {
@@ -54812,6 +60964,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16112 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 529, 200 },
   },
   [9230] = {
     ["end"] = {
@@ -54826,6 +60980,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16112 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 529, 200 },
   },
   [9232] = {
     ["end"] = {
@@ -54840,6 +60996,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16376 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 529, 200 },
   },
   [9233] = {
     ["end"] = {
@@ -55042,6 +61200,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 22723 },
     },
+    ["xp"] = 660,
+    ["rep"] = { 529, 10 },
   },
   [9248] = {
     ["end"] = {
@@ -55055,6 +61215,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15282 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 200 },
   },
   [9249] = {
     ["lvl"] = 60,
@@ -55072,6 +61234,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 22727 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 910, 200, 529, 200 },
   },
   [9251] = {
     ["end"] = {
@@ -55086,6 +61250,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15192 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 910, 200, 529, 200 },
   },
   [9257] = {
     ["class"] = 16,
@@ -55103,6 +61269,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15192 },
     },
+    ["xp"] = 14300,
   },
   [9259] = {
     ["end"] = {
@@ -55132,6 +61299,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16478 },
     },
+    ["xp"] = 405,
   },
   [9261] = {
     ["end"] = {
@@ -55148,6 +61316,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16484 },
     },
+    ["xp"] = 630,
   },
   [9262] = {
     ["end"] = {
@@ -55164,6 +61333,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16495 },
     },
+    ["xp"] = 630,
   },
   [9263] = {
     ["end"] = {
@@ -55180,6 +61350,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16493 },
     },
+    ["xp"] = 630,
   },
   [9264] = {
     ["end"] = {
@@ -55196,6 +61367,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16490 },
     },
+    ["xp"] = 630,
   },
   [9265] = {
     ["end"] = {
@@ -55212,6 +61384,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16494 },
     },
+    ["xp"] = 530,
   },
   [9266] = {
     ["end"] = {
@@ -55238,6 +61411,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16418 },
     },
+    ["rep"] = { 87, -500, 470, 500, 21, 250, 369, 250, 577, 250 },
   },
   [9268] = {
     ["end"] = {
@@ -55268,6 +61442,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15192 },
     },
+    ["xp"] = 9950,
+    ["rep"] = { 910, 200, 529, 200 },
   },
   [9270] = {
     ["class"] = 128,
@@ -55285,6 +61461,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15192 },
     },
+    ["xp"] = 9950,
   },
   [9271] = {
     ["class"] = 256,
@@ -55302,6 +61479,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15192 },
     },
+    ["xp"] = 9950,
   },
   [9272] = {
     ["end"] = {
@@ -55312,6 +61490,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 2546 },
     },
+    ["rep"] = { 87, 10, 21, -500 },
   },
   [9273] = {
     ["end"] = {
@@ -55346,6 +61525,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 22977 },
     },
+    ["xp"] = 3300,
   },
   [9296] = {
     ["lvl"] = 60,
@@ -55368,6 +61548,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 22972 },
     },
+    ["xp"] = 3300,
   },
   [9300] = {
     ["end"] = {
@@ -55378,6 +61559,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 22974 },
     },
+    ["xp"] = 3300,
   },
   [9301] = {
     ["end"] = {
@@ -55388,6 +61570,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 22970 },
     },
+    ["xp"] = 3300,
   },
   [9302] = {
     ["end"] = {
@@ -55398,6 +61581,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 22973 },
     },
+    ["xp"] = 3300,
   },
   [9304] = {
     ["end"] = {
@@ -55408,6 +61592,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 22975 },
     },
+    ["xp"] = 3300,
   },
   [9310] = {
     ["end"] = {
@@ -55465,6 +61650,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16788 },
     },
+    ["xp"] = 4950,
   },
   [9320] = {
     ["end"] = {
@@ -55511,6 +61697,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16788 },
     },
+    ["xp"] = 3300,
   },
   [9323] = {
     ["end"] = {
@@ -55525,6 +61712,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16788 },
     },
+    ["xp"] = 3300,
   },
   [9324] = {
     ["end"] = {
@@ -55536,6 +61724,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 23179 },
     },
+    ["xp"] = 4950,
   },
   [9325] = {
     ["end"] = {
@@ -55547,6 +61736,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 23180 },
     },
+    ["xp"] = 4950,
   },
   [9326] = {
     ["end"] = {
@@ -55558,6 +61748,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 23181 },
     },
+    ["xp"] = 4950,
   },
   [9330] = {
     ["end"] = {
@@ -55569,6 +61760,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 23182 },
     },
+    ["xp"] = 4950,
   },
   [9331] = {
     ["end"] = {
@@ -55580,6 +61772,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 23183 },
     },
+    ["xp"] = 4950,
   },
   [9332] = {
     ["end"] = {
@@ -55591,6 +61784,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["I"] = { 23184 },
     },
+    ["xp"] = 4950,
   },
   [9333] = {
     ["end"] = {
@@ -55684,6 +61878,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 15540 },
     },
+    ["rep"] = { 609, 200 },
   },
   [9339] = {
     ["end"] = {
@@ -55697,6 +61892,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16817 },
     },
+    ["xp"] = 4950,
   },
   [9341] = {
     ["end"] = {
@@ -55756,6 +61952,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8379 },
     },
+    ["xp"] = 6600,
   },
   [9364] = {
     ["class"] = 128,
@@ -55771,6 +61968,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 8379 },
     },
+    ["xp"] = 6600,
   },
   [9365] = {
     ["end"] = {
@@ -55784,6 +61982,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16818 },
     },
+    ["xp"] = 4950,
   },
   [9367] = {
     ["end"] = {
@@ -55798,6 +61997,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16817 },
     },
+    ["xp"] = 660,
   },
   [9368] = {
     ["end"] = {
@@ -55812,11 +62012,13 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16818 },
     },
+    ["xp"] = 660,
   },
   [9378] = {
     ["lvl"] = 60,
     ["min"] = 60,
     ["race"] = 255,
+    ["rep"] = { 529, 500 },
   },
   [9386] = {
     ["end"] = {
@@ -55846,6 +62048,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16817, 16818 },
     },
+    ["xp"] = 1500,
   },
   [9389] = {
     ["end"] = {
@@ -55860,6 +62063,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 16817, 16818 },
     },
+    ["xp"] = 1500,
   },
   [9411] = {
     ["lvl"] = 60,
@@ -55924,6 +62128,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 17080 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [9422] = {
     ["end"] = {
@@ -55938,6 +62144,8 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 17079 },
     },
+    ["xp"] = 6600,
+    ["rep"] = { 609, 100 },
   },
   [9458] = {
     ["lvl"] = 60,
@@ -56002,6 +62210,7 @@ UnrealQuestData["quests"] = {
       ["I"] = { 13180 },
     },
     ["race"] = 255,
+    ["xp"] = 4950,
   },
   [9664] = {
     ["end"] = {
@@ -56016,6 +62225,7 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 17069 },
     },
+    ["xp"] = 6600,
   },
   [9665] = {
     ["end"] = {
@@ -56030,5 +62240,6 @@ UnrealQuestData["quests"] = {
     ["start"] = {
       ["U"] = { 17072 },
     },
+    ["xp"] = 6600,
   },
 }

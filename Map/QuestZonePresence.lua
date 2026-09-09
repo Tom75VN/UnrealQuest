@@ -278,38 +278,133 @@ function QuestZonePresence:Compute(quest, areaId)
     return false
 end
 
--- Memoized Compute. The stored value is wrapped because nil is one of the
--- three answers and a bare nil in the table would read as "not cached yet".
-function QuestZonePresence:HasPoints(quest, areaId)
-    if type(quest) ~= "table" or type(areaId) ~= "number" then
+-- The same question asked of a dungeon or raid interior -----------------------
+--
+-- Compute above is arithmetic over coordinates, and inside an instance there
+-- are none. Every coordinate in the bundled tables sits in one of the 50
+-- outdoor areas this client draws a map for; no instance interior holds a
+-- single one, which is exactly why Database/instance_only_units.lua had to
+-- exist in the first place. Asked about area 1581 while the player stands in
+-- the Deadmines, Compute would therefore answer false for a Deadmines quest --
+-- the worst wrong answer there is, and one no care inside it can fix, because
+-- the input is simply absent.
+--
+-- So an instance is answered from provenance rather than from position.
+-- instance_only_units records, per creature, the instance maps every one of
+-- its spawns is on, and Database:GetQuestInstanceMaps folds that over the
+-- quest's own objective and turn-in relations. "Does this quest have work in
+-- this dungeon" becomes set membership.
+--
+-- Same three answers and the same complete/in-progress split as Compute, so a
+-- caller swaps one for the other and nothing else about it changes.
+--
+-- WHAT IT DELIBERATELY DOES NOT DO. It does not narrow by which objectives are
+-- still unfinished. Compute can, because the map layer it borrows has already
+-- dropped a finished source's coordinates; here there is no location list to
+-- filter. The price is one over-inclusion -- a quest whose dungeon objective is
+-- done while another waits outside stays listed while the player is inside --
+-- and that is the quiet direction to be wrong in, which is the direction this
+-- whole filter is built to fail in.
+function QuestZonePresence:ComputeInstance(quest, mapId)
+    local database = Database()
+    if not database or not database.available or type(mapId) ~= "number" then
+        return nil
+    end
+    local ids = QuestMapIds(quest)
+    local idTotal = table.getn(ids)
+    if idTotal == 0 then
         return nil
     end
 
+    local config = Config()
+    local complete = quest.isComplete == 1
+    local drawable = 0
+
+    local index = 1
+    while index <= idTotal do
+        local questId = ids[index]
+        if not IsMapHidden(config, questId) then
+            local maps = database:GetQuestInstanceMaps(questId)
+            if maps then
+                drawable = drawable + 1
+                if complete then
+                    if maps.turnIn[mapId] then
+                        return true
+                    end
+                else
+                    local objectiveRelation = database:GetQuestObjectiveSources(questId)
+                    -- No objective relation means the destination NPC is itself
+                    -- the current talk or delivery task, exactly as in Compute.
+                    if type(objectiveRelation) ~= "table" then
+                        if maps.turnIn[mapId] then
+                            return true
+                        end
+                    elseif maps.objective[mapId] then
+                        return true
+                    end
+                end
+            end
+        end
+        index = index + 1
+    end
+
+    if drawable == 0 then
+        -- Every candidate is withheld from the map, or none of them is a record
+        -- this database knows at all. Silence, not evidence.
+        return nil
+    end
+    return false
+end
+
+-- The memo both questions share. The stored value is wrapped because nil is one
+-- of the three answers and a bare nil in the table would read as "not cached
+-- yet". `prefix` keeps the two apart: an area ID and an instance map ID are
+-- both plain numbers, and while the player cannot be standing in a zone and an
+-- instance at once, the table outlives a single build.
+--
+-- `method` is a name rather than a function value so that the hot path -- one
+-- lookup per quest per 0.4s refresh -- allocates nothing.
+local function CachedPresence(self, quest, id, prefix, method)
     local bagItems = BagItems()
     local token = "noBags"
     if bagItems and bagItems.GetToken then
         token = bagItems:GetToken()
     end
-    if self.cacheAreaId ~= areaId or self.cacheToken ~= token
+    if self.cacheAreaId ~= id or self.cacheToken ~= token
         or self.cacheCount >= MAX_CACHE_ENTRIES then
         self.cache = {}
         self.cacheCount = 0
-        self.cacheAreaId = areaId
+        self.cacheAreaId = id
         self.cacheToken = token
     end
 
-    local key = QuestSignature(quest)
+    local key = prefix .. QuestSignature(quest)
     local entry = self.cache[key]
     if entry then
         self.hits = self.hits + 1
         return entry.value
     end
 
-    local value = self:Compute(quest, areaId)
+    local value = self[method](self, quest, id)
     self.cache[key] = { value = value }
     self.cacheCount = self.cacheCount + 1
     self.computes = self.computes + 1
     return value
+end
+
+function QuestZonePresence:HasPoints(quest, areaId)
+    if type(quest) ~= "table" or type(areaId) ~= "number" then
+        return nil
+    end
+    return CachedPresence(self, quest, areaId, "area:", "Compute")
+end
+
+-- Memoized ComputeInstance. Same contract as HasPoints, keyed by instance map.
+function QuestZonePresence:HasInstanceWork(quest, mapId)
+    if type(quest) ~= "table" or type(mapId) ~= "number" then
+        return nil
+    end
+    return CachedPresence(self, quest, mapId, "instance:", "ComputeInstance")
 end
 
 function QuestZonePresence:GetStatus()

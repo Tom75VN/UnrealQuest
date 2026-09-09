@@ -7,9 +7,11 @@ The database content originates from the VMaNGOS world database and is packaged 
 - pfQuest — Eric Mauser / Shagu — MIT License
 - VMaNGOS — world database source used by pfQuest
 
-UnrealQuest changes only the Lua table namespace/packaging so the data can be loaded through `UnrealQuestData`. The underlying Vanilla data and all available pfQuest locales are retained.
+UnrealQuest changes only the Lua table namespace/packaging so the data can be loaded through `UnrealQuestData`. The underlying Vanilla data is retained unchanged; the set of bundled locales is reduced.
 
-Included locales: deDE, enUS, esES, frFR, koKR, ptBR, ruRU, zhCN, zhTW.
+Included locales: enUS, esES, frFR, ruRU, zhCN. pfQuest's deDE, koKR, ptBR and zhTW
+tables were dropped to keep the bundled database small. A client reporting one of
+those locales falls back to the enUS tables.
 
 ## VMaNGOS trainer and patrol additions
 

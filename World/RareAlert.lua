@@ -2,7 +2,8 @@
 UnrealQuest / World/RareAlert.lua
 
 Pings the player -- a card on screen and a sound -- on walking into range of a
-rare, rare-elite, boss or elite creature.
+rare, rare-elite or boss creature. Which of those three ranks it pings for is
+the player's choice, one switch each on the options page (Core/Config.lua).
 
 WHAT "IN RANGE" MEANS HERE, AND WHY IT CANNOT MEAN MORE
 -------------------------------------------------------
@@ -76,6 +77,13 @@ local POLL_INTERVAL = 1.0
 -- nothing here re-resolves the map twenty times a second.
 local LIVE_INTERVAL = 0.05
 
+-- Target death has no verified event contract on this client. A short poll
+-- observes the documented unit state instead, and requires both player and
+-- target to have been in combat before a living target becomes dead. The
+-- corpse remains targeted long enough for this to be cheap and reliable in
+-- ordinary play, while a first sighting of an already-dead target is ignored.
+local KILL_POLL_INTERVAL = 0.10
+
 -- Yards. The settings slider exposes the full 20-500 range; 120 warns early
 -- without reaching as far into neighbouring city blocks.
 local DEFAULT_RANGE = 120
@@ -122,6 +130,16 @@ local CAPITAL_CITY_AREAS = {
 
 -- KEYS, not text: this table is built at file load, before Core/Locale.lua has
 -- resolved the language.
+-- The config key that decides whether a rank still raises a card, one per
+-- rank the alert can reach. Rank 1 -- the ordinary elite -- has none on
+-- purpose: Database:IsAlertWorthy never admits one, so an option for it would
+-- be a switch wired to nothing. See Core/Config.lua.
+local RANK_SETTING_KEYS = {
+    [RANK_RARE] = "rareAlertRares",
+    [RANK_RARE_ELITE] = "rareAlertElites",
+    [RANK_BOSS] = "rareAlertBosses",
+}
+
 local RANK_NAME_KEYS = {
     [RANK_ELITE] = "RARE_RANK_ELITE",
     [RANK_RARE_ELITE] = "RARE_RANK_RARE_ELITE",
@@ -148,11 +166,6 @@ local DEFAULT_POINT = "TOP"
 local DEFAULT_X = 0
 local DEFAULT_Y = -160
 
-local DIRECTION_KEYS = {
-    N = "RARE_DIR_N", NE = "RARE_DIR_NE", E = "RARE_DIR_E", SE = "RARE_DIR_SE",
-    S = "RARE_DIR_S", SW = "RARE_DIR_SW", W = "RARE_DIR_W", NW = "RARE_DIR_NW",
-}
-
 -- State ---------------------------------------------------------------------
 
 RareAlert.frame = nil
@@ -171,6 +184,7 @@ RareAlert.shownEntry = nil
 RareAlert.shownOthers = 0
 RareAlert.shownYardsX = nil
 RareAlert.shownYardsY = nil
+RareAlert.shownAreaId = nil
 
 -- unitId -> true while that creature is inside the forget radius. Reset on
 -- leaving the area, because the same creature in a different zone is a
@@ -181,6 +195,12 @@ RareAlert.inRange = {}
 -- zone changes on purpose: walking out and back is not new news.
 RareAlert.alertedAt = {}
 
+-- The one target whose alive -> dead transition is being observed for the
+-- per-character kill history. There is no creature GUID or ID API on this
+-- client, so identity is resolved conservatively through the unique
+-- (localized name, classification) entry in Database's ranked index.
+RareAlert.killTarget = nil
+
 RareAlert.state = "idle"
 RareAlert.stats = {
     alerts = 0,
@@ -190,13 +210,30 @@ RareAlert.stats = {
     lastRank = nil,
     lastDistance = nil,
     soundPlayed = 0,
+    killsRecorded = 0,
 }
 
 -- Settings -------------------------------------------------------------------
 
-function RareAlert:IsEnabled()
+-- Whether this rank raises a card. Missing key means the rank cannot be
+-- alerted about at all (rank 1); an unset setting means the shipped default,
+-- which is on.
+function RareAlert:IsRankEnabled(rank)
+    local key = RANK_SETTING_KEYS[rank]
+    if not key then
+        return false
+    end
     local config = UQ:GetModule("Config")
-    return not (config and config:Get("rareAlert") == false)
+    return not (config and config:Get(key) == false)
+end
+
+-- Enabled means at least one rank is still ticked. There is no master switch
+-- behind the three: unticking the last one IS turning the alert off, which is
+-- what "/uq rare off" writes and what the options page shows.
+function RareAlert:IsEnabled()
+    return self:IsRankEnabled(RANK_RARE)
+        or self:IsRankEnabled(RANK_RARE_ELITE)
+        or self:IsRankEnabled(RANK_BOSS)
 end
 
 function RareAlert:GetRange()
@@ -232,10 +269,15 @@ end
 -- never ordinary elites. See Database:IsAlertWorthy for why rank alone is the
 -- wrong test here.
 --
--- There is no per-rank setting. One switch turns the alert on or off and that
--- is the whole of the choice (the user's call, 2026-08-28).
+-- Each of the three ranks that can reach here carries its own switch, so a
+-- player who wants bosses but not rares gets exactly that. Rank alone still
+-- does not decide: a rank the player kept is asked about here, and whether the
+-- creature is worth interrupting anyone for is still IsAlertWorthy's answer.
 function RareAlert:IsWanted(entry, areaId)
     if not entry or not entry.rank or not RANK_NAME_KEYS[entry.rank] then
+        return false
+    end
+    if not self:IsRankEnabled(entry.rank) then
         return false
     end
     local database = UQ:GetModule("Database")
@@ -259,44 +301,121 @@ function RareAlert:OnRankedUnitIgnored(unitId, areaId)
     end
 end
 
--- Geometry -------------------------------------------------------------------
-
--- Compass direction on the MAP, which is north-up. This is not a heading
--- relative to the player: this client has no readable player facing by any
--- route (`input.no_readable_player_facing`, BEHAVIOR_VERIFIED), so "north-east
--- of you" is the strongest true statement available and "ahead of you" would
--- be an invented one.
---
--- Map y grows DOWNWARD, so a negative dy is north.
-local function Direction(dx, dy)
-    local ax = dx >= 0 and dx or -dx
-    local ay = dy >= 0 and dy or -dy
-    local ns = dy < 0 and "N" or "S"
-    local ew = dx < 0 and "W" or "E"
-    -- tan(67.5 degrees); splits the circle into eight equal 45-degree sectors.
-    if ay > ax * 2.414 then
-        return ns
-    end
-    if ax > ay * 2.414 then
-        return ew
-    end
-    return ns .. ew
-end
-
-function RareAlert:DirectionText(dx, dy)
-    local key = DIRECTION_KEYS[Direction(dx, dy)]
-    if not key then
-        return ""
-    end
-    return UQ.L(key)
-end
-
 function RareAlert:RankText(rank)
     local key = RANK_NAME_KEYS[rank]
     if not key then
         return UQ.L("COMMON_UNKNOWN")
     end
     return UQ.L(key)
+end
+
+function RareAlert:SubtitleText(entry)
+    local database = UQ:GetModule("Database")
+    local record = database and entry and database:GetUnit(entry.unitId)
+    -- `lvl` is a STRING in the bundled data and may be a range ("24-25"). It
+    -- is shown as stored; nothing here parses it into a number.
+    local level = record and record.lvl
+    local subtitle
+    if type(level) == "string" and level ~= "" then
+        subtitle = UQ.L("RARE_ALERT_SUBTITLE_LEVEL", self:RankText(entry.rank), level)
+    else
+        subtitle = self:RankText(entry and entry.rank)
+    end
+    return subtitle
+end
+
+function RareAlert:KillText(entry)
+    return UQ.L("RARE_ALERT_KILLED",
+        tostring(entry and self:GetKillCount(entry.unitId) or 0))
+end
+
+-- Kill history --------------------------------------------------------------
+
+function RareAlert:GetKillCount(unitId)
+    local config = UQ:GetModule("Config")
+    local section = config and config:GetSection("rareKillCounts")
+    local count = type(section) == "table" and section[unitId] or nil
+    if type(count) ~= "number" or count < 0 then
+        return 0
+    end
+    return math.floor(count)
+end
+
+function RareAlert:RecordKill(unitId)
+    local config = UQ:GetModule("Config")
+    if not config or type(unitId) ~= "number" then
+        return false
+    end
+    local count = self:GetKillCount(unitId) + 1
+    if not config:SetSectionEntry("rareKillCounts", unitId, count) then
+        return false
+    end
+    self.stats.killsRecorded = self.stats.killsRecorded + 1
+    if self.frame and self.shownEntry and self.shownEntry.unitId == unitId then
+        Client.SetAlertWindowKillCount(self.frame, self:KillText(self.shownEntry))
+    end
+    return true
+end
+
+-- Counts one defeat only after this character and the living target were both
+-- observed in combat. That is the strongest attribution this client exposes:
+-- UnitIsDead provides the transition, but no combat-log event or creature GUID
+-- has been verified here to identify a killing blow. An ambiguous database
+-- name, an ordinary elite, or a corpse first targeted after death is ignored.
+function RareAlert:KillPoll()
+    local database = UQ:GetModule("Database")
+    if not database or not database.available then
+        self.killTarget = nil
+        return
+    end
+    database:StartRankIndex()
+    if not database:IsRankIndexReady() then
+        return
+    end
+
+    if not Client.UnitExists("target") then
+        self.killTarget = nil
+        return
+    end
+    local name = Client.GetUnitName("target")
+    local classification = Client.GetUnitClassification("target")
+    local entry = database:FindAlertWorthyUnitByName(name, classification)
+    local dead = Client.IsUnitDead("target")
+    if not entry or dead == nil then
+        self.killTarget = nil
+        return
+    end
+
+    local target = self.killTarget
+    if not target or target.unitId ~= entry.unitId or target.name ~= name then
+        target = {
+            unitId = entry.unitId,
+            name = name,
+            dead = dead,
+            sawAlive = not dead,
+            engaged = false,
+            counted = dead and true or false,
+        }
+        self.killTarget = target
+    end
+
+    if not dead then
+        -- The same named creature can be targeted again after its previous
+        -- corpse. A dead -> alive transition starts a fresh observation.
+        if target.dead then
+            target.engaged = false
+            target.counted = false
+        end
+        target.sawAlive = true
+        if Client.IsUnitInCombat("player") == true
+            and Client.IsUnitInCombat("target") == true then
+            target.engaged = true
+        end
+    elseif target.sawAlive and target.engaged and not target.counted then
+        self:RecordKill(target.unitId)
+        target.counted = true
+    end
+    target.dead = dead
 end
 
 -- The card -------------------------------------------------------------------
@@ -396,6 +515,7 @@ end
 function RareAlert:Dismiss()
     self.shownUntil = nil
     self.shownEntry = nil
+    self.shownAreaId = nil
     if self.frame then
         Client.HideObject(self.frame)
     end
@@ -412,12 +532,47 @@ function RareAlert:NearbyText(rank)
     return UQ.L(key)
 end
 
-function RareAlert:DistanceText(distance, dx, dy)
-    local text = UQ.L("RARE_ALERT_BODY", tostring(distance), self:DirectionText(dx, dy))
+function RareAlert:DistanceText(distance)
+    local text = UQ.L("NAV_DISTANCE", tostring(distance))
     if self.shownOthers and self.shownOthers > 0 then
         text = text .. "  " .. UQ.LN("RARE_ALERT_MORE", self.shownOthers)
     end
     return text
+end
+
+-- The card reuses the quest navigator's rotating atlas. The arrow is relative
+-- to the character's facing (up means straight ahead) and is the alert's only
+-- direction presentation; the text row contains distance alone.
+function RareAlert:UpdateArrow(dx, dy, playerX, playerY)
+    local frame = self.frame
+    local heading = UQ:GetModule("PlayerHeading")
+    if not frame or not frame.unrealQuestArrow or not heading then
+        return false
+    end
+    -- Map coordinates can leave a tiny floating-point remainder even while
+    -- standing on the spawn. Below half a yard there is no useful direction.
+    if type(dx) == "number" and type(dy) == "number"
+        and dx * dx + dy * dy < 0.25 then
+        Client.ShowNavigatorArrow(frame, false)
+        return false
+    end
+    if type(self.shownAreaId) == "number" then
+        heading:Sample(self.shownAreaId, playerX, playerY)
+    end
+    local bearing = heading.BearingFromYards(dx, dy)
+    local facing = heading:Get()
+    if not bearing or not facing then
+        Client.ShowNavigatorArrow(frame, false)
+        return false
+    end
+    local relative = heading.NormalizeDelta(bearing - facing)
+    if not relative or not Client.RotateNavigatorArrow(frame, relative) then
+        Client.ShowNavigatorArrow(frame, false)
+        return false
+    end
+    Client.SetNavigatorArrowTint(frame, 1, 1, 1, 1)
+    Client.ShowNavigatorArrow(frame, true)
+    return true
 end
 
 -- Rewrites the distance row of a card that is already up. Runs on the shared
@@ -449,7 +604,8 @@ function RareAlert:LiveTick()
         return
     end
     Client.SetAlertWindowDistance(self.frame,
-        self:DistanceText(math.floor(distance + 0.5), dx, dy))
+        self:DistanceText(math.floor(distance + 0.5)))
+    self:UpdateArrow(dx, dy, x, y)
 end
 
 function RareAlert:Show(entry, distance, dx, dy, others)
@@ -464,22 +620,16 @@ function RareAlert:Show(entry, distance, dx, dy, others)
         name = UQ.L("COMMON_UNKNOWN")
     end
 
-    local record = database and database:GetUnit(entry.unitId)
-    -- `lvl` is a STRING in the bundled data and may be a range ("24-25"). It is
-    -- shown as it is stored; nothing here parses it into a number.
-    local level = record and record.lvl
-    local subtitle
-    if type(level) == "string" and level ~= "" then
-        subtitle = UQ.L("RARE_ALERT_SUBTITLE_LEVEL", self:RankText(entry.rank), level)
-    else
-        subtitle = self:RankText(entry.rank)
-    end
+    local subtitle = self:SubtitleText(entry)
 
     self.shownEntry = entry
     self.shownOthers = others or 0
+    local firstCoordinate = entry.coords and entry.coords[1]
+    self.shownAreaId = type(firstCoordinate) == "table" and firstCoordinate[3] or self.areaId
 
     Client.SetAlertWindowText(frame, self:NearbyText(entry.rank), name, subtitle,
-        self:DistanceText(distance, dx, dy))
+        self:KillText(entry), self:DistanceText(distance))
+    self:UpdateArrow(dx, dy)
     Client.ShowObject(frame)
 
     local now = Client.Now()
@@ -730,6 +880,9 @@ function RareAlert:GetStatus()
     local database = UQ:GetModule("Database")
     return {
         enabled = self:IsEnabled(),
+        rares = self:IsRankEnabled(RANK_RARE),
+        rareElites = self:IsRankEnabled(RANK_RARE_ELITE),
+        bosses = self:IsRankEnabled(RANK_BOSS),
         range = self:GetRange(),
         seconds = self:GetSeconds(),
         sound = self:GetSound(),
@@ -742,6 +895,7 @@ function RareAlert:GetStatus()
         alerts = self.stats.alerts,
         scans = self.stats.scanned,
         soundPlayed = self.stats.soundPlayed,
+        killsRecorded = self.stats.killsRecorded,
         lastName = self.stats.lastName,
         lastRank = self.stats.lastRank and self:RankText(self.stats.lastRank) or nil,
         lastDistance = self.stats.lastDistance,
@@ -756,10 +910,20 @@ function RareAlert:OnEnable()
     if not driver then
         return
     end
+    local database = UQ:GetModule("Database")
+    if database then
+        -- The kill history remains active when all alert ranks are unticked,
+        -- so turning the cards back on later still shows this character's
+        -- accumulated total.
+        database:StartRankIndex()
+    end
     driver:Schedule("world.rarealert", POLL_INTERVAL, function()
         RareAlert:Poll()
     end)
     driver:Schedule("world.rarealert.live", LIVE_INTERVAL, function()
         RareAlert:LiveTick()
+    end)
+    driver:Schedule("world.rarealert.kills", KILL_POLL_INTERVAL, function()
+        RareAlert:KillPoll()
     end)
 end

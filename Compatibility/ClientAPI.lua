@@ -244,10 +244,11 @@ local questTitleDecorations = 0
 
 -- A bracket group that STARTS with a digit, plus the space after it:
 -- "[24] ", "[24+] ", "[24D] ", "[15G5] ", "[60R] ". The leading-digit
--- requirement is what makes this safe to apply unconditionally: eight bundled
--- koKR quest titles genuinely begin with a bracket group (translation-status
--- markers such as "unused" and "reused"), and not one of them puts a digit
--- first, so no real title in the data can be cut by this.
+-- requirement is what makes this safe to apply unconditionally: real quest
+-- titles in the upstream data do begin with a bracket group (translation-status
+-- markers such as "unused" and "reused" -- eight of them in pfQuest's koKR
+-- tables, which this addon no longer bundles), but not one of them puts a
+-- digit first, so no real title in the data can be cut by this.
 local function StripLevelPrefix(text)
     local stripped = string.gsub(text, "^%s*%[%d[^%]]*%]%s*", "", 1)
     return stripped
@@ -531,6 +532,23 @@ function Client.RefreshQuestLog()
     return ok and true or false
 end
 
+-- The DETAIL pane specifically, which QuestLog_Update does not own.
+--
+-- knowledge.json / questlog.native_refresh_font_colours (USER_CONFIRMED_INGAME)
+-- names QuestLog_Update and QuestLog_UpdateQuestDetails as two separate
+-- repaint entry points on this client, and its solution reapplies fonts after
+-- BOTH -- which is what says the second one exists because the first does not
+-- cover the detail fields. A caller that has replaced QuestLogQuestTitle,
+-- QuestLogObjectivesText or QuestLogQuestDescription and wants the client's
+-- own text back therefore has to ask for this one too.
+--
+-- Still only an accelerator: Quest/QuestLogTranslation.lua restores the text it
+-- replaced from its own record and does not depend on either call landing.
+function Client.RefreshQuestLogDetails()
+    local ok = Call0("QuestLog_UpdateQuestDetails")
+    return ok and true or false
+end
+
 -- Quest watch ---------------------------------------------------------------
 -- Measured: AddQuestWatch, RemoveQuestWatch and IsQuestWatched all share the
 -- raw GetQuestLogTitle index space, including header rows, and round-trip
@@ -808,6 +826,43 @@ function Client.GetUnitName(unit)
     return nil
 end
 
+-- OFFICIAL_CLIENT_DOCUMENTATION: UnitClassification returns one of elite,
+-- rareelite, worldboss, rare or normal for a live unit token. The rare-kill
+-- history uses it only to reject an ordinary creature that happens to share a
+-- name with a ranked database record; an unavailable or unexpected result is
+-- not treated as a match.
+function Client.GetUnitClassification(unit)
+    local ok, value = Call1("UnitClassification", unit)
+    if ok and type(value) == "string" and value ~= "" then
+        return value
+    end
+    return nil
+end
+
+-- OFFICIAL_CLIENT_DOCUMENTATION: UnitIsDead returns true for a dead unit and
+-- nil for a living or missing one. Callers establish UnitExists first, so nil
+-- after a successful call is the living answer; nil from this wrapper means
+-- the function itself could not be called.
+function Client.IsUnitDead(unit)
+    local ok, value = Call1("UnitIsDead", unit)
+    if not ok then
+        return nil
+    end
+    return value and true or false
+end
+
+-- OFFICIAL_CLIENT_DOCUMENTATION: UnitAffectingCombat exposes a unit's combat
+-- flag. The kill counter latches this while both player and target are alive;
+-- it is corroboration that the player participated, not a claim that the API
+-- identifies the killing blow.
+function Client.IsUnitInCombat(unit)
+    local ok, value = Call1("UnitAffectingCombat", unit)
+    if not ok then
+        return nil
+    end
+    return value and true or false
+end
+
 -- Whether the player is in any group at all. A raid mark is SHARED state --
 -- every other member sees it and it overwrites whatever they had set -- so
 -- this is what World/QuestMarks.lua gates on before marking anything
@@ -1006,26 +1061,31 @@ end
 -- general distrust of anything time-sensitive here), reading the tooltip's
 -- own rendered text sidesteps it entirely: it can only ever say what the
 -- tooltip is actually, currently displaying.
+-- The second result distinguishes a confirmed hidden frame (false) from an
+-- empty first line while shown (true), or an unavailable visibility read (nil).
 function Client.GetGameTooltipUnitLabel()
     local tooltip = ResolveGameTooltip()
     if not tooltip or type(tooltip.IsShown) ~= "function" then
         return nil
     end
     local shownOk, shown = pcall(tooltip.IsShown, tooltip)
-    if not shownOk or not shown then
+    if not shownOk then
         return nil
+    end
+    if not shown then
+        return nil, false
     end
     local label = ResolveObject("GameTooltipTextLeft1")
     if not label or type(label.GetText) ~= "function" then
-        return nil
+        return nil, true
     end
     local ok, text = pcall(label.GetText, label)
     if not ok or type(text) ~= "string" or text == "" then
-        return nil
+        return nil, true
     end
     text = string.gsub(text, "|c%x%x%x%x%x%x%x%x", "")
     text = string.gsub(text, "|r", "")
-    return text
+    return text, true
 end
 
 -- Reads back one of GameTooltip's own rendered rows. Region naming
@@ -1105,6 +1165,10 @@ function Client.GetGameTooltipLines()
             else
                 table.insert(lines, { text = leftText, r = r, g = g, b = b })
             end
+        else
+            -- A missing row inside NumLines is an incomplete rebuild, not a
+            -- new shorter tooltip. Let the consumer retain its good snapshot.
+            return nil
         end
         index = index + 1
     end
@@ -1481,6 +1545,38 @@ function Client.GetRealZoneText()
         return value
     end
     return nil
+end
+
+-- Is the player inside a dungeon, raid or PvP instance?
+--
+-- The one client-side answer to a question the zone name cannot settle on its
+-- own. Inside an instance both zone calls are promoted to the instance's own
+-- name -- exactly the shape probe zoneindoor measured for a mine -- and that
+-- name is not in GetMapZones for the continent, so every "is this a real zone"
+-- test in Map/MapContext.lua correctly says no and the standing zone falls
+-- through to the last remembered outdoor one. That is right for a mine and
+-- wrong for a dungeon: the player really has left the outdoor zone behind.
+--
+-- Returns true, false, or nil when the client has no such global. nil is not
+-- false: a caller must not conclude "outdoors" from it, and Map/MapContext.lua
+-- has a static fallback for exactly that case.
+--
+-- The client's API reference documents a plain boolean return and no instance
+-- type, so nothing here may branch on dungeon versus raid versus battleground.
+function Client.IsInInstance()
+    local ok, value = Call0("IsInInstance")
+    if not ok then
+        return nil
+    end
+    if value == nil then
+        return nil
+    end
+    -- Documented as a Lua boolean, but this client returns 1/nil from several
+    -- of its other predicates, so both shapes are accepted.
+    if value == false or value == 0 then
+        return false
+    end
+    return true
 end
 
 -- The subzone name on its own. NOT a way to tell that the player is indoors,
@@ -2207,6 +2303,10 @@ function Client.SetWorldMapPinLevelBoost(frame, extraLevels)
     if type(level) ~= "number" then
         return false
     end
+    -- Remembered, not only applied: a minimap pin can be re-levelled later
+    -- when the player arrow lever changes, and a rim that forgot its -1 would
+    -- come back sitting on top of the dot it exists to frame.
+    frame.unrealQuestLevelBoost = extraLevels or 0
     local ok = pcall(frame.SetFrameLevel, frame, level + (extraLevels or 0))
     return ok and true or false
 end
@@ -2543,12 +2643,54 @@ end
 -- the map canvas specifically, not about GameTooltip in general. GameTooltip
 -- is the tooltip already confirmed working elsewhere on this client outside
 -- that context (Tooltip/EntityTooltip.lua), so it is used directly.
+-- Which frame this addon last painted GameTooltip for, or nil when the
+-- tooltip is the client's own again. Tooltip/EntityTooltip.lua reads it
+-- through Client.IsGameTooltipAddonOwned: the addon's GameTooltip surfaces
+-- (a minimap quest pin, a tracker row) already print the quest's objectives
+-- from the log, and the entity tooltip's matched progress row on top of them
+-- is the same objective printed twice.
+local gameTooltipOwner = nil
+
+-- True while GameTooltip still belongs to the frame this addon painted it
+-- for. IsOwned is consulted rather than trusted bookkeeping alone, because a
+-- unit hover can re-own the tooltip without any Hide call of ours running --
+-- the same reason the Hide paths below check it before hiding.
+function Client.IsGameTooltipAddonOwned()
+    if not gameTooltipOwner then
+        return false
+    end
+    local tooltip = ResolveGameTooltip()
+    if not tooltip then
+        gameTooltipOwner = nil
+        return false
+    end
+    if type(tooltip.IsOwned) == "function" then
+        local ok, owned = pcall(tooltip.IsOwned, tooltip, gameTooltipOwner)
+        if ok and not owned then
+            gameTooltipOwner = nil
+            return false
+        end
+    end
+    if type(tooltip.IsShown) == "function" then
+        local ok, shown = pcall(tooltip.IsShown, tooltip)
+        if ok and not shown then
+            gameTooltipOwner = nil
+            return false
+        end
+    end
+    return true
+end
+
 function Client.ShowGameTooltip(frame, lines, anchor)
     local tooltip = ResolveGameTooltip()
     if not tooltip or not frame then
         return false
     end
-    return RenderTooltipLines(tooltip, "GameTooltip", frame, lines, anchor)
+    local shown = RenderTooltipLines(tooltip, "GameTooltip", frame, lines, anchor)
+    if shown then
+        gameTooltipOwner = frame
+    end
+    return shown
 end
 
 function Client.HideGameTooltip(frame)
@@ -2565,6 +2707,7 @@ function Client.HideGameTooltip(frame)
     if type(tooltip.Hide) == "function" then
         pcall(tooltip.Hide, tooltip)
     end
+    gameTooltipOwner = nil
     return true
 end
 
@@ -3175,6 +3318,190 @@ function Client.GetMinimapZoomCVars()
     return outOk and outside or nil, inOk and inside or nil
 end
 
+-- The player arrow at the centre of the minimap ---------------------------
+-- The arrow is drawn where the pins are, and by default every pin drew over
+-- it: minimap pins are created in the measured level-120 band and the arrow is
+-- far below that, so a dot standing on the player buried the one mark the
+-- player steers by. Two levers exist, and this layer tries them in that order.
+--
+-- 1. RAISE THE ARROW. This is what the installed pfQuest does on Vanilla
+--    (compat/client.lua: it finds the arrow among Minimap's children and calls
+--    SetFrameLevel(8), commented "always keep player arrow on top"). It is the
+--    right fix wherever it works, because it leaves every pin exactly where it
+--    was. It needs a handle on the arrow, and on the PRECEDING build of this
+--    client there was none: probe 1.37.0 walked Minimap:GetChildren() and
+--    found 7 children, none of them a Model (input.no_readable_player_facing).
+--    The search is still made rather than skipped -- the client has been
+--    updated since, Minimap:SetPlayerModel is documented, and a handle that
+--    has appeared costs one scan to find.
+--
+-- 2. LOWER THE PINS. The fallback when there is no arrow to raise. The pins
+--    drop out of the 120 band to just above Minimap's own frame level, which
+--    is the band Minimap's own children occupy (measured at 3-4), so they are
+--    still drawn over the minimap terrain -- everything native at 3-4 plainly
+--    is -- while an arrow drawn above that band comes out on top.
+--
+-- Lever 2 is a HYPOTHESIS about where the engine draws the arrow, not a
+-- measurement: nothing on this client reports the arrow's own level, and no
+-- probe can read it. So it is a setting the player can turn off
+-- (minimapPinsBelowArrow), and `/uq minimap` reports which lever is in use and
+-- the level the pins ended up at, so one look at the minimap settles it.
+--
+-- Nothing here ever hides a pin. A dot that shares the player's position stays
+-- drawn, at full size and full alpha; only the order it is drawn in changes.
+--
+-- One table rather than the eight file-scope locals this would naturally be:
+-- ClientAPI.lua is within a handful of locals of Lua's 200-per-chunk ceiling,
+-- and the two helpers live on it for the same reason.
+local minimapArrow = {
+    -- The measured band, and where a found arrow is raised to: above the pins
+    -- rather than merely above the native children, which is the one thing
+    -- pfQuest's 8 cannot do here, since this addon's pins sit at 120.
+    PIN_LEVEL = 120,
+    RAISED_LEVEL = 125,
+    -- Every minimap pin created so far, so a change of lever re-levels the
+    -- pins already in the pools instead of reaching only later ones.
+    pins = {},
+    count = 0,
+    below = false,
+    frame = nil,
+    searched = false,
+    raised = false,
+}
+
+-- pfQuest's detection, with this addon's guards: any child of Minimap that is
+-- an unnamed Model whose model path names the minimap arrow. Everything is
+-- pcall'd, because a client without Model:GetModel would otherwise take the
+-- whole layer down while looking for a frame it does not have. Searched once
+-- per session -- the arrow is engine-owned and does not come and go.
+-- `rescan` searches again instead of answering from the cache, for the one
+-- case the cache is wrong about: another addon replacing or re-parenting the
+-- minimap after this ran. `/uq minimap rescan` is that caller.
+function Client.FindMinimapPlayerArrow(rescan)
+    if minimapArrow.searched and not rescan then
+        return minimapArrow.frame
+    end
+    minimapArrow.searched = true
+    minimapArrow.frame = nil
+    local map = Client.GetMinimap()
+    if not map or type(map.GetChildren) ~= "function" then
+        return nil
+    end
+    local ok, a, b, c, d, e, f, g, h, i, j, k, l = pcall(map.GetChildren, map)
+    if not ok then
+        return nil
+    end
+    local children = { a, b, c, d, e, f, g, h, i, j, k, l }
+    local index = 1
+    while index <= 12 do
+        local child = children[index]
+        if child and type(child.IsObjectType) == "function"
+            and type(child.GetModel) == "function" then
+            local typeOk, isModel = pcall(child.IsObjectType, child, "Model")
+            local named = nil
+            if typeOk and isModel and type(child.GetName) == "function" then
+                local nameOk, name = pcall(child.GetName, child)
+                if nameOk then named = name end
+            end
+            if typeOk and isModel and not named then
+                local modelOk, model = pcall(child.GetModel, child)
+                if modelOk and type(model) == "string"
+                    and string.find(string.lower(model), "minimaparrow", 1, true) then
+                    minimapArrow.frame = child
+                    return minimapArrow.frame
+                end
+            end
+        end
+        index = index + 1
+    end
+    return nil
+end
+
+-- The level a minimap pin is created at, and the level every existing pin is
+-- moved to when the lever changes.
+function minimapArrow.Level()
+    local map = Client.GetMinimap()
+    local base = nil
+    if map and type(map.GetFrameLevel) == "function" then
+        local ok, level = pcall(map.GetFrameLevel, map)
+        if ok and type(level) == "number" then
+            base = level
+        end
+    end
+    if minimapArrow.below and not minimapArrow.raised then
+        -- Just above the minimap itself, so the terrain cannot swallow the
+        -- pins, and inside the band its own children already draw in.
+        if base then
+            return base + 1
+        end
+        return 2
+    end
+    local level = minimapArrow.PIN_LEVEL
+    if base and base + 20 > level then
+        level = base + 20
+    end
+    return level
+end
+
+-- Applies the current lever to one pin: the base level it was created at is
+-- rewritten, and whatever level boost the caller had asked for is reapplied on
+-- top of the new base rather than lost.
+function minimapArrow.Apply(frame)
+    if not frame or type(frame.SetFrameLevel) ~= "function" then
+        return false
+    end
+    local level = minimapArrow.Level()
+    frame.unrealQuestBaseFrameLevel = level
+    local boost = frame.unrealQuestLevelBoost
+    if type(boost) ~= "number" then
+        boost = 0
+    end
+    return pcall(frame.SetFrameLevel, frame, level + boost) and true or false
+end
+
+-- Chooses the lever and applies it. Called by the minimap layer on every
+-- refresh, so turning the setting off in game restores the measured 120 band
+-- immediately instead of at the next reload; it is a no-op once the state
+-- matches.
+--
+-- Raising the arrow, where an arrow exists, wins over lowering the pins and is
+-- kept even when the setting is turned back off: an arrow above the pins is
+-- the outcome the setting asks for, and it costs the pins nothing.
+function Client.SetMinimapPinsBelowPlayerArrow(enabled)
+    enabled = enabled and true or false
+    if enabled and not minimapArrow.raised then
+        local arrow = Client.FindMinimapPlayerArrow()
+        if arrow and type(arrow.SetFrameLevel) == "function" then
+            if pcall(arrow.SetFrameLevel, arrow, minimapArrow.RAISED_LEVEL) then
+                minimapArrow.raised = true
+            end
+        end
+    end
+    if enabled == minimapArrow.below then
+        return false
+    end
+    minimapArrow.below = enabled
+    local index = 1
+    while index <= minimapArrow.count do
+        minimapArrow.Apply(minimapArrow.pins[index])
+        index = index + 1
+    end
+    return true
+end
+
+-- What /uq minimap prints: which lever carried the arrow, and the level the
+-- pins actually ended up at, so an arrow still buried can be told from a
+-- setting that was never applied.
+function Client.GetMinimapPlayerArrowState()
+    return {
+        below = minimapArrow.below,
+        arrowFound = Client.FindMinimapPlayerArrow() ~= nil,
+        arrowRaised = minimapArrow.raised,
+        pinLevel = minimapArrow.Level(),
+        pooledPins = minimapArrow.count,
+    }
+end
+
 -- Same construction as Client.CreateWorldMapPin, against Minimap instead of
 -- WorldMapButton. The pin starts mouse-disabled; a layer that gives it a
 -- tooltip opts in through SetMinimapPinHandlers. The installed pfQuest uses
@@ -3213,18 +3540,18 @@ function Client.CreateMinimapPin(index, size, red, green, blue)
     if type(frame.SetWidth) == "function" then pcall(frame.SetWidth, frame, size) end
     if type(frame.SetHeight) == "function" then pcall(frame.SetHeight, frame, size) end
     if type(frame.EnableMouse) == "function" then pcall(frame.EnableMouse, frame, false) end
-    if type(map.GetFrameLevel) == "function" and type(frame.SetFrameLevel) == "function" then
-        local levelOk, level = pcall(map.GetFrameLevel, map)
-        local pinLevel = 120
-        if levelOk and type(level) == "number" and level + 20 > pinLevel then
-            pinLevel = level + 20
-        end
-        pcall(frame.SetFrameLevel, frame, pinLevel)
-        -- Recorded for the same reason the world map records it: a pooled pin
-        -- that has to sit under a sibling -- the followed quest's dot and the
-        -- gold rim behind it -- asks for an ABSOLUTE offset from this level
-        -- rather than accumulating relative raises across reuses.
-        frame.unrealQuestBaseFrameLevel = pinLevel
+    if type(frame.SetFrameLevel) == "function" then
+        -- The level is the player-arrow lever's to decide (see
+        -- Client.SetMinimapPinsBelowPlayerArrow): the measured 120 band by
+        -- default, or just above Minimap's own level while the pins are being
+        -- kept under the arrow. It is recorded on the frame for the same
+        -- reason the world map records it -- a pooled pin that has to sit
+        -- under a sibling, the followed quest's dot and the gold rim behind
+        -- it, asks for an ABSOLUTE offset from this level rather than
+        -- accumulating relative raises across reuses.
+        minimapArrow.Apply(frame)
+        minimapArrow.count = minimapArrow.count + 1
+        minimapArrow.pins[minimapArrow.count] = frame
     end
     if type(frame.CreateTexture) == "function" then
         local textureOk, texture = pcall(frame.CreateTexture, frame, nil, "BACKGROUND")
@@ -4534,18 +4861,385 @@ end
 -- one combined tooltip -- its own rows, read back through
 -- Client.GetGameTooltipLines, reprinted above the quest rows -- without any
 -- native line ever being mutated.
-local ENTITY_TOOLTIP_GAP = 2
 local ENTITY_TOOLTIP_COVER_PAD = 4
+-- Mouse-out owns one simple custom delay in both cursor modes. IsShown can turn
+-- false before the native renderer's last fade frame, so it starts this timer
+-- rather than removing the opaque replacement immediately.
+local ENTITY_TOOLTIP_FADE_HOLD = 0.7
 
-function Client.GetEntityTooltipStyle()
+function Client.GetEntityTooltipFadeHold()
     local host = ResolveObject("UnrealUI")
-    if host and type(host.ThemeStyleUsesNativeChrome) == "function" then
-        local ok, nativeChrome = pcall(host.ThemeStyleUsesNativeChrome)
-        if ok and not nativeChrome then
-            return "modern"
+    if host and type(host.ModuleConfig) == "function" then
+        local ok, config = pcall(host.ModuleConfig, "tooltip", {
+            followCursor = false,
+            fadeHold = 0.7,
+        })
+        if ok and type(config) == "table"
+            and type(config.fadeHold) == "number"
+            and config.fadeHold >= 0.25 and config.fadeHold <= 1 then
+            return config.fadeHold
         end
     end
+    return ENTITY_TOOLTIP_FADE_HOLD
+end
+
+-- The slash command and unrealUI's slider share the same host-owned value.
+-- The local copy remains the fallback when unrealUI is absent.
+function Client.SetEntityTooltipFadeHold(seconds)
+    if type(seconds) ~= "number" or seconds < 0.25 or seconds > 1 then
+        return false, Client.GetEntityTooltipFadeHold()
+    end
+    ENTITY_TOOLTIP_FADE_HOLD = seconds
+    local host = ResolveObject("UnrealUI")
+    if host and type(host.ModuleConfig) == "function" then
+        local ok, config = pcall(host.ModuleConfig, "tooltip", {
+            followCursor = false,
+            fadeHold = 0.7,
+        })
+        if ok and type(config) == "table" then
+            config.fadeHold = seconds
+        end
+    end
+    return true, Client.GetEntityTooltipFadeHold()
+end
+
+function Client.GetEntityTooltipStyle()
+    -- The host's world tooltip is flat in BOTH Modern and Classic WoW.
+    -- ThemeStyleUsesNativeChrome describes stock windows, not tooltips; using
+    -- it here selected a beveled replacement around our own quest rows.
+    -- Resolve the host on each refresh so late availability also recovers.
+    if ResolveObject("UnrealUI") then
+        return "modern"
+    end
     return "native"
+end
+
+-- Host integration, not a client API assumption. tooltipdupe v4 used this same
+-- read to classify every rendered sample and measured the unstable world-object
+-- anchor only while cursor-follow was enabled. nil keeps callers conservative
+-- when the host is absent or still initializing.
+function Client.IsWorldTooltipCursorFollowEnabled()
+    local host = ResolveObject("UnrealUI")
+    if not host or type(host.ModuleConfig) ~= "function" then
+        return nil
+    end
+    local ok, config = pcall(host.ModuleConfig, "tooltip", {
+        followCursor = false,
+        fadeHold = 0.7,
+    })
+    if not ok or type(config) ~= "table" then
+        return nil
+    end
+    return config.followCursor and true or false
+end
+
+-- Why the Modern entity tooltip is not a GameTooltipTemplate frame
+-- ----------------------------------------------------------------
+-- The stock tooltip background cannot be verified away on this client, so it
+-- is built away instead.
+--
+-- Probe `tooltipfade` (v1 and v2, 3942 rendered frames over twelve mouse-offs)
+-- established, and then ran out of room:
+--   * The native GameTooltip is NEVER exposed. Zero uncovered frames, before
+--     or after the cover, in any run; its whole 1.0 -> 0 fade happens under
+--     the opaque replacement. So no stock flash can come from that frame.
+--   * GetBackdropBorderColor does NOT exist here, and neither does
+--     GetBackdropColor: backdrop fill and border are write-only state.
+--   * GetBackdrop() reports `WHITE8X8|UI-Tooltip-Border` on every frame of
+--     every run, for GameTooltip and for a template-built replacement alike.
+--     SetBackdrop with a table omitting edgeFile does not remove the stock
+--     edge from the backdrop TABLE either -- the other half of
+--     `rendering.setbackdrop_keeps_native_edge_art` -- so the table cannot
+--     discriminate a suppressed edge from a drawing one.
+-- Nothing readable is left. Whether a GameTooltipTemplate frame is currently
+-- drawing its tan edge is unobservable from Lua on this client.
+--
+-- A plain Frame has no backdrop until this addon gives it one, no
+-- <name>Texture1..3 regions, and none of the template's own handlers, so there
+-- is no stock chrome to suppress, to lose a race with, or to fail to observe.
+-- Its GetBackdrop() reads `WHITE8X8|-`, which IS checkable. The Modern panel
+-- is therefore an owned Frame with owned rows (OwnedTooltip.Render below),
+-- and only the standalone `native` style -- where stock chrome is the
+-- wanted look, matching the rest of an unthemed UI -- still uses the template.
+
+-- Owned Modern tooltip: metrics, row pool and renderer.
+--
+-- All of it hangs off ONE table local. This chunk sits at Lua's hard 200-local
+-- ceiling (knowledge.json / lua.top_level_local_limit_silent_file_failure), and
+-- a handful of extra top-level locals here takes the whole file down without
+-- reporting anything.
+local OwnedTooltip = {
+    -- Close to the native tooltip's own spacing, so the replacement does not
+    -- read as a differently sized window.
+    PADDING = 9,
+    ROW_SPACING = 2,
+    -- Smallest gap between a row's left and right text before the panel widens.
+    COLUMN_GAP = 12,
+    ROW_HEIGHT = 14,
+    -- Space between the host-anchored health bar and the owned box's bottom.
+    -- Only the inset is a constant: the bar's HEIGHT is read live at cover
+    -- time, because 12 is the current host's value and not a client one.
+    STATUS_BAR_INSET = 3,
+    -- Text uses a stock font OBJECT through CreateFontString's inherits
+    -- argument and never SetFont with a path: fonts.setfont_silent_failure
+    -- records SetFont keeping the inherited font without reporting anything.
+    FONT = "GameTooltipText",
+    FONT_FALLBACK = "GameFontNormal",
+}
+
+function OwnedTooltip.CreateLabel(panel)
+    if type(panel.CreateFontString) ~= "function" then
+        return nil
+    end
+    local ok, label = pcall(panel.CreateFontString, panel, nil, "OVERLAY",
+        OwnedTooltip.FONT)
+    if not ok or not label then
+        ok, label = pcall(panel.CreateFontString, panel, nil, "OVERLAY",
+            OwnedTooltip.FONT_FALLBACK)
+    end
+    if not ok or not label then
+        return nil
+    end
+    StripShadow(label)
+    return label
+end
+
+-- The native health bar is parented to GameTooltip, so no timer on an owned
+-- panel can keep it visible after the client hides that parent. Keep a small
+-- owned copy inside the combined tooltip instead. It samples the native bar
+-- while the unit is live, then remains unchanged through mouse-out and leaves
+-- in the same Hide call as the panel.
+function OwnedTooltip.CreateHealthBar(panel, name)
+    local create = Resolve("CreateFrame")
+    if not create then
+        return nil
+    end
+    local ok, health = pcall(create, "Frame", name .. "Health", panel)
+    if not ok or not health or type(health.CreateTexture) ~= "function" then
+        return nil
+    end
+    local backgroundOk, background = pcall(health.CreateTexture, health, nil, "BACKGROUND")
+    local fillOk, fill = pcall(health.CreateTexture, health, nil, "ARTWORK")
+    if not backgroundOk or not background or not fillOk or not fill then
+        Client.HideObject(health)
+        return nil
+    end
+    pcall(background.SetAllPoints, background, health)
+    pcall(background.SetTexture, background, 1, 1, 1, 1)
+    pcall(fill.SetTexture, fill, 1, 1, 1, 1)
+    health.unrealQuestBackground = background
+    health.unrealQuestFill = fill
+    panel.unrealQuestHealthBar = health
+    Client.HideObject(health)
+    return health
+end
+
+function OwnedTooltip.UpdateHealthBar(panel, nativeBar, width, height)
+    local health = panel and panel.unrealQuestHealthBar
+    if not health or not nativeBar or type(width) ~= "number" or width <= 0
+            or type(height) ~= "number" or height <= 0 then
+        Client.HideObject(health)
+        return false
+    end
+
+    pcall(health.SetWidth, health, width)
+    pcall(health.SetHeight, health, height)
+    pcall(health.ClearAllPoints, health)
+    pcall(health.SetPoint, health, "BOTTOMLEFT", panel, "BOTTOMLEFT",
+        ENTITY_TOOLTIP_COVER_PAD, ENTITY_TOOLTIP_COVER_PAD)
+    if type(panel.GetFrameLevel) == "function" and type(health.SetFrameLevel) == "function" then
+        local levelOk, level = pcall(panel.GetFrameLevel, panel)
+        if levelOk and type(level) == "number" then
+            pcall(health.SetFrameLevel, health, level + 2)
+        end
+    end
+
+    local percent = 1
+    if type(nativeBar.GetValue) == "function"
+            and type(nativeBar.GetMinMaxValues) == "function" then
+        local valueOk, value = pcall(nativeBar.GetValue, nativeBar)
+        local rangeOk, minimum, maximum = pcall(nativeBar.GetMinMaxValues, nativeBar)
+        if valueOk and rangeOk and type(value) == "number"
+                and type(minimum) == "number" and type(maximum) == "number"
+                and maximum > minimum then
+            percent = (value - minimum) / (maximum - minimum)
+        end
+    end
+    if percent < 0 then
+        percent = 0
+    elseif percent > 1 then
+        percent = 1
+    end
+
+    Client.SetSolidColor(health.unrealQuestBackground, 0.08, 0.08, 0.08, 1)
+    Client.SetSolidColor(health.unrealQuestFill, 0.18, 0.78, 0.28, 1)
+    pcall(health.unrealQuestFill.ClearAllPoints, health.unrealQuestFill)
+    pcall(health.unrealQuestFill.SetPoint, health.unrealQuestFill,
+        "TOPLEFT", health, "TOPLEFT", 0, 0)
+    pcall(health.unrealQuestFill.SetPoint, health.unrealQuestFill,
+        "BOTTOMLEFT", health, "BOTTOMLEFT", 0, 0)
+    pcall(health.unrealQuestFill.SetWidth, health.unrealQuestFill,
+        math.max(0.1, width * percent))
+    Client.ShowObject(health.unrealQuestFill)
+    Client.ShowObject(health)
+    return true
+end
+
+-- One pooled row. Rows are reused across hovers rather than recreated, the
+-- same pool-and-reuse shape the tracker rows and the flat border already use.
+function OwnedTooltip.GetRow(panel, index)
+    local pool = panel.unrealQuestRows
+    if not pool then
+        pool = {}
+        panel.unrealQuestRows = pool
+    end
+    local row = pool[index]
+    if row then
+        return row
+    end
+    local left = OwnedTooltip.CreateLabel(panel)
+    if not left then
+        return nil
+    end
+    row = { left = left, right = OwnedTooltip.CreateLabel(panel) }
+    pool[index] = row
+    return row
+end
+
+-- Measures the row's text, then puts the real text back.
+--
+-- The measurement runs on the string with its colour escapes stripped. A quest
+-- row carries a lot of them -- the grey dash, the progress colour, and up to
+-- four more around a drop-rate suffix, some forty characters of markup on a
+-- line whose visible part can be shorter than that. Whether this client's
+-- GetStringWidth measures the display string or the raw one is not established
+-- (Client.MeasureTrackerRowTextWidth does not have to care: a tracker title
+-- carries no escapes). Measuring the stripped string is correct either way,
+-- and is what keeps a heavily coloured row from inflating the panel.
+--
+-- Both SetText calls happen inside this one synchronous rebuild, so the
+-- stripped string is never a rendered frame.
+function OwnedTooltip.Measure(label, text)
+    if not label or type(label.GetStringWidth) ~= "function" then
+        return 0
+    end
+    pcall(label.SetText, label, StripColourEscapes(text or ""))
+    local ok, width = pcall(label.GetStringWidth, label)
+    pcall(label.SetText, label, text or "")
+    if ok and type(width) == "number" and width > 0 then
+        return width
+    end
+    return 0
+end
+
+-- Lays the lines out on the owned panel and sizes it to them. Same line shape
+-- RenderTooltipLines consumes, so callers do not care which panel they hold.
+-- Populated before Show, like every other tooltip route here.
+function OwnedTooltip.Render(panel, lines)
+    local total = table.getn(lines or {})
+    if total == 0 then
+        return false
+    end
+
+    local widest = 0
+    local height = OwnedTooltip.PADDING
+    local index = 1
+    while index <= total do
+        local line = lines[index]
+        local row = OwnedTooltip.GetRow(panel, index)
+        if not row then
+            return false
+        end
+        local leftText, rightText = "", nil
+        local r, g, b = 1, 1, 1
+        if line then
+            if line.separator then
+                leftText = " "
+            elseif type(line.left) == "string" then
+                leftText = line.left
+                rightText = line.right
+            elseif type(line.text) == "string" then
+                leftText = line.text
+            end
+            r = line.r or 1
+            g = line.g or 1
+            b = line.b or 1
+        end
+
+        pcall(row.left.SetText, row.left, leftText)
+        pcall(row.left.SetTextColor, row.left, r, g, b)
+        Client.ShowObject(row.left)
+
+        local rowWidth = OwnedTooltip.Measure(row.left, leftText)
+        if row.right then
+            if type(rightText) == "string" and rightText ~= "" then
+                pcall(row.right.SetText, row.right, rightText)
+                pcall(row.right.SetTextColor, row.right,
+                    line.rightR or 1, line.rightG or 1, line.rightB or 1)
+                Client.ShowObject(row.right)
+                rowWidth = rowWidth + OwnedTooltip.COLUMN_GAP
+                    + OwnedTooltip.Measure(row.right, rightText)
+            else
+                pcall(row.right.SetText, row.right, "")
+                Client.HideObject(row.right)
+            end
+        end
+        if rowWidth > widest then
+            widest = rowWidth
+        end
+
+        pcall(row.left.ClearAllPoints, row.left)
+        pcall(row.left.SetPoint, row.left, "TOPLEFT", panel, "TOPLEFT",
+            OwnedTooltip.PADDING, -height)
+        if row.right then
+            pcall(row.right.ClearAllPoints, row.right)
+            pcall(row.right.SetPoint, row.right, "TOPRIGHT", panel, "TOPRIGHT",
+                -OwnedTooltip.PADDING, -height)
+        end
+
+        -- A FIXED pitch, never FontString:GetHeight.
+        --
+        -- Every row here is a single line: native rows arrive already wrapped,
+        -- one row each (Client.GetGameTooltipLines reads them back row by row),
+        -- and the quest rows are short. Nothing needs measuring.
+        --
+        -- Measuring would also be a feedback loop, which is the dangerous part.
+        -- These rows carry no explicit width, and GetHeight on an unsized
+        -- FontString has no record on this client; the one place the addon does
+        -- trust it (Client.MeasureTrackerRowTextHeight) is careful to say it
+        -- reads only AFTER the label has its final width. A single over-large
+        -- read here would be written straight into the panel's own height, and
+        -- the next rebuild would measure rows inside that taller panel -- a
+        -- tooltip that grows without bound rather than one that is wrong once.
+        height = height + OwnedTooltip.ROW_HEIGHT
+        if index < total then
+            height = height + OwnedTooltip.ROW_SPACING
+        end
+        index = index + 1
+    end
+    height = height + OwnedTooltip.PADDING
+
+    -- Rows left over from a taller previous hover would otherwise keep drawing
+    -- outside the resized panel.
+    local pool = panel.unrealQuestRows or {}
+    local extra = total + 1
+    while pool[extra] do
+        Client.HideObject(pool[extra].left)
+        Client.HideObject(pool[extra].right)
+        extra = extra + 1
+    end
+
+    if type(panel.SetWidth) == "function" then
+        pcall(panel.SetWidth, panel, widest + OwnedTooltip.PADDING * 2)
+    end
+    -- The height of the ROWS alone, kept for Client.CoverNativeEntityTooltip:
+    -- it adds the contained health bar's live height on top of this on every
+    -- poll, and it has to add it to a base that does not already include it.
+    panel.unrealQuestContentHeight = height
+    if type(panel.SetHeight) == "function" then
+        pcall(panel.SetHeight, panel, height)
+    end
+    return true
 end
 
 function Client.CreateEntityTooltipPanel(name, style)
@@ -4554,9 +5248,20 @@ function Client.CreateEntityTooltipPanel(name, style)
     if not create or not parent or type(name) ~= "string" then
         return nil
     end
-    -- A fresh GameTooltip-template frame populated before Show is a confirmed
-    -- working tooltip route on this client (map tooltips and the aura scanner).
-    local ok, panel = pcall(create, "GameTooltip", name, parent, "GameTooltipTemplate")
+    local modern = style == "modern"
+    local ok, panel
+    if modern then
+        -- An owned Frame, never GameTooltipTemplate -- see the long note above
+        -- OwnedTooltip.Render. No stock backdrop, no stock texture
+        -- regions, no template handlers, so the native background cannot come
+        -- back on any frame, whether or not this client would let us see it.
+        ok, panel = pcall(create, "Frame", name, parent)
+    else
+        -- Standalone: stock chrome is the WANTED look here, so the template
+        -- stays. A fresh GameTooltip-template frame populated before Show is a
+        -- confirmed working route on this client (map tooltips, aura scanner).
+        ok, panel = pcall(create, "GameTooltip", name, parent, "GameTooltipTemplate")
+    end
     if not ok or not panel then
         return nil
     end
@@ -4564,7 +5269,15 @@ function Client.CreateEntityTooltipPanel(name, style)
         pcall(panel.SetFrameStrata, panel, "TOOLTIP")
     end
     panel.unrealQuestTooltipName = name
-    panel.unrealQuestEntityStyle = style == "modern" and "modern" or "native"
+    panel.unrealQuestEntityStyle = modern and "modern" or "native"
+    panel.unrealQuestOwnedChrome = modern and true or false
+
+    if modern then
+        -- Applied once, at creation. On a frame with no prior backdrop there is
+        -- no stock edge for SetBackdrop to leave behind, so unlike the template
+        -- route this does not have to be redone whenever the panel repopulates.
+        Client.ApplyFlatTooltipStyle(panel, nil)
+    end
 
     -- A fully opaque sibling sits between the native tooltip and the themed
     -- replacement. The client may ignore alpha on native regions, while this
@@ -4581,48 +5294,234 @@ function Client.CreateEntityTooltipPanel(name, style)
             Client.HideObject(cover)
         end
     end
+    OwnedTooltip.CreateHealthBar(panel, name)
     Client.HideObject(panel)
     return panel
 end
 
--- Keep the replacement above and slightly outside the native tooltip's full
--- geometry. Native world-object rebuilds can redraw their regions despite
--- alpha writes on this client; an opaque higher-level replacement covering the
--- entire native bounds prevents any rebuilt chrome from showing through.
-function Client.CoverNativeEntityTooltip(panel)
-    local tooltip = ResolveGameTooltip()
-    if not panel or not tooltip then
+-- The unit health bar under the combined tooltip -----------------------------
+--
+-- GameTooltipStatusBar is a native StatusBar whose width comes entirely from
+-- its two horizontal anchors: the stock client pins TOPLEFT/TOPRIGHT to
+-- GameTooltip's BOTTOMLEFT/BOTTOMRIGHT, and a host that restyles the tooltip
+-- (unrealUI's tooltip module) rewrites those same two points flush at 0,0.
+-- Either way the bar takes the NATIVE tooltip's width, and it hangs BELOW the
+-- native bounds -- which is exactly the strip the opaque replacement above does
+-- not cover, so it keeps drawing while the panel stands in for the body.
+--
+-- Spanning it UNDER the panel is what produced the reported "two boxes". Probe
+-- `tooltipdupe` v2 (1289 rendered frames, three hovers, unrealUI and
+-- unrealQuest both loaded) measured the leftover box exactly: the native
+-- tooltip BODY overhung the replacement by 0px in every frame, while
+-- GameTooltipStatusBar overhung its bottom edge by its own full height in
+-- every one (panel and cover 205x96, bar 205x12, overhang 12). A host that
+-- gives the bar a background and an outline of its own -- unrealUI does --
+-- draws that strip as a second window. Probe v3 then caught the attempted
+-- re-anchor already lost back to the host, plus a different failure: an NPC's
+-- native body was 162px wide while the content-only replacement was 136px.
+-- The stable solution is therefore containment, not another anchor race: the
+-- owned rectangle includes the current native body and host-anchored bar.
+--
+-- The native bar's anchors and draw level are left to the host. An owned copy
+-- inside the replacement supplies the visible bar while the replacement is up.
+
+local function ResolveTooltipStatusBar()
+    local bar = ResolveObject("GameTooltipStatusBar")
+    return bar
+end
+
+local function CaptureStatusBarLevel(bar)
+    if bar.unrealQuestRaisedFor then
+        return
+    end
+    bar.unrealQuestNativeLevel = nil
+    if type(bar.GetFrameLevel) == "function" then
+        local levelOk, level = pcall(bar.GetFrameLevel, bar)
+        if levelOk and type(level) == "number" then
+            bar.unrealQuestNativeLevel = level
+        end
+    end
+end
+
+-- Leaves the bar on the host's own anchors and only lifts its draw level above
+-- the owned box. tooltipdupe v3 measured why moving the anchors is not a stable
+-- contract: unrealQuest still recorded the bar as "inside", but the live first
+-- point was already back on GameTooltip in every worst sample. The host owns
+-- that geometry and may rebuild it at any time. CoverNativeEntityTooltip now
+-- contains the host-anchored rectangle instead, so there is no anchor race.
+function Client.RaiseEntityTooltipStatusBar(panel)
+    local name = panel and panel.unrealQuestTooltipName
+    local bar = ResolveTooltipStatusBar()
+    if not bar or type(name) ~= "string" then
+        return false, false
+    end
+    CaptureStatusBarLevel(bar)
+
+    local raised = false
+    if type(bar.SetFrameLevel) == "function"
+            and type(bar.GetFrameLevel) == "function"
+            and type(panel.GetFrameLevel) == "function" then
+        local panelOk, panelLevel = pcall(panel.GetFrameLevel, panel)
+        if panelOk and type(panelLevel) == "number" then
+            local barOk, barLevel = pcall(bar.GetFrameLevel, bar)
+            if not barOk or type(barLevel) ~= "number" or barLevel <= panelLevel then
+                pcall(bar.SetFrameLevel, bar, panelLevel + 1)
+                barOk, barLevel = pcall(bar.GetFrameLevel, bar)
+            end
+            raised = barOk and type(barLevel) == "number" and barLevel > panelLevel
+        end
+    end
+    bar.unrealQuestRaisedFor = raised and name or nil
+    bar.unrealQuestSpanning = nil
+    bar.unrealQuestInside = nil
+    return true, raised
+end
+
+-- How much taller the owned box has to be to contain the host-anchored bar. The bar's
+-- height is READ, never assumed: 12 is unrealUI's BAR_HEIGHT today and another
+-- skin may set its own. A bar that is not shown -- an object or an item, where
+-- the client leaves it hidden -- reserves nothing.
+function Client.GetEntityTooltipStatusBarReserve()
+    local bar = ResolveTooltipStatusBar()
+    if not bar or not Client.IsObjectShown(bar) then
+        return 0
+    end
+    local height = Client.GetObjectHeight(bar)
+    if type(height) ~= "number" or height <= 0 then
+        return 0
+    end
+    return height + OwnedTooltip.STATUS_BAR_INSET
+end
+
+-- Puts the captured draw level back. A bar this addon never raised is never
+-- written to, and a panel that was not the one using it leaves it alone, so
+-- hiding the unused style's panel cannot disturb the live one.
+function Client.RestoreEntityTooltipStatusBar(panel)
+    local bar = ResolveTooltipStatusBar()
+    if not bar or not bar.unrealQuestRaisedFor then
         return false
     end
+    if panel and panel.unrealQuestTooltipName ~= bar.unrealQuestRaisedFor then
+        return false
+    end
+    if type(bar.unrealQuestNativeLevel) == "number"
+            and type(bar.SetFrameLevel) == "function" then
+        pcall(bar.SetFrameLevel, bar, bar.unrealQuestNativeLevel)
+    end
+    bar.unrealQuestRaisedFor = nil
+    bar.unrealQuestNativeLevel = nil
+    bar.unrealQuestSpanning = nil
+    bar.unrealQuestInside = nil
+    return true
+end
 
+-- Keep the replacement above the native tooltip without inheriting its frame
+-- dimensions. GameTooltip is a reused native frame, and a host can leave its
+-- reported width or height at the size of an earlier item tooltip. Copying
+-- those stale bounds into this panel produced a large empty body even though
+-- OwnedTooltip.Render had already calculated the exact content size.
+--
+-- What the owned rectangle has to contain is the tooltip BODY *and*
+-- GameTooltipStatusBar. The bar is a separate frame that GameTooltip's own
+-- GetHeight does not count, and sizing this from that height alone is what left
+-- a 12px strip of native frame drawing under the replacement -- the second box
+-- probe `tooltipdupe` measured. The bar's height is therefore read live here,
+-- every poll, and reserved inside the panel.
+function Client.CoverNativeEntityTooltip(panel)
+    local tooltip = ResolveGameTooltip()
+    if not panel or not panel.unrealQuestCover or not tooltip then
+        return false
+    end
+    local cover = panel.unrealQuestCover
+
+    -- Reassert the fill at the presentation's current owned opacity. During
+    -- mouse-out Client.SyncEntityTooltipFade deliberately keeps that value at
+    -- 1 until its measured hold expires, so native pixels cannot show through.
+    if panel.unrealQuestEntityStyle == "modern"
+            and type(panel.SetBackdropColor) == "function" then
+        local fill = panel.unrealQuestAlpha
+        if type(fill) ~= "number" then
+            fill = 1
+        end
+        pcall(panel.SetBackdropColor, panel, FLAT_BACKGROUND[1], FLAT_BACKGROUND[2],
+            FLAT_BACKGROUND[3], fill)
+    end
+
+    -- Establish draw order. The host keeps ownership of the native bar; the
+    -- opaque replacement covers it and draws its owned snapshot above itself.
+    if type(panel.SetFrameLevel) == "function" and type(tooltip.GetFrameLevel) == "function" then
+        local levelOk, level = pcall(tooltip.GetFrameLevel, tooltip)
+        if levelOk and type(level) == "number" then
+            if cover and type(cover.SetFrameLevel) == "function" then
+                pcall(cover.SetFrameLevel, cover, level + 5)
+            end
+            pcall(panel.SetFrameLevel, panel, level + 10)
+        end
+    end
+
+    -- Contain BOTH live native rectangles. tooltipdupe v3 measured the fixed
+    -- NPC case at native 162x81 against an owned 136x111 box: 30px of the body
+    -- was visible on the left in every captured replacement frame. Content-only
+    -- sizing can therefore never satisfy the cover contract. The panel grows to
+    -- the larger of its rows and the CURRENT native body, plus the live bar
+    -- height below it; the recorded content height prevents compounding.
     local nativeWidth = Client.GetObjectWidth(tooltip)
     local nativeHeight = Client.GetObjectHeight(tooltip)
     local panelWidth = Client.GetObjectWidth(panel)
-    local panelHeight = Client.GetObjectHeight(panel)
-    if type(panel.SetWidth) == "function" and type(nativeWidth) == "number"
-            and (type(panelWidth) ~= "number"
-                or panelWidth < nativeWidth + 2 * ENTITY_TOOLTIP_COVER_PAD) then
-        pcall(panel.SetWidth, panel, nativeWidth + 2 * ENTITY_TOOLTIP_COVER_PAD)
+    local baseHeight = panel.unrealQuestContentHeight
+    if type(baseHeight) ~= "number" then
+        baseHeight = Client.GetObjectHeight(panel)
+        panel.unrealQuestContentHeight = baseHeight
     end
-    if type(panel.SetHeight) == "function" and type(nativeHeight) == "number"
-            and (type(panelHeight) ~= "number"
-                or panelHeight < nativeHeight + 2 * ENTITY_TOOLTIP_COVER_PAD) then
-        pcall(panel.SetHeight, panel, nativeHeight + 2 * ENTITY_TOOLTIP_COVER_PAD)
+    local reserve = Client.GetEntityTooltipStatusBarReserve()
+    local barHeight = reserve - OwnedTooltip.STATUS_BAR_INSET
+    if barHeight < 0 then
+        barHeight = 0
+    end
+    local finalWidth = panelWidth
+    if type(nativeWidth) == "number" then
+        local neededWidth = nativeWidth + 2 * ENTITY_TOOLTIP_COVER_PAD
+        if type(finalWidth) ~= "number" or finalWidth < neededWidth then
+            finalWidth = neededWidth
+        end
+    end
+    if type(finalWidth) == "number" and type(panel.SetWidth) == "function" then
+        pcall(panel.SetWidth, panel, finalWidth)
+    end
+    local finalHeight
+    if type(baseHeight) == "number" then
+        finalHeight = baseHeight + reserve
+    end
+    if type(nativeHeight) == "number" then
+        local neededHeight = nativeHeight + barHeight + 2 * ENTITY_TOOLTIP_COVER_PAD
+        if type(finalHeight) ~= "number" or finalHeight < neededHeight then
+            finalHeight = neededHeight
+        end
+    end
+    if type(finalHeight) == "number" and type(panel.SetHeight) == "function" then
+        pcall(panel.SetHeight, panel, finalHeight)
     end
 
-    if panel.unrealQuestEntityStyle == "modern"
-            and type(panel.SetBackdropColor) == "function" then
-        pcall(panel.SetBackdropColor, panel, FLAT_BACKGROUND[1], FLAT_BACKGROUND[2],
-            FLAT_BACKGROUND[3], 1)
-    end
+    -- The native bar stays below the opaque replacement. The owned copy is a
+    -- child of the panel, so it cannot fade or disappear on a different tick.
+    Client.RestoreEntityTooltipStatusBar(panel)
+    OwnedTooltip.UpdateHealthBar(panel, ResolveTooltipStatusBar(),
+        (finalWidth or 0) - 2 * ENTITY_TOOLTIP_COVER_PAD, barHeight)
+    panel.unrealQuestStatusBarHeight = barHeight
+    panel.unrealQuestCursorOffsetX = nil
+    panel.unrealQuestCursorOffsetY = nil
+
     if type(panel.ClearAllPoints) == "function" then
         pcall(panel.ClearAllPoints, panel)
     end
     if type(panel.SetPoint) == "function" then
         pcall(panel.SetPoint, panel, "BOTTOMRIGHT", tooltip, "BOTTOMRIGHT",
-            ENTITY_TOOLTIP_COVER_PAD, -ENTITY_TOOLTIP_COVER_PAD)
+            ENTITY_TOOLTIP_COVER_PAD, -(ENTITY_TOOLTIP_COVER_PAD + barHeight))
     end
-    local cover = panel.unrealQuestCover
+
+    -- The cover exactly follows the containing panel. The native health bar is
+    -- still on the host's anchors, but its raised frame level keeps it visible
+    -- over this opaque mask.
     if cover then
         local finalWidth = Client.GetObjectWidth(panel)
         local finalHeight = Client.GetObjectHeight(panel)
@@ -4637,21 +5536,12 @@ function Client.CoverNativeEntityTooltip(panel)
         end
         if type(cover.SetPoint) == "function" then
             pcall(cover.SetPoint, cover, "BOTTOMRIGHT", tooltip, "BOTTOMRIGHT",
-                ENTITY_TOOLTIP_COVER_PAD, -ENTITY_TOOLTIP_COVER_PAD)
+                ENTITY_TOOLTIP_COVER_PAD, -(ENTITY_TOOLTIP_COVER_PAD + barHeight))
         end
         if type(cover.SetFrameStrata) == "function" then
             pcall(cover.SetFrameStrata, cover, "TOOLTIP")
         end
         Client.ShowObject(cover)
-    end
-    if type(panel.SetFrameLevel) == "function" and type(tooltip.GetFrameLevel) == "function" then
-        local levelOk, level = pcall(tooltip.GetFrameLevel, tooltip)
-        if levelOk and type(level) == "number" then
-            if cover and type(cover.SetFrameLevel) == "function" then
-                pcall(cover.SetFrameLevel, cover, level + 5)
-            end
-            pcall(panel.SetFrameLevel, panel, level + 10)
-        end
     end
     return true
 end
@@ -4715,7 +5605,14 @@ function Client.ShowMapPinActionMenu(anchorFrame, entries, onSelect)
     return true
 end
 
-function Client.ShowEntityTooltipPanel(panel, lines, replaceNative)
+-- Shows the combined entity tooltip: the panel is populated, shown, and then
+-- placed over the native tooltip without adopting its possibly stale size.
+-- There is no second mode.
+-- This used to take a replaceNative flag whose false branch anchored the panel
+-- below GameTooltip instead of over it, leaving the player looking at two
+-- tooltip boxes; that branch is deliberately gone rather than merely unused, so
+-- the only thing this function can produce is one box.
+function Client.ShowEntityTooltipPanel(panel, lines)
     local tooltip = ResolveGameTooltip()
     local total = table.getn(lines or {})
     if not panel or not tooltip or total == 0 then
@@ -4732,134 +5629,262 @@ function Client.ShowEntityTooltipPanel(panel, lines, replaceNative)
     Client.HideObject(panel.unrealQuestCover)
     Client.HideObject(panel)
 
-    local nativeStyle = panel.unrealQuestEntityStyle == "native"
-    if not RenderTooltipLines(panel, panel.unrealQuestTooltipName, tooltip, lines,
-            "ANCHOR_NONE", nativeStyle) then
-        Client.HideObject(panel)
+    -- A reused panel comes back from a fade at whatever alpha it stopped at.
+    Client.SetEntityTooltipAlpha(panel, 1)
+    panel.unrealQuestNativeFadeStartedAt = nil
+
+    -- Measured fresh each hover: the health bar's reserve is added to the row
+    -- height of THIS tooltip, never to a previous one that already carried it.
+    panel.unrealQuestContentHeight = nil
+
+    if panel.unrealQuestOwnedChrome then
+        if not OwnedTooltip.Render(panel, lines) then
+            Client.HideObject(panel)
+            return false
+        end
+        Client.ShowObject(panel)
+    else
+        -- Standalone. The template keeps its stock chrome deliberately: that is
+        -- the look an unthemed client is supposed to have.
+        if not RenderTooltipLines(panel, panel.unrealQuestTooltipName, tooltip, lines,
+                "ANCHOR_NONE", true) then
+            Client.HideObject(panel)
+            return false
+        end
+    end
+    panel.unrealQuestReplacing = true
+    if not Client.CoverNativeEntityTooltip(panel) then
+        Client.HideEntityTooltipPanel(panel)
         return false
     end
-    if replaceNative then
-        Client.CoverNativeEntityTooltip(panel)
-    else
-        Client.HideObject(panel.unrealQuestCover)
-        if type(panel.ClearAllPoints) == "function" then
-            pcall(panel.ClearAllPoints, panel)
-        end
-        if type(panel.SetPoint) == "function" then
-            pcall(panel.SetPoint, panel, "TOPRIGHT", tooltip, "BOTTOMRIGHT", 0,
-                -ENTITY_TOOLTIP_GAP)
+    return true
+end
+
+-- Writes one alpha across the whole owned presentation. Parent alpha does not
+-- reliably reach child regions on this client (fonts/regions note in the
+-- widget findings), so every piece is written directly rather than trusting
+-- propagation from the panel: the panel, its own rows, the cover and the
+-- cover's texture. Only addon-owned objects are touched -- GameTooltip and its
+-- regions are never written, which is what keeps this safe beside a host that
+-- is running its own fade on the same frame.
+function Client.SetEntityTooltipAlpha(panel, alpha)
+    if not panel or type(alpha) ~= "number" then
+        return false
+    end
+    if alpha < 0 then
+        alpha = 0
+    elseif alpha > 1 then
+        alpha = 1
+    end
+    if panel.unrealQuestAlpha == alpha then
+        return true
+    end
+    panel.unrealQuestAlpha = alpha
+
+    if type(panel.SetAlpha) == "function" then
+        pcall(panel.SetAlpha, panel, alpha)
+    end
+    SetFlatBorderColor(panel, FLAT_BORDER[1], FLAT_BORDER[2], FLAT_BORDER[3],
+        FLAT_BORDER[4] * alpha)
+    if panel.unrealQuestOwnedChrome and type(panel.SetBackdropColor) == "function" then
+        pcall(panel.SetBackdropColor, panel, FLAT_BACKGROUND[1], FLAT_BACKGROUND[2],
+            FLAT_BACKGROUND[3], alpha)
+    end
+
+    local pool = panel.unrealQuestRows
+    if pool then
+        local index = 1
+        while pool[index] do
+            local row = pool[index]
+            if type(row.left.SetAlpha) == "function" then
+                pcall(row.left.SetAlpha, row.left, alpha)
+            end
+            if row.right and type(row.right.SetAlpha) == "function" then
+                pcall(row.right.SetAlpha, row.right, alpha)
+            end
+            index = index + 1
         end
     end
-    if not replaceNative and type(panel.SetFrameLevel) == "function"
-            and type(tooltip.GetFrameLevel) == "function" then
-        local levelOk, level = pcall(tooltip.GetFrameLevel, tooltip)
-        if levelOk and type(level) == "number" then
-            pcall(panel.SetFrameLevel, panel, level + 1)
+
+    local cover = panel.unrealQuestCover
+    if cover then
+        if type(cover.SetAlpha) == "function" then
+            pcall(cover.SetAlpha, cover, alpha)
         end
+        if cover.unrealQuestTexture then
+            Client.SetSolidColor(cover.unrealQuestTexture, 0.025, 0.025, 0.025, alpha)
+        end
+    end
+    local health = panel.unrealQuestHealthBar
+    if health and type(health.SetAlpha) == "function" then
+        pcall(health.SetAlpha, health, alpha)
     end
     return true
+end
+
+-- Once the native cursor tooltip begins fading, unrealUI eventually stops
+-- moving both GameTooltip and its cursor guide. Preserve the last exact panel
+-- offset from the real cursor, then move the owned presentation directly for
+-- the rest of its hold. This produces no jump on the first held frame.
+function Client.ContinueEntityTooltipCursorFollow(panel)
+    if not panel or Client.IsWorldTooltipCursorFollowEnabled() ~= true then
+        return false
+    end
+    local getCursor = Resolve("GetCursorPosition")
+    local parent = ResolveObject("UIParent")
+    if not getCursor or not parent or type(parent.GetEffectiveScale) ~= "function"
+            or type(parent.GetLeft) ~= "function" or type(parent.GetBottom) ~= "function"
+            or type(panel.GetLeft) ~= "function" or type(panel.GetBottom) ~= "function" then
+        return false
+    end
+    local ok, cursorX, cursorY, scale, parentLeft, parentBottom, panelLeft, panelBottom =
+        pcall(function()
+            local x, y = getCursor()
+            return x, y, parent:GetEffectiveScale(), parent:GetLeft(), parent:GetBottom(),
+                panel:GetLeft(), panel:GetBottom()
+        end)
+    if not ok or type(cursorX) ~= "number" or type(cursorY) ~= "number"
+            or type(scale) ~= "number" or scale <= 0 or type(parentLeft) ~= "number"
+            or type(parentBottom) ~= "number" or type(panelLeft) ~= "number"
+            or type(panelBottom) ~= "number" then
+        return false
+    end
+    cursorX = cursorX / scale - parentLeft
+    cursorY = cursorY / scale - parentBottom
+    if type(panel.unrealQuestCursorOffsetX) ~= "number" then
+        panel.unrealQuestCursorOffsetX = panelLeft - cursorX
+        panel.unrealQuestCursorOffsetY = panelBottom - cursorY
+    end
+    pcall(panel.ClearAllPoints, panel)
+    pcall(panel.SetPoint, panel, "BOTTOMLEFT", parent, "BOTTOMLEFT",
+        cursorX + panel.unrealQuestCursorOffsetX,
+        cursorY + panel.unrealQuestCursorOffsetY)
+    local cover = panel.unrealQuestCover
+    if cover then
+        pcall(cover.ClearAllPoints, cover)
+        pcall(cover.SetPoint, cover, "BOTTOMLEFT", panel, "BOTTOMLEFT", 0, 0)
+    end
+    return true
+end
+
+-- Keeps the replacement fully opaque for the configured runtime delay after
+-- native mouse-out, then hides it and its owned health bar in the same tick.
+--
+-- tooltipdupe v4 measured opacity overlap when the owned cover mirrored the
+-- native alpha: the translucent cover exposed the native body fading behind
+-- it. The one-box contract therefore follows native VISIBILITY, not native
+-- alpha. While the custom timer is running, the panel and cover
+-- stay fully opaque. IsShown is not used as the finish line: live confirmation
+-- found that it turns false before the final native pixels leave the renderer.
+--
+-- Cursor-follow world objects that churn between two anchors are declined by
+-- EntityTooltip before a replacement is shown. Native position and alpha are
+-- never written here, and the native frame is never hidden here.
+local function ReleaseEntityTooltipFade(panel)
+    local bar = ResolveTooltipStatusBar()
+    local barShown = bar and Client.IsObjectShown(bar)
+    Client.HideEntityTooltipPanel(panel)
+    -- GameTooltipStatusBar is a separate native frame and has been observed
+    -- outliving tooltip geometry. Hide it only at the owned fade release; the
+    -- client/host shows it normally again on the next unit tooltip.
+    if barShown then
+        Client.HideObject(bar)
+    end
+end
+
+function Client.SyncEntityTooltipFade(panel)
+    if not panel or not panel.unrealQuestReplacing then
+        return false
+    end
+    if type(panel.IsShown) == "function" then
+        local shownOk, shown = pcall(panel.IsShown, panel)
+        if not shownOk or not shown then
+            return false
+        end
+    end
+    local tooltip = ResolveGameTooltip()
+    if not tooltip then
+        return false
+    end
+    local shownOk, shown = pcall(tooltip.IsShown, tooltip)
+    local alpha = nil
+    if type(tooltip.GetAlpha) == "function" then
+        local alphaOk, value = pcall(tooltip.GetAlpha, tooltip)
+        if alphaOk and type(value) == "number" then
+            alpha = value
+        end
+    end
+
+    local fading = not shownOk or not shown
+        or (type(alpha) == "number" and alpha < 0.999)
+    if not fading then
+        panel.unrealQuestNativeFadeStartedAt = nil
+        return Client.SetEntityTooltipAlpha(panel, 1), false
+    end
+
+    Client.ContinueEntityTooltipCursorFollow(panel)
+
+    local now = Client.Now()
+    if type(now) ~= "number" then
+        -- GetTime is a verified capability, but do not leave a permanent box if
+        -- it ever becomes unavailable during teardown.
+        if shownOk and shown then
+            return Client.SetEntityTooltipAlpha(panel, 1), false
+        end
+        ReleaseEntityTooltipFade(panel)
+        return true, true
+    end
+    if type(panel.unrealQuestNativeFadeStartedAt) ~= "number" then
+        panel.unrealQuestNativeFadeStartedAt = now
+    end
+    if now - panel.unrealQuestNativeFadeStartedAt >= Client.GetEntityTooltipFadeHold() then
+        ReleaseEntityTooltipFade(panel)
+        return true, true
+    end
+    return Client.SetEntityTooltipAlpha(panel, 1), false
+end
+
+-- Refresh runs every 0.1s and can observe the native frame as hidden before the
+-- per-frame fade hold has expired. Keep that poll from tearing down the owned
+-- presentation; SyncEntityTooltipFade remains the sole owner of fade release.
+function Client.IsEntityTooltipFadeHolding(panel)
+    return panel and panel.unrealQuestReplacing
+        and type(panel.unrealQuestNativeFadeStartedAt) == "number"
+end
+
+-- A replacement released for a native fade may be shown again for the
+-- same subject only after the native frame has returned to full opacity. Kept
+-- here, at the client boundary, so the tooltip module never reads GameTooltip
+-- directly.
+function Client.IsNativeEntityTooltipFullyOpaque()
+    local tooltip = ResolveGameTooltip()
+    if not tooltip or type(tooltip.IsShown) ~= "function"
+            or type(tooltip.GetAlpha) ~= "function" then
+        return nil
+    end
+    local shownOk, shown = pcall(tooltip.IsShown, tooltip)
+    if not shownOk or not shown then
+        return false
+    end
+    local alphaOk, alpha = pcall(tooltip.GetAlpha, tooltip)
+    if not alphaOk or type(alpha) ~= "number" then
+        return nil
+    end
+    return alpha >= 0.999
 end
 
 function Client.HideEntityTooltipPanel(panel)
     if panel then
         Client.HideObject(panel.unrealQuestCover)
+        Client.HideObject(panel.unrealQuestHealthBar)
+        Client.RestoreEntityTooltipStatusBar(panel)
+        panel.unrealQuestReplacing = false
+        panel.unrealQuestNativeFadeStartedAt = nil
+        panel.unrealQuestCursorOffsetX = nil
+        panel.unrealQuestCursorOffsetY = nil
+        panel.unrealQuestStatusBarHeight = nil
     end
     return Client.HideObject(panel)
-end
-
-local nativeEntityTooltipAlpha = nil
-local nativeEntityTooltipRegionAlpha = {}
-
-local function RestoreNativeEntityTooltipRegions()
-    local region, alpha
-    for region, alpha in pairs(nativeEntityTooltipRegionAlpha) do
-        if region and type(region.SetAlpha) == "function" then
-            pcall(region.SetAlpha, region, alpha)
-        end
-    end
-    nativeEntityTooltipRegionAlpha = {}
-end
-
--- Visual suppression keeps the native owner alive and its text readable while
--- the owned combined tooltip replaces it. Hiding GameTooltip would end the
--- visibility path used to identify the world object and invite the native owner
--- to show it again. This client does not reliably propagate parent alpha to
--- child regions, so every region is suppressed explicitly and restored later.
--- GetRegions is runtime-verified to return the real varargs even though
--- GetNumRegions always says zero here.
-function Client.SetNativeEntityTooltipSuppressed(suppressed)
-    local tooltip = ResolveGameTooltip()
-    if not tooltip or type(tooltip.SetAlpha) ~= "function" then
-        return false
-    end
-    if suppressed then
-        if nativeEntityTooltipAlpha == nil then
-            nativeEntityTooltipAlpha = 1
-            if type(tooltip.GetAlpha) == "function" then
-                local alphaOk, alpha = pcall(tooltip.GetAlpha, tooltip)
-                if alphaOk and type(alpha) == "number" then
-                    nativeEntityTooltipAlpha = alpha
-                end
-            end
-        end
-        local ok = pcall(tooltip.SetAlpha, tooltip, 0)
-        if not ok then
-            return false
-        end
-        local alphaConfirmed = true
-        if type(tooltip.GetAlpha) == "function" then
-            local alphaOk, alpha = pcall(tooltip.GetAlpha, tooltip)
-            alphaConfirmed = alphaOk and alpha == 0
-        end
-
-        local regions = Client.GetRegionList(tooltip)
-        local total = table.getn(regions or {})
-        if total == 0 then
-            RestoreNativeEntityTooltipRegions()
-            return false
-        end
-        local regionConfirmed = true
-        local suppressedRegions = 0
-        local index = 1
-        while index <= total do
-            local region = regions[index]
-            if region and type(region.SetAlpha) == "function" then
-                suppressedRegions = suppressedRegions + 1
-                if nativeEntityTooltipRegionAlpha[region] == nil then
-                    local original = 1
-                    if type(region.GetAlpha) == "function" then
-                        local originalOk, originalAlpha = pcall(region.GetAlpha, region)
-                        if originalOk and type(originalAlpha) == "number" then
-                            original = originalAlpha
-                        end
-                    end
-                    nativeEntityTooltipRegionAlpha[region] = original
-                end
-                if not pcall(region.SetAlpha, region, 0) then
-                    regionConfirmed = false
-                elseif type(region.GetAlpha) == "function" then
-                    local regionOk, regionAlpha = pcall(region.GetAlpha, region)
-                    if not regionOk or regionAlpha ~= 0 then
-                        regionConfirmed = false
-                    end
-                end
-            end
-            index = index + 1
-        end
-        if not alphaConfirmed or not regionConfirmed or suppressedRegions == 0 then
-            RestoreNativeEntityTooltipRegions()
-            return false
-        end
-        return true
-    end
-
-    RestoreNativeEntityTooltipRegions()
-    if nativeEntityTooltipAlpha == nil then
-        return true
-    end
-    local restore = nativeEntityTooltipAlpha
-    nativeEntityTooltipAlpha = nil
-    return pcall(tooltip.SetAlpha, tooltip, restore) and true or false
 end
 
 function Client.SetSolidColor(texture, red, green, blue, alpha)
@@ -5663,6 +6688,392 @@ function Client.RefreshExtendedClassicQuestLogRewards()
     return true
 end
 
+-- Quest log reward summary ---------------------------------------------------
+--
+-- Draws UnrealQuest's own reward rows (experience, reputation) at the tail of
+-- the native Quest Log detail pane. The client has no API for either value --
+-- its Quest surface reports the item and money rewards only -- so the text
+-- comes from the bundled world data and this layer owns nothing but placement.
+--
+-- Placement, and why it is the tail rather than woven into the reward list:
+-- the stock reward block is laid out by FrameXML in a fixed order that ends
+-- QuestLogRewardTitleText -> QuestLogItemReceiveText -> QuestLogItem<N> ->
+-- QuestLogMoneyFrame -> QuestLogSpacerFrame, and every one of those anchors is
+-- rewritten on each selection. Inserting a row between two of them would be
+-- undone by the next native refresh (and would fight the money/spacer anchors
+-- Quest/ExtendedQuestLog.lua re-asserts on its own poll). Anchoring below the
+-- last SHOWN member of that chain instead survives the refresh, because the
+-- rows are re-placed from the same chain on every poll.
+--
+-- QuestLogSpacerFrame is deliberately not treated as an obstacle: it carries
+-- no texture and exists only to give the scroll child its extent, so these
+-- rows may overlap it. UpdateScrollChildRect is called afterwards so they are
+-- inside the scrollable area rather than clipped past its bottom.
+-- One local, not six: this file's main chunk is close to Lua's 200-local
+-- ceiling, and going over it is a load-time failure for the whole addon rather
+-- than a warning. The constants and helpers live as fields on this table.
+local QuestLogRewardRows = {
+    rowHeight = 14,
+    maxRows = 6,
+    -- Two across, filled left to right, so a quest with an experience reward
+    -- and one reputation costs a single line rather than two. The column width
+    -- is the detail pane's own 300px split in half less a small gutter; the
+    -- second column starts where the reward item grid's right button does.
+    columnWidth = 145,
+    columns = 2,
+    -- Clearance above the first row and below the last. The item buttons carry
+    -- their icon right to their own bottom edge, so a 4px gap read as touching
+    -- them; 10 clears them without opening a hole in the pane.
+    topMargin = 10,
+    bottomMargin = 10,
+}
+
+-- The same rows on all three places a quest states its rewards: the Quest Log,
+-- the quest-giver's offer ("Accept"), and its completion window ("Complete
+-- Quest"). One layout, three sets of widget names.
+--
+-- The giver panels do NOT reuse the generic quest globals. Knowledge record
+-- quest_dialog.detail_reward_text_globals (USER_CONFIRMED_INGAME,
+-- BEHAVIOR_VERIFIED, 2026-08-20) established on this exact client that the
+-- visible strings are the Detail- and Reward-prefixed names below, and that
+-- QuestItemReceiveText and friends never reach them. The item-button and money
+-- names are NOT covered by that record: every one is resolved by name and
+-- simply falls through when absent, so a name this client does not carry costs
+-- the rows their ideal anchor rather than misplacing them.
+QuestLogRewardRows.surfaces = {
+    log = {
+        dock = "QuestLogDetailScrollChildFrame",
+        scroll = "QuestLogDetailScrollFrame",
+        money = "QuestLogMoneyFrame",
+        item = "QuestLogItem",
+        counts = "log",
+        prefix = "UnrealQuestLogReward",
+        -- Only reached by a quest that hands over no items at all.
+        headings = {
+            "QuestLogItemReceiveText",
+            "QuestLogItemChooseText",
+            "QuestLogRewardTitleText",
+        },
+    },
+    detail = {
+        dock = "QuestDetailScrollChildFrame",
+        scroll = "QuestDetailScrollFrame",
+        money = "QuestDetailMoneyFrame",
+        item = "QuestDetailItem",
+        counts = "giver",
+        prefix = "UnrealQuestDetailReward",
+        headings = {
+            "QuestDetailItemReceiveText",
+            "QuestDetailItemChooseText",
+            "QuestDetailRewardTitleText",
+        },
+    },
+    complete = {
+        dock = "QuestRewardScrollChildFrame",
+        scroll = "QuestRewardScrollFrame",
+        money = "QuestRewardMoneyFrame",
+        item = "QuestRewardItem",
+        counts = "giver",
+        prefix = "UnrealQuestCompleteReward",
+        headings = {
+            "QuestRewardItemReceiveText",
+            "QuestRewardItemChooseText",
+            "QuestRewardRewardTitleText",
+        },
+    },
+}
+
+-- The item buttons are laid out two to a row, so the block's bottom edge is
+-- the LEFT button of the final row -- index minus one when the count is even.
+-- This is the same arithmetic ResolveExtendedQuestLogMoneyAnchor above uses to
+-- put the coin row under the items, for the same reason.
+function QuestLogRewardRows.FinalRowItem(count, offset)
+    if count <= 0 then
+        return nil
+    end
+    local index = count
+    if math.floor(index / 2) * 2 == index then
+        index = index - 1
+    end
+    return index + offset
+end
+
+-- The bottom of the reward block, not its heading.
+--
+-- Anchoring to QuestLogItemReceiveText is what a first version did, and it is
+-- wrong whenever the quest hands over an item: that FontString is the "You
+-- will receive:" LABEL, which sits ABOVE the item buttons, so the rows landed
+-- on top of the item icon (user confirmed in game 2026-09-09). The money frame
+-- is already placed under the items by FrameXML, so it is preferred when it is
+-- up; with no money the last item button is used directly, and only a quest
+-- with no items at all falls back to one of the headings.
+function QuestLogRewardRows.Anchor(surface)
+    local money = ResolveObject(surface.money)
+    if money and Client.IsObjectShown(money) then
+        return money
+    end
+
+    local choices, rewards
+    if surface.counts == "giver" then
+        choices, rewards = Client.GetQuestGiverRewardCounts()
+    else
+        choices, rewards = Client.GetQuestLogRewardCounts()
+    end
+    -- Guaranteed rewards start their own row block after the choice buttons,
+    -- so their final row is measured within the reward count and then shifted
+    -- past the choices; with no guaranteed reward the choice grid is the last
+    -- thing on screen and is measured on its own.
+    local itemIndex = QuestLogRewardRows.FinalRowItem(rewards, choices)
+        or QuestLogRewardRows.FinalRowItem(choices, 0)
+    if itemIndex then
+        local item = ResolveObject(surface.item .. tostring(itemIndex))
+        if item and Client.IsObjectShown(item) then
+            return item
+        end
+    end
+
+    local index = 1
+    while index <= table.getn(surface.headings) do
+        local object = ResolveObject(surface.headings[index])
+        if object and Client.IsObjectShown(object) then
+            return object
+        end
+        index = index + 1
+    end
+    return nil
+end
+
+function QuestLogRewardRows.Ensure(surface, dock, index)
+    local rows = dock.unrealQuestRewardRows
+    if not rows then
+        rows = {}
+        dock.unrealQuestRewardRows = rows
+    end
+    if rows[index] then
+        return rows[index]
+    end
+    if type(dock.CreateFontString) ~= "function" then
+        return nil
+    end
+    -- A stock font OBJECT through CreateFontString's inherits argument; this
+    -- addon never sets a font by path.
+    local ok, created = pcall(dock.CreateFontString, dock,
+        surface.prefix .. tostring(index), "OVERLAY", "GameFontNormalSmall")
+    if not ok or not created then
+        return nil
+    end
+    StripShadow(created)
+    if type(created.SetJustifyH) == "function" then
+        pcall(created.SetJustifyH, created, "LEFT")
+    end
+    rows[index] = created
+    return created
+end
+
+-- The X the reward block's own TEXT starts at.
+--
+-- Not the scroll child's left edge: FrameXML indents "You will receive:" (and
+-- "Rewards" above it) from the pane by a few pixels, so squaring the rows with
+-- the pane instead of with that label left them a visible step to its left
+-- (user confirmed in game 2026-09-09). The headings are tried in the same
+-- order the anchor chain falls back through, so the rows line up with the
+-- nearest label actually on screen.
+--
+-- Reading GetLeft off a FontString is sound here: this client documents it on
+-- Region (OFFICIAL_CLIENT_DOCUMENTATION) and a FontString is a LayeredRegion.
+-- It is DOCUMENTED, not probed, hence the nil-tolerant fallbacks. The widgets
+-- compared are always siblings inside the same scroll child, which also
+-- sidesteps the mixed coordinate spaces a scaled frame reports (knowledge
+-- record frames.scaled_frame_edge_coordinates_mixed_space).
+function QuestLogRewardRows.TextLeft(surface, dock)
+    local index = 1
+    while index <= table.getn(surface.headings) do
+        local object = ResolveObject(surface.headings[index])
+        if object and Client.IsObjectShown(object) then
+            local left = ReadObjectMethod(object, "GetLeft")
+            if type(left) == "number" then
+                return left
+            end
+        end
+        index = index + 1
+    end
+    return ReadObjectMethod(dock, "GetLeft")
+end
+
+-- How far LEFT of the anchor that text column starts.
+--
+-- The anchor is whatever ends the reward block, and that widget is usually
+-- INDENTED further still: QuestLogMoneyFrame begins at the coin, and an item
+-- button at its icon, both well right of the label. Anchoring straight to its
+-- BOTTOMLEFT started the rows under the coin and pushed the second column off
+-- the pane.
+--
+-- Only the Y comes from the anchor; the X is corrected back to the label.
+-- GetLeft is the same live-geometry reader the tracker's resize grip is
+-- measured with (chat.chatframe1_resize.v1), so it is used here rather than
+-- assumed offsets -- and when it cannot answer for either widget the
+-- correction is simply zero, which leaves the rows on the anchor rather than
+-- somewhere invented.
+function QuestLogRewardRows.LeftCorrection(surface, dock, anchor)
+    local textLeft = QuestLogRewardRows.TextLeft(surface, dock)
+    local anchorLeft = ReadObjectMethod(anchor, "GetLeft")
+    if type(textLeft) ~= "number" or type(anchorLeft) ~= "number" then
+        return 0
+    end
+    return textLeft - anchorLeft
+end
+
+-- The bottom margin has to be a real widget, not just an offset: the rows are
+-- the last thing in the detail pane, and a FontString's own extent is where
+-- the scroll child stops. An empty frame of the margin's height below the last
+-- row is what puts that gap inside UpdateScrollChildRect's measurement, so the
+-- final line is not flush against the bottom of the scrollable area.
+function QuestLogRewardRows.Spacer(surface, dock, lastRow)
+    local spacer = dock.unrealQuestRewardSpacer
+    if not spacer then
+        local createFrame = Resolve("CreateFrame")
+        if not createFrame then
+            return nil
+        end
+        local ok, created = pcall(createFrame, "Frame",
+            surface.prefix .. "Spacer", dock)
+        if not ok or not created then
+            return nil
+        end
+        spacer = created
+        dock.unrealQuestRewardSpacer = created
+    end
+    Client.SetObjectSize(spacer, 1, QuestLogRewardRows.bottomMargin)
+    if type(spacer.SetPoint) == "function" then
+        pcall(spacer.ClearAllPoints, spacer)
+        pcall(spacer.SetPoint, spacer, "TOPLEFT", lastRow, "BOTTOMLEFT", 0, 0)
+    end
+    return spacer
+end
+
+-- Choice and guaranteed reward counts for the OPEN QUEST-GIVER window. Both
+-- calls are in this client's own API reference (category Quest,
+-- DOCUMENTED_NOT_RUNTIME_VERIFIED) and are documented to read the complete
+-- window when it is showing and the detail window otherwise -- which is
+-- exactly the two surfaces the reward rows are drawn on, so no separate
+-- "which window" question has to be asked.
+function Client.GetQuestGiverRewardCounts()
+    local choices = 0
+    local rewards = 0
+    local ok, value = Call0("GetNumQuestChoices")
+    if ok and type(value) == "number" and value > 0 then
+        choices = value
+    end
+    ok, value = Call0("GetNumQuestRewards")
+    if ok and type(value) == "number" and value > 0 then
+        rewards = value
+    end
+    return choices, rewards
+end
+
+-- The title of the quest the giver window is currently showing.
+--
+-- GetTitleText() is in the client API reference (category Quest,
+-- DOCUMENTED_NOT_RUNTIME_VERIFIED) as "title last received from a quest-giver
+-- packet (detail, progress, or complete)". It is the ONLY join available on
+-- these two panels: an offered quest is not in the quest log yet, so there is
+-- no log index to read and, as everywhere else here, no quest ID API at all.
+function Client.GetQuestGiverTitle()
+    local ok, value = Call0("GetTitleText")
+    if not ok or type(value) ~= "string" or value == "" then
+        return nil
+    end
+    return value
+end
+
+-- The quest log surface. Kept as its own entry point because it is what the
+-- log module and its tests already call.
+function Client.SetQuestLogRewardSummary(lines)
+    return Client.SetQuestRewardSummary("log", lines)
+end
+
+function Client.SetQuestRewardSummary(surfaceName, lines)
+    local surface = QuestLogRewardRows.surfaces[surfaceName]
+    if not surface then
+        return false
+    end
+    local dock = ResolveObject(surface.dock)
+    if not dock then
+        return false
+    end
+    -- A panel that is not on screen gets its rows cleared rather than laid
+    -- out: the giver's offer and completion windows share one frame and swap,
+    -- so the hidden one must not keep a stale line.
+    if not Client.IsObjectShown(dock) then
+        lines = nil
+    end
+    local count = 0
+    if type(lines) == "table" then
+        count = table.getn(lines)
+    end
+    if count > QuestLogRewardRows.maxRows then
+        count = QuestLogRewardRows.maxRows
+    end
+
+    local anchor = count > 0 and QuestLogRewardRows.Anchor(surface) or nil
+    local leftCorrection = anchor
+        and QuestLogRewardRows.LeftCorrection(surface, dock, anchor) or 0
+    local lastRow = nil
+    local index = 1
+    while index <= QuestLogRewardRows.maxRows do
+        local row = dock.unrealQuestRewardRows and dock.unrealQuestRewardRows[index]
+        if index <= count and anchor then
+            row = QuestLogRewardRows.Ensure(surface, dock, index)
+        end
+        if row then
+            if index <= count and anchor then
+                local line = lines[index]
+                local text = nil
+                if type(line) == "table" and type(line.text) == "string" then
+                    text = line.text
+                end
+                pcall(row.SetText, row, text or "")
+                if text and line.r then
+                    pcall(row.SetTextColor, row, line.r, line.g, line.b)
+                end
+                if type(row.SetPoint) == "function" then
+                    -- Grid position, not line position: column 0 or 1 across,
+                    -- and only every second entry starts a new line. Derived
+                    -- from floor rather than a modulo, because neither spelling
+                    -- of it is portable here -- Vanilla's Lua has math.mod and
+                    -- no % operator, later ones have the operator and no
+                    -- math.mod.
+                    local gridLine = math.floor((index - 1) / QuestLogRewardRows.columns)
+                    local column = (index - 1) - gridLine * QuestLogRewardRows.columns
+                    pcall(row.ClearAllPoints, row)
+                    pcall(row.SetPoint, row, "TOPLEFT", anchor, "BOTTOMLEFT",
+                        leftCorrection + column * QuestLogRewardRows.columnWidth,
+                        -QuestLogRewardRows.topMargin
+                            - gridLine * QuestLogRewardRows.rowHeight)
+                end
+                Client.ShowObject(row)
+                lastRow = row
+            else
+                Client.HideObject(row)
+            end
+        end
+        index = index + 1
+    end
+
+    if count > 0 and anchor and lastRow then
+        local spacer = QuestLogRewardRows.Spacer(surface, dock, lastRow)
+        if spacer then
+            Client.ShowObject(spacer)
+        end
+        Client.UpdateScrollChildRect(ResolveObject(surface.scroll))
+        return true
+    end
+    if dock.unrealQuestRewardSpacer then
+        Client.HideObject(dock.unrealQuestRewardSpacer)
+    end
+    return false
+end
+
 function Client.IsExtendedClassicQuestLogShown()
     local frame = ResolveObject("QuestLogFrame")
     return frame and frame.unrealQuestExtendedClassic == true
@@ -6132,6 +7543,51 @@ function Client.PlaceModernQuestLogAction(button, anchor, offsetX, width, height
     end
     Client.SetObjectSize(button, width, height)
     return Client.PlaceInsideObject(button, anchor, offsetX, -7)
+end
+
+-- The detail pane's own top-right corner, where the per-quest language flag
+-- goes (Quest/QuestLogButtons.lua).
+--
+-- The anchor is the detail VIEWPORT, QuestLogDetailScrollFrame
+-- (BEHAVIOR_VERIFIED: /urp interface QuestLogFrame, capturedAt 2026-08-23),
+-- on both surfaces -- the native log and unrealUI's modern one, which reuses
+-- the same native frames. uUI's own UnrealUIQuestLogDetailPanel was the
+-- obvious candidate for "the right-hand pane" and is deliberately NOT used:
+-- it is deliberately grown 26 pixels past the viewport to contain the native
+-- scroll bar, so its top-right corner is the scroll UP ARROW's, and a flag
+-- anchored there would sit on a button the player needs.
+function Client.GetQuestLogDetailAnchor()
+    return ResolveObject("QuestLogDetailScrollFrame")
+end
+
+-- Anchored to that viewport but PARENTED TO QuestLogFrame, and the split
+-- matters both ways. Not the scroll child, which is what the scroll frame
+-- moves: a flag in there would slide away with the description text the first
+-- time the player scrolled. Not the scroll frame either, whose children this
+-- client may clip to the visible rect. QuestLogFrame is the one frame both
+-- surfaces show and neither clips.
+function Client.PlaceQuestLogFlag(button, anchor, offsetX, offsetY)
+    local parent = ResolveObject("QuestLogFrame")
+    if not button or not anchor or not parent then
+        return false
+    end
+    if button.unrealQuestFlagParent ~= parent then
+        if type(button.SetParent) ~= "function"
+            or not pcall(button.SetParent, button, parent) then
+            return false
+        end
+        button.unrealQuestFlagParent = parent
+    end
+    -- Re-applied every time rather than only on a parent change: SetParent is
+    -- not the only thing that can move a frame level here, and a host theme
+    -- owns the panels drawn over this frame.
+    if type(parent.GetFrameLevel) == "function" and type(button.SetFrameLevel) == "function" then
+        local ok, level = pcall(parent.GetFrameLevel, parent)
+        if ok and type(level) == "number" then
+            pcall(button.SetFrameLevel, button, level + 20)
+        end
+    end
+    return Client.AnchorObject(button, "TOPRIGHT", anchor, "TOPRIGHT", offsetX, offsetY)
 end
 
 function Client.SetModernQuestLogActionRule(parent, anchor, shown)
@@ -7457,9 +8913,10 @@ function Client.SetSettingsTitle(frame, text)
     return ok and true or false
 end
 
--- One flag in the settings header's language row (Core/Settings.lua), drawn
--- only in this addon's own window -- with unrealUI installed the language is
--- set there and this row is not built at all.
+-- One language flag button. Two surfaces use it: the settings header's own
+-- language row (Core/Settings.lua), drawn only when unrealUI is not the one
+-- deciding the language, and the quest log detail pane's per-quest translation
+-- toggle (Quest/QuestLogButtons.lua).
 --
 -- No background, no border and no hover art: the flag texture owns the whole
 -- face and selection is communicated by opacity alone, which is the treatment
@@ -7470,7 +8927,7 @@ end
 -- Opacity goes through SetVertexColor, never Texture:SetAlpha: every other
 -- surface in this file already composites that way, and the shading here has
 -- to be exact for "which one is selected" to be readable at 18x14.
-function Client.CreateSettingsFlag(parent, name, texturePath, fallbackLabel,
+function Client.CreateFlagButton(parent, name, texturePath, fallbackLabel,
     width, height, onClick)
     local create = Resolve("CreateFrame")
     if not create or not parent or type(name) ~= "string" then
@@ -7488,10 +8945,12 @@ function Client.CreateSettingsFlag(parent, name, texturePath, fallbackLabel,
     if type(button.RegisterForClicks) == "function" then
         pcall(button.RegisterForClicks, button, "LeftButtonUp")
     end
-    -- Above the drag handle as well as beside it. The handle is already inset
-    -- to clear this row (Client.CreateSettingsHandle's rightInset), so this is
-    -- redundant by design rather than the mechanism -- geometry decides, and
-    -- this only removes the cost of being one pixel wrong about it.
+    -- Raised well above the parent. In the settings header this is redundant by
+    -- design -- the drag handle is already inset to clear the row
+    -- (Client.CreateSettingsHandle's rightInset), so geometry decides and this
+    -- only removes the cost of being one pixel wrong about it. In the quest log
+    -- detail pane it is the mechanism: the flag sits over a host-owned panel
+    -- that has no such reservation.
     if type(parent.GetFrameLevel) == "function" and type(button.SetFrameLevel) == "function" then
         local levelOk, level = pcall(parent.GetFrameLevel, parent)
         if levelOk and type(level) == "number" then
@@ -7532,10 +8991,33 @@ function Client.CreateSettingsFlag(parent, name, texturePath, fallbackLabel,
     return button
 end
 
+-- The artwork on an existing flag. The language is resolved by a poll that can
+-- still be waiting on unrealUI when a flag is built (Core/Locale.lua), so a
+-- flag created before that poll settled has to be able to change its face
+-- without being rebuilt. Falls through to the ASCII badge when the button was
+-- built without artwork in the first place, so both forms stay current.
+function Client.SetFlagButtonTexture(button, texturePath, fallbackLabel)
+    if not button then
+        return false
+    end
+    local icon = button.unrealQuestIcon
+    if icon and type(icon.SetTexture) == "function" and type(texturePath) == "string" then
+        if pcall(icon.SetTexture, icon, texturePath) then
+            return true
+        end
+    end
+    local label = button.unrealQuestLabel
+    if label and type(label.SetText) == "function" then
+        return pcall(label.SetText, label,
+            type(fallbackLabel) == "string" and fallbackLabel or "?") and true or false
+    end
+    return false
+end
+
 -- Selection and hover for one of those flags. `shade` is the icon's opacity;
 -- the ASCII fallback cannot be shaded the same way and takes the accent or the
 -- dim grey instead, so both forms say the same thing.
-function Client.SetSettingsFlagShade(button, shade, selected)
+function Client.SetFlagButtonShade(button, shade, selected)
     if not button then
         return false
     end
@@ -7697,6 +9179,219 @@ function Client.CreateSettingsRule(parent, offsetX, offsetY, width)
     end
     pcall(rule.SetHeight, rule, 1)
     return rule
+end
+
+-- A tinted, outlined band on the settings page: one fill and four one-pixel
+-- edges, in the caller's colour.
+--
+-- TEXTURES on the page itself, never a child Frame. A frame would draw above
+-- the page's own regions whatever layer it asked for, so the band would cover
+-- the very line it is drawn behind. As plain textures it sits under the
+-- OVERLAY font strings (Client.CreateSettingsBody / Heading) and under the
+-- child-frame controls placed on top of it, which is what a background has to
+-- do. The one-pixel edges are four textures rather than a backdrop edge for
+-- the reason recorded above FLAT_BORDER: a fractional backdrop edgeSize is not
+-- reliably rasterized on this client.
+--
+-- Returned as a `uuiParts` composite, the same shape Client.CreateSettingsEditBox
+-- hands back, so both hosts show and hide the whole band through one entry in
+-- the page's widget list.
+function Client.CreateSettingsPanel(parent, offsetX, offsetY, width, height,
+    red, green, blue, fillAlpha, borderAlpha)
+    local fill = CreateSolid(parent, "BACKGROUND", red, green, blue, fillAlpha)
+    if not fill then
+        return nil
+    end
+    pcall(fill.SetPoint, fill, "TOPLEFT", parent, "TOPLEFT",
+        type(offsetX) == "number" and offsetX or 0,
+        type(offsetY) == "number" and offsetY or 0)
+    if type(width) == "number" and width > 0 then
+        pcall(fill.SetWidth, fill, width)
+    end
+    if type(height) == "number" and height > 0 then
+        pcall(fill.SetHeight, fill, height)
+    end
+
+    local parts = { fill }
+    local index = 1
+    local total = table.getn(FLAT_EDGES)
+    while index <= total do
+        local anchor = FLAT_EDGES[index]
+        local edge = CreateSolid(parent, "BORDER", red, green, blue, borderAlpha)
+        if edge then
+            pcall(edge.SetPoint, edge, anchor[1], fill, anchor[1], 0, 0)
+            pcall(edge.SetPoint, edge, anchor[2], fill, anchor[2], 0, 0)
+            if anchor[3] == "horizontal" then
+                pcall(edge.SetHeight, edge, FLAT_BORDER_THICKNESS)
+            else
+                pcall(edge.SetWidth, edge, FLAT_BORDER_THICKNESS)
+            end
+            table.insert(parts, edge)
+        end
+        index = index + 1
+    end
+
+    return { fill = fill, uuiParts = parts }
+end
+
+-- A top-of-page tab. It is an ordinary addon-owned Button, not a native tab
+-- template; selection only changes this addon's flat border, fill and label.
+function Client.CreateSettingsTab(parent, name, text, offsetX, offsetY, width, height,
+    onClick)
+    local button = Client.CreateStyledTextButton(parent, name, width, height, text)
+    if not button then
+        return nil
+    end
+    pcall(button.SetPoint, button, "TOPLEFT", parent, "TOPLEFT",
+        type(offsetX) == "number" and offsetX or 0,
+        type(offsetY) == "number" and offsetY or 0)
+    if type(onClick) == "function" then
+        Client.SetObjectScript(button, "OnClick", function()
+            onClick()
+        end)
+    end
+    return button
+end
+
+function Client.SetSettingsTabSelected(button, selected)
+    if not button then
+        return false
+    end
+    button.unrealQuestActive = selected and true or false
+    if button.unrealQuestActive then
+        SetFlatBorderColor(button, UQ.colors.accent[1], UQ.colors.accent[2],
+            UQ.colors.accent[3], 1)
+        if type(button.SetBackdropColor) == "function" then
+            pcall(button.SetBackdropColor, button, UQ.colors.accent[1],
+                UQ.colors.accent[2], UQ.colors.accent[3], 0.10)
+        end
+        local label = button.unrealQuestLabel
+        if label and type(label.SetTextColor) == "function" then
+            pcall(label.SetTextColor, label, 0.95, 0.78, 0.12)
+        end
+    else
+        SetFlatBorderColor(button, FLAT_BORDER[1], FLAT_BORDER[2],
+            FLAT_BORDER[3], FLAT_BORDER[4])
+        if type(button.SetBackdropColor) == "function" then
+            pcall(button.SetBackdropColor, button, FLAT_BACKGROUND[1],
+                FLAT_BACKGROUND[2], FLAT_BACKGROUND[3], FLAT_BACKGROUND[4])
+        end
+        local label = button.unrealQuestLabel
+        if label and type(label.SetTextColor) == "function" then
+            pcall(label.SetTextColor, label, 0.90, 0.90, 0.90)
+        end
+    end
+    return true
+end
+
+-- Minimal scriptless native text input, matching focused probe
+-- widgets.editbox_minimal_search.v1 (SUPPORTED / BEHAVIOR_VERIFIED). The
+-- EditBox itself receives no SetScript calls and is never focused
+-- programmatically. Callers submit through a separate Button, then read and
+-- clear focus through the helpers below.
+function Client.CreateSettingsEditBox(parent, name, offsetX, offsetY, width, height)
+    local create = Resolve("CreateFrame")
+    local font = ResolveObject("GameFontHighlightSmall")
+    if not create or not parent or not font or type(name) ~= "string" then
+        return nil
+    end
+    width = type(width) == "number" and width or 280
+    height = type(height) == "number" and height or 25
+
+    local borderOk, border = pcall(create, "Frame", name .. "Border", parent)
+    if not borderOk or not border then
+        return nil
+    end
+    Client.SetObjectSize(border, width, height)
+    pcall(border.SetPoint, border, "TOPLEFT", parent, "TOPLEFT",
+        type(offsetX) == "number" and offsetX or 0,
+        type(offsetY) == "number" and offsetY or 0)
+    local fill = CreateSolid(border, "BACKGROUND", 0.10, 0.10, 0.10, 1)
+    if fill and type(fill.SetAllPoints) == "function" then
+        pcall(fill.SetAllPoints, fill, border)
+    end
+    BuildFlatBorder(border)
+
+    local editOk, editBox = pcall(create, "EditBox", name, border)
+    if not editOk or not editBox then
+        return nil
+    end
+    -- The EditBox draws its text at the TOP of its own height, not centred in
+    -- it, so a box as tall as the border leaves the text riding the top edge.
+    -- Give the EditBox only a single text line of height and centre that line
+    -- inside the border instead.
+    local lineHeight = height - 4
+    if lineHeight > 14 then
+        lineHeight = 14
+    end
+    Client.SetObjectSize(editBox, width - 12, lineHeight)
+    -- The measured glyph baseline sits 3px high of the geometric centre here,
+    -- so the line is nudged down by that much to read as centred.
+    pcall(editBox.SetPoint, editBox, "CENTER", border, "CENTER", 0, -3)
+    pcall(editBox.SetFontObject, editBox, font)
+    pcall(editBox.SetTextColor, editBox, 1, 1, 1)
+    pcall(editBox.SetJustifyH, editBox, "LEFT")
+    pcall(editBox.SetTextInsets, editBox, 3, 3, 0, 0)
+    pcall(editBox.SetAutoFocus, editBox, false)
+    pcall(editBox.SetText, editBox, "")
+
+    return {
+        editBox = editBox,
+        border = border,
+        uuiParts = { border, editBox },
+    }
+end
+
+-- Submitting the search with the Enter key instead of the button.
+--
+-- Deliberately inert. The ONLY measured evidence for an addon-owned EditBox on
+-- this client is widgets.editbox_minimal_search.v1 (SUPPORTED /
+-- BEHAVIOR_VERIFIED), and what it measured is a box carrying NO scripts at
+-- all. The opposite case is measured too: widgets.editbox_focus_crash
+-- (BROKEN / RUNTIME_FAILURE_CONFIRMED / USER_CONFIRMED_INGAME) lists a script
+-- set of exactly OnTextChanged + OnEscapePressed + OnEnterPressed +
+-- OnEditFocusGained/OnEditFocusLost as crashing the client on the first click
+-- into the field -- a native crash, so not pcall-catchable. That set is a
+-- bundle, so OnEnterPressed alone is neither cleared nor convicted by it.
+--
+-- Until a focused probe isolates OnEnterPressed on its own, this returns false
+-- and attaches nothing, so the caller can be wired for the key today and the
+-- capability flipped in one place once the evidence exists.
+function Client.SetSettingsEditSubmitHandler(control, handler)
+    local editBox = control and control.editBox
+    if not editBox or type(handler) ~= "function" then
+        return false
+    end
+    return false
+end
+
+function Client.GetSettingsEditText(control)
+    local editBox = control and control.editBox
+    if not editBox or type(editBox.GetText) ~= "function" then
+        return ""
+    end
+    local ok, text = pcall(editBox.GetText, editBox)
+    if not ok or type(text) ~= "string" then
+        return ""
+    end
+    return text
+end
+
+function Client.SetSettingsEditText(control, text)
+    local editBox = control and control.editBox
+    if not editBox or type(editBox.SetText) ~= "function" then
+        return false
+    end
+    return pcall(editBox.SetText, editBox, type(text) == "string" and text or "")
+        and true or false
+end
+
+function Client.ClearSettingsEditFocus(control)
+    local editBox = control and control.editBox
+    if not editBox or type(editBox.ClearFocus) ~= "function" then
+        return false
+    end
+    return pcall(editBox.ClearFocus, editBox) and true or false
 end
 
 -- Addon registry ------------------------------------------------------------
@@ -8918,27 +10613,35 @@ end
 -- own small box. A creature walking past is not worth taking the player's
 -- hands away for.
 
--- Four rows, in the order a reader needs them:
+-- Five rows, in the order a reader needs them:
 --
 --   1. WHAT HAPPENED -- "A rare is nearby". The card used to open on the
 --      creature's name, which tells a player who has never seen this alert
 --      before nothing about why their screen just changed.
 --   2. WHICH creature.
 --   3. What it IS -- rank and level.
---   4. Where it is -- distance and direction, rewritten live.
+--   4. How many times this character has defeated it.
+--   5. How far away it is, rewritten live.
+-- The quest navigator's arrow occupies the right side and carries direction.
 --
--- Only row 4 changes after the card goes up, so it has its own setter and the
--- other three are written once.
-local ALERT_WIDTH = 260
-local ALERT_HEIGHT = 88
-local ALERT_PADDING = 10
-local ALERT_ACCENT_WIDTH = 2
-local ALERT_CLOSE_SIZE = 14
+-- The final two rows can change after the card goes up, so each has its own
+-- setter and the other three are written once.
+local ALERT_LAYOUT = {
+    FALLBACK_WIDTH = 312,
+    MIN_WIDTH = 200,
+    MAX_WIDTH = 420,
+    HEIGHT = 104,
+    PADDING = 10,
+    ACCENT_WIDTH = 2,
+    CLOSE_SIZE = 14,
+    TEXT_RIGHT_INSET = 76,
+}
 
 local ALERT_ROW_EYEBROW = 0
 local ALERT_ROW_TITLE = 15
 local ALERT_ROW_SUBTITLE = 36
-local ALERT_ROW_DISTANCE = 54
+local ALERT_ROW_KILLS = 54
+local ALERT_ROW_DISTANCE = 70
 
 function Client.PlayAlertSound(kitName)
     local play = Resolve("PlaySound")
@@ -8977,7 +10680,7 @@ function Client.CreateAlertWindow(name)
     if type(frame.EnableMouse) == "function" then
         pcall(frame.EnableMouse, frame, true)
     end
-    Client.SetObjectSize(frame, ALERT_WIDTH, ALERT_HEIGHT)
+    Client.SetObjectSize(frame, ALERT_LAYOUT.FALLBACK_WIDTH, ALERT_LAYOUT.HEIGHT)
 
     local background = CreateSolid(frame, "BACKGROUND",
         FLAT_BACKGROUND[1], FLAT_BACKGROUND[2], FLAT_BACKGROUND[3], 0.94)
@@ -8995,11 +10698,11 @@ function Client.CreateAlertWindow(name)
     if accent then
         pcall(accent.SetPoint, accent, "TOPLEFT", frame, "TOPLEFT", 0, 0)
         pcall(accent.SetPoint, accent, "BOTTOMLEFT", frame, "BOTTOMLEFT", 0, 0)
-        pcall(accent.SetWidth, accent, ALERT_ACCENT_WIDTH)
+        pcall(accent.SetWidth, accent, ALERT_LAYOUT.ACCENT_WIDTH)
     end
     frame.unrealQuestAccent = accent
 
-    local left = ALERT_ACCENT_WIDTH + ALERT_PADDING
+    local left = ALERT_LAYOUT.ACCENT_WIDTH + ALERT_LAYOUT.PADDING
 
     local function Row(template, offsetY, red, green, blue)
         if type(frame.CreateFontString) ~= "function" then
@@ -9011,7 +10714,7 @@ function Client.CreateAlertWindow(name)
         end
         pcall(row.SetPoint, row, "TOPLEFT", frame, "TOPLEFT", left, offsetY)
         pcall(row.SetPoint, row, "TOPRIGHT", frame, "TOPRIGHT",
-            -(ALERT_PADDING + ALERT_CLOSE_SIZE), offsetY)
+            -ALERT_LAYOUT.TEXT_RIGHT_INSET, offsetY)
         if type(row.SetJustifyH) == "function" then
             pcall(row.SetJustifyH, row, "LEFT")
         end
@@ -9026,17 +10729,37 @@ function Client.CreateAlertWindow(name)
     -- be readable out of the corner of an eye, and the name below it is
     -- already the largest text on the card.
     frame.unrealQuestEyebrow = Row("GameFontNormalSmall",
-        -(ALERT_PADDING + ALERT_ROW_EYEBROW),
+        -(ALERT_LAYOUT.PADDING + ALERT_ROW_EYEBROW),
         UQ.colors.accent[1], UQ.colors.accent[2], UQ.colors.accent[3])
     frame.unrealQuestTitle = Row("GameFontNormal",
-        -(ALERT_PADDING + ALERT_ROW_TITLE), 0.96, 0.96, 0.96)
+        -(ALERT_LAYOUT.PADDING + ALERT_ROW_TITLE), 0.96, 0.96, 0.96)
     frame.unrealQuestSubtitle = Row("GameFontHighlightSmall",
-        -(ALERT_PADDING + ALERT_ROW_SUBTITLE), 0.72, 0.72, 0.72)
+        -(ALERT_LAYOUT.PADDING + ALERT_ROW_SUBTITLE), 0.72, 0.72, 0.72)
+    frame.unrealQuestKills = Row("GameFontNormalSmall",
+        -(ALERT_LAYOUT.PADDING + ALERT_ROW_KILLS), 0.72, 0.72, 0.72)
     frame.unrealQuestBody = Row("GameFontNormalSmall",
-        -(ALERT_PADDING + ALERT_ROW_DISTANCE), 0.86, 0.86, 0.86)
+        -(ALERT_LAYOUT.PADDING + ALERT_ROW_DISTANCE), 0.86, 0.86, 0.86)
 
-    -- The drag surface is the WHOLE card, not a header strip. This is a 260x88
-    -- box with one control on it, so there is no header worth carving out --
+    -- The quest navigator's arrow only -- no arc, distance label or separate
+    -- frame. It uses the same four-atlas texture and the same frame selector,
+    -- so the direction seen here cannot drift from the quest navigator's
+    -- convention or rendering technique.
+    if type(frame.CreateTexture) == "function" then
+        local arrowOk, arrow = pcall(frame.CreateTexture, frame, nil, "ARTWORK")
+        if arrowOk and arrow then
+            pcall(arrow.SetTexture, arrow,
+                Client.NAVIGATOR_ARROW_TEXTURE_PREFIX .. "0")
+            pcall(arrow.SetPoint, arrow, "RIGHT", frame, "RIGHT",
+                -10, -4)
+            pcall(arrow.SetWidth, arrow, 56)
+            pcall(arrow.SetHeight, arrow, 56)
+            frame.unrealQuestArrow = arrow
+            frame.unrealQuestArrowAtlas = 0
+        end
+    end
+
+    -- The drag surface is the WHOLE card, not a header strip. This is a small
+    -- card with one control on it, so there is no header worth carving out --
     -- and a card that lands over something the player is reading has to be
     -- pushable from wherever the cursor already is.
     --
@@ -9078,7 +10801,7 @@ function Client.CreateAlertWindow(name)
     end
 
     local close = Client.CreateTextButton(frame, name .. "Close",
-        ALERT_CLOSE_SIZE, ALERT_CLOSE_SIZE, "x")
+        ALERT_LAYOUT.CLOSE_SIZE, ALERT_LAYOUT.CLOSE_SIZE, "x")
     if close then
         pcall(close.SetPoint, close, "TOPRIGHT", frame, "TOPRIGHT", -6, -6)
         frame.unrealQuestClose = close
@@ -9088,21 +10811,58 @@ function Client.CreateAlertWindow(name)
     return frame
 end
 
-function Client.SetAlertWindowText(frame, eyebrow, title, subtitle, body)
+-- FontString:GetStringWidth is documented by this client and measures the
+-- inherited stock font actually drawn on screen. Size from the widest localized
+-- row, plus the fixed left text inset and the arrow/close-button lane on the
+-- right. A bounded width keeps a very long creature name from spanning the
+-- screen; failure retains the original roomy width rather than risking overlap.
+function Client.SizeAlertWindowToText(frame, rows)
+    local widest = 0
+    local index = 1
+    while index <= 5 do
+        local row = rows[index]
+        if not row or type(row.GetStringWidth) ~= "function" then
+            Client.SetObjectSize(frame, ALERT_LAYOUT.FALLBACK_WIDTH, ALERT_LAYOUT.HEIGHT)
+            return
+        end
+        local ok, width = pcall(row.GetStringWidth, row)
+        if not ok or type(width) ~= "number" or width < 0 then
+            Client.SetObjectSize(frame, ALERT_LAYOUT.FALLBACK_WIDTH, ALERT_LAYOUT.HEIGHT)
+            return
+        end
+        if width > widest then
+            widest = width
+        end
+        index = index + 1
+    end
+
+    local width = ALERT_LAYOUT.ACCENT_WIDTH + ALERT_LAYOUT.PADDING + widest
+        + ALERT_LAYOUT.TEXT_RIGHT_INSET
+    width = math.ceil(width)
+    if width < ALERT_LAYOUT.MIN_WIDTH then
+        width = ALERT_LAYOUT.MIN_WIDTH
+    elseif width > ALERT_LAYOUT.MAX_WIDTH then
+        width = ALERT_LAYOUT.MAX_WIDTH
+    end
+    Client.SetObjectSize(frame, width, ALERT_LAYOUT.HEIGHT)
+end
+
+function Client.SetAlertWindowText(frame, eyebrow, title, subtitle, kills, body)
     if not frame then
         return false
     end
     local rows = { frame.unrealQuestEyebrow, frame.unrealQuestTitle,
-        frame.unrealQuestSubtitle, frame.unrealQuestBody }
-    local texts = { eyebrow, title, subtitle, body }
+        frame.unrealQuestSubtitle, frame.unrealQuestKills, frame.unrealQuestBody }
+    local texts = { eyebrow, title, subtitle, kills, body }
     local index = 1
-    while index <= 4 do
+    while index <= 5 do
         local row = rows[index]
         if row and type(row.SetText) == "function" then
             pcall(row.SetText, row, type(texts[index]) == "string" and texts[index] or "")
         end
         index = index + 1
     end
+    Client.SizeAlertWindowToText(frame, rows)
     return true
 end
 
@@ -9110,6 +10870,17 @@ end
 -- tick costs a single SetText rather than four.
 function Client.SetAlertWindowDistance(frame, text)
     local row = frame and frame.unrealQuestBody
+    if not row or type(row.SetText) ~= "function" then
+        return false
+    end
+    local ok = pcall(row.SetText, row, type(text) == "string" and text or "")
+    return ok and true or false
+end
+
+-- A rare defeated while its card is still visible advances the count without
+-- rewriting the live distance row or the other card text.
+function Client.SetAlertWindowKillCount(frame, text)
+    local row = frame and frame.unrealQuestKills
     if not row or type(row.SetText) ~= "function" then
         return false
     end
@@ -9254,11 +11025,12 @@ end
 -- The arrow sits below the arc's centre so its tip no longer crowds the
 -- forward ornament. The whole navigator renders at half scale, making these
 -- fourteen authored pixels a seven-pixel visual adjustment in game.
-local NAVIGATOR_ARROW_OFFSET_Y = -14
 -- Removing the one-line quest card must not pull the dial up into the card's
 -- old screen position. Keep its former 74px card height plus 8px gap as a
 -- transparent, mouse-disabled offset above the dial.
-local NAVIGATOR_DIAL_TOP_OFFSET = 82
+-- One layout record also keeps this already-large compatibility chunk below
+-- Lua's 200-local compilation limit.
+local NAVIGATOR_LAYOUT = { arrowOffsetY = -14, dialTopOffset = 82 }
 
 -- Builds the navigator's arc and arrow.
 --
@@ -9267,7 +11039,13 @@ local NAVIGATOR_DIAL_TOP_OFFSET = 82
 -- owns no mouse at all -- this sits in the middle of the screen
 -- over the 3D world, and a transparent frame there that swallowed clicks would
 -- make the game unplayable in a way that is hard to attribute.
-function Client.CreateNavigator(name, arcWidth, arrowSize)
+--
+-- `withTitle` adds one caption above the arc. The quest navigator does not ask
+-- for it: the quest it is following is already named by the tracker, so a
+-- second copy of that title in the middle of the screen would be noise. The
+-- mob navigator does, because nothing else on screen says which tracked
+-- creature its arrow is aiming at.
+function Client.CreateNavigator(name, arcWidth, arrowSize, withTitle)
     local create = Resolve("CreateFrame")
     local parent = ResolveObject("UIParent")
     if not create or not parent or type(name) ~= "string" then
@@ -9294,7 +11072,7 @@ function Client.CreateNavigator(name, arcWidth, arrowSize)
         arrowSize = 130
     end
     pcall(frame.SetWidth, frame, arcWidth)
-    pcall(frame.SetHeight, frame, NAVIGATOR_DIAL_TOP_OFFSET + arrowSize)
+    pcall(frame.SetHeight, frame, NAVIGATOR_LAYOUT.dialTopOffset + arrowSize)
 
     -- The arc and the arrow ------------------------------------------------
     -- The arrow is shifted down a few visual pixels from the arc's centre so
@@ -9306,7 +11084,7 @@ function Client.CreateNavigator(name, arcWidth, arrowSize)
             pcall(dial.SetFrameStrata, dial, "PARENT")
         end
         pcall(dial.SetPoint, dial, "TOP", frame, "TOP", 0,
-            -NAVIGATOR_DIAL_TOP_OFFSET)
+            -NAVIGATOR_LAYOUT.dialTopOffset)
         pcall(dial.SetWidth, dial, arcWidth)
         pcall(dial.SetHeight, dial, arrowSize)
         if type(dial.EnableMouse) == "function" then
@@ -9330,7 +11108,7 @@ function Client.CreateNavigator(name, arcWidth, arrowSize)
                 Client.NAVIGATOR_ARROW_TEXTURE_PREFIX .. "0")
             frame.unrealQuestArrowAtlas = 0
             pcall(arrow.SetPoint, arrow, "CENTER", dial, "CENTER", 0,
-                NAVIGATOR_ARROW_OFFSET_Y)
+                NAVIGATOR_LAYOUT.arrowOffsetY)
             -- Square because every pre-rotated atlas cell is square; changing
             -- the region's aspect here would stretch every direction.
             pcall(arrow.SetWidth, arrow, arrowSize)
@@ -9355,6 +11133,31 @@ function Client.CreateNavigator(name, arcWidth, arrowSize)
                     pcall(distance.SetTextColor, distance, 1, 1, 1)
                 end
                 frame.unrealQuestDistance = distance
+            end
+        end
+
+        -- The caption sits above the arc rather than below the distance, so
+        -- the arrow keeps the bottom of the tree and a long creature name
+        -- cannot push the yard readout around. It is anchored to the arc, not
+        -- to the dial, for the same reason the readout is anchored to the
+        -- arrow: the artwork owns the layout, so changing a region's size
+        -- moves the text with it instead of leaving a gap.
+        if withTitle and arc and type(dial.CreateFontString) == "function" then
+            local titleOk, title = pcall(
+                dial.CreateFontString, dial, nil, "OVERLAY", "GameFontNormal")
+            if titleOk and title then
+                pcall(title.SetPoint, title, "BOTTOM", arc, "TOP", 0, 4)
+                if type(title.SetWidth) == "function" then
+                    pcall(title.SetWidth, title, arcWidth)
+                end
+                if type(title.SetJustifyH) == "function" then
+                    pcall(title.SetJustifyH, title, "CENTER")
+                end
+                if type(title.SetTextColor) == "function" then
+                    local accent = UQ.colors and UQ.colors.accent or { 1, 0.65, 0 }
+                    pcall(title.SetTextColor, title, accent[1], accent[2], accent[3])
+                end
+                frame.unrealQuestTitle = title
             end
         end
     end
@@ -9463,6 +11266,25 @@ function Client.SetNavigatorDistanceText(frame, text)
     return true
 end
 
+-- The caption above the arc. Absent on a navigator built without one, which
+-- reports false rather than raising: the mob navigator is the only caller and
+-- an unnamed target is a legitimate state there.
+function Client.SetNavigatorTitleText(frame, text)
+    local label = frame and frame.unrealQuestTitle
+    if not label or type(label.SetText) ~= "function" then
+        return false
+    end
+    local value = type(text) == "string" and text or ""
+    if frame.unrealQuestTitleValue == value then
+        return true
+    end
+    if not pcall(label.SetText, label, value) then
+        return false
+    end
+    frame.unrealQuestTitleValue = value
+    return true
+end
+
 -- Places the navigator at its saved UIParent-relative anchor and applies the
 -- complete-tree scale before it is shown.
 function Client.PositionNavigator(frame, offsetX, offsetY, scale, point, relativePoint)
@@ -9495,6 +11317,25 @@ function Client.PositionNavigator(frame, offsetX, offsetY, scale, point, relativ
     return true
 end
 
+-- Frame census -------------------------------------------------------------
+-- GetNumFrames is a single cheap read that returns the client's own count of
+-- live frame objects. Measured 2026-09-09 (UnrealRuntimeProbe 1.46.1, group
+-- mmarrowwalk): it returned 4486, exactly the length of a full EnumerateFrames
+-- walk, so it is a real count and not a stub the way GetNumRegions is.
+--
+-- It is a diagnostic only. Nothing in the addon branches on it -- it exists so
+-- "/uq status" can show whether this addon's pools are leaking frames across a
+-- session, which is otherwise invisible from inside the game. The sibling walk
+-- API is deliberately NOT wrapped: a full pass costs ~1.9 s of frozen client,
+-- and no question this addon has is worth that.
+function Client.GetFrameCount()
+    local ok, count = Call0("GetNumFrames")
+    if not ok or type(count) ~= "number" or count <= 0 then
+        return nil
+    end
+    return count
+end
+
 -- Capability declarations ---------------------------------------------------
 -- Recorded once at load so /uq status reports the layer's real footing.
 
@@ -9515,6 +11356,18 @@ DeclareFunction("alertSound", "PlaySound", "documented",
     "client API reference; PlaySound looks up a SoundEntries kit name and is silent for one it does "
     .. "not know, so a successful call is not evidence a sound played. No PlaySoundFile exists among "
     .. "this client's documented globals, so the addon cannot play audio of its own")
+DeclareFunction("rareKillClassification", "UnitClassification", "documented",
+    "client API reference; used with a localized target name to reject ordinary or ambiguous "
+    .. "creatures before recording a rare-alert kill")
+DeclareFunction("rareKillDeathState", "UnitIsDead", "documented",
+    "client API reference; the counter observes one living target become dead, because no verified "
+    .. "combat-log death event or creature GUID is available")
+DeclareFunction("rareKillCombatState", "UnitAffectingCombat", "documented",
+    "client API reference; both player and living target must have carried the combat flag before "
+    .. "the death transition is attributed to this character")
+DeclareFunction("frameCount", "GetNumFrames", "verified",
+    "measured 2026-09-09: returned 4486, matching a full EnumerateFrames walk exactly, so the count "
+    .. "is real rather than a stub. Diagnostic only -- reported by /uq status, never branched on")
 DeclareFunction("time", "GetTime", "verified",
     "GetTime measured accurate to wall clock; sole sanctioned elapsed-time source")
 DeclareFunction("questLogSize", "GetNumQuestLogEntries", "verified",
@@ -9569,6 +11422,11 @@ DeclareFunction("mapPlayerPosition", "GetPlayerMapPosition", "verified",
 DeclareFunction("mapZoneNames", "GetMapZones", "documented",
     "client API reference; not runtime-probed. With GetCurrentMapZone as the index it names the "
     .. "zone the map is showing, which no subzone can shadow -- the route the pin layer prefers")
+DeclareFunction("instanceDetect", "IsInInstance", "documented",
+    "client API reference: returns whether the current map is a dungeon, raid or PvP instance, and "
+    .. "nothing about which kind. Not runtime-probed. Used by MapContext:GetStandingZone to keep an "
+    .. "instance's own name as the standing zone instead of falling back to the last outdoor zone "
+    .. "remembered before the portal, and it degrades to a static bundled-data test when absent")
 DeclareFunction("zoneRealName", "GetRealZoneText", "documented",
     "client API reference; not runtime-probed. Preferred over GetZoneText, which was measured "
     .. "returning a building's own subzone name (\"Brill Town Hall\", area 2118) while the "
@@ -9588,17 +11446,50 @@ if ResolveGameTooltip() then
         .. "read out of the live quest log line itself through the questObjectivePatterns capability, so a "
         .. "direct objective needs no quest ID and no world-data record. The native tooltip is visually replaced "
         .. "by one addon-owned combined tooltip: every native row is read back from GameTooltipTextLeft<i>/Right<i> "
-        .. "and reprinted above the quest rows, so a creature never shows two tooltips at once. Standalone and "
-        .. "UnrealUI Classic use the native "
-        .. "GameTooltip template, while UnrealUI Modern uses the flat tooltip style. This client does not reliably "
+        .. "and reprinted above the quest rows, so a creature never shows two tooltips at once. Standalone uses "
+        .. "native chrome; both UnrealUI themes use its flat tooltip style. This client does not reliably "
         .. "relayout Lua-added tooltip lines, and world-object tooltip rebuilds otherwise make native and appended "
-        .. "layouts alternate. If the native rows cannot be read, or alpha suppression cannot be confirmed, the "
-        .. "non-destructive attached panel is used instead. SetUnit and "
-        .. "AddLine are never called by this layer. /uq tooltip reports live counters so a hover session can be "
+        .. "layouts alternate. An opaque owned cover replaces all native alpha writes and region discovery. "
+        .. "Brief empty or partial reads retain the last complete presentation. Unreadable initial rows draw "
+        .. "nothing at all -- the attached second-panel route is deleted, so this layer cannot put two boxes "
+        .. "on screen, and /uq tooltip's nativeUnreadable counts the hovers that cost. A row's colour escapes "
+        .. "are stripped before UQ.NameKey compares it with the label, never before it is reprinted. "
+        .. "Cover-only rendering and Modern chrome still await in-game confirmation; probe tooltipdupe "
+        .. "(UnrealRuntimeProbe/TooltipDupeProbe.lua) measures both rectangles in screen pixels to supply it. "
+        .. "SetUnit and AddLine are never called on GameTooltip by this layer. /uq tooltip reports live counters so a hover session can be "
         .. "diagnosed from SavedVariables instead of a screenshot")
 else
     UQ:DeclareCapability("entityTooltip", "missing",
         "GameTooltip was not available at load")
+end
+
+if ResolveObject("GameTooltipStatusBar") then
+    UQ:DeclareCapability("entityTooltipHealthBar", "unverified",
+        "GameTooltipStatusBar is present at load. It is a frame of its own that GameTooltip's "
+        .. "GetHeight does not count. Probe tooltipdupe v2 measured its full 12px height outside the "
+        .. "replacement; v3 then measured an ordinary NPC's native body at 162px against a 136px "
+        .. "content-only panel, leaving 30px exposed on every replacement frame. v3 also caught the "
+        .. "attempted bar re-anchor already restored to GameTooltip by the host. The owned rectangle "
+        .. "now contains the CURRENT native body plus the bar's LIVE height, while the host keeps "
+        .. "complete ownership of the bar anchors. Only the bar's frame level is raised above that "
+        .. "containing rectangle, read back, and restored on teardown; anchors are never written. "
+        .. "Probe v4 confirmed ordinary NPCs covered in both cursor modes, then caught a cursor-follow "
+        .. "world object switching between two native anchors. That case now keeps the native tooltip "
+        .. "alone instead of starting an impossible two-position replacement. During mouse-out the "
+        .. "replacement stays fully opaque for 0.7 seconds in either cursor mode. The lost mouseover "
+        .. "unit plus stale NPC name no longer enters the world-object guard and bypasses that timer. "
+        .. "An early hidden signal only starts the timer; native root visibility and alpha remain "
+        .. "untouched. The separately drawn native health bar hides in the same release tick as the "
+        .. "owned panel. "
+        .. "v4 measured overlap "
+        .. "when a cover instead mirrored even a "
+        .. "coordinated root and bar alpha. This "
+        .. "is the only native frame the tooltip layer writes to, and the one-box result awaits "
+        .. "in-game confirmation: re-run probe tooltipdupe and require statusBarExposedFrames 0, "
+        .. "bodyExposedFrames 0 and coveredFrames above 0")
+else
+    UQ:DeclareCapability("entityTooltipHealthBar", "missing",
+        "GameTooltipStatusBar was not available at load")
 end
 
 if Client.GetWorldMapCanvas() then

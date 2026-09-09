@@ -60,6 +60,7 @@ local HELP_KEYS = {
     "CMD_HELP_MINIMAP_INDOORS",
     "CMD_HELP_DB",
     "CMD_HELP_TOOLTIP",
+    "CMD_HELP_TOOLTIP_DELAY",
     "CMD_HELP_TRACKER",
     "CMD_HELP_TRACKER_ONOFF",
     "CMD_HELP_TRACKER_RESET",
@@ -80,7 +81,12 @@ local HELP_MAIN_KEYS = {
     "CMD_HELP_NAV",
 }
 
+-- CMD_HELP_MOBNAV belongs to the tail rather than to the block above: the
+-- block above is printed only while mainQuestWaypoint is enabled, and the mob
+-- navigator does not belong to that layer. It leads the tail so that when both
+-- blocks print, the two navigator lines still read together.
 local HELP_TAIL_KEYS = {
+    "CMD_HELP_MOBNAV",
     "CMD_HELP_TRACK",
     "CMD_HELP_UNTRACK",
     "CMD_HELP_TOGGLE",
@@ -166,6 +172,16 @@ local function ShowStatus()
     end
 
     Line("  " .. UQ.L("CMD_STATUS_OBJECTIVE_PATH", Client.GetObjectiveMode()))
+
+    -- The client's own live frame count. Read once per command, never on a
+    -- timer: it is here so two "/uq status" calls an hour apart show whether
+    -- this addon's frame pools are still growing, which nothing else reveals
+    -- from inside the game. Absent on a client without GetNumFrames, and the
+    -- line is then simply not printed.
+    local frames = Client.GetFrameCount and Client.GetFrameCount()
+    if frames then
+        Line("  |cff888888" .. UQ.L("CMD_STATUS_FRAME_COUNT", frames) .. "|r")
+    end
 end
 
 local function ShowQuests()
@@ -481,6 +497,24 @@ local function ShowMinimap(target)
         return
     end
 
+    -- The one lever whose outcome this layer cannot see: whether the player
+    -- arrow ended up on top. Searching again is offered because the cached
+    -- answer is wrong in exactly one case -- another addon replacing the
+    -- minimap after the first scan.
+    if target == "arrow" or target == "rescan" then
+        local arrow = Client.FindMinimapPlayerArrow(true)
+        Client.SetMinimapPinsBelowPlayerArrow(
+            config:Get("minimapPinsBelowArrow") ~= false)
+        pins.dirty = true
+        pins:Refresh()
+        if arrow then
+            Line(UQ.L("CMD_MINIMAP_ARROW_RESCAN_FOUND"))
+        else
+            Line(UQ.L("CMD_MINIMAP_ARROW_RESCAN_MISSING"))
+        end
+        return
+    end
+
     local spanWord, spanValue = string.find(target, "^span")
     if spanWord then
         local argument = UQ.Trim(string.sub(target, spanValue + 1)) or ""
@@ -531,6 +565,14 @@ local function ShowMinimap(target)
     if status.spanEvidence ~= "playerCalibrated" then
         Line("  |cff888888" .. UQ.L("CMD_MINIMAP_SPAN_TIP") .. "|r")
     end
+    local arrowState = Client.GetMinimapPlayerArrowState()
+    if not arrowState.below then
+        Line("  " .. UQ.L("CMD_MINIMAP_ARROW_OFF", tostring(arrowState.pinLevel)))
+    elseif arrowState.arrowRaised then
+        Line("  " .. UQ.L("CMD_MINIMAP_ARROW_RAISED"))
+    else
+        Line("  " .. UQ.L("CMD_MINIMAP_ARROW_BELOW", tostring(arrowState.pinLevel)))
+    end
     if config:Get("minimapPinsHideIndoors") ~= false then
         Line("  " .. UQ.L("CMD_MINIMAP_INDOORS_STATUS_WITHHELD"))
     else
@@ -567,8 +609,15 @@ local function ShowRareAlert(target)
         return
     end
 
+    -- On and off are all three ranks at once: the alert has no switch of its
+    -- own any more, and "off" that left one rank alerting would not be off.
+    -- Which of the three to keep is the options page's question, not a
+    -- sub-command's -- the page shows all three at a glance.
     if target == "on" or target == "off" then
-        config:Set("rareAlert", target == "on")
+        local wanted = target == "on"
+        config:Set("rareAlertRares", wanted)
+        config:Set("rareAlertElites", wanted)
+        config:Set("rareAlertBosses", wanted)
         if target == "on" then
             Line(UQ.L("CMD_RARE_ON"))
         else
@@ -628,6 +677,12 @@ local function ShowRareAlert(target)
     Line(UQ.L("CMD_RARE_TITLE"))
     Line("  " .. UQ.L("CMD_RARE_SETTING",
         status.enabled and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF")))
+    -- Which ranks are still ticked, because "alert: on" with rares unticked
+    -- and "alert: off" look identical from inside Elwynn Forest otherwise.
+    Line("  " .. UQ.L("CMD_RARE_RANKS",
+        status.rares and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF"),
+        status.rareElites and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF"),
+        status.bosses and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF")))
     Line("  " .. UQ.L("CMD_RARE_RANGE", tostring(status.range), tostring(status.seconds)))
     Line("  " .. UQ.L("CMD_RARE_SOUND", tostring(status.sound), tostring(status.soundPlayed)))
     if not status.soundAvailable then
@@ -762,10 +817,33 @@ local function ShowDatabase()
     end
 end
 
-local function ShowTooltip()
+local function ShowTooltip(target)
     local tooltip = UQ:GetModule("EntityTooltip")
     if not tooltip then
         Line(UQ.L("CMD_MODULE_MISSING_TOOLTIP"))
+        return
+    end
+    target = string.lower(UQ.Trim(target) or "")
+    local subcommand, argument = "", ""
+    for foundCommand, foundArgument in string.gfind(target, "(%S+)%s*(.*)") do
+        subcommand = foundCommand
+        argument = UQ.Trim(foundArgument) or ""
+    end
+    if subcommand == "delay" then
+        if argument == "" then
+            Line(UQ.L("CMD_TOOLTIP_DELAY_CURRENT",
+                tostring(Client.GetEntityTooltipFadeHold())))
+            return
+        end
+        local changed, seconds = Client.SetEntityTooltipFadeHold(tonumber(argument))
+        if changed then
+            Line(UQ.L("CMD_TOOLTIP_DELAY_SET", tostring(seconds)))
+        else
+            Line(UQ.L("CMD_TOOLTIP_DELAY_USAGE"))
+        end
+        return
+    elseif target ~= "" then
+        Line(UQ.L("CMD_TOOLTIP_DELAY_USAGE"))
         return
     end
     local status = tooltip:GetStatus()
@@ -799,6 +877,13 @@ local function ShowTooltip()
         Line("  |cffff5555" .. UQ.L("CMD_TOOLTIP_ALL_PRESENTATIONS_FAILED") .. "|r")
     end
     Line("  " .. UQ.L("CMD_TOOLTIP_CURRENT_UNIT", tostring(status.currentUnit)))
+    -- Raw key=value tail, as on /uq tracker and /uq main: a field name rather
+    -- than player copy, and deliberately untranslated (docs/LOCALIZATION.md).
+    -- Non-zero means a hover had addon rows to show and no readable native
+    -- rows to combine them with, so nothing was drawn at all rather than a
+    -- second tooltip beside the first.
+    Line("  nativeUnreadable=" .. tostring(status.nativeUnreadable))
+    Line("  fadeHold=" .. tostring(status.fadeHold))
 end
 
 local function ShowMarks(target)
@@ -1399,17 +1484,20 @@ local function ShowTracker(argument)
         .. " recent=" .. (report.recentFirst and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF"))
         -- Diagnostic tokens, deliberately untranslated: the zone the filter
         -- settled on, which of MapContext:GetStandingZone's routes produced it
-        -- (standing / standingSpan / parent / remembered / mapZone /
-        -- unlistable), the area the map half is asking about, how many quests
-        -- it kept whose quest-log header names another zone, and the two ways
-        -- the filter can hide everything (Quest/TrackerFrame.lua, "The filter
-        -- may narrow the window, never empty it"). zonedrop=true means the
+        -- (standing / standingSpan / instance / parent / remembered /
+        -- mapZone / unlistable), the area the map half is asking about, the
+        -- dungeon or raid map the provenance half is asking about when the
+        -- route is "instance", how many quests it kept whose quest-log header
+        -- names another zone, and the two ways the filter can hide everything
+        -- (Quest/TrackerFrame.lua, "The filter may narrow the window, never
+        -- empty it"). zonedrop=true means the
         -- zone the addon settled on could not be identified and the filter was
         -- abandoned for that build; zoneempty=true means it was identified and
         -- the player simply has nothing to do here.
         .. (report.currentZoneOnly and (" zone=" .. tostring(report.currentZoneName)
             .. " via=" .. tostring(report.currentZoneHow)
             .. " area=" .. tostring(report.currentZoneArea)
+            .. " instance=" .. tostring(report.currentInstanceMap)
             .. " mapkept=" .. tostring(report.mapKept)
             .. " zonedrop=" .. tostring(report.zoneFilterDropped)
             .. " zoneempty=" .. tostring(report.zoneFilterEmpty)) or "")
@@ -1576,6 +1664,69 @@ local function ShowNavigator()
         Line("  origin=" .. tostring(report.targetAreaId) .. ":"
             .. string.format("%.2f,%.2f", report.targetX, report.targetY)
             .. " mapMark=" .. tostring(report.debugMapShown))
+    end
+
+    local counts = report.hiddenCounts or {}
+    local reason, count
+    local any = false
+    for reason, count in pairs(counts) do
+        if not any then
+            Line("  " .. UQ.L("CMD_NAV_HIDDEN_REASONS"))
+            any = true
+        end
+        Line("    " .. tostring(reason) .. " x" .. tostring(count))
+    end
+end
+
+-- The mob navigator's own read-out. A separate command rather than more lines
+-- under `/uq nav`, for the same reason the dial itself is separate: the two
+-- layers fail for different reasons, and reading one report to diagnose the
+-- other is how a "no quest here" line gets mistaken for "no mob tracked".
+local function ShowMobNavigator()
+    local navigator = UQ:GetModule("MobNavigator")
+    if not navigator then
+        Line(UQ.L("CMD_MODULE_MISSING_WAYPOINT"))
+        return
+    end
+
+    navigator:RefreshContext()
+    local report = navigator:GetReport()
+    Line(UQ.L("CMD_MOBNAV_TITLE"))
+    Line("  enabled=" .. tostring(report.enabled)
+        .. " created=" .. tostring(report.created)
+        .. " shown=" .. tostring(report.shown)
+        .. " tracked=" .. tostring(report.trackedMobs))
+    Line("  placements=" .. tostring(report.placements)
+        .. " failures=" .. tostring(report.placementFailures)
+        .. " rotations=" .. tostring(report.rotations)
+        .. "/" .. tostring(report.rotationFailures))
+
+    -- The one state that is a setup step rather than a fault, so it is said in
+    -- words instead of being left to the reader of a hidden reason.
+    if report.trackedMobs == 0 then
+        Line("  " .. UQ.L("CMD_MOBNAV_NONE_TRACKED"))
+    end
+
+    if report.shown then
+        local yards = report.distanceYards
+        local degrees = report.relativeAngle
+            and string.format("%.0f", report.relativeAngle * 180 / math.pi)
+            or "-"
+        Line("  distance=" .. (yards and string.format("%.0f", yards) or "?")
+            .. "yd relative=" .. degrees .. "deg"
+            .. " facing=" .. tostring(report.facingSource or "none")
+            .. " mob=" .. tostring(report.targetName or "none")
+            .. " unit=" .. tostring(report.targetUnitId or "none"))
+    elseif report.hiddenReason then
+        Line("  " .. UQ.L("CMD_NAV_HIDDEN", tostring(report.hiddenReason)))
+    end
+    if report.targetX and report.targetY then
+        local pins = UQ:GetModule("NpcPins")
+        local status = pins and pins:GetStatus() or {}
+        Line("  origin=" .. tostring(report.targetAreaId) .. ":"
+            .. string.format("%.2f,%.2f", report.targetX, report.targetY)
+            .. " mapMark=" .. tostring(status.worldNavMark)
+            .. " minimapMark=" .. tostring(status.minimapNavMark))
     end
 
     local counts = report.hiddenCounts or {}
@@ -1785,7 +1936,7 @@ local function Handler(message)
     elseif command == "db" or command == "database" then
         ShowDatabase()
     elseif command == "tooltip" then
-        ShowTooltip()
+        ShowTooltip(target)
     elseif command == "tracker" then
         ShowTracker(UQ.Trim(target) or "")
     elseif command == "main" then
@@ -1797,6 +1948,12 @@ local function Handler(message)
     elseif command == "nav" or command == "navigator" then
         if UQ:IsFeatureEnabled("mainQuestWaypoint") then
             ShowNavigator()
+        else
+            FeatureDisabledNotice()
+        end
+    elseif command == "mobnav" or command == "mobnavigator" then
+        if UQ:IsFeatureEnabled("mobNavigator") then
+            ShowMobNavigator()
         else
             FeatureDisabledNotice()
         end

@@ -60,11 +60,25 @@ Database.titleIndex = nil
 Database.indexReady = false
 Database.indexedCount = 0
 
+-- Hover identity on this client is the tooltip's rendered name, not an entity
+-- ID. Build the name-to-duration join incrementally so the first tooltip does
+-- not synchronously walk both complete world tables.
+Database.respawnIndex = {}
+Database.respawnIndexReady = false
+Database.respawnIndexRevision = 0
+Database.respawnIndexedCount = 0
+
 -- Static service locations are cached per area/class/faction after their
 -- first request. The source tables never change during a session, and doing
 -- the relation walk once keeps map refreshes allocation-light.
 Database.serviceLocationCache = {}
 Database.serviceLocationCacheCount = 0
+
+-- Alphabetical creature rows for the settings search. Built only when the
+-- player opens that tab: login and ordinary map refreshes never pay for a UI
+-- index they may not use. The bundled unit tables do not change during a
+-- session, so one sorted list serves every later query.
+Database.mobSearchIndex = nil
 
 -- giverIndex[sourceType..":"..sourceId] = { sourceType, sourceId, questIds = {...} }
 -- areaGiverIndex[areaId] = { giverKey, giverKey, ... }
@@ -95,6 +109,7 @@ Database.giverIndexReady = false
 -- that wants it (Database:StartRankIndex), because the only consumer is a
 -- feature the player can turn off.
 Database.areaRankIndex = nil
+Database.rankedUnitNameIndex = nil
 Database.rankIndexReady = false
 Database.rankIndexRequested = false
 Database.rankedUnitCount = 0
@@ -106,10 +121,19 @@ Database.rankedUnitCount = 0
 -- Database:GetInstanceEntrances below.
 Database.instanceEntranceIndex = nil
 
+-- areaId -> instance map ID, built once from Database/instances.lua and the
+-- English area names. See Database:GetInstanceMapForArea below.
+Database.instanceAreaIndex = nil
+
 local db = nil
 local indexCursor = nil
 local giverIndexCursor = nil
 local rankIndexCursor = nil
+local respawnIndexCursor = nil
+local respawnIndexSource = "unit"
+local respawnObjectIds = {}
+local respawnItemIds = {}
+local respawnNodeCategoryIndex = 1
 
 -- Static quest-location cache --------------------------------------------
 -- GetQuestLocations walks the bundled relation tables, and the bundled data
@@ -125,6 +149,14 @@ local rankIndexCursor = nil
 -- list, copies first; nothing else writes to a list it did not build itself.
 local questLocationCache = {}
 local questLocationCacheCount = 0
+
+-- Same reasoning again, keyed by quest: which instance maps a quest has work
+-- on is fixed by the bundled tables. Only the tracker's zone filter asks, and
+-- only while the player is standing inside an instance, so the bound is a
+-- guard against unbounded growth rather than a tuning knob.
+local MAX_QUEST_INSTANCE_MAP_CACHE = 400
+local questInstanceMapCache = {}
+local questInstanceMapCacheCount = 0
 
 -- Same reasoning, one key: a quest's item-use targets are read straight out of
 -- the bundled tables and never change. Keyed by quest, so it is bounded by the
@@ -226,6 +258,16 @@ function Database:OnInit()
     -- A new data table voids every walk cached against the old one.
     FlushQuestLocationCache()
     self.instanceEntranceIndex = nil
+    self.mobSearchIndex = nil
+    self.respawnIndex = {}
+    self.respawnIndexReady = false
+    self.respawnIndexRevision = 0
+    self.respawnIndexedCount = 0
+    respawnIndexCursor = nil
+    respawnIndexSource = "unit"
+    respawnObjectIds = {}
+    respawnItemIds = {}
+    respawnNodeCategoryIndex = 1
 
     local resolved = UQ.Client and UQ.Client.GetLocale and UQ.Client.GetLocale()
     if type(resolved) == "string" and resolved ~= "" then
@@ -252,6 +294,7 @@ function Database:OnEnable()
     if driver then
         driver:Schedule("database.index", 0, function() Database:IndexChunk() end)
         driver:Schedule("database.giverindex", 0, function() Database:IndexGiverChunk() end)
+        driver:Schedule("database.respawnindex", 0, function() Database:IndexRespawnChunk() end)
     end
 end
 
@@ -262,6 +305,83 @@ function Database:GetQuest(questId)
         return nil
     end
     return db.quests[questId]
+end
+
+-- Quest rewards -------------------------------------------------------------
+--
+-- Both fields arrived with a later sync of Database/quests.lua (its own file
+-- header records the VMaNGOS revision they came from), so a dataset that
+-- predates it simply has neither. Every caller must read nil as "not
+-- recorded", never as "this quest rewards nothing".
+
+-- VMaNGOS's base RewXP for the quest. It is the value before the client's own
+-- level scaling, so it is the quest's listed reward and not a prediction of
+-- what this character would actually be granted.
+function Database:GetQuestRewardXP(questId)
+    local quest = self:GetQuest(questId)
+    local xp = quest and quest.xp
+    if type(xp) ~= "number" or xp <= 0 then
+        return nil
+    end
+    return xp
+end
+
+-- quests[id].rep is FLAT -- { factionId, value, factionId, value, ... } -- not
+-- a list of pairs. It is expanded here so no caller has to know the stride.
+-- Returns { { faction = id, value = delta }, ... } in the recorded order, or
+-- nil. A delta may be negative: quest 1 rewards +75 with one faction and -500
+-- with another, so callers must not assume a gain.
+function Database:GetQuestRewardReputation(questId)
+    local quest = self:GetQuest(questId)
+    local rep = quest and quest.rep
+    if type(rep) ~= "table" then
+        return nil
+    end
+    local list = {}
+    local index = 1
+    local count = table.getn(rep)
+    while index < count do
+        local faction = rep[index]
+        local value = rep[index + 1]
+        if type(faction) == "number" and type(value) == "number" and value ~= 0 then
+            table.insert(list, { faction = faction, value = value })
+        end
+        index = index + 2
+    end
+    if table.getn(list) == 0 then
+        return nil
+    end
+    return list
+end
+
+-- Faction id -> display name, or nil when nothing can name it.
+--
+-- Nothing in the bundled data or on this client maps a faction id to a name.
+-- The client's whole Faction surface is indexed off the player's own
+-- reputation pane -- GetFactionInfo(index) is a 1-based walk of the factions
+-- THAT character has met and never reports an id -- so it cannot answer
+-- "what is 529 called". An optional Database/factions.lua may supply the
+-- names, per locale like every other text table; without it callers render
+-- the amount on its own rather than inventing a label.
+function Database:GetFactionName(factionId)
+    if not db or type(factionId) ~= "number" then
+        return nil
+    end
+    local names = LocaleTable("factions")
+    if type(names) ~= "table" then
+        names = db.factions
+    end
+    if type(names) ~= "table" then
+        return nil
+    end
+    local name = names[factionId]
+    if type(name) == "table" then
+        name = name.T or name.N
+    end
+    if type(name) ~= "string" or name == "" then
+        return nil
+    end
+    return name
 end
 
 function Database:GetQuestText(questId)
@@ -380,6 +500,13 @@ end
 -- Exact translated T/O/D field for presentation. The internal setting name
 -- predates the description/objectives support and is retained so existing
 -- SavedVariables keep their opt-out. Identity and matching never call this.
+--
+-- One quest may answer differently from the account-wide setting: the quest
+-- log's flag records a per-quest language (UQ.SetQuestLanguageOverride,
+-- Core/Locale.lua) and it is consulted here rather than in any one surface, so
+-- every surface that shows that quest agrees about which language it is in.
+-- An override naming the CLIENT's own locale falls through the guard below to
+-- the live text, which is exactly what "as the server wrote it" has to mean.
 function Database:GetQuestDisplayText(questOrId, field, fallbackText)
     if field ~= "T" and field ~= "O" and field ~= "D" then
         return fallbackText
@@ -400,6 +527,12 @@ function Database:GetQuestDisplayText(questOrId, field, fallbackText)
     local config = UQ:GetModule("Config")
     local translate = not config or config:Get("translateQuestTitles") ~= false
     local language = UQ.GetLanguage and UQ.GetLanguage()
+    local override = UQ.GetQuestLanguageOverride
+        and UQ.GetQuestLanguageOverride(questId)
+    if type(override) == "string" then
+        translate = true
+        language = override
+    end
     if translate and type(questId) == "number" and type(language) == "string" then
         -- The selected language already matches the client: its live text is
         -- newer, already token-expanded, and may contain realm-specific edits.
@@ -696,6 +829,154 @@ function Database:GetUnitName(unitId)
     return names[unitId]
 end
 
+-- Every localized creature record that has at least one usable world
+-- coordinate, sorted by name then ID. "Mob" is the player-facing name of this
+-- finder; the data itself does not distinguish hostile creatures from friendly
+-- NPCs, so this deliberately exposes the complete unit table instead of
+-- inventing a hostility test the database cannot support.
+function Database:GetMobSearchIndex()
+    if self.mobSearchIndex then
+        return self.mobSearchIndex
+    end
+
+    local rows = {}
+    self.mobSearchIndex = rows
+    local names = LocaleTable("units")
+    local units = db and db.units
+    if type(names) ~= "table" or type(units) ~= "table" then
+        return rows
+    end
+
+    local unitId, name
+    for unitId, name in pairs(names) do
+        local record = units[unitId]
+        if type(unitId) == "number" and type(name) == "string" and name ~= ""
+            and type(record) == "table" and type(record.coords) == "table"
+            and table.getn(record.coords) > 0 then
+            table.insert(rows, {
+                unitId = unitId,
+                name = name,
+                searchName = string.lower(name),
+                level = record.lvl,
+            })
+        end
+    end
+
+    table.sort(rows, function(left, right)
+        if left.searchName ~= right.searchName then
+            return left.searchName < right.searchName
+        end
+        return left.unitId < right.unitId
+    end)
+    return rows
+end
+
+-- Case-insensitive for ASCII names and exact-byte for scripts Lua's legacy
+-- string.lower does not fold. An empty query intentionally returns the whole
+-- index so the fixed settings list can page through the database before a
+-- filter is entered.
+-- Every zone a creature has recorded spawns in, the one with the most spawns
+-- first. Each row is { areaId, name, count }.
+--
+-- Counted rather than deduplicated, because "which zone is this creature in?"
+-- has no single answer for a creature recorded in several: a Defias thug with
+-- forty spawns in Westfall and one in Elwynn is a Westfall creature, and the
+-- caller wants to be told that rather than whichever areaId the coords happen
+-- to list first.
+--
+-- A spawn whose area has no name in the current locale's zone table is skipped
+-- rather than shown as its number: an area ID is not something to put in front
+-- of a player, and the alternative -- inventing a name -- is worse.
+function Database:GetUnitZones(unitId)
+    local zones = {}
+    local record = self:GetUnit(unitId)
+    if type(record) ~= "table" or type(record.coords) ~= "table" then
+        return zones
+    end
+
+    local byArea = {}
+    local coords = record.coords
+    local index = 1
+    local total = table.getn(coords)
+    while index <= total do
+        local coordinate = coords[index]
+        local areaId = type(coordinate) == "table" and coordinate[3]
+        if type(areaId) == "number" then
+            local zone = byArea[areaId]
+            if zone then
+                zone.count = zone.count + 1
+            else
+                local name = self:GetZoneName(areaId)
+                if type(name) == "string" and name ~= "" then
+                    zone = { areaId = areaId, name = name, count = 1 }
+                    byArea[areaId] = zone
+                    table.insert(zones, zone)
+                end
+            end
+        end
+        index = index + 1
+    end
+
+    -- The area ID breaks an exact tie, so the answer does not depend on the
+    -- order the coordinate list happened to be walked in.
+    table.sort(zones, function(left, right)
+        if left.count ~= right.count then
+            return left.count > right.count
+        end
+        return left.areaId < right.areaId
+    end)
+    return zones
+end
+
+-- One search row by unit ID, for a caller that already knows which creature it
+-- wants and not what the player typed. The options page needs it to keep the
+-- tracked creature pinned at the top of the list even while the search below
+-- it is showing something else entirely.
+--
+-- Indexed off the same rows the search walks, so a creature with no recorded
+-- coordinates is absent from both: this returns nil rather than a record the
+-- map could not draw.
+function Database:GetMobSearchRecord(unitId)
+    if type(unitId) ~= "number" then
+        return nil
+    end
+    if not self.mobSearchById then
+        local byId = {}
+        local rows = self:GetMobSearchIndex()
+        local index = 1
+        local total = table.getn(rows)
+        while index <= total do
+            byId[rows[index].unitId] = rows[index]
+            index = index + 1
+        end
+        self.mobSearchById = byId
+    end
+    return self.mobSearchById[unitId]
+end
+
+function Database:SearchMobsByName(query)
+    query = type(query) == "string" and query or ""
+    query = string.gsub(query, "^%s+", "")
+    query = string.gsub(query, "%s+$", "")
+    local needle = string.lower(query)
+    local source = self:GetMobSearchIndex()
+    if needle == "" then
+        return source
+    end
+
+    local matches = {}
+    local index = 1
+    local total = table.getn(source)
+    while index <= total do
+        local row = source[index]
+        if string.find(row.searchName, needle, 1, true) then
+            table.insert(matches, row)
+        end
+        index = index + 1
+    end
+    return matches
+end
+
 -- Permanent open-world patrol routes for one creature in one direct area.
 -- The lightweight unit index points into the two regional route files. Route
 -- points already use the same database-area percentages as unit coordinates,
@@ -804,6 +1085,22 @@ function Database:GetObjectName(objectId)
         return nil
     end
     return names[objectId]
+end
+
+-- Returns the shortest and longest positive respawn durations attached to
+-- records bearing this exact localized tooltip name. Same-named creature or
+-- object records can legitimately disagree, so callers present a range rather
+-- than guessing which numeric ID the name-only tooltip belongs to.
+function Database:GetEntityRespawn(unitKey)
+    if type(unitKey) ~= "string" or unitKey == "" then
+        return nil, nil, self.respawnIndexReady, self.respawnIndexRevision
+    end
+    local entry = self.respawnIndex[unitKey]
+    if not entry then
+        return nil, nil, self.respawnIndexReady, self.respawnIndexRevision
+    end
+    return entry.minimum, entry.maximum,
+        self.respawnIndexReady, self.respawnIndexRevision
 end
 
 function Database:GetItem(itemId)
@@ -982,6 +1279,174 @@ function Database:GetInstanceEntrances(areaId)
         return nil
     end
     return self.instanceEntranceIndex[areaId]
+end
+
+-- Instance interiors --------------------------------------------------------
+--
+-- Two questions the tracker's current-zone filter has to answer once the
+-- player steps through a dungeon portal, and neither can be answered by a
+-- coordinate: THE BUNDLED DATA RECORDS NO POSITION INSIDE AN INSTANCE AT ALL.
+-- Every coordinate in units.lua and objects.lua sits in one of the 50 outdoor
+-- areas the client draws a map for; area 1581 (The Deadmines), 718 (Wailing
+-- Caverns) and every other instance interior hold none, which is precisely why
+-- Database/instance_only_units.lua exists. So "does this quest have work here"
+-- becomes a membership question over the instance map ID, not a map question.
+--
+--   1. which instance map is the player standing in, given the area their
+--      zone name resolved to -- GetInstanceMapForArea below;
+--   2. which instance maps does this quest have recorded work on --
+--      GetQuestInstanceMaps below.
+
+-- areaId -> instance map ID, for the areas Database/instances.lua names.
+--
+-- The join is by NAME, and deliberately by the ENGLISH name on both sides:
+-- instances.lua carries the VMaNGOS instance name, which is English whatever
+-- the client's locale is, and zones_enUS carries the English area name from
+-- the same source. The caller has already resolved the player's localized zone
+-- name to an area ID through the localized zone table, so routing the
+-- comparison through the area ID keeps the whole thing locale-proof.
+--
+-- Several areas may carry an instance's name -- Shadowfang Keep is both the
+-- interior (209) and the Silverpine exterior (236) -- so the index is built in
+-- the areaId -> mapId direction, where that is not an ambiguity. Only one of
+-- the 26 bundled instances files no area at all under its own name (map 531,
+-- Temple of Ahn'Qiraj), and a missing entry simply leaves the caller without
+-- the instance half, never with a wrong one.
+--
+-- Built on the first ask and kept: both tables are static for the session.
+function Database:GetInstanceMapForArea(areaId)
+    if not self.instanceAreaIndex then
+        local index = {}
+        self.instanceAreaIndex = index
+        local instances = db and db.instances
+        local names = db and db.zones_enUS
+        if type(instances) == "table" and type(names) == "table" then
+            -- One pass over the English area names, so the walk is
+            -- names + instances rather than names x instances.
+            local byName = {}
+            local zoneId, zoneName
+            for zoneId, zoneName in pairs(names) do
+                local key = UQ.NameKey(zoneName)
+                if key then
+                    local bucket = byName[key]
+                    if not bucket then
+                        bucket = {}
+                        byName[key] = bucket
+                    end
+                    table.insert(bucket, zoneId)
+                end
+            end
+            local mapId, record
+            for mapId, record in pairs(instances) do
+                local instanceName = nil
+                if type(record) == "table" then
+                    instanceName = record.name
+                end
+                local key = nil
+                if type(instanceName) == "string" then
+                    key = UQ.NameKey(instanceName)
+                end
+                local bucket = nil
+                if key then
+                    bucket = byName[key]
+                end
+                if bucket then
+                    local bucketIndex = 1
+                    local bucketTotal = table.getn(bucket)
+                    while bucketIndex <= bucketTotal do
+                        index[bucket[bucketIndex]] = mapId
+                        bucketIndex = bucketIndex + 1
+                    end
+                end
+            end
+        end
+    end
+    if type(areaId) ~= "number" then
+        return nil
+    end
+    return self.instanceAreaIndex[areaId]
+end
+
+-- Which instance maps a quest has recorded work on, as two sets keyed by map
+-- ID: `objective` for the creatures its objective relation names (directly, or
+-- as the droppers of an objective item), and `turnIn` for the creature it is
+-- handed back to. The split mirrors what Map/QuestZonePresence.lua already
+-- asks of the map -- a completed quest shows its ender and nothing else -- so
+-- one caller can pick the same half in the same situation.
+--
+-- Objects are absent on purpose. An in-instance container has no coordinate
+-- and no provenance table of its own, so there is nothing to test it against;
+-- a quest reaching an instance only through an object stays undecided here
+-- rather than being answered wrongly.
+--
+-- Static, so it is cached for the session. Both sets may be empty, which is
+-- the ordinary answer for the overwhelming majority of quests.
+function Database:GetQuestInstanceMaps(questId)
+    if type(questId) ~= "number" then
+        return nil
+    end
+    local cached = questInstanceMapCache[questId]
+    if cached then
+        return cached
+    end
+    local record = self:GetQuest(questId)
+    if not record then
+        return nil
+    end
+
+    local maps = { objective = {}, turnIn = {} }
+
+    local function AddUnit(set, unitId)
+        if type(unitId) ~= "number" or not db
+            or type(db.instance_only_units) ~= "table" then
+            return
+        end
+        local sourceMaps = db.instance_only_units[unitId]
+        if type(sourceMaps) ~= "table" then
+            return
+        end
+        local mapId, present
+        for mapId, present in pairs(sourceMaps) do
+            if present == true and type(mapId) == "number" then
+                set[mapId] = true
+            end
+        end
+    end
+
+    local function AddRelation(set, relation)
+        if type(relation) ~= "table" then
+            return
+        end
+        if type(relation.U) == "table" then
+            local _, unitId
+            for _, unitId in pairs(relation.U) do
+                AddUnit(set, unitId)
+            end
+        end
+        if type(relation.I) == "table" then
+            local _, itemId
+            for _, itemId in pairs(relation.I) do
+                local item = self:GetItem(itemId)
+                if type(item) == "table" and type(item.U) == "table" then
+                    local unitId, _
+                    for unitId, _ in pairs(item.U) do
+                        AddUnit(set, unitId)
+                    end
+                end
+            end
+        end
+    end
+
+    AddRelation(maps.objective, record["obj"])
+    AddRelation(maps.turnIn, record["end"])
+
+    if questInstanceMapCacheCount >= MAX_QUEST_INSTANCE_MAP_CACHE then
+        questInstanceMapCache = {}
+        questInstanceMapCacheCount = 0
+    end
+    questInstanceMapCache[questId] = maps
+    questInstanceMapCacheCount = questInstanceMapCacheCount + 1
+    return maps
 end
 
 -- Nearby service NPCs and objects ------------------------------------------
@@ -1823,6 +2288,42 @@ function Database:GetEntityLocations(sourceType, sourceId, areaId, limit)
     return locations
 end
 
+-- Expands selected unit IDs into direct coordinates for one map area. The
+-- caller owns pin budgets and presentation; this adapter only reads the
+-- bundled data and decorates the normalized entity-location rows.
+function Database:GetTrackedMobLocations(areaId, unitIds, limit)
+    local locations = {}
+    if type(areaId) ~= "number" or type(unitIds) ~= "table" then
+        return locations
+    end
+    if type(limit) ~= "number" or limit < 1 then
+        limit = nil
+    end
+
+    local index = 1
+    local total = table.getn(unitIds)
+    while index <= total and (not limit or table.getn(locations) < limit) do
+        local unitId = unitIds[index]
+        local remaining = nil
+        if limit then
+            remaining = limit - table.getn(locations)
+        end
+        local found = self:GetEntityLocations("unit", unitId, areaId, remaining)
+        local foundIndex = 1
+        local foundTotal = table.getn(found)
+        local name = self:GetUnitName(unitId)
+        while foundIndex <= foundTotal do
+            local location = found[foundIndex]
+            location.category = "tracked"
+            location.name = type(name) == "string" and name or tostring(unitId)
+            table.insert(locations, location)
+            foundIndex = foundIndex + 1
+        end
+        index = index + 1
+    end
+    return locations
+end
+
 -- Rank index ---------------------------------------------------------------
 -- Rare, rare-elite, boss and elite creatures, bucketed by the area their
 -- spawns are recorded in. Built once, in chunks on the shared driver, and only
@@ -1862,6 +2363,15 @@ local KNOWN_RANK = {
 -- before it was widened to every rank.
 local ALERT_RANKED = {
     [RANK_BOSS] = true,
+}
+
+-- UnitClassification tokens from the client's documented Unit API. Rank 1
+-- is deliberately absent: ordinary elites appear on the finder map but never
+-- raise an alert, so they do not belong in the alert's kill history either.
+local ALERT_CLASSIFICATION_RANK = {
+    rareelite = RANK_RARE_ELITE,
+    worldboss = RANK_BOSS,
+    rare = RANK_RARE,
 }
 
 local function IsCuratedRare(unitId)
@@ -2062,6 +2572,7 @@ function Database:IndexRankChunk()
 
     if not self.areaRankIndex then
         self.areaRankIndex = {}
+        self.rankedUnitNameIndex = {}
     end
 
     local units = db and db.units
@@ -2121,6 +2632,17 @@ function Database:IndexRankChunk()
                 end
                 if perArea then
                     self.rankedUnitCount = self.rankedUnitCount + 1
+                    if self:IsAlertWorthy(unitId) then
+                        local key = UQ.NameKey(self:GetUnitName(unitId))
+                        if key then
+                            local named = self.rankedUnitNameIndex[key]
+                            if not named then
+                                named = {}
+                                self.rankedUnitNameIndex[key] = named
+                            end
+                            table.insert(named, { unitId = unitId, rank = rank })
+                        end
+                    end
                 end
             end
         end
@@ -2140,6 +2662,36 @@ function Database:GetAreaRankedUnits(areaId)
         return nil
     end
     return self.areaRankIndex[areaId]
+end
+
+-- Resolves a live target to the one alert-worthy database creature carrying
+-- both its localized name and its documented classification. The client has
+-- no creature ID or GUID API, so an ambiguous shared name is refused rather
+-- than filing a kill under an arbitrary record.
+function Database:FindAlertWorthyUnitByName(name, classification)
+    if not self.rankIndexReady or type(self.rankedUnitNameIndex) ~= "table" then
+        return nil
+    end
+    local expectedRank = ALERT_CLASSIFICATION_RANK[classification]
+    local key = UQ.NameKey(name)
+    local bucket = key and self.rankedUnitNameIndex[key] or nil
+    if not expectedRank or type(bucket) ~= "table" then
+        return nil
+    end
+    local match = nil
+    local index = 1
+    local total = table.getn(bucket)
+    while index <= total do
+        local entry = bucket[index]
+        if entry.rank == expectedRank then
+            if match and match.unitId ~= entry.unitId then
+                return nil
+            end
+            match = entry
+        end
+        index = index + 1
+    end
+    return match
 end
 
 -- Title index ---------------------------------------------------------------
@@ -2199,6 +2751,217 @@ end
 
 function Database:IsIndexReady()
     return self.indexReady
+end
+
+-- Respawn-name index -------------------------------------------------------
+
+-- A positive respawn value on a world-object spawn does not mean the object
+-- can meaningfully respawn for the player. The source database gives the same
+-- field to permanent scenery such as city direction signs. Keep only objects
+-- that another world-data relation establishes as actionable: quest
+-- starters/finishers/objectives, loot containers, or item-use targets.
+local function MarkRespawnRelationObjects(relation)
+    local objects = type(relation) == "table" and relation.O or nil
+    if type(objects) ~= "table" then
+        return
+    end
+    local _, objectId
+    for _, objectId in pairs(objects) do
+        if type(objectId) == "number" then
+            respawnObjectIds[objectId] = true
+        end
+    end
+end
+
+local function MarkRespawnRelationItems(relation)
+    if type(relation) ~= "table" then
+        return
+    end
+    local _, itemId
+    for _, itemId in pairs(relation) do
+        if type(itemId) == "number" then
+            respawnItemIds[itemId] = true
+        end
+    end
+end
+
+local function IndexRespawnQuestObjects(record)
+    if type(record) ~= "table" then
+        return
+    end
+    MarkRespawnRelationObjects(record["start"])
+    MarkRespawnRelationObjects(record["end"])
+    MarkRespawnRelationObjects(record.obj)
+
+    local objective = record.obj
+    if type(objective) ~= "table" then
+        return
+    end
+    MarkRespawnRelationItems(objective.I)
+    MarkRespawnRelationItems(objective.IR)
+end
+
+local function IndexRespawnLootObjects(record)
+    local objects = type(record) == "table" and record.O or nil
+    if type(objects) ~= "table" then
+        return
+    end
+    local objectId
+    for objectId in pairs(objects) do
+        if type(objectId) == "number" then
+            respawnObjectIds[objectId] = true
+        end
+    end
+end
+
+local function IndexRespawnItemUseObjects(targets)
+    if type(targets) ~= "table" then
+        return
+    end
+    local targetId
+    for targetId in pairs(targets) do
+        if type(targetId) == "number" and targetId < 0 then
+            respawnObjectIds[-targetId] = true
+        end
+    end
+end
+
+local RESPAWN_NODE_META_KEYS = { "chests", "fish", "herbs", "mines" }
+
+local function AdvanceRespawnIndexSource(module)
+    if respawnIndexSource == "unit" then
+        respawnIndexSource = "quest"
+    elseif respawnIndexSource == "quest" then
+        respawnIndexSource = "item"
+    elseif respawnIndexSource == "item" then
+        respawnIndexSource = "itemUse"
+    elseif respawnIndexSource == "itemUse" then
+        respawnIndexSource = "node"
+    elseif respawnIndexSource == "node" then
+        respawnNodeCategoryIndex = respawnNodeCategoryIndex + 1
+        if respawnNodeCategoryIndex > table.getn(RESPAWN_NODE_META_KEYS) then
+            respawnIndexSource = "object"
+        end
+    else
+        module.respawnIndexReady = true
+    end
+    respawnIndexCursor = nil
+end
+
+local function AddRespawnDurations(module, name, entity)
+    local key = UQ.NameKey(name)
+    local coords = type(entity) == "table" and entity.coords or nil
+    if not key or type(coords) ~= "table" then
+        return
+    end
+
+    local minimum = nil
+    local maximum = nil
+    local coordinateIndex = 1
+    local coordinateTotal = table.getn(coords)
+    while coordinateIndex <= coordinateTotal do
+        local coordinate = coords[coordinateIndex]
+        local seconds = type(coordinate) == "table" and coordinate[4] or nil
+        if type(seconds) == "number" and seconds > 0 then
+            if not minimum or seconds < minimum then
+                minimum = seconds
+            end
+            if not maximum or seconds > maximum then
+                maximum = seconds
+            end
+        end
+        coordinateIndex = coordinateIndex + 1
+    end
+    if not minimum then
+        return
+    end
+
+    local entry = module.respawnIndex[key]
+    if not entry then
+        entry = { minimum = minimum, maximum = maximum }
+        module.respawnIndex[key] = entry
+        module.respawnIndexedCount = module.respawnIndexedCount + 1
+    else
+        if minimum < entry.minimum then
+            entry.minimum = minimum
+        end
+        if maximum > entry.maximum then
+            entry.maximum = maximum
+        end
+    end
+    module.respawnIndexRevision = module.respawnIndexRevision + 1
+end
+
+function Database:IndexRespawnChunk()
+    if not self.available or self.respawnIndexReady then
+        local driver = UQ:GetModule("Driver")
+        if driver then
+            driver:Unschedule("database.respawnindex")
+        end
+        return
+    end
+
+    local processed = 0
+    while processed < INDEX_CHUNK do
+        local source = nil
+        if respawnIndexSource == "unit" then
+            source = db.units
+        elseif respawnIndexSource == "quest" then
+            source = db.quests
+        elseif respawnIndexSource == "item" then
+            source = respawnItemIds
+        elseif respawnIndexSource == "itemUse" then
+            source = db["quests-itemreq"]
+        elseif respawnIndexSource == "node" then
+            local meta = db.meta
+            if type(meta) == "table" then
+                source = meta[RESPAWN_NODE_META_KEYS[respawnNodeCategoryIndex]]
+            end
+        else
+            source = respawnObjectIds
+        end
+
+        if type(source) ~= "table" then
+            AdvanceRespawnIndexSource(self)
+        else
+            local entityId, entity = next(source, respawnIndexCursor)
+            if entityId == nil then
+                AdvanceRespawnIndexSource(self)
+            else
+                respawnIndexCursor = entityId
+                if respawnIndexSource == "unit" then
+                    local names = LocaleTable("units")
+                    AddRespawnDurations(self,
+                        type(names) == "table" and names[entityId] or nil, entity)
+                elseif respawnIndexSource == "quest" then
+                    IndexRespawnQuestObjects(entity)
+                elseif respawnIndexSource == "item" then
+                    IndexRespawnLootObjects(db.items and db.items[entityId])
+                elseif respawnIndexSource == "itemUse" then
+                    IndexRespawnItemUseObjects(entity)
+                elseif respawnIndexSource == "node" then
+                    if type(entityId) == "number" and entityId < 0 then
+                        respawnObjectIds[-entityId] = true
+                    end
+                else
+                    local names = LocaleTable("objects")
+                    AddRespawnDurations(self,
+                        type(names) == "table" and names[entityId] or nil,
+                        db.objects and db.objects[entityId])
+                end
+                processed = processed + 1
+            end
+        end
+
+        if self.respawnIndexReady then
+            UQ:Debug("respawn index complete: " .. self.respawnIndexedCount .. " names")
+            local driver = UQ:GetModule("Driver")
+            if driver then
+                driver:Unschedule("database.respawnindex")
+            end
+            return
+        end
+    end
 end
 
 -- Giver index -----------------------------------------------------------

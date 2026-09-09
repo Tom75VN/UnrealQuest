@@ -4,11 +4,20 @@ UnrealQuest / Tooltip/EntityTooltip.lua
 Adds live quest-objective progress to the client's entity tooltip. The native
 tooltip is visually replaced by ONE combined addon-owned tooltip that reprints
 the native rows (read back through Client.GetGameTooltipLines) above the quest
-rows, so the player only ever sees a single tooltip. Standalone and UnrealUI
-Classic use native chrome, while UnrealUI Modern uses the flat modern style.
-Only if the native rows cannot be read, or alpha suppression fails, does the
-addon fall back to leaving the native tooltip alone and attaching a separate
-progress panel beneath it.
+rows, so the player only ever sees a single tooltip. Standalone uses native
+chrome; both UnrealUI themes use the host's flat custom tooltip style.
+An opaque owned cover obscures the native frame without changing its alpha or
+discovering its regions. Brief empty or partial reads retain the last complete
+presentation.
+
+One tooltip means one, with no exception. There used to be a fallback that left
+the native tooltip alone and hung a separate progress panel beneath it whenever
+the native rows could not be read back -- two boxes on screen, which is the one
+outcome this module exists to prevent. It is gone: with nothing to reprint the
+native rows into, the addon presents nothing at all and the player keeps their
+ordinary tooltip until the rows read back, which the retained snapshot makes at
+most one poll away. nativeUnreadable in the diagnostics counts the hovers that
+had rows to show and no readable native content to show them with.
 
 The mechanism is pfQuest's, because pfQuest's is confirmed working on this
 install (Interface/AddOns/pfQuest/map.lua:201-320, pfMap.tooltip's OnShow and
@@ -27,7 +36,14 @@ pfMap:ShowTooltip -- see docs/CLIENT-COMPATIBILITY.md item 9). Three parts:
 The quest rows are not added to GameTooltip. This client does not reliably
 relayout Lua-added lines, and a world-object tooltip may rebuild its native
 content repeatedly while it remains shown. The addon-owned replacement avoids
-both failure modes and lets progress change without mutating native content.
+    both failure modes and lets progress change without mutating native content.
+
+Under a host theme the replacement is an owned plain Frame with owned rows, not
+a GameTooltipTemplate frame -- this client cannot report whether such a frame is
+drawing its stock chrome, so the stock look is removed by construction rather
+    than suppressed and re-checked. It stays opaque for the complete custom
+    mouse-out hold instead of exposing the native fade underneath it; see
+    Client.CreateEntityTooltipPanel and Client.SyncEntityTooltipFade.
 ]]
 
 local UQ = UnrealQuest
@@ -35,6 +51,8 @@ local Client = UQ.Client
 local EntityTooltip = UQ:NewModule("EntityTooltip")
 
 local POLL_INTERVAL = 0.1
+local EMPTY_POLL_LIMIT = 3
+local NATIVE_STABLE_POLLS = 3
 
 -- The addon's accent orange, matching the quest title colouring used elsewhere.
 local TITLE_R, TITLE_G, TITLE_B = 0.96, 0.68, 0.04
@@ -43,11 +61,21 @@ local TITLE_R, TITLE_G, TITLE_B = 0.96, 0.68, 0.04
 
 EntityTooltip.lastUnitKey = nil
 EntityTooltip.lastQuestStamp = nil
+EntityTooltip.lastRespawnStamp = nil
 EntityTooltip.lastStyle = nil
 EntityTooltip.lastNativeStamp = nil
 EntityTooltip.panel = nil
 EntityTooltip.panels = {}
 EntityTooltip.replacingNative = false
+EntityTooltip.emptyPolls = 0
+EntityTooltip.nativeLines = nil
+EntityTooltip.pendingNativeStamp = nil
+EntityTooltip.pendingNativePolls = 0
+EntityTooltip.heldEmptyReads = 0
+EntityTooltip.deferredNativeReads = 0
+EntityTooltip.nativeUnreadable = 0
+EntityTooltip.presentationCount = 0
+EntityTooltip.suspendedForNativeFade = false
 
 -- Diagnostics, persisted the same way WorldMapPins settled its own "did the
 -- mouse/click ever reach the addon" questions from SavedVariables instead of
@@ -136,17 +164,36 @@ local function ProgressLine(matcher, result)
     return nil
 end
 
--- Returns the tooltip lines for a hovered creature, plus how many of them came
--- from each of ObjectiveMatch's two paths, or nil when the creature satisfies
--- nothing in the log.
-function EntityTooltip:BuildLines(unitKey)
-    local matcher = UQ:GetModule("ObjectiveMatch")
-    if not matcher then
+local function FormatRespawnDuration(seconds)
+    seconds = math.floor(seconds or 0)
+    local hours = math.floor(seconds / 3600)
+    local minutes = math.floor((seconds - hours * 3600) / 60)
+    local remainder = seconds - hours * 3600 - minutes * 60
+    if hours > 0 then
+        return string.format("%d:%02d:%02d", hours, minutes, remainder)
+    end
+    return string.format("%02d:%02d", minutes, remainder)
+end
+
+local function RespawnLine(minimum, maximum)
+    if type(minimum) ~= "number" or minimum <= 0 then
         return nil
     end
-    local results, direct, viaDatabase = matcher:FindForUnit(unitKey)
-    if not results then
-        return nil
+    local duration = FormatRespawnDuration(minimum)
+    if type(maximum) == "number" and maximum > minimum then
+        duration = duration .. " - " .. FormatRespawnDuration(maximum)
+    end
+    return { text = UQ.L("TOOLTIP_RESPAWN", duration), r = 0.7, g = 0.7, b = 0.7 }
+end
+
+-- Returns the addon rows for a hovered entity: any live quest progress plus
+-- the optional bundled respawn duration. The two counters describe only the
+-- ObjectiveMatch paths and remain nil for a respawn-only tooltip.
+function EntityTooltip:BuildLines(unitKey, respawnMinimum, respawnMaximum)
+    local matcher = UQ:GetModule("ObjectiveMatch")
+    local results, direct, viaDatabase
+    if matcher then
+        results, direct, viaDatabase = matcher:FindForUnit(unitKey)
     end
 
     local lines = {}
@@ -154,7 +201,7 @@ function EntityTooltip:BuildLines(unitKey)
     local titled = {}
 
     local index = 1
-    local total = table.getn(results)
+    local total = table.getn(results or {})
     while index <= total do
         local result = results[index]
         local quest = result.quest
@@ -177,6 +224,11 @@ function EntityTooltip:BuildLines(unitKey)
         index = index + 1
     end
 
+    local respawn = RespawnLine(respawnMinimum, respawnMaximum)
+    if respawn then
+        table.insert(lines, respawn)
+    end
+
     if table.getn(lines) == 0 then
         return nil
     end
@@ -193,6 +245,12 @@ function EntityTooltip:RecordSeen()
     config:SetSectionEntry("tooltipDiagnostics", "refreshCount", self.refreshCount)
     config:SetSectionEntry("tooltipDiagnostics", "labelReads", self.labelReads)
     config:SetSectionEntry("tooltipDiagnostics", "lastSeenLabel", self.lastSeenLabel or "<none>")
+    config:SetSectionEntry("tooltipDiagnostics", "presentationRevision", "cover-v6")
+    config:SetSectionEntry("tooltipDiagnostics", "heldEmptyReads", self.heldEmptyReads)
+    config:SetSectionEntry("tooltipDiagnostics", "deferredNativeReads", self.deferredNativeReads)
+    config:SetSectionEntry("tooltipDiagnostics", "nativeUnreadable", self.nativeUnreadable)
+    config:SetSectionEntry("tooltipDiagnostics", "presentations", self.presentationCount)
+    config:SetSectionEntry("tooltipDiagnostics", "lastStyle", self.lastStyle or "none")
 end
 
 function EntityTooltip:RecordMatch(direct, viaDatabase)
@@ -224,6 +282,7 @@ function EntityTooltip:GetStatus()
         directMatches = self.directMatchCount,
         databaseMatches = self.databaseMatchCount,
         presentationFailures = self.presentationFailureCount,
+        nativeUnreadable = self.nativeUnreadable,
         currentUnit = self.lastUnitKey,
         style = self.lastStyle,
         replacingNative = self.replacingNative,
@@ -232,6 +291,7 @@ function EntityTooltip:GetStatus()
         lastSeenLabel = self.lastSeenLabel,
         patternsResolved = patterns.patternsResolved or 0,
         patternsExpected = patterns.patternsExpected or 0,
+        fadeHold = Client.GetEntityTooltipFadeHold(),
     }
 end
 
@@ -244,7 +304,20 @@ local function HidePanels(module)
     end
     module.panel = nil
     module.replacingNative = false
-    Client.SetNativeEntityTooltipSuppressed(false)
+end
+
+local function ResetHover(module)
+    module.lastUnitKey = nil
+    module.lastQuestStamp = nil
+    module.lastRespawnStamp = nil
+    module.lastStyle = nil
+    module.lastNativeStamp = nil
+    module.nativeLines = nil
+    module.pendingNativeStamp = nil
+    module.pendingNativePolls = 0
+    module.emptyPolls = 0
+    module.suspendedForNativeFade = false
+    HidePanels(module)
 end
 
 -- Identifies the native content so the owned replacement is rebuilt when the
@@ -261,6 +334,63 @@ local function NativeStamp(nativeLines)
         index = index + 1
     end
     return stamp
+end
+
+-- The native rows arrive exactly as the client rendered them, colour escapes
+-- included, because the combined tooltip reprints them and those escapes carry
+-- the colour. Identity, though, is compared against
+-- Client.GetGameTooltipUnitLabel, which strips them. UQ.NameKey keeps letters
+-- and digits and drops punctuation, so an escape survives it as text: a name
+-- line reading "|cff00ff00Kobold Vermin|r" keys as "cff00ff00koboldverminr"
+-- and can never equal the stripped label's "koboldvermin". The row set was
+-- then thrown away as belonging to something else -- for the whole hover, not
+-- for a frame -- which is what used to put a second box on screen.
+local function PlainRowText(line)
+    local text = line and (line.text or line.left)
+    if type(text) ~= "string" then
+        return nil
+    end
+    text = string.gsub(text, "|c%x%x%x%x%x%x%x%x", "")
+    text = string.gsub(text, "|r", "")
+    return text
+end
+
+-- A rebuild can publish only a prefix of the old rows. Keep the last complete
+-- snapshot until changed content repeats on three driver polls. OnShow is an
+-- accelerator only and cannot consume that grace period in a burst. An exact
+-- extension of the old snapshot can be displayed immediately.
+local function StableNativeLines(module, unitKey, lines, fromShow)
+    if lines and UQ.NameKey(PlainRowText(lines[1])) ~= unitKey then
+        lines = nil
+    end
+    local previous = module.lastUnitKey == unitKey and module.nativeLines or nil
+    local stamp = NativeStamp(lines)
+    if previous and stamp ~= NativeStamp(previous) then
+        local extends = lines and table.getn(lines) > table.getn(previous)
+        local index = 1
+        while extends and index <= table.getn(previous) do
+            if NativeStamp({ lines[index] }) ~= NativeStamp({ previous[index] }) then
+                extends = false
+            end
+            index = index + 1
+        end
+        if not extends then
+            if module.pendingNativeStamp ~= stamp then
+                module.pendingNativeStamp = stamp
+                module.pendingNativePolls = 0
+            end
+            if not fromShow then
+                module.pendingNativePolls = module.pendingNativePolls + 1
+            end
+            if not lines or module.pendingNativePolls < NATIVE_STABLE_POLLS then
+                module.deferredNativeReads = module.deferredNativeReads + 1
+                return previous
+            end
+        end
+    end
+    module.pendingNativeStamp = nil
+    module.pendingNativePolls = 0
+    return lines
 end
 
 local function CombinedLines(nativeLines, unitKey, questLines)
@@ -287,13 +417,80 @@ local function CombinedLines(nativeLines, unitKey, questLines)
     return lines
 end
 
-function EntityTooltip:Refresh()
+function EntityTooltip:Refresh(fromShow)
     self.refreshCount = self.refreshCount + 1
+
+    -- GameTooltip is also the surface this addon paints its own quest
+    -- tooltips on (a minimap quest pin, a tracker row -- see
+    -- Client.ShowGameTooltip). Those already carry the quest's objectives
+    -- from the log, and their first line is the quest title, which for a
+    -- collect quest is commonly the collected item's own name: read back
+    -- as an entity identity it matches that very objective and prints it
+    -- a second time. Stand down entirely while the tooltip is ours.
+    if Client.IsGameTooltipAddonOwned() then
+        ResetHover(self)
+        return
+    end
 
     -- Identity comes from the tooltip's own rendered first line, not
     -- UnitName("mouseover") -- see Client.GetGameTooltipUnitLabel for why.
-    local unitLabel = Client.GetGameTooltipUnitLabel()
+    local unitLabel, nativeShown = Client.GetGameTooltipUnitLabel()
     local unitKey = UQ.NameKey(unitLabel)
+
+    -- Cursor-follow world objects can alternate GameTooltip between the cursor
+    -- anchor and its native UIParent anchor every rendered frame (tooltipdupe
+    -- v4, Doom Weed). A replacement cannot cover both positions without a
+    -- screen-sized mask. Keep the one native tooltip for that measured case;
+    -- actual mouseover units retain the combined tooltip in both cursor modes.
+    if unitKey and Client.IsWorldTooltipCursorFollowEnabled() == true
+            and not Client.UnitExists("mouseover") then
+        -- Mouse-out clears the mouseover unit before GameTooltip clears the
+        -- NPC name it is fading. If this is still the replacement already on
+        -- screen, that stale name is the END of an NPC hover, not a newly
+        -- hovered world object. Keep it for SyncFade's 0.7-second hold. A new
+        -- or changed key with no mouseover unit remains the measured
+        -- cursor-follow world-object case and keeps the native tooltip alone.
+        if fromShow or not self.replacingNative or self.lastUnitKey ~= unitKey then
+            ResetHover(self)
+            return
+        end
+    end
+
+    -- Any translucent cover reveals the native tooltip fading underneath it.
+    -- SyncFade therefore keeps the owned replacement opaque for 0.7 seconds
+    -- after mouse-out. IsShown can turn false before the last native pixels
+    -- leave the renderer, so it only starts the hold timer. Do not
+    -- put the replacement straight back on the next poll;
+    -- a new hover (including the same subject) restores alpha 1 and resumes it.
+    if self.suspendedForNativeFade then
+        if not unitKey or Client.IsNativeEntityTooltipFullyOpaque() ~= true then
+            return
+        end
+        self.suspendedForNativeFade = false
+        self.lastNativeStamp = nil
+    end
+
+    if not unitKey and nativeShown ~= false and self.panel then
+        self.pendingNativeStamp = nil
+        self.pendingNativePolls = 0
+        -- A shown native tooltip can clear its label before its fade finishes.
+        -- Keep covering it until it actually hides, as the host's world
+        -- tooltip does. The bounded timeout is only for unknown visibility.
+        if nativeShown == true then
+            self.emptyPolls = 0
+        elseif not fromShow then
+            self.emptyPolls = self.emptyPolls + 1
+        end
+        if self.emptyPolls < EMPTY_POLL_LIMIT then
+            self.heldEmptyReads = self.heldEmptyReads + 1
+            if self.replacingNative then
+                Client.CoverNativeEntityTooltip(self.panel)
+            end
+            return
+        end
+    elseif unitKey then
+        self.emptyPolls = 0
+    end
 
     if unitKey then
         self.labelReads = self.labelReads + 1
@@ -312,51 +509,84 @@ function EntityTooltip:Refresh()
     end
 
     if not unitKey then
-        self.lastUnitKey = nil
-        self.lastQuestStamp = nil
-        self.lastStyle = nil
-        self.lastNativeStamp = nil
-        HidePanels(self)
+        if self.panel then
+            self:RecordSeen()
+        end
+        -- GameTooltip can report hidden before its final fade pixels disappear.
+        -- That must not make this slower poll remove the custom tooltip; the
+        -- custom presentation owns its full 0.7-second mouse-out delay.
+        if nativeShown == false and self.replacingNative and self.panel then
+            local _, released = Client.SyncEntityTooltipFade(self.panel)
+            if not released and Client.IsEntityTooltipFadeHolding(self.panel) then
+                return
+            end
+        end
+        ResetHover(self)
         return
     end
 
     local matcher = UQ:GetModule("ObjectiveMatch")
     local matcherStatus = matcher and matcher:GetStatus() or {}
     local questStamp = matcherStatus.questStamp or 0
+    local respawnMinimum, respawnMaximum, respawnReady, respawnRevision
+    local config = UQ:GetModule("Config")
+    if not config or config:Get("tooltipRespawnTimers") ~= false then
+        local database = UQ:GetModule("Database")
+        if database then
+            respawnMinimum, respawnMaximum, respawnReady, respawnRevision =
+                database:GetEntityRespawn(unitKey)
+        end
+    end
+    local respawnStamp = tostring(respawnMinimum) .. ":" .. tostring(respawnMaximum)
+        .. ":" .. tostring(respawnReady) .. ":" .. tostring(respawnRevision)
     local style = Client.GetEntityTooltipStyle()
     -- Every row the native tooltip currently shows, so the replacement can
     -- carry them itself. nil means the rows could not be read, which is the
     -- only case where the native tooltip is left visible.
-    local nativeLines = Client.GetGameTooltipLines()
+    local nativeLines = StableNativeLines(self, unitKey,
+        Client.GetGameTooltipLines(), fromShow)
     local nativeStamp = NativeStamp(nativeLines)
-    -- The native tooltip can repopulate many times during one world-object
-    -- hover. Reassert alpha suppression on every poll, but rebuild the owned
-    -- content only when its entity, quest model, theme, or presentation route
-    -- changes.
+    -- Reassert only owned cover geometry during native rebuilds. Never write
+    -- alpha to GameTooltip or any of its (possibly another addon's) regions.
     if self.lastUnitKey == unitKey and self.lastQuestStamp == questStamp
+            and self.lastRespawnStamp == respawnStamp
             and self.lastStyle == style and self.lastNativeStamp == nativeStamp then
         if self.replacingNative then
-            if Client.SetNativeEntityTooltipSuppressed(true) then
-                Client.CoverNativeEntityTooltip(self.panel)
-                return
-            end
-        else
-            Client.SetNativeEntityTooltipSuppressed(false)
-            return
+            Client.CoverNativeEntityTooltip(self.panel)
         end
+        return
     end
     self.lastUnitKey = unitKey
     self.lastQuestStamp = questStamp
+    self.lastRespawnStamp = respawnStamp
     self.lastStyle = style
     self.lastNativeStamp = nativeStamp
+    self.nativeLines = nativeLines
 
-    local lines, direct, viaDatabase = self:BuildLines(unitKey)
+    local lines, direct, viaDatabase = self:BuildLines(
+        unitKey, respawnMinimum, respawnMaximum)
     if not lines then
         HidePanels(self)
         return
     end
 
-    self:RecordMatch(direct, viaDatabase)
+    if direct ~= nil or viaDatabase ~= nil then
+        self:RecordMatch(direct, viaDatabase)
+    end
+
+    -- No native rows to reprint means no combined tooltip, and a combined
+    -- tooltip is the only one this module will draw. Presenting the quest rows
+    -- on their own would put a second box beside the tooltip they belong to.
+    -- StableNativeLines retains the last complete snapshot, so this normally
+    -- waits a single 0.1s poll at the start of a hover; a subject whose rows
+    -- never read back simply keeps its plain native tooltip and is counted
+    -- here, where /uq tooltip and SavedVariables can find it.
+    if not nativeLines then
+        self.nativeUnreadable = self.nativeUnreadable + 1
+        HidePanels(self)
+        self:RecordSeen()
+        return
+    end
 
     local panel = self.panels[style]
     if not panel then
@@ -372,32 +602,41 @@ function EntityTooltip:Refresh()
 
     local shown = false
     self.replacingNative = false
-    if panel and nativeLines then
+    if panel then
         shown = Client.ShowEntityTooltipPanel(panel,
-            CombinedLines(nativeLines, unitKey, lines), true)
-        if shown and Client.SetNativeEntityTooltipSuppressed(true) then
-            self.replacingNative = true
-        else
-            -- Alpha suppression is isolated behind readback because it is not
-            -- measured specifically on GameTooltip. Preserve native content
-            -- and fall back to the stable attached panel if it is unavailable.
-            Client.SetNativeEntityTooltipSuppressed(false)
-            shown = Client.ShowEntityTooltipPanel(panel, lines, false)
-        end
-    elseif panel then
-        Client.SetNativeEntityTooltipSuppressed(false)
-        shown = Client.ShowEntityTooltipPanel(panel, lines, false)
+            CombinedLines(nativeLines, unitKey, lines))
+        self.replacingNative = shown
     end
 
     if not panel or not shown then
         -- Creation can fail transiently during UI startup. Do not cache that
         -- failure as a completed presentation for this hover.
-        self.lastUnitKey = nil
-        self.lastQuestStamp = nil
-        self.lastStyle = nil
-        self.lastNativeStamp = nil
-        HidePanels(self)
+        ResetHover(self)
         self:RecordPresentationFailure()
+    else
+        self.suspendedForNativeFade = false
+        self.presentationCount = self.presentationCount + 1
+    end
+    self:RecordSeen()
+end
+
+-- Fade ----------------------------------------------------------------------
+
+-- The replacement stays fully opaque over the native fade and hides with the
+-- native frame at the end.
+--
+-- This per-frame sync keeps the replacement opaque for the runtime-selected
+-- delay after the first native fade/hidden signal, including frames after
+-- GameTooltip:IsShown() has already become false.
+function EntityTooltip:SyncFade()
+    local panel = self.panel
+    if not panel then
+        return
+    end
+    local _, released = Client.SyncEntityTooltipFade(panel)
+    if released then
+        self.replacingNative = false
+        self.suspendedForNativeFade = true
     end
 end
 
@@ -409,11 +648,18 @@ function EntityTooltip:OnEnable()
         driver:Schedule("tooltip.entity", POLL_INTERVAL, function()
             EntityTooltip:Refresh()
         end)
+        -- Every tick, deliberately: see SyncFade. It returns immediately while
+        -- no replacement is on screen, and writes nothing at all on a frame
+        -- where the opacity has not changed -- no allocation and no name
+        -- lookup, so the driver's stall census has nothing to charge it with.
+        driver:Schedule("tooltip.fade", 0, function()
+            EntityTooltip:SyncFade()
+        end)
         -- Refresh runs synchronously here too, not just via driver:Wake, so the
-        -- combined or attached progress tooltip is ready with the native one. The poll
-        -- above remains the correctness guarantee if this never fires.
+        -- combined tooltip is ready with the native one. The poll above remains
+        -- the correctness guarantee if this never fires.
         Client.HookGameTooltipShow(function()
-            EntityTooltip:Refresh()
+            EntityTooltip:Refresh(true)
         end)
     end
 end

@@ -99,6 +99,9 @@ Settings.page = nil
 Settings.opens = 0
 Settings.dragFailures = 0
 Settings.liveSliders = {}
+Settings.activePageTab = "general"
+Settings.mobSearchQuery = ""
+Settings.mobSearchPage = 1
 -- The settings button beside the minimap, and what it ended up anchored to.
 -- Built straight away while the host poll runs so a standalone install never
 -- makes the player wait through the full late-unrealUI grace period. If
@@ -162,13 +165,73 @@ end
 local HEADING_ADVANCE = 22
 local BODY_LINE_HEIGHT = 13
 local CHECKBOX_ADVANCE = 18
+-- A checkbox's label starts this far right of the control's own left edge:
+-- the 14px box plus the 6px gap Client.CreateSettingsCheckbox anchors it at.
+-- Only the three rank switches need the number -- they are the one row that
+-- packs three controls into the width of one, so their labels are measured
+-- rather than given the rest of the row.
+local CHECKBOX_LABEL_GAP = 20
+-- The three rank switches of the rare alert, sharing the page's right-hand
+-- column (250..TEXT_WIDTH). 78px each leaves 58px of label, which fits the
+-- longest of the four translations ("Elitnye") without wrapping into the row
+-- below.
+local RANK_COLUMN = 78
+local RANK_LABEL_WIDTH = RANK_COLUMN - CHECKBOX_LABEL_GAP
+-- Where the right-hand control of a PAIRED checkbox row starts. One number for
+-- every such row on the page, because a second column that begins at a
+-- different X on one row reads as a mistake rather than as a column.
+local PAIR_COLUMN_RIGHT = 300
 local SLIDER_ADVANCE = 58
 local RULE_ADVANCE = 16
 local BUTTON_WIDTH = 150
 local BUTTON_HEIGHT = 20
-local BUTTON_ADVANCE = BUTTON_HEIGHT + 8
 local ROW_GAP = 8
 local NOTE_INDENT = 20
+local INTERNAL_TAB_HEIGHT = 20
+-- Tab height, its 2px gap, and a 5px margin under the strip so the first
+-- control of either tab does not sit against the row of tabs.
+local INTERNAL_TAB_ADVANCE = 27
+local INTERNAL_TAB_WIDTH = 150
+local MOB_MIN_ROWS_PER_PAGE = 9
+local MOB_ROW_HEIGHT = 20
+local MOB_ROW_ADVANCE = 22
+-- The tracked-creature band between the search field and the results: one
+-- accent line naming the creature, and the square that stops tracking it, on
+-- an outlined panel tinted with the same accent at a tenth of its opacity.
+-- Its height is reserved whether or not a creature is tracked, so taking one
+-- does not shove the whole result list down a row under the cursor.
+local MOB_CLEAR_SIZE = 18
+-- Clear space above and below the panel, separating it from the search field
+-- and from the first result row.
+local MOB_TRACKED_GAP = 5
+-- Inside the panel, so its outline does not run against the text or the cross.
+local MOB_TRACKED_INSET = 3
+-- Left margin for the line inside the panel: the inset plus enough that the
+-- glyphs do not sit on the edge.
+local MOB_TRACKED_TEXT_INDENT = 6
+local MOB_TRACKED_HEIGHT = MOB_CLEAR_SIZE + MOB_TRACKED_INSET * 2
+local MOB_TRACKED_ADVANCE = MOB_TRACKED_HEIGHT + MOB_TRACKED_GAP * 2
+-- The accent line is drawn from a smaller font than the 18px cross beside it,
+-- so its top anchor is nudged down by half the difference to read as centred
+-- against it.
+local MOB_TRACKED_TEXT_DROP = 3
+-- A tenth of the accent, which is a wash rather than a fill: the band has to
+-- read as one region behind the line without competing with the accent text
+-- drawn on it.
+local MOB_TRACKED_FILL_ALPHA = 0.10
+local MOB_TRACKED_BORDER_ALPHA = 1.00
+-- Not a localized string: a cross is a symbol, and this one is drawn as text
+-- because the addon ships no cross artwork and this client renders a tinted
+-- label on the same styled button every other action here uses.
+local MOB_CLEAR_MARK = "X"
+local MOB_CLEAR_RED = 0.95
+local MOB_CLEAR_GREEN = 0.30
+local MOB_CLEAR_BLUE = 0.30
+local MOB_PAGING_ADVANCE = 26
+-- The one reserved body line the result/page counter takes above the paging
+-- row, matching what page.Body advances for `reservedLines = 1`.
+local MOB_STATUS_ADVANCE = BODY_LINE_HEIGHT + 4
+local MOB_BOTTOM_MARGIN = 4
 
 -- Average glyph width for the small font, used ONLY when the client will not
 -- report a laid-out FontString's height. Deliberately narrow, so the estimate
@@ -204,14 +267,52 @@ local function WidgetName(key)
     return "UnrealQuestSettings" .. key
 end
 
+-- Shows one page region and every separately-owned part it carries. This is
+-- needed both by the standalone host and by the page's internal General/Mob
+-- Tracking tabs: parent visibility does not reliably reach children here.
+local function SetRegionShown(region, shown)
+    if not region then
+        return
+    end
+    if region.uuiParts then
+        local index = 1
+        local total = table.getn(region.uuiParts)
+        while index <= total do
+            SetRegionShown(region.uuiParts[index], shown)
+            index = index + 1
+        end
+        return
+    end
+    if shown then
+        Client.ShowObject(region)
+    else
+        Client.HideObject(region)
+    end
+    if region.label then
+        if shown then
+            Client.ShowObject(region.label)
+        else
+            Client.HideObject(region.label)
+        end
+    end
+end
+
 local function NewPage(parent)
-    local page = { parent = parent, widgets = {}, syncs = {}, y = 0 }
+    local page = { parent = parent, widgets = {}, syncs = {}, y = 0,
+        currentGroup = nil }
 
     page.Add = function(region)
         if region then
             table.insert(page.widgets, region)
+            if page.currentGroup then
+                table.insert(page.currentGroup, region)
+            end
         end
         return region
+    end
+
+    page.Group = function(group)
+        page.currentGroup = group
     end
 
     -- Registers a closure the page runs every time it is opened.
@@ -390,12 +491,17 @@ local function NewPage(parent)
     -- The handler is handed the button back, so an action that wants to report
     -- what it did can relabel itself without the page having to hold a
     -- reference for it.
-    page.Button = function(key, text, onClick, width)
+    page.Button = function(key, text, onClick, width, layout)
+        layout = layout or {}
+        local left = type(layout.left) == "number" and layout.left or 0
+        local height = type(layout.height) == "number" and layout.height or BUTTON_HEIGHT
+        local advance = type(layout.advance) == "number" and layout.advance
+            or (height + ROW_GAP)
         -- Declared before the creator call so the click closure can capture it
         -- as an upvalue and hand the button to its own handler.
         local button
         button = Client.CreateSettingsButton(page.parent, WidgetName(key),
-            text, 0, page.y, width or BUTTON_WIDTH, BUTTON_HEIGHT,
+            text, left, page.y, width or BUTTON_WIDTH, height,
             function()
                 if type(onClick) == "function" then
                     onClick(button)
@@ -405,8 +511,19 @@ local function NewPage(parent)
             return nil
         end
         page.Add(button)
-        page.y = page.y - BUTTON_ADVANCE
+        page.y = page.y - advance
         return button
+    end
+
+    -- The exact scriptless native EditBox contract established by
+    -- widgets.editbox_minimal_search.v1. The field itself owns no scripts;
+    -- callers submit through a separate Button.
+    page.Input = function(key, left, width, advance)
+        local control = Client.CreateSettingsEditBox(page.parent, WidgetName(key),
+            left or 0, page.y, width, 25)
+        page.Add(control)
+        page.y = page.y - (type(advance) == "number" and advance or 29)
+        return control
     end
 
     -- The real unrealUI component is used when that addon hosts this page.
@@ -489,11 +606,9 @@ end
 -- window honours the same contract, so this function never learns which host
 -- called it -- it is handed a parent frame and anchors everything to that.
 --
--- ONE PAGE, ONE TAB, ALWAYS. Everything UnrealQuest exposes goes in here, under
--- headings. It deliberately does not call RegisterSettingsGroup or register a
--- second tab: a group would scatter the addon's options across several rows of
--- unrealUI's sidebar, and the standalone window has no sidebar to mirror that
--- with -- the two hosts would stop being the same page.
+-- One host page, with two horizontal tabs INSIDE it. Registering two unrealUI
+-- sidebar entries would make the standalone host structurally different; the
+-- internal tab strip keeps both hosts identical.
 
 function Settings:BuildPage(parent)
     if not parent then
@@ -502,30 +617,70 @@ function Settings:BuildPage(parent)
 
     local page = NewPage(parent)
     self.liveSliders = {}
+    local generalWidgets = {}
+    local mobWidgets = {}
+    local generalTab, mobTab
+    local ApplyInternalTab, RefreshMobResults
 
-    -- The page opens on the addon's own name and version (PageTitle) instead of
-    -- a section heading, in the heading's place and at the heading's cost -- so
-    -- the sections below sit exactly where they did and still fit the fixed
-    -- content box shared by the two hosts. The tracker options follow it
-    -- directly; they are the first section whether or not it is labelled.
+    -- The page opens on the addon's own name and version (PageTitle), above the
+    -- tab strip: the wordmark titles the whole page, so it must not sit inside
+    -- either tab's own content, and it is drawn before the tabs so both tabs
+    -- start from the same cursor below it.
     --
     -- Skipped on the standalone host: that window's own header already carries
-    -- this wordmark (BuildWindow), so drawing it again as the first line would
-    -- show it twice. unrealUI draws no such title, so under that host this stays
-    -- the only place the page names the addon. The tracker section simply
-    -- starts one heading higher when it is skipped.
+    -- this wordmark (BuildWindow), so drawing it again here would show it twice.
+    -- unrealUI draws no such title, so under that host this stays the only
+    -- place the page names the addon. The tab strip simply starts one heading
+    -- higher when it is skipped.
     if self.host ~= "standalone" then
         page.Heading(PageTitle())
     else
         -- No heading to sit under here (the window's own header carries the
-        -- wordmark), so the first row would otherwise butt right against the
+        -- wordmark), so the tab strip would otherwise butt right against the
         -- header rule. A little of the height the skipped heading freed up
         -- goes back as breathing room.
         page.Gap(7)
     end
 
+    generalTab = page.Add(Client.CreateSettingsTab(parent,
+        WidgetName("generalTab"), UQ.L("SETTINGS_TAB_GENERAL"),
+        0, page.y, INTERNAL_TAB_WIDTH, INTERNAL_TAB_HEIGHT,
+        function() ApplyInternalTab("general") end))
+    mobTab = page.Add(Client.CreateSettingsTab(parent,
+        WidgetName("mobTrackingTab"), UQ.L("SETTINGS_TAB_MOB_TRACKING"),
+        INTERNAL_TAB_WIDTH + 6, page.y, INTERNAL_TAB_WIDTH,
+        INTERNAL_TAB_HEIGHT, function() ApplyInternalTab("mobs") end))
+    page.y = page.y - INTERNAL_TAB_ADVANCE
+    local contentTop = page.y
+
+    ApplyInternalTab = function(tab)
+        if tab ~= "mobs" then
+            tab = "general"
+        end
+        Settings.activePageTab = tab
+        local generalShown = tab == "general"
+        local index = 1
+        while index <= table.getn(generalWidgets) do
+            SetRegionShown(generalWidgets[index], generalShown)
+            index = index + 1
+        end
+        index = 1
+        while index <= table.getn(mobWidgets) do
+            SetRegionShown(mobWidgets[index], not generalShown)
+            index = index + 1
+        end
+        Client.SetSettingsTabSelected(generalTab, generalShown)
+        Client.SetSettingsTabSelected(mobTab, not generalShown)
+        if not generalShown and type(RefreshMobResults) == "function" then
+            RefreshMobResults()
+        end
+    end
+
+    page.Group(generalWidgets)
+
     -- The tracker opacity and rare-alert range sliders share one row. The
-    -- alert switch and two tracker filters use the two compact rows beneath.
+    -- three alert ranks and the three tracker filters use the two compact rows
+    -- beneath, the ranks packed three-across into one column.
     --
     -- The page is within a PIXEL of the fixed 428px content box both hosts
     -- hand it (the smoke test measures it), and neither host scrolls, so a new
@@ -535,8 +690,15 @@ function Settings:BuildPage(parent)
     -- map heading below is enough separation without another 16px rule, keeping
     -- the complete page inside the fixed content box (guarded below and in smoke).
     --
-    -- The rare alert is ONE switch on purpose: it covers rares, rare elites
-    -- and bosses, and there is no per-rank filtering to expose.
+    -- The alert is three switches, one per rank it can raise -- rares, rare
+    -- elites, bosses -- and they sit in the right-hand column directly under
+    -- the alert distance slider, so the whole alert reads as one block. There
+    -- is no master switch above them and no room for one: unticking all three
+    -- IS the alert off, which is exactly what "/uq rare off" writes, so the
+    -- row can never show a rank as tracked while something else silences it.
+    -- Their labels are single words on purpose -- three controls share the
+    -- width one normally takes, and a wrapped label here would run into the
+    -- row below.
     --
     -- The sound kit remains on "/uq rare" because it has to be AUDITIONED: an
     -- unknown SoundEntries kit name is silent rather than an error here.
@@ -552,10 +714,16 @@ function Settings:BuildPage(parent)
     page.Slider("rareAlertRange", UQ.L("SETTINGS_RARE_ALERT_RANGE"), 20, 500, 1,
         nil, { left = 250, width = 160, advance = 52 })
 
-    page.Checkbox("rareAlert", UQ.L("SETTINGS_RARE_ALERT"),
-        nil, { width = 230, advance = 0 })
     page.Checkbox("trackerCurrentZoneOnly", UQ.L("SETTINGS_TRACKER_CURRENT_ZONE"),
-        nil, { left = 250, width = TEXT_WIDTH - 250, advance = CHECKBOX_ADVANCE })
+        nil, { width = 230, advance = 0 })
+    page.Checkbox("rareAlertRares", UQ.L("SETTINGS_RARE_ALERT_RARES"),
+        nil, { left = 250, width = RANK_LABEL_WIDTH, advance = 0 })
+    page.Checkbox("rareAlertElites", UQ.L("SETTINGS_RARE_ALERT_ELITES"),
+        nil, { left = 250 + RANK_COLUMN, width = RANK_LABEL_WIDTH, advance = 0 })
+    page.Checkbox("rareAlertBosses", UQ.L("SETTINGS_RARE_ALERT_BOSSES"),
+        nil, { left = 250 + RANK_COLUMN * 2,
+               width = TEXT_WIDTH - (250 + RANK_COLUMN * 2) - CHECKBOX_LABEL_GAP,
+               advance = CHECKBOX_ADVANCE })
     local row2Top = page.y
     page.Checkbox("trackerHideUnstartedQuests", UQ.L("SETTINGS_TRACKER_HIDE_UNSTARTED"),
         nil, { width = 230, advance = 0 })
@@ -570,11 +738,15 @@ function Settings:BuildPage(parent)
     -- Map/WorldMapPins.lua carries the setting into its view signature, so
     -- picking a row repaints the map on the next refresh with nothing here to
     -- notify.
+    --
+    -- The two rows carry no note of their own. The page is a fixed,
+    -- non-scrolling 428px box, the minimap block below needs a fifth row for
+    -- its own options, and this was the only place with height to give: two
+    -- indented note lines cost 34px to restate what "Dots" and "Areas" already
+    -- say under a title that names the question.
     page.Radio("mapObjectiveDots", UQ.L("SETTINGS_MAP_OBJECTIVE_STYLE"), {
-        { value = true, label = UQ.L("SETTINGS_MAP_STYLE_DOTS"),
-          note = UQ.L("SETTINGS_MAP_STYLE_DOTS_NOTE") },
-        { value = false, label = UQ.L("SETTINGS_MAP_STYLE_AREAS"),
-          note = UQ.L("SETTINGS_MAP_STYLE_AREAS_NOTE") },
+        { value = true, label = UQ.L("SETTINGS_MAP_STYLE_DOTS") },
+        { value = false, label = UQ.L("SETTINGS_MAP_STYLE_AREAS") },
     })
 
     page.Slider("mapObjectiveDotScale", UQ.L("SETTINGS_MAP_DOT_SIZE"), 50, 150, 1,
@@ -593,32 +765,52 @@ function Settings:BuildPage(parent)
             end
         end, { left = 250, width = 160 })
 
-    -- Notes on this page are kept to one line: both hosts hand the page a
-    -- fixed 428px box that neither of them scrolls.
-    -- The two short quest options share one line. Their four translations are
-    -- deliberately kept within their half-width columns, preserving the page
-    -- height in both fixed, non-scrolling hosts.
-    page.Checkbox("mapClusterTooltips", UQ.L("SETTINGS_MAP_CLUSTER"), nil,
-        { width = 280, advance = 0 })
-    page.Checkbox("navigatorEnabled", UQ.L("SETTINGS_NAVIGATOR"), nil,
-        { left = 300, width = TEXT_WIDTH - 300, advance = CHECKBOX_ADVANCE })
-    page.Checkbox("translateQuestTitles", UQ.L("SETTINGS_TRANSLATE_QUEST_TITLES"), nil,
-        { width = 230, advance = 0 })
-    page.Checkbox("showLowLevelQuests", UQ.L("SETTINGS_LOW_LEVEL_QUESTS"), nil,
-        { left = 250, width = TEXT_WIDTH - 250, advance = CHECKBOX_ADVANCE })
+    -- Nine noteless switches, paired two to a line down five rows. Every row
+    -- is written the same way -- left control with `advance = 0`, right
+    -- control with the row's advance -- so the cursor alone decides where each
+    -- row sits. No row rewinds page.y: a hand-set cursor is what let two
+    -- controls be placed at the same Y and drawn on top of each other.
+    --
+    -- Both columns are fixed. The left one owns 0..PAIR_COLUMN_RIGHT, which is
+    -- what the longest of the four translations needs on one line ("Garder la
+    -- fleche du joueur au-dessus des marqueurs"), and the right one starts at
+    -- PAIR_COLUMN_RIGHT for every row, so the second column reads as a column.
+    -- It is wider than the 250 the rare-alert ranks use above, because that row
+    -- packs three controls into one column and this one pairs long labels; the
+    -- heading between them separates the two sections.
+    --
+    -- Notes on this page are kept to one line, and these rows carry none: both
+    -- hosts hand the page a fixed 428px box that neither of them scrolls.
+    local pairWidth = PAIR_COLUMN_RIGHT - CHECKBOX_LABEL_GAP
+    local rightWidth = TEXT_WIDTH - PAIR_COLUMN_RIGHT
 
-    -- Party reporting and its completion filter share the right column. The
-    -- clamp label describes its action without a note, leaving the second row
-    -- for the filter while keeping both hosts inside their fixed content box.
-    local clampRowTop = page.y
-    page.Checkbox("announceObjectivesParty", UQ.L("SETTINGS_ANNOUNCE_PARTY"), nil,
-        { left = 300, width = TEXT_WIDTH - 300, advance = 0 })
-    page.y = clampRowTop - CHECKBOX_ADVANCE
-    page.Checkbox("announceCompletedQuestsOnly", UQ.L("SETTINGS_ANNOUNCE_COMPLETE_ONLY"), nil,
-        { left = 300, width = TEXT_WIDTH - 300, advance = 0 })
-    page.y = clampRowTop
+    page.Checkbox("mapClusterTooltips", UQ.L("SETTINGS_MAP_CLUSTER"), nil,
+        { width = pairWidth, advance = 0 })
+    page.Checkbox("navigatorEnabled", UQ.L("SETTINGS_NAVIGATOR"), nil,
+        { left = PAIR_COLUMN_RIGHT, width = rightWidth, advance = CHECKBOX_ADVANCE })
+
+    page.Checkbox("translateQuestTitles", UQ.L("SETTINGS_TRANSLATE_QUEST_TITLES"), nil,
+        { width = pairWidth, advance = 0 })
+    page.Checkbox("showLowLevelQuests", UQ.L("SETTINGS_LOW_LEVEL_QUESTS"), nil,
+        { left = PAIR_COLUMN_RIGHT, width = rightWidth, advance = CHECKBOX_ADVANCE })
+
     page.Checkbox("minimapPinsClampEdge", UQ.L("SETTINGS_MINIMAP_CLAMP"), nil,
-        { width = 280, advance = 2 * CHECKBOX_ADVANCE + 4 })
+        { width = pairWidth, advance = 0 })
+    page.Checkbox("announceObjectivesParty", UQ.L("SETTINGS_ANNOUNCE_PARTY"), nil,
+        { left = PAIR_COLUMN_RIGHT, width = rightWidth, advance = CHECKBOX_ADVANCE })
+
+    page.Checkbox("minimapPinsBelowArrow", UQ.L("SETTINGS_MINIMAP_ARROW_TOP"), nil,
+        { width = pairWidth, advance = 0 })
+    page.Checkbox("announceCompletedQuestsOnly", UQ.L("SETTINGS_ANNOUNCE_COMPLETE_ONLY"), nil,
+        { left = PAIR_COLUMN_RIGHT, width = rightWidth, advance = CHECKBOX_ADVANCE })
+
+    page.Checkbox("tooltipRespawnTimers", UQ.L("SETTINGS_TOOLTIP_RESPAWN"), nil,
+        { width = pairWidth, advance = 0 })
+    page.Checkbox("questLogRewards", UQ.L("SETTINGS_QUESTLOG_REWARDS"), nil,
+        { left = PAIR_COLUMN_RIGHT, width = rightWidth, advance = CHECKBOX_ADVANCE })
+
+    page.Checkbox("mobNavigatorEnabled", UQ.L("SETTINGS_MOB_NAVIGATOR"), nil,
+        { width = pairWidth, advance = CHECKBOX_ADVANCE + 4 })
 
     -- The import button's label describes its action. The ordinary row gap
     -- above is enough separation; the old extra 8px is now used by the clearer
@@ -663,13 +855,265 @@ function Settings:BuildPage(parent)
 
     page.Sync(RefreshImportStatus)
 
-    -- Both hosts hand the page the same fixed content box and neither scrolls
-    -- it, so a page that outgrows the box draws its last controls off the
-    -- bottom -- silently. Said out loud the moment it happens instead.
-    self.pageHeight = -page.y
-    if self.pageHeight > CONTENT_HEIGHT then
+    local generalHeight = -page.y
+
+    -- Mob tracking ----------------------------------------------------------
+    -- This page intentionally submits through a separate button. The native
+    -- EditBox has no handlers at all, exactly matching the focused two-cycle
+    -- probe that established focus/type/GetText/ClearFocus as safe here.
+    page.Group(mobWidgets)
+    page.y = contentTop
+    page.Heading(UQ.L("SETTINGS_MOB_HEADING"))
+    page.Body(UQ.L("SETTINGS_MOB_DESCRIPTION"), 0, 2)
+
+    local searchRowTop = page.y
+    local mobSearchInput = page.Input("mobSearchInput", 0, 296, 0)
+    page.y = searchRowTop
+    local SubmitMobSearch = function()
+        Settings.mobSearchQuery = Client.GetSettingsEditText(mobSearchInput)
+        Client.ClearSettingsEditFocus(mobSearchInput)
+        Settings.mobSearchPage = 1
+        RefreshMobResults()
+    end
+    page.Button("mobSearchSubmit", UQ.L("SETTINGS_MOB_SEARCH"),
+        SubmitMobSearch, 112, { left = 306, height = 25, advance = 31 })
+    -- Enter submits the same search as the button, once the client is known to
+    -- survive an EditBox that owns a handler at all. Inert until then: the
+    -- wrapper attaches nothing and answers false.
+    Settings.mobSearchEnterSubmit =
+        Client.SetSettingsEditSubmitHandler(mobSearchInput, SubmitMobSearch)
+
+    -- The tracked creature, in its own band between the search field and the
+    -- results rather than as a row inside them.
+    --
+    -- Tracking is single-select, so this band is also the whole of the state:
+    -- it names what is tracked right now, and its cross is the way to stop.
+    -- Neither depends on finding the creature in the list again -- the search
+    -- that put it there may be several pages and one typed word away by the
+    -- time the player wants it gone -- and taking another creature rewrites
+    -- this line, which is what "tracking another one replaces it" looks like
+    -- from the player's side.
+    --
+    -- Placed BEFORE the row count is computed, so its reserved height is one
+    -- fewer result row rather than an overflow off the bottom of the host box.
+    local trackedRowTop = page.y
+    local accent = UQ.colors.accent
+    local trackedPanel = page.Add(Client.CreateSettingsPanel(parent,
+        0, page.y - MOB_TRACKED_GAP, TEXT_WIDTH, MOB_TRACKED_HEIGHT,
+        accent[1], accent[2], accent[3],
+        MOB_TRACKED_FILL_ALPHA, MOB_TRACKED_BORDER_ALPHA))
+    local trackedContentTop = page.y - MOB_TRACKED_GAP - MOB_TRACKED_INSET
+    local trackedLabel = page.Add(Client.CreateSettingsHeading(parent, "",
+        MOB_TRACKED_TEXT_INDENT, trackedContentTop - MOB_TRACKED_TEXT_DROP))
+    page.y = trackedContentTop
+    local trackedClear = page.Button("mobTrackedClear", MOB_CLEAR_MARK,
+        function()
+            local pins = UQ:GetModule("NpcPins")
+            local trackedId = pins and pins:GetTrackedMobId()
+            if pins and trackedId then
+                pins:SetMobTracked(trackedId, false)
+                RefreshMobResults()
+            end
+        end, MOB_CLEAR_SIZE,
+        { left = TEXT_WIDTH - MOB_TRACKED_INSET - MOB_CLEAR_SIZE,
+          height = MOB_CLEAR_SIZE,
+          -- Past the cross, past the panel's lower inset, then the gap: the
+          -- cursor has to clear the panel itself, not just the control on it.
+          advance = MOB_CLEAR_SIZE + MOB_TRACKED_INSET + MOB_TRACKED_GAP })
+    Client.SetButtonLabel(trackedClear, MOB_CLEAR_MARK,
+        MOB_CLEAR_RED, MOB_CLEAR_GREEN, MOB_CLEAR_BLUE)
+    -- The cross is a named widget; the line beside it is a FontString, which
+    -- has no name on this client. Published so the offline test can read what
+    -- the band actually says.
+    self.mobTrackedLabel = trackedLabel
+    self.mobTrackedPanel = trackedPanel
+
+    -- unrealUI can hand this builder a panel much taller than the standalone
+    -- 428px content box. Fill whichever host is actually drawing the page,
+    -- leaving only the paging row and a small bottom margin unused.
+    local availableHeight = Client.GetObjectHeight(parent)
+    if type(availableHeight) ~= "number" or availableHeight < CONTENT_HEIGHT then
+        availableHeight = CONTENT_HEIGHT
+    end
+    local mobRowsPerPage = math.floor((availableHeight + page.y
+        - MOB_STATUS_ADVANCE - MOB_PAGING_ADVANCE - MOB_BOTTOM_MARGIN)
+        / MOB_ROW_ADVANCE)
+    if mobRowsPerPage < MOB_MIN_ROWS_PER_PAGE then
+        mobRowsPerPage = MOB_MIN_ROWS_PER_PAGE
+    end
+    self.mobRowsPerPage = mobRowsPerPage
+    self.pageAvailableHeight = availableHeight
+
+    local mobRows = {}
+    local rowIndex = 1
+    while rowIndex <= mobRowsPerPage do
+        local capturedIndex = rowIndex
+        local rowButton
+        rowButton = page.Button("mobResult" .. tostring(rowIndex), "", function()
+            local row = mobRows[capturedIndex]
+            local record = row and row.record
+            local pins = UQ:GetModule("NpcPins")
+            if record and pins then
+                pins:SetMobTracked(record.unitId,
+                    not pins:IsMobTracked(record.unitId))
+                RefreshMobResults()
+            end
+        end, TEXT_WIDTH, { height = MOB_ROW_HEIGHT, advance = MOB_ROW_ADVANCE })
+        mobRows[rowIndex] = { button = rowButton, record = nil }
+        rowIndex = rowIndex + 1
+    end
+
+    -- The result/page counter sits directly above the paging row it describes,
+    -- under the results it counts. One reserved line, because its text is
+    -- rewritten at runtime and everything below was placed from this height.
+    local resultStatus = page.Body(UQ.L("SETTINGS_MOB_READY"), 0, 1)
+
+    local previousButton = page.Button("mobPrevious", UQ.L("SETTINGS_MOB_PREVIOUS"),
+        function()
+            if Settings.mobSearchPage > 1 then
+                Settings.mobSearchPage = Settings.mobSearchPage - 1
+                RefreshMobResults()
+            end
+        end, 110, { left = 0, height = 22, advance = 0 })
+    local nextButton = page.Button("mobNext", UQ.L("SETTINGS_MOB_NEXT"),
+        function()
+            Settings.mobSearchPage = Settings.mobSearchPage + 1
+            RefreshMobResults()
+        end, 110, { left = 120, height = 22, advance = MOB_PAGING_ADVANCE })
+
+    -- A creature's name as both surfaces say it: the name, then its level range
+    -- when the data has one. `units[id].lvl` is a STRING here and may be a
+    -- range, so it is printed rather than compared (docs/WORLD-DATA-NOTES.md).
+    --
+    -- NPC_DETAIL_LEVEL already carries its own parentheses in all four
+    -- languages, so nothing is added around it here: doing that is what drew
+    -- "Bayne ((level 10))".
+    local function MobDisplayName(record)
+        if type(record.level) == "string" and record.level ~= "" then
+            return record.name .. " " .. UQ.L("NPC_DETAIL_LEVEL", record.level)
+        end
+        return record.name
+    end
+
+    -- Where to tell the player the tracked creature is.
+    --
+    -- The zone they are standing in wins when the creature is recorded there,
+    -- because then the answer is "here" and that is the most useful thing the
+    -- line can say. Otherwise the zone holding the most of its spawns wins.
+    -- Only one zone is named: the band is a summary, and the maps are where
+    -- every recorded spawn is already drawn.
+    local function MobZoneName(database, unitId)
+        local zones = database:GetUnitZones(unitId)
+        local total = table.getn(zones)
+        if total == 0 then
+            return nil
+        end
+        local mapContext = UQ:GetModule("MapContext")
+        local playerAreaId = mapContext and mapContext:GetCurrentZoneView()
+        local index = 1
+        while index <= total do
+            if zones[index].areaId == playerAreaId then
+                return zones[index].name
+            end
+            index = index + 1
+        end
+        return zones[1].name
+    end
+
+    RefreshMobResults = function()
+        local database = UQ:GetModule("Database")
+        local pins = UQ:GetModule("NpcPins")
+        local matches = database and database:SearchMobsByName(
+            Settings.mobSearchQuery) or {}
+        local total = table.getn(matches)
+        local pages = math.ceil(total / mobRowsPerPage)
+        if pages < 1 then pages = 1 end
+        if Settings.mobSearchPage < 1 then
+            Settings.mobSearchPage = 1
+        elseif Settings.mobSearchPage > pages then
+            Settings.mobSearchPage = pages
+        end
+
+        -- The band above the results. Shown only while something is tracked,
+        -- and only on this tab: ApplyInternalTab shows every mob widget as a
+        -- block before calling this, so hiding it again here is what keeps an
+        -- empty band off the page.
+        local trackedId = pins and pins:GetTrackedMobId()
+        local trackedRecord = trackedId and database
+            and database:GetMobSearchRecord(trackedId)
+        if trackedRecord and Settings.activePageTab == "mobs" then
+            local zone = MobZoneName(database, trackedId)
+            local banner
+            if zone then
+                banner = UQ.L("SETTINGS_MOB_TRACKED_ROW_ZONE",
+                    MobDisplayName(trackedRecord), zone)
+            else
+                banner = UQ.L("SETTINGS_MOB_TRACKED_ROW",
+                    MobDisplayName(trackedRecord))
+            end
+            Client.SetSettingsBodyText(trackedLabel, banner)
+            SetRegionShown(trackedPanel, true)
+            SetRegionShown(trackedLabel, true)
+            SetRegionShown(trackedClear, true)
+        else
+            Client.SetSettingsBodyText(trackedLabel, "")
+            SetRegionShown(trackedPanel, false)
+            SetRegionShown(trackedLabel, false)
+            SetRegionShown(trackedClear, false)
+        end
+
+        local trackedCount = pins and pins:GetTrackedMobCount() or 0
+        Client.SetSettingsBodyText(resultStatus, UQ.L("SETTINGS_MOB_RESULTS",
+            tostring(total), tostring(Settings.mobSearchPage), tostring(pages),
+            tostring(trackedCount)))
+
+        local first = (Settings.mobSearchPage - 1) * mobRowsPerPage + 1
+        local index = 1
+        while index <= mobRowsPerPage do
+            local row = mobRows[index]
+            local record = matches[first + index - 1]
+            row.record = record
+            if record then
+                local tracked = pins and pins:IsMobTracked(record.unitId)
+                local action = UQ.L(tracked and "QUESTLOG_BUTTON_UNTRACK"
+                    or "QUESTLOG_BUTTON_TRACK")
+                Client.SetButtonLabel(row.button,
+                    MobDisplayName(record) .. "  " .. action)
+                Client.SetSettingsTabSelected(row.button, tracked)
+                if Settings.activePageTab == "mobs" then
+                    SetRegionShown(row.button, true)
+                end
+            else
+                Client.SetButtonLabel(row.button, "")
+                Client.SetSettingsTabSelected(row.button, false)
+                SetRegionShown(row.button, false)
+            end
+            index = index + 1
+        end
+
+        Client.SetSettingsTabSelected(previousButton,
+            Settings.mobSearchPage > 1)
+        Client.SetSettingsTabSelected(nextButton,
+            Settings.mobSearchPage < pages)
+    end
+
+    local mobHeight = -page.y
+    page.Group(nil)
+    page.Sync(function()
+        Client.SetSettingsEditText(mobSearchInput, Settings.mobSearchQuery)
+        ApplyInternalTab(Settings.activePageTab)
+    end)
+
+    -- Neither host scrolls this page, so compare its largest tab against the
+    -- actual host height. The standalone fallback remains 428px; unrealUI can
+    -- provide substantially more room and the mob rows above consume it.
+    self.pageHeight = generalHeight
+    if mobHeight > self.pageHeight then
+        self.pageHeight = mobHeight
+    end
+    if self.pageHeight > availableHeight then
         UQ:Warn(UQ.L("SETTINGS_WARN_PAGE_TOO_TALL",
-            math.floor(self.pageHeight), CONTENT_HEIGHT))
+            math.floor(self.pageHeight), math.floor(availableHeight)))
     end
 
     return page.widgets, page.Refresh
@@ -868,7 +1312,7 @@ function Settings:RefreshLanguageButtons()
         local button = self.languageButtons[index]
         local selected = button.unrealQuestLanguage == active
         button.unrealQuestSelected = selected
-        Client.SetSettingsFlagShade(button,
+        Client.SetFlagButtonShade(button,
             selected and FLAG_SHADE_SELECTED or FLAG_SHADE_IDLE, selected)
         index = index + 1
     end
@@ -892,7 +1336,7 @@ function Settings:BuildLanguageSelector(window)
         local code = entry.code
         local label = entry.label
 
-        local button = Client.CreateSettingsFlag(window,
+        local button = Client.CreateFlagButton(window,
             "UnrealQuestSettingsLanguage" .. code,
             UQ.FlagTexture(code), entry.short, FLAG_WIDTH, FLAG_HEIGHT,
             function()
@@ -914,13 +1358,13 @@ function Settings:BuildLanguageSelector(window)
                 if button.unrealQuestSelected then
                     return
                 end
-                Client.SetSettingsFlagShade(button, FLAG_SHADE_HOVER, false)
+                Client.SetFlagButtonShade(button, FLAG_SHADE_HOVER, false)
             end)
             Client.SetObjectScript(button, "OnLeave", function()
                 if button.unrealQuestSelected then
                     return
                 end
-                Client.SetSettingsFlagShade(button, FLAG_SHADE_IDLE, false)
+                Client.SetFlagButtonShade(button, FLAG_SHADE_IDLE, false)
             end)
             table.insert(self.languageButtons, button)
         end
@@ -1074,39 +1518,6 @@ function Settings:EnsurePage()
     return self.page
 end
 
--- Shows or hides one region of a page, honouring the SAME composite convention
--- unrealUI's settings window uses: a control that owns extra regions hands them
--- back as `.label` (and a multi-part control as `uuiParts`), because nothing
--- here may rely on a parent's visibility reaching its children
--- (rendering.parent_alpha_not_propagated). Reproduced rather than invented, so
--- a control built by this page behaves identically in both windows.
-local function SetRegionShown(region, shown)
-    if not region then
-        return
-    end
-    if region.uuiParts then
-        local index = 1
-        local total = table.getn(region.uuiParts)
-        while index <= total do
-            SetRegionShown(region.uuiParts[index], shown)
-            index = index + 1
-        end
-        return
-    end
-    if shown then
-        Client.ShowObject(region)
-    else
-        Client.HideObject(region)
-    end
-    if region.label then
-        if shown then
-            Client.ShowObject(region.label)
-        else
-            Client.HideObject(region.label)
-        end
-    end
-end
-
 local function SetPageShown(page, shown)
     if not page then
         return
@@ -1213,6 +1624,17 @@ function Settings:OnInit()
         "whether unrealUI is installed and will host UnrealQuest's options page. Resolved after the "
         .. "player is in the world, by polling for the UnrealUI global and type-checking its "
         .. "RegisterSettingsTab; this line is what it says before that poll has answered")
+    UQ:DeclareCapability("mobSearchEnterSubmit", "unverified",
+        "whether the Enter key can submit the mob search. It needs a script on the EditBox, and "
+        .. "the only measured EditBox here carried none (widgets.editbox_minimal_search.v1), while "
+        .. "a bundle including OnEnterPressed is part of a confirmed uncatchable client crash "
+        .. "(widgets.editbox_focus_crash). Client.SetSettingsEditSubmitHandler attaches nothing "
+        .. "and returns false until a probe isolates OnEnterPressed on its own; only the button submits")
+    UQ:DeclareCapability("mobSearchTextInput", "verified",
+        "an addon-owned native EditBox with no scripts, no template, no SetNumeric, no "
+        .. "HighlightText and no programmatic SetFocus survived two manual focus/type/GetText/"
+        .. "ClearFocus cycles (widgets.editbox_minimal_search.v1, focused runtime probe, "
+        .. "2026-09-09)")
 end
 
 function Settings:OnEnable()

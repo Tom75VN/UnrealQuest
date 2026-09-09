@@ -1254,6 +1254,38 @@ end
 
 function MinimapPins:Refresh()
     local config = UQ:GetModule("Config")
+    -- Asked on every refresh rather than once at load, so turning the setting
+    -- off in game re-levels the pins that already exist instead of waiting for
+    -- a reload. The call is a no-op once the state matches.
+    Client.SetMinimapPinsBelowPlayerArrow(
+        not config or config:Get("minimapPinsBelowArrow") ~= false)
+    if not self.arrowDeclared then
+        self.arrowDeclared = true
+        local arrow = Client.GetMinimapPlayerArrowState()
+        if arrow.arrowRaised then
+            UQ:DeclareCapability("minimapPlayerArrowOrder", "detected",
+                "the client handed over a minimap player arrow as a Model child of Minimap;"
+                .. " it is raised to level " .. tostring(arrow.pinLevel + 5)
+                .. ", above the pins, which keep their measured band")
+        elseif arrow.below then
+            UQ:DeclareCapability("minimapPlayerArrowOrder", "unverified",
+                "no arrow handle exists here and none can: probe 1.37.0 found 7 Minimap children,"
+                .. " none an arrow, and probes 1.46.1/1.47.0 (mmarrowwalk, mmarrowtrio, 2026-09-09)"
+                .. " closed both remaining routes -- EnumerateFrames reaches only named objects"
+                .. " (4486 of 4486) at ~1889ms per walk, GetModel returns nil on every Model, and"
+                .. " the MiniWorldMapArrowFrame trio returns no object at all. See"
+                .. " minimap.player_arrow_not_addressable."
+                .. " So the pins are lowered to level " .. tostring(arrow.pinLevel)
+                .. " instead, on the UNMEASURED hypothesis that the engine draws the arrow above"
+                .. " that band. Nothing reports the arrow's own level and no probe can read it, so"
+                .. " only looking at the minimap settles it; the minimapPinsBelowArrow setting"
+                .. " puts the pins back at 120. /uq minimap prints the level in use")
+        else
+            UQ:DeclareCapability("minimapPlayerArrowOrder", "missing",
+                "turned off by the player: the pins keep the measured level-120 band and draw"
+                .. " over the player arrow, as they did before the setting existed")
+        end
+    end
     if config and not config:Get("minimapPins") then
         self:HideAll()
         self:Record("disabled")

@@ -19,7 +19,7 @@ UnrealQuest = {}
 local UQ = UnrealQuest
 
 UQ.name = "UnrealQuest"
-UQ.version = "0.3.2"
+UQ.version = "0.3.3"
 
 -- Keep UnrealQuest visually aligned with UnrealUI without creating a runtime
 -- dependency between the two addons. These values mirror UnrealUI's shared
@@ -455,6 +455,15 @@ UQ:DeclareFeature("mainQuestWaypoint", true,
     .. "to the player is the whole of what this client can support. The remaining limit is the "
     .. "camera, not the character: there is still no camera getter, so a free-look player sees a "
     .. "direction anchored to where the CHARACTER faces. See docs/HUD-NAVIGATOR.md")
+
+UQ:DeclareFeature("mobNavigator", true,
+    "the second, independent arc-and-arrow dial that aims at the nearest recorded spawn of a "
+    .. "creature tracked from the options page (HUD/MobNavigator.lua), together with the ring "
+    .. "Map/NpcPins.lua draws around that exact spawn on both maps. Deliberately NOT gated on "
+    .. "mainQuestWaypoint: it follows no quest, reads no quest state and shares no setting with the "
+    .. "quest navigator, so turning the follow-one-quest layer off has no reason to take it with "
+    .. "them. It does share that layer's rotation evidence, since the pre-rotated atlas is a client "
+    .. "fact rather than a quest one. See docs/HUD-NAVIGATOR.md")
 
 -- Logging -------------------------------------------------------------------
 

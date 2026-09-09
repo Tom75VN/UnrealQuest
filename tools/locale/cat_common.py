@@ -126,6 +126,24 @@ STRINGS.update({
     "не удалось сохранить новое положение навигатора",
     "无法保存导航器的新位置",
 ),
+"MOBNAV_WARN_DRAG_FAILED": (
+    "the mob navigator refused to move (StartMoving failed)",
+    "le navigateur de creature a refuse de bouger (echec de StartMoving)",
+    "навигатор существ отказался перемещаться (StartMoving не сработал)",
+    "生物导航拒绝移动（StartMoving 失败）",
+),
+"MOBNAV_WARN_NO_HANDLE": (
+    "the mob navigator drag handle could not be created",
+    "la zone de deplacement du navigateur de creature n'a pas pu etre creee",
+    "не удалось создать область перетаскивания навигатора существ",
+    "无法创建生物导航的拖动区域",
+),
+"MOBNAV_WARN_NO_POSITION": (
+    "the mob navigator's new position could not be saved",
+    "la nouvelle position du navigateur de creature n'a pas pu etre enregistree",
+    "не удалось сохранить новое положение навигатора существ",
+    "无法保存生物导航的新位置",
+),
 "NAV_DISTANCE": (
     "%s yd",
     "%s m",
@@ -165,6 +183,50 @@ STRINGS.update({
 "QUESTLOG_BUTTON_UNTRACK": ("Untrack", "Ne plus suivre", "Не следить", "取消追踪"),
 "QUESTLOG_BUTTON_FOLLOW": ("Follow", "Suivre", "Следовать", "跟随"),
 "QUESTLOG_LEVEL": ("Level %s", "Niveau %s", "Уровень %s", "等级 %s"),
+"QUESTLOG_REWARD_XP": (
+    "Experience: %s",
+    "Experience : %s",
+    "Опыт: %s",
+    "经验: %s",
+),
+# Named faction first, then the signed amount -- the pair shares a narrow
+# column with the experience row, so "Argent Dawn: +75" fits where
+# "Reputation: +75 with Argent Dawn" would have run into the next column.
+"QUESTLOG_REWARD_REPUTATION": (
+    "%s: %s",
+    "%s : %s",
+    "%s: %s",
+    "%s: %s",
+),
+"QUESTLOG_REWARD_REPUTATION_UNNAMED": (
+    "Reputation: %s",
+    "Reputation : %s",
+    "Репутация: %s",
+    "声望: %s",
+),
+
+# The per-quest language row in the detail pane's top-right corner. Each flag's
+# tooltip is headed by the language's OWN name, which comes from UQ.languages
+# and is therefore never translated here; these two lines say where that
+# language's text comes from.
+"QUESTLOG_FLAG_NATIVE": (
+    "The text the server sent",
+    "Le texte envoye par le serveur",
+    "Текст, присланный сервером",
+    "服务器发送的原文",
+),
+"QUESTLOG_FLAG_TRANSLATED": (
+    "From the bundled quest data",
+    "Depuis les donnees de quete fournies",
+    "Из встроенных данных заданий",
+    "来自内置任务数据",
+),
+"QUESTLOG_FLAG_ONLY_THIS_QUEST": (
+    "This quest only; the others keep their setting.",
+    "Cette quete seulement ; les autres gardent leur reglage.",
+    "Только это задание; остальные сохранят настройку.",
+    "仅此任务；其他任务保持原设置。",
+),
 
 # --- world map ---------------------------------------------------------------
 "MAP_HINT_SHIFT_CLICK_CHOOSE": (
@@ -401,6 +463,50 @@ STRINGS.update({
 
 # --- settings page -----------------------------------------------------------
 STRINGS.update({
+"SETTINGS_TAB_GENERAL": ("General", "General", "Общие", "常规"),
+"SETTINGS_TAB_MOB_TRACKING": (
+    "Mob tracking", "Suivi des creatures", "Отслеживание существ", "生物追踪"),
+"SETTINGS_MOB_HEADING": (
+    "Search and track mobs", "Rechercher et suivre des creatures",
+    "Поиск и отслеживание существ", "搜索并追踪生物"),
+"SETTINGS_MOB_DESCRIPTION": (
+    "Search the bundled creature database by name. One creature is tracked at a time: it is pinned "
+    "at the top of the list, it appears on both maps, and an arrow points the way to it.",
+    "Recherchez la base de creatures incluse par nom. Une seule creature est suivie a la fois : elle "
+    "est epinglee en haut de la liste, apparait sur les deux cartes, et une fleche indique le chemin.",
+    "\u0418\u0449\u0438\u0442\u0435 \u0441\u0443\u0449\u0435\u0441\u0442\u0432 \u0432\u043e \u0432\u0441\u0442\u0440\u043e\u0435\u043d\u043d\u043e\u0439 \u0431\u0430\u0437\u0435 \u043f\u043e \u0438\u043c\u0435\u043d\u0438. "
+    "\u041e\u0442\u0441\u043b\u0435\u0436\u0438\u0432\u0430\u0435\u0442\u0441\u044f \u043e\u0434\u043d\u043e \u0441\u0443\u0449\u0435\u0441\u0442\u0432\u043e: \u043e\u043d\u043e \u0437\u0430\u043a\u0440\u0435\u043f\u043b\u0435\u043d\u043e \u0432\u0432\u0435\u0440\u0445\u0443 \u0441\u043f\u0438\u0441\u043a\u0430, \u043f\u043e\u043a\u0430\u0437\u0430\u043d\u043e \u043d\u0430 \u043e\u0431\u0435\u0438\u0445 \u043a\u0430\u0440\u0442\u0430\u0445, \u0438 \u043a \u043d\u0435\u043c\u0443 \u0443\u043a\u0430\u0437\u044b\u0432\u0430\u0435\u0442 \u0441\u0442\u0440\u0435\u043b\u043a\u0430.",
+    "\u6309\u540d\u79f0\u641c\u7d22\u5185\u7f6e\u751f\u7269\u6570\u636e\u5e93\u3002\u540c\u65f6\u53ea\u8ffd\u8e2a\u4e00\u4e2a\u751f\u7269\uff1a\u5b83\u56fa\u5b9a\u5728\u5217\u8868\u9876\u90e8\uff0c\u663e\u793a\u5728\u4e24\u5f20\u5730\u56fe\u4e0a\uff0c\u5e76\u6709\u7bad\u5934\u6307\u5f15\u65b9\u5411\u3002",
+),
+"SETTINGS_MOB_SEARCH": ("Search", "Rechercher", "Найти", "搜索"),
+"SETTINGS_MOB_READY": (
+    "Enter a name, or search with an empty field to browse all mobs.",
+    "Saisissez un nom, ou laissez le champ vide pour voir toutes les creatures.",
+    "Введите имя или оставьте поле пустым, чтобы просмотреть всех существ.",
+    "输入名称，或留空搜索以浏览所有生物。",
+),
+"SETTINGS_MOB_RESULTS": (
+    "%s results - page %s/%s - %s tracked",
+    "%s resultats - page %s/%s - %s suivis",
+    "%s результатов - страница %s/%s - отслеживается: %s",
+    "%s 个结果 - 第 %s/%s 页 - 已追踪 %s 个",
+),
+"SETTINGS_MOB_TRACKED_ROW": (
+    "Tracked: %s",
+    "Suivie : %s",
+    "\u041e\u0442\u0441\u043b\u0435\u0436\u0438\u0432\u0430\u0435\u0442\u0441\u044f: %s",
+    "\u5df2\u8ffd\u8e2a\uff1a%s",
+),
+"SETTINGS_MOB_TRACKED_ROW_ZONE": (
+    "Tracked: %s - %s",
+    "Suivie : %s - %s",
+    "\u041e\u0442\u0441\u043b\u0435\u0436\u0438\u0432\u0430\u0435\u0442\u0441\u044f: %s - %s",
+    "\u5df2\u8ffd\u8e2a\uff1a%s - %s",
+),
+"SETTINGS_MOB_PREVIOUS": ("Previous", "Precedent", "Назад", "上一页"),
+"SETTINGS_MOB_NEXT": ("Next", "Suivant", "Далее", "下一页"),
+"NPC_CATEGORY_TRACKED_MOB": (
+    "Tracked mob", "Creature suivie", "Отслеживаемое существо", "已追踪生物"),
 "SETTINGS_TRACKER_OPACITY": (
     "Background opacity", "Opacité du fond", "Непрозрачность фона", "背景不透明度"),
 "SETTINGS_TRACKER_CURRENT_ZONE": (
@@ -417,19 +523,7 @@ STRINGS.update({
     "任务目标显示为：",
 ),
 "SETTINGS_MAP_STYLE_DOTS": ("Dots", "Points", "Точки", "圆点"),
-"SETTINGS_MAP_STYLE_DOTS_NOTE": (
-    "One dot per target position, in the same style as the minimap pins.",
-    "Un point par position de cible, dans le même style que les repères de la mini-carte.",
-    "По одной точке на каждую позицию цели, в том же стиле, что и метки миникарты.",
-    "每个目标位置一个圆点，样式与小地图标记相同。",
-),
 "SETTINGS_MAP_STYLE_AREAS": ("Areas", "Zones", "Области", "区域"),
-"SETTINGS_MAP_STYLE_AREAS_NOTE": (
-    "A shaded blue area covering where the targets are found.",
-    "Une zone bleue ombrée couvrant l'endroit où se trouvent les cibles.",
-    "Синяя закрашенная область, охватывающая места, где встречаются цели.",
-    "以蓝色阴影区域覆盖目标出现的范围。",
-),
 "SETTINGS_MAP_DOT_SIZE": (
     "World map dot size", "Taille des points sur la carte",
     "Размер точек на карте мира", "世界地图圆点大小"),
@@ -447,6 +541,12 @@ STRINGS.update({
     "Afficher le navigateur",
     "Показывать навигатор",
     "显示任务导航",
+),
+"SETTINGS_MOB_NAVIGATOR": (
+    "Show tracked mob navigator",
+    "Afficher le navigateur de creature",
+    "Показывать навигатор существ",
+    "显示生物导航",
 ),
 "SETTINGS_MAP_CLUSTER_NOTE": (
     "Markers whose icons touch cannot be hovered apart; this lists them all.",
@@ -492,6 +592,12 @@ STRINGS.update({
     "collés au bord.",
     "При выключении далёкие маркеры «!» и «?» скрываются, а не прижимаются к краю.",
     "关闭时将隐藏远处的“!”和“?”标记，而不是把它们固定在边框上。",
+),
+"SETTINGS_MINIMAP_ARROW_TOP": (
+    "Keep the player arrow above minimap markers",
+    "Garder la fleche du joueur au-dessus des marqueurs",
+    "Стрелка игрока поверх меток миникарты",
+    "保持玩家箭头显示在小地图标记上方",
 ),
 "SETTINGS_ANNOUNCE_PARTY": (
     "Objectives in party chat",
@@ -833,17 +939,6 @@ STRINGS.update({
     u"稀有",
 ),
 
-# Compass directions on the north-up MAP, not headings relative to the player:
-# this client has no readable player facing, so "ahead of you" cannot be said.
-"RARE_DIR_N": (u"north", u"au nord", u"к северу", u"北方"),
-"RARE_DIR_NE": (u"north-east", u"au nord-est", u"к северо-востоку", u"东北方"),
-"RARE_DIR_E": (u"east", u"à l'est", u"к востоку", u"东方"),
-"RARE_DIR_SE": (u"south-east", u"au sud-est", u"к юго-востоку", u"东南方"),
-"RARE_DIR_S": (u"south", u"au sud", u"к югу", u"南方"),
-"RARE_DIR_SW": (u"south-west", u"au sud-ouest", u"к юго-западу", u"西南方"),
-"RARE_DIR_W": (u"west", u"à l'ouest", u"к западу", u"西方"),
-"RARE_DIR_NW": (u"north-west", u"au nord-ouest", u"к северо-западу", u"西北方"),
-
 # The line the card opens on. One per rank, not one pattern with the rank
 # poured into it: French alone needs "un rare" against "une elite rare".
 "RARE_NEARBY_RARE": (
@@ -876,30 +971,66 @@ STRINGS.update({
     u"%s — уровень %s",
     u"%s — %s 级",
 ),
-"RARE_ALERT_BODY": (
-    u"%s yards %s",
-    u"%s mètres %s",
-    u"%s м — %s",
-    u"%s 码，%s",
-),
 "RARE_ALERT_CHAT": (
     u"%s (%s) is within %s yards of a recorded spawn",
     u"%s (%s) est à %s mètres d'une apparition connue",
     u"%s (%s) — в %s м от известной точки появления",
     u"%s（%s）距已知刷新点 %s 码",
 ),
+"RARE_ALERT_KILLED": (
+    u"Killed: %s",
+    u"Tue : %s",
+    u"Убито: %s",
+    u"击杀：%s",
+),
 
 # --- settings page: the rare alert rows --------------------------------------
-"SETTINGS_RARE_ALERT": (
-    u"Elite mobs alert",
-    u"Alerte monstres elites",
-    u"Оповещение об элитных",
-    u"精英怪提醒",
+# One switch per rank the proximity alert can raise, and they share the width
+# of a single option row -- so each label is ONE word in every language, and a
+# plural noun rather than a sentence: the row sits directly under the alert
+# distance slider and is read as a list of what that alert covers.
+"SETTINGS_RARE_ALERT_RARES": (
+    u"Rares",
+    u"Rares",
+    u"Редкие",
+    u"稀有",
+),
+# The rank-2 rare elites, not the 816 ordinary elites: those are never alerted
+# about (Database:IsAlertWorthy) and have no switch here.
+"SETTINGS_RARE_ALERT_ELITES": (
+    u"Elites",
+    u"Elites",
+    u"Элитные",
+    u"精英",
+),
+"SETTINGS_RARE_ALERT_BOSSES": (
+    u"Bosses",
+    u"Boss",
+    u"Боссы",
+    u"首领",
 ),
 "SETTINGS_RARE_ALERT_RANGE": (
     u"Alert distance (yards)",
     u"Distance d'alerte (metres)",
     u"Дистанция оповещения (м)",
     u"提醒距离（码）",
+),
+"SETTINGS_QUESTLOG_REWARDS": (
+    "Experience and reputation rewards",
+    "Recompenses en experience et reputation",
+    "Награды опытом и репутацией",
+    "经验和声望奖励",
+),
+"SETTINGS_TOOLTIP_RESPAWN": (
+    u"Respawn timers in tooltips",
+    u"Temps de reapparition dans les infobulles",
+    u"Таймеры возрождения в подсказках",
+    u"鼠标提示中的刷新时间",
+),
+"TOOLTIP_RESPAWN": (
+    u"Respawn: %s",
+    u"Reapparition : %s",
+    u"Возрождение: %s",
+    u"刷新时间：%s",
 ),
 })

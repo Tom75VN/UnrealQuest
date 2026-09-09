@@ -125,7 +125,7 @@ visible click.
 
 ## Version
 
-Current release: 0.3.2
+Current release: 0.3.3
 
 ## License
 

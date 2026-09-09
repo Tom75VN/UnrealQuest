@@ -322,6 +322,12 @@ function UQ.GetLanguageLabel(code)
     return entry and entry.label or tostring(code)
 end
 
+-- The two-letter badge drawn where the flag artwork will not load.
+function UQ.GetLanguageBadge(code)
+    local entry = languageByCode[code or active]
+    return entry and entry.short or "?"
+end
+
 function UQ.IsValidLanguage(code)
     return languageByCode[code] ~= nil
 end
@@ -336,6 +342,62 @@ function UQ.FlagTexture(code)
         return nil
     end
     return "Interface\\AddOns\\unrealQuest\\media\\Flags\\" .. entry.flag
+end
+
+-- Per-quest exceptions to the language ---------------------------------------
+--
+-- The language above is one account-wide choice. This is the exception list
+-- beside it: quests the player asked to read in a different language, chosen
+-- with the flag in the quest log detail pane's top-right corner
+-- (Quest/QuestLogButtons.lua). The value is a LANGUAGE CODE, not a yes/no --
+-- the flag cycles through the languages that quest actually has, and the
+-- client's own locale is one of them, meaning "the text the server sent".
+-- No entry follows the account-wide setting.
+--
+-- The scope is the QUEST, not the quest log: Database:GetQuestDisplayText is
+-- the single title policy every surface goes through, so an overridden quest
+-- reads the same way in the tracker, on the map and in tooltips as it does in
+-- the log. That is what "only this quest" means here -- one quest everywhere,
+-- not one panel.
+--
+-- Deliberately NOT persisted. It is a reading aid for a quest currently on
+-- screen, the account store keeps a bounded number of entries per section
+-- (Core/Config.lua) and an unbounded per-quest table would compete with the
+-- history sections for that budget. The account-wide language, which is the
+-- durable preference, is stored; this is not.
+--
+-- Keyed by numeric quest ID, so a quest this addon could not match to a
+-- database row (ambiguous or unmatched) has nothing to key on and cannot carry
+-- an override -- which is correct, since it has no translated row to show
+-- either.
+local questLanguageOverrides = {}
+
+-- nil = follow the account-wide setting; a code = this quest's own answer.
+function UQ.GetQuestLanguageOverride(questId)
+    if type(questId) ~= "number" then
+        return nil
+    end
+    return questLanguageOverrides[questId]
+end
+
+-- Validated before it is stored, like the account-wide code: a value that
+-- reached a lookup as a corrupt key would show a raw table name where the
+-- quest text should be. The client's own locale is accepted alongside the four
+-- this addon is translated into, because it is the "as the server wrote it"
+-- end of the cycle and need not be one of them.
+function UQ.SetQuestLanguageOverride(questId, code)
+    if type(questId) ~= "number" then
+        return false
+    end
+    if code == nil then
+        questLanguageOverrides[questId] = nil
+        return true
+    end
+    if not languageByCode[code] and code ~= Client.GetLocale() then
+        return false
+    end
+    questLanguageOverrides[questId] = code
+    return true
 end
 
 -- True while unrealUI is the one deciding. The settings window asks this to
