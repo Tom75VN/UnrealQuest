@@ -5,6 +5,10 @@ Experience and reputation rows at the tail of a quest's reward section, on all
 three surfaces that state a quest's rewards: the Quest Log, the quest-giver's
 offer window ("Accept"), and its completion window ("Complete Quest").
 
+On the Quest Log only, the reward money is redrawn too: the native coin frame
+is hidden and the addon's own coin row takes its place directly under "You
+will receive:" (see Client.SetQuestLogRewardMoney).
+
 The client's own Quest surface reports the item and money rewards and nothing
 else -- there is no call anywhere in the compatibility database that returns a
 quest's experience or its reputation deltas. Both therefore come from the
@@ -36,12 +40,11 @@ a wrong faction name is worse than no faction name.
 
 The Quest Log resolves through the addon's own quest model, by the selected
 row's title. The giver panels cannot: an OFFERED quest is not in the log yet,
-so there is no row and no index. Their title comes from Client.GetQuestGiverTitle
-(GetTitleText -- documented as the title of the last quest-giver packet,
-detail/progress/complete alike) and is matched straight against the database's
-title index. That match is accepted ONLY when exactly one quest carries the
-title: two quests sharing a name is an ambiguity this surface has no second
-signal to break, so it shows nothing rather than the wrong quest's numbers.
+so there is no row and no index. All they have is the packet -- its title, its
+story text and its objectives blurb -- so they ask
+QuestMatch:ResolveGiverQuestId, which is also what the language flags on this
+same window ask. See Data/QuestMatch.lua for how a title four quests share gets
+broken, and why one that stays tied shows nothing at all.
 
 ## Placement
 
@@ -79,6 +82,14 @@ local function QuestState()
     return UQ:GetModule("QuestState")
 end
 
+local function QuestLanguage(questId)
+    local translation = UQ:GetModule("QuestLogTranslation")
+    if translation and type(translation.GetQuestLanguage) == "function" then
+        return translation:GetQuestLanguage({ questId = questId })
+    end
+    return UQ.GetLanguage and UQ.GetLanguage() or Client.GetLocale()
+end
+
 -- Neither quest log surface hands over a quest id; the selected row's title is
 -- the only stable join, exactly as Quest/QuestLogButtons.lua resolves it.
 local function ResolveSelectedQuestId()
@@ -98,32 +109,27 @@ local function ResolveSelectedQuestId()
     return quest.questId
 end
 
--- The offered/completed quest, by title alone. Only an unambiguous hit counts.
-local function ResolveGiverQuestId(database)
-    local title = Client.GetQuestGiverTitle()
-    if not title then
-        return nil
-    end
-    local key = UQ.NameKey(title)
-    local ids = key and database:FindQuestIdsByTitleKey(key)
-    if type(ids) ~= "table" or table.getn(ids) ~= 1 then
-        return nil
-    end
-    return ids[1]
+-- The offered/completed quest. Resolving it is QuestMatch's job -- see
+-- Match:ResolveGiverQuestId, which Quest/QuestGiverTranslation.lua asks the
+-- same question of, so the reward rows and the language flags on that one
+-- window can never disagree about which quest is on screen.
+local function ResolveGiverQuestId()
+    local match = UQ:GetModule("QuestMatch")
+    return match and match:ResolveGiverQuestId() or nil
 end
 
-local function AddExperienceLine(lines, database, questId)
+local function AddExperienceLine(lines, database, questId, language)
     local xp = database:GetQuestRewardXP(questId)
     if not xp then
         return
     end
     table.insert(lines, {
-        text = UQ.L("QUESTLOG_REWARD_XP", tostring(xp)),
+        text = UQ.LForLanguage(language, "QUESTLOG_REWARD_XP", tostring(xp)),
         r = XP_COLOR.r, g = XP_COLOR.g, b = XP_COLOR.b,
     })
 end
 
-local function AddReputationLines(lines, database, questId)
+local function AddReputationLines(lines, database, questId, language)
     local rewards = database:GetQuestRewardReputation(questId)
     if not rewards then
         return
@@ -137,11 +143,13 @@ local function AddReputationLines(lines, database, questId)
         local name = database:GetFactionName(reward.faction)
         local text
         if name then
-            text = UQ.L("QUESTLOG_REWARD_REPUTATION", name, signed)
+            text = UQ.LForLanguage(language,
+                "QUESTLOG_REWARD_REPUTATION", name, signed)
         else
             -- No faction table on this install; the amount stands alone rather
             -- than being labelled with an id the player cannot read.
-            text = UQ.L("QUESTLOG_REWARD_REPUTATION_UNNAMED", signed)
+            text = UQ.LForLanguage(language,
+                "QUESTLOG_REWARD_REPUTATION_UNNAMED", signed)
         end
         local color = amount > 0 and REP_GAIN_COLOR or REP_LOSS_COLOR
         table.insert(lines, { text = text, r = color.r, g = color.g, b = color.b })
@@ -155,8 +163,9 @@ local function BuildLines(database, questId)
         return nil
     end
     local lines = {}
-    AddExperienceLine(lines, database, questId)
-    AddReputationLines(lines, database, questId)
+    local language = QuestLanguage(questId)
+    AddExperienceLine(lines, database, questId, language)
+    AddReputationLines(lines, database, questId, language)
     if table.getn(lines) == 0 then
         return nil
     end
@@ -164,6 +173,7 @@ local function BuildLines(database, questId)
 end
 
 local function ClearAll()
+    Client.SetQuestLogRewardMoney(false)
     Client.SetQuestRewardSummary("log", nil)
     local index = 1
     while index <= table.getn(GIVER_SURFACES) do
@@ -185,17 +195,23 @@ function QuestLogRewards:Refresh()
     end
 
     -- Quest log: only while its window is up, and only for the selected row.
+    -- The coin row goes first: the experience and reputation rows measure the
+    -- reward block's bottom, and the coin row pushes the items down. Unlike
+    -- them it needs no quest match -- the amount is the client's own.
     local logFrame = Client.GetNamedObject(LOG_FRAME_NAME)
     local logLines = nil
+    local copper = nil
     if logFrame and Client.IsObjectShown(logFrame) then
         logLines = BuildLines(database, ResolveSelectedQuestId())
+        copper = Client.GetQuestLogMoneyAmounts()
     end
+    Client.SetQuestLogRewardMoney(true, copper)
     Client.SetQuestRewardSummary("log", logLines)
 
     -- Offer and completion windows. Both are asked on every pass and the one
     -- that is not on screen clears itself inside SetQuestRewardSummary, so a
     -- swap between them cannot leave the other holding a stale line.
-    local giverLines = BuildLines(database, ResolveGiverQuestId(database))
+    local giverLines = BuildLines(database, ResolveGiverQuestId())
     local index = 1
     while index <= table.getn(GIVER_SURFACES) do
         Client.SetQuestRewardSummary(GIVER_SURFACES[index], giverLines)
@@ -216,7 +232,10 @@ function QuestLogRewards:OnInit()
             .. "quest_dialog.detail_reward_text_globals (USER_CONFIRMED_INGAME, 2026-08-20) "
             .. "for their Detail/Reward-prefixed heading names, plus GetTitleText, "
             .. "GetNumQuestChoices and GetNumQuestRewards, all three DOCUMENTED and NOT "
-            .. "runtime-probed; their item and money frame names are resolved by name and "
+            .. "runtime-probed; a title shared by several quests is broken by "
+            .. "GetQuestText and GetObjectiveText, DOCUMENTED and NOT runtime-probed "
+            .. "likewise, each accepted only when one candidate is uniquely compatible; "
+            .. "their item and money frame names are resolved by name and "
             .. "fall through when absent")
     else
         UQ:DeclareCapability("questLogRewards", "missing",

@@ -446,11 +446,19 @@ end
 -- GetQuestLogQuestText is documented (docs/CLIENT-COMPATIBILITY.md, "Quest
 -- log") to return only the selected quest's description. Known live tokens
 -- are rendered before comparison. Exact normalized matches win first; only
--- when none exists is the older containment allowance considered. Objectives
--- are deliberately excluded because this client does not return them here.
--- A tie or missing text remains honestly "ambiguous", and map renderers draw
--- the safe candidate union instead of inventing an ID.
-function Match:Disambiguate(candidates, logText)
+-- when none exists is the older containment allowance considered. A tie or
+-- missing text remains honestly "ambiguous", and map renderers draw the safe
+-- candidate union instead of inventing an ID.
+--
+-- `field` names the database text compared against, and defaults to "D", the
+-- quest description -- the only text the quest log returns, which is why
+-- Resolve above never passes anything else. The quest-giver panels are the
+-- exception: their surface hands out the objectives blurb as a separate
+-- string (GetObjectiveText), so Quest/QuestLogRewards.lua passes "O" for a
+-- second, independent pass over the same candidates. Nothing else changes:
+-- the comparison is still exact-normalized-first over the rendered database
+-- text, so a field the live surface does not carry simply matches nothing.
+function Match:Disambiguate(candidates, logText, field)
     local database = Database()
     if not database or not candidates then
         return nil
@@ -458,6 +466,9 @@ function Match:Disambiguate(candidates, logText)
     local wanted = UQ.NameKey(logText)
     if not wanted then
         return nil
+    end
+    if field ~= "O" then
+        field = "D"
     end
 
     local index = 1
@@ -469,7 +480,7 @@ function Match:Disambiguate(candidates, logText)
     while index <= total do
         local questId = candidates[index]
         local text = database:GetQuestText(questId)
-        local keys = QuestTextKeys(text and text.D)
+        local keys = QuestTextKeys(text and text[field])
         local keyIndex = 1
         local keyTotal = table.getn(keys)
         local exact = false
@@ -498,6 +509,108 @@ function Match:Disambiguate(candidates, logText)
     end
     if exactHits == 0 and containsHits == 1 then
         return containsHit
+    end
+    return nil
+end
+
+-- The quest the GIVER window is showing, which is a different problem from
+-- every other match here: an offered quest is not in the quest log yet, so
+-- there is no row, no index, no level and no objectives to work with. Only
+-- three strings exist -- the title, the story text and the objectives blurb --
+-- and all three come from the same packet.
+--
+-- The title settles most quests on its own. When it does not (Executor Zygand
+-- in Brill offers four separate quests all called "At War With The Scarlet
+-- Crusade") the other two are tried in turn against the recorded D and O,
+-- description first because it is the longer and more distinctive. Each pass
+-- returns a candidate only when exactly one is compatible with the live text,
+-- so a quest that stays tied through both is honestly unresolved and the
+-- callers show nothing rather than another quest's answer.
+--
+-- Shared by Quest/QuestLogRewards.lua and Quest/QuestGiverTranslation.lua so
+-- the two surfaces of that one window cannot disagree about which quest is on
+-- screen.
+function Match:ResolveGiverQuestId()
+    local database = Database()
+    if not database or not Client.GetQuestGiverTitle then
+        return nil
+    end
+    local title = Client.GetQuestGiverTitle()
+    if not title then
+        return nil
+    end
+    local key = UQ.NameKey(title)
+    local ids = key and database:FindQuestIdsByTitleKey(key)
+    if type(ids) ~= "table" then
+        return nil
+    end
+    local count = table.getn(ids)
+    if count == 1 then
+        return ids[1]
+    end
+    if count < 2 then
+        return nil
+    end
+
+    local description = Client.GetQuestGiverDescription
+        and Client.GetQuestGiverDescription()
+    local questId = description and self:Disambiguate(ids, description, "D")
+    if questId then
+        return questId
+    end
+    local objective = Client.GetQuestGiverObjective
+        and Client.GetQuestGiverObjective()
+    questId = objective and self:Disambiguate(ids, objective, "O")
+    if questId then
+        return questId
+    end
+
+    -- THE TURN-IN PANEL CARRIES NEITHER OF THOSE. Measured 2026-09-10
+    -- (questgivertextcomplete): with the "Complete Quest" window open,
+    -- GetQuestText and GetObjectiveText both return the empty string, and the
+    -- body on screen comes from GetRewardText instead. So on that panel the
+    -- title is the only packet signal, and a title four quests share -- which
+    -- is exactly Executor Zygand's "At War With The Scarlet Crusade" -- can
+    -- never be broken by the two passes above.
+    --
+    -- It does not have to be, because a quest being handed in is ALREADY IN
+    -- THE QUEST LOG, which carries the level and the objective lines the
+    -- packet does not. QuestState has resolved that row through the full
+    -- matcher (Match:Resolve, with level and index) and cached the answer, so
+    -- this asks it rather than re-deriving anything: the same measurement put
+    -- the log's objective line against the four bundled candidates and hit
+    -- exactly one, quest 372.
+    --
+    -- Reached ONLY when the packet carried no body text at all, which is the
+    -- measured signature of that panel. An OFFER window whose two passes came
+    -- back tied is honestly ambiguous and must stay that way -- the offered
+    -- quest is not in the log, so a same-titled row found there would be a
+    -- DIFFERENT quest, and answering with it would be worse than answering
+    -- nothing.
+    if description or objective then
+        return nil
+    end
+    return self:ResolveLoggedQuestId(title, ids)
+end
+
+-- The quest log's own answer for a title, accepted only when it is one of the
+-- candidates the bundled data lists under that title. QuestState leaves
+-- questId nil when its matcher could not settle the row, so an ambiguous log
+-- entry stays ambiguous here too.
+function Match:ResolveLoggedQuestId(title, ids)
+    local state = UQ:GetModule("QuestState")
+    local quest = state and state:GetQuestByTitle(title)
+    local questId = quest and quest.questId
+    if type(questId) ~= "number" or type(ids) ~= "table" then
+        return nil
+    end
+    local index = 1
+    local total = table.getn(ids)
+    while index <= total do
+        if ids[index] == questId then
+            return questId
+        end
+        index = index + 1
     end
     return nil
 end

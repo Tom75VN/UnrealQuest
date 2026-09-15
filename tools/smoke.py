@@ -197,6 +197,7 @@ end
 function frameMeta:SetHighlightTexture(path, blend)
     self.highlight = { path, blend }
 end
+function frameMeta:GetHighlightTexture() return self.highlightTexture end
 function frameMeta:GetFontString() return self.fontString end
 function frameMeta:SetFontString(value) self.fontString = value end
 local textureMeta = {}
@@ -641,8 +642,12 @@ UIPanelWindows = { QuestLogFrame = { area = "left", pushable = 0, whileDead = 1 
 UQ_TEST_QUEST_LOG_SCROLL_UPDATES = 0
 UQ_TEST_QUEST_LOG_CHOICES = 0
 UQ_TEST_QUEST_LOG_REWARDS = 0
+UQ_TEST_QUEST_LOG_REWARD_MONEY = 600
+UQ_TEST_QUEST_LOG_REQUIRED_MONEY = 0
 function GetNumQuestLogChoices() return UQ_TEST_QUEST_LOG_CHOICES end
 function GetNumQuestLogRewards() return UQ_TEST_QUEST_LOG_REWARDS end
+function GetQuestLogRewardMoney() return UQ_TEST_QUEST_LOG_REWARD_MONEY end
+function GetQuestLogRequiredMoney() return UQ_TEST_QUEST_LOG_REQUIRED_MONEY end
 function QuestLogDetailScrollFrame:UpdateScrollChildRect()
     UQ_TEST_QUEST_LOG_SCROLL_UPDATES = UQ_TEST_QUEST_LOG_SCROLL_UPDATES + 1
 end
@@ -676,6 +681,10 @@ for _, panel in ipairs({ "QuestDetail", "QuestReward" }) do
         local button = CreateFrame("Button", panel .. "Item" .. itemIndex, child)
         button:Hide()
         env[panel .. "Item" .. itemIndex] = button
+        local name = button:CreateFontString(panel .. "Item" .. itemIndex .. "Name",
+            "ARTWORK")
+        name:SetText("")
+        env[panel .. "Item" .. itemIndex .. "Name"] = name
     end
     for _, suffix in ipairs({ "ItemReceiveText", "ItemChooseText" }) do
         local region = child:CreateFontString(panel .. suffix, "BACKGROUND")
@@ -684,6 +693,12 @@ for _, panel in ipairs({ "QuestDetail", "QuestReward" }) do
         env[panel .. suffix] = region
     end
 end
+QuestRewardTitleText = QuestRewardScrollChildFrame:CreateFontString(
+    "QuestRewardTitleText", "ARTWORK")
+QuestRewardText = QuestRewardScrollChildFrame:CreateFontString(
+    "QuestRewardText", "ARTWORK")
+QuestRewardTitleText:SetText("")
+QuestRewardText:SetText("")
 -- The rewards heading is named QuestDetailRewardTitleText on the offer panel
 -- and QuestRewardRewardTitleText on the completion one.
 for _, name in ipairs({ "QuestDetailRewardTitleText", "QuestRewardRewardTitleText" }) do
@@ -692,12 +707,61 @@ for _, name in ipairs({ "QuestDetailRewardTitleText", "QuestRewardRewardTitleTex
     region:Hide()
     env[name] = region
 end
+-- The offer panel's three body strings. They are deliberately created WITHOUT
+-- names: this addon has no evidence for what they are called on the real
+-- client, and Quest/QuestGiverTranslation.lua binds them by content instead --
+-- which only means anything if the harness gives it nothing else to go on.
+-- UQ_TEST_QUEST_PACKET models the client repainting them from a quest packet.
+UQ_TEST_GIVER_BODY = {}
+for _, field in ipairs({ "title", "objective", "description" }) do
+    local region = QuestDetailScrollChildFrame:CreateFontString(nil, "ARTWORK")
+    region:SetText("")
+    UQ_TEST_GIVER_BODY[field] = region
+end
+function UQ_TEST_QUEST_PACKET(title, objective, description)
+    UQ_TEST_QUEST_TITLE = title or ""
+    UQ_TEST_QUEST_OBJECTIVE_TEXT = objective or ""
+    UQ_TEST_QUEST_DETAIL_TEXT = description or ""
+    UQ_TEST_GIVER_BODY.title:SetText(UQ_TEST_QUEST_TITLE)
+    UQ_TEST_GIVER_BODY.objective:SetText(UQ_TEST_QUEST_OBJECTIVE_TEXT)
+    UQ_TEST_GIVER_BODY.description:SetText(UQ_TEST_QUEST_DETAIL_TEXT)
+end
 UQ_TEST_QUEST_CHOICES = 0
 UQ_TEST_QUEST_REWARDS = 0
 UQ_TEST_QUEST_TITLE = ""
+UQ_TEST_QUEST_DETAIL_TEXT = ""
+UQ_TEST_QUEST_OBJECTIVE_TEXT = ""
+UQ_TEST_QUEST_REWARD_TEXT = ""
 function GetNumQuestChoices() return UQ_TEST_QUEST_CHOICES end
 function GetNumQuestRewards() return UQ_TEST_QUEST_REWARDS end
+-- The reward items the open giver window is offering, keyed "choice1" /
+-- "reward1" -> { name, quality }. The five-value return and the missing-item
+-- shape (name nil, quality 0, a question-mark icon) are what this client's own
+-- API reference documents for GetQuestItemInfo.
+UQ_TEST_QUEST_REWARD_ITEMS = {}
+function GetQuestItemInfo(rewardType, index)
+    if type(rewardType) ~= "string" then return end
+    local entry = UQ_TEST_QUEST_REWARD_ITEMS[
+        string.lower(rewardType) .. tostring(index)]
+    if not entry then
+        return nil, "Interface/Icons/INV_Misc_QuestionMark", 1, 0, 1
+    end
+    return entry[1], "Interface/Icons/INV_Misc_QuestionMark", 1, entry[2], true
+end
+UQ_TEST_QUALITY_COLORS = {
+    [0] = { 0.62, 0.62, 0.62 }, [1] = { 1.00, 1.00, 1.00 },
+    [2] = { 0.12, 1.00, 0.00 }, [3] = { 0.00, 0.44, 0.87 },
+    [4] = { 0.64, 0.21, 0.93 }, [5] = { 1.00, 0.50, 0.00 },
+    [6] = { 0.90, 0.80, 0.50 },
+}
+function GetItemQualityColor(quality)
+    local color = UQ_TEST_QUALITY_COLORS[quality] or UQ_TEST_QUALITY_COLORS[1]
+    return color[1], color[2], color[3], "|cffffffff"
+end
 function GetTitleText() return UQ_TEST_QUEST_TITLE end
+function GetQuestText() return UQ_TEST_QUEST_DETAIL_TEXT end
+function GetObjectiveText() return UQ_TEST_QUEST_OBJECTIVE_TEXT end
+function GetRewardText() return UQ_TEST_QUEST_REWARD_TEXT end
 QuestWatchFrame = CreateFrame("Frame", "QuestWatchFrame", UIParent)
 UQ_TEST_UIPANELS = 0
 function ShowUIPanel(frame)
@@ -1227,12 +1291,24 @@ function IsInInstance() return UQ_TEST_IN_INSTANCE end
 QuestWatchFrame = CreateFrame("Frame", "QuestWatchFrame", UIParent)
 UQ_TEST_LOG_SELECTION = nil
 
+-- The focused quest uses a separate native highlight frame whose texture
+-- fills it; this is distinct from each row Button's hover highlight.
+QuestLogHighlightFrame = CreateFrame("Frame", "QuestLogHighlightFrame", UIParent)
+QuestLogHighlightFrame:SetWidth(293)
+QuestLogHighlightFrame:SetHeight(16)
+QuestLogSkillHighlight = QuestLogHighlightFrame:CreateTexture(
+    "QuestLogSkillHighlight", "ARTWORK")
+QuestLogSkillHighlight:SetAllPoints(QuestLogHighlightFrame)
+
 for i = 1, 8 do
     local row = CreateFrame("Button", "QuestLogTitle" .. i, UIParent)
     -- The live client's interface snapshot measures QuestLogTitle1 at 300x16,
     -- which is what the extended log reads back to space its rows.
     row:SetWidth(300)
     row:SetHeight(16)
+    local highlight = row:CreateTexture(nil, "HIGHLIGHT")
+    highlight:SetAllPoints(row)
+    row.highlightTexture = highlight
     local check = row:CreateTexture("QuestLogTitle" .. i .. "Check", "BACKGROUND")
     check:SetAllPoints(row)
     check:Hide()
@@ -1766,6 +1842,25 @@ check("a third reward starts the next line back in the first column",
 end)()"""))
 check("the rows clear the reward block rather than touching its bottom edge",
       rt.eval("getglobal('UnrealQuestLogReward1').point[5] <= -10"))
+# Regression, bisected in game (questlogbuttons.scroll_flicker_bisect.v1): a
+# per-poll re-anchor plus UpdateScrollChildRect made everything in the scrolled
+# detail pane flash at its unscrolled position once per poll.
+check("an unchanged reward summary is not laid out again on the next poll",
+      rt.eval("""(function()
+    local lines = { { text = 'a' }, { text = 'b' }, { text = 'c' } }
+    UnrealQuest.Client.SetQuestLogRewardSummary(lines)
+    local updates = UQ_TEST_QUEST_LOG_SCROLL_UPDATES
+    local point = getglobal('UnrealQuestLogReward1').point
+    UnrealQuest.Client.SetQuestLogRewardSummary(lines)
+    UnrealQuest.Client.SetQuestLogRewardSummary(lines)
+    local steady = UQ_TEST_QUEST_LOG_SCROLL_UPDATES == updates
+        and getglobal('UnrealQuestLogReward1').point == point
+    UnrealQuest.Client.SetQuestLogRewardSummary({
+        { text = 'a' }, { text = 'b' }, { text = 'd' },
+    })
+    return steady and UQ_TEST_QUEST_LOG_SCROLL_UPDATES > updates
+        and getglobal('UnrealQuestLogReward3'):GetText() == 'd'
+end)()"""))
 check("the same gap is reserved under the last row, inside the scroll extent",
       rt.eval("""(function()
     local spacer = getglobal('UnrealQuestLogRewardSpacer')
@@ -1782,6 +1877,10 @@ end)()"""))
 # coin and pushed the second column off the right of the pane. Only the Y comes
 # from the anchor; the X is corrected back to the scroll child's own left edge.
 rt.execute("""
+    -- These cases drive the reward rows alone against the NATIVE money frame;
+    -- the addon's coin row, left up by an earlier module pass, would otherwise
+    -- be measured too. Its own placement is checked further down.
+    if UnrealQuestLogRewardMoney then UnrealQuestLogRewardMoney:Hide() end
     QuestLogDetailScrollChildFrame.testLeft = 20
     QuestLogItemReceiveText.testLeft = 29
     QuestLogItemReceiveText:Show()
@@ -1799,6 +1898,46 @@ check("the rows square with the reward heading text, not with the indented ancho
     -- second column one column width along from there.
     return first.point[4] == -166 and second.point[4] == -166 + 145
 end)()"""))
+# Regression, user confirmed in game on the quest-giver's offer window ("The
+# Prodigal Lich Returns"): this client draws the coin row beside "You will
+# receive:" ABOVE the reward buttons, so preferring the money frame put the
+# rows straight back on top of the item icon. Which widget ends the block is
+# measured with GetBottom rather than assumed from FrameXML's stacking order.
+rt.execute("""
+    UQ_TEST_QUEST_LOG_CHOICES = 0
+    UQ_TEST_QUEST_LOG_REWARDS = 1
+    QuestLogItem1:Show()
+    QuestLogItem1.testLeft = 25
+    QuestLogItem1.testBottom = 120
+    QuestLogMoneyFrame.testBottom = 260
+    UnrealQuest.Client.SetQuestLogRewardSummary({ { text = 'Experience: 910' } })
+""")
+check("the rows follow the lowest reward widget, not the money frame above it",
+      rt.eval("""(function()
+    local first = getglobal('UnrealQuestLogReward1')
+    return first.point ~= nil and first.point[2] == QuestLogItem1
+        and first.point[3] == 'BOTTOMLEFT'
+end)()"""))
+# And the button's drawn plate reaches below the frame edge GetBottom reports,
+# so hanging off an item button buys 15px more clearance than hanging off the
+# coin row does (user confirmed in game).
+check("an item-button anchor clears the reward by more than the plain margin",
+      rt.eval("getglobal('UnrealQuestLogReward1').point[5] == -25"))
+rt.execute("""
+    QuestLogMoneyFrame.testBottom = 90
+    UnrealQuest.Client.SetQuestLogRewardSummary({ { text = 'Experience: 910' } })
+""")
+check("a money frame that really is below the items still ends the block",
+      rt.eval("getglobal('UnrealQuestLogReward1').point[2] == QuestLogMoneyFrame"))
+check("the coin row keeps the plain margin, the extra clearance being the item's",
+      rt.eval("getglobal('UnrealQuestLogReward1').point[5] == -10"))
+rt.execute("""
+    QuestLogItem1:Hide()
+    QuestLogItem1.testBottom = nil
+    QuestLogItem1.testLeft = nil
+    QuestLogMoneyFrame.testBottom = nil
+    UQ_TEST_QUEST_LOG_REWARDS = 0
+""")
 rt.execute("""
     QuestLogItemReceiveText:Hide()
     QuestLogRewardTitleText.testLeft = 25
@@ -1922,6 +2061,69 @@ check("the offer window, which is not on screen, is left empty",
     return row == nil or not row:IsShown()
 end)()"""))
 
+# --- reward item rarity colours on the completion window ---------------------
+# The panel is still the completion one from the block above.
+rt.execute("""
+    UQ_TEST_QUEST_CHOICES = 2
+    UQ_TEST_QUEST_REWARDS = 1
+    UQ_TEST_QUEST_REWARD_ITEMS = {
+        choice1 = { 'Ceremonial Knife', 2 },
+        choice2 = { 'Striking Hatchet', 3 },
+        reward1 = { 'Tough Jerky', 1 },
+    }
+    QuestRewardItem1:Show()
+    QuestRewardItem1Name:SetText('Ceremonial Knife')
+    QuestRewardItem2:Show()
+    -- Translated on screen, as Quest/QuestGiverTranslation.lua leaves it: the
+    -- native string it recorded is what GetQuestItemInfo still answers with.
+    QuestRewardItem2Name:SetText('Hachette percutante')
+    QuestRewardItem2Name.unrealQuestGiverNativeText = 'Striking Hatchet'
+    QuestRewardItem3:Show()
+    QuestRewardItem3Name:SetText('Tough Jerky')
+    QuestRewardItem4:Show()
+    QuestRewardItem4Name:SetText('A Reward The Window Never Reported')
+    UnrealQuest:GetModule('QuestRewardColors'):Refresh()
+""")
+check("an uncommon reward name is painted green",
+      rt.eval("""(function()
+    local c = QuestRewardItem1Name.color
+    return c ~= nil and c[1] == 0.12 and c[2] == 1.00 and c[3] == 0.00
+end)()"""))
+check("a rare reward keeps its colour through a translated name",
+      rt.eval("""(function()
+    local c = QuestRewardItem2Name.color
+    return c ~= nil and c[1] == 0.00 and c[2] == 0.44 and c[3] == 0.87
+end)()"""))
+check("a guaranteed common reward is painted white",
+      rt.eval("""(function()
+    local c = QuestRewardItem3Name.color
+    return c ~= nil and c[1] == 1.00 and c[2] == 1.00 and c[3] == 1.00
+end)()"""))
+check("a button whose name matches no reward is left untouched",
+      rt.eval("QuestRewardItem4Name.color == nil"))
+
+rt.execute("""
+    UnrealQuest:GetModule('Config'):Set('questRewardItemColors', false)
+    UnrealQuest:GetModule('QuestRewardColors'):Refresh()
+""")
+check("turning the option off hands every button its own colour back",
+      rt.eval("""(function()
+    local c = QuestRewardItem1Name.color
+    return c ~= nil and c[1] == 1 and c[2] == 1 and c[3] == 1
+        and QuestRewardItem2Name.color[1] == 1
+end)()"""))
+
+rt.execute("""
+    UnrealQuest:GetModule('Config'):Set('questRewardItemColors', true)
+    UQ_TEST_QUEST_REWARD_ITEMS = {}
+    UQ_TEST_QUEST_CHOICES = 0
+    UQ_TEST_QUEST_REWARDS = 1
+    QuestRewardItem2:Hide()
+    QuestRewardItem3:Hide()
+    QuestRewardItem4:Hide()
+    QuestRewardItem2Name.unrealQuestGiverNativeText = nil
+""")
+
 rt.execute("""
     QuestRewardScrollChildFrame:Hide()
     QuestDetailScrollChildFrame:Show()
@@ -1941,6 +2143,260 @@ rt.execute("UQ_TEST_QUEST_TITLE = 'A Title No Bundled Quest Carries'")
 rt.execute("UnrealQuest:GetModule('QuestLogRewards'):Refresh()")
 check("an unmatched giver title shows nothing rather than another quest's numbers",
       rt.eval("not getglobal('UnrealQuestDetailReward1'):IsShown()"))
+
+# A title four bundled quests share: Executor Zygand offers 370, 371, 372 and
+# 427 all as "At War With The Scarlet Crusade". Title alone cannot pick one, so
+# the panel's own body text has to, and the strings below are the real live
+# ones -- the client renders $b as a newline before Lua sees them.
+rt.execute("NEWLINE = string.char(10)")
+rt.execute("""
+    UQ_TEST_QUEST_TITLE = 'At War With The Scarlet Crusade'
+    UQ_TEST_QUEST_DETAIL_TEXT = ''
+    UQ_TEST_QUEST_OBJECTIVE_TEXT = ''
+    UnrealQuest:GetModule('QuestLogRewards'):Refresh()
+""")
+check("a title four quests share shows nothing while no other signal is offered",
+      rt.eval("not getglobal('UnrealQuestDetailReward1'):IsShown()"))
+
+rt.execute("""
+    UQ_TEST_QUEST_DETAIL_TEXT = "Scarlet Crusaders have been raiding from the "
+        .. "ruined tower in northern Tirisfal, past Faol's Rest.  According to "
+        .. "the information we have, a ruthless commander named Captain "
+        .. "Melrache is in charge of this evil crew." .. NEWLINE .. NEWLINE
+        .. "I am entrusting you now "
+        .. "with a special and dangerous mission.  Slay Melrache and his two "
+        .. "bodyguards, in the name of The Dark Lady."
+    UnrealQuest:GetModule('QuestLogRewards'):Refresh()
+""")
+check("the offer window's story text picks the one of the four it belongs to",
+      rt.eval("""(function()
+    local xp = getglobal('UnrealQuestDetailReward1')
+    local expected = UnrealQuest:GetModule('Database'):GetQuestRewardXP(372)
+    return xp ~= nil and xp:IsShown() and expected ~= nil
+        and xp:GetText() == 'Experience: ' .. tostring(expected)
+end)()"""),
+      str(rt.eval("(function() local r = getglobal('UnrealQuestDetailReward1')"
+                  " if r then return tostring(r:GetText()) end return 'no row' end)()")))
+
+rt.execute("""
+    UQ_TEST_QUEST_DETAIL_TEXT = ''
+    UQ_TEST_QUEST_OBJECTIVE_TEXT = 'Executor Zygand in Brill has commissioned '
+        .. 'you to slay Captain Vachon and 5 Scarlet Friars.'
+    UnrealQuest:GetModule('QuestLogRewards'):Refresh()
+""")
+check("the objectives blurb resolves it on its own when the story text is absent",
+      rt.eval("""(function()
+    local xp = getglobal('UnrealQuestDetailReward1')
+    local expected = UnrealQuest:GetModule('Database'):GetQuestRewardXP(371)
+    return xp ~= nil and xp:IsShown() and expected ~= nil
+        and xp:GetText() == 'Experience: ' .. tostring(expected)
+end)()"""))
+
+rt.execute("""
+    UQ_TEST_QUEST_DETAIL_TEXT = 'Body text no bundled quest of that title carries.'
+    UQ_TEST_QUEST_OBJECTIVE_TEXT = ''
+    UnrealQuest:GetModule('QuestLogRewards'):Refresh()
+""")
+check("body text matching none of the four still shows nothing",
+      rt.eval("not getglobal('UnrealQuestDetailReward1'):IsShown()"))
+
+rt.execute("""
+    UQ_TEST_QUEST_DETAIL_TEXT = ''
+    UQ_TEST_QUEST_OBJECTIVE_TEXT = ''
+""")
+
+# --- The offer window's language flags (Quest/QuestGiverTranslation.lua) -----
+#
+# The three body strings are bound by CONTENT, never by name: the harness
+# creates them unnamed on purpose, because this addon has no evidence for what
+# the real client calls them.
+rt.execute("""
+    GetLocale = function() return 'enUS' end
+    UnrealQuest.Client.ForgetSymbol('GetLocale')
+    QuestFrame:Show()
+    QuestRewardScrollChildFrame:Hide()
+    QuestDetailScrollChildFrame:Show()
+    UQ_TEST_GIVER_DESCRIPTION = "Scarlet Crusaders have been raiding from the "
+        .. "ruined tower in northern Tirisfal, past Faol's Rest.  According to "
+        .. "the information we have, a ruthless commander named Captain "
+        .. "Melrache is in charge of this evil crew." .. NEWLINE .. NEWLINE
+        .. "I am entrusting you now with a special and dangerous mission.  "
+        .. "Slay Melrache and his two bodyguards, in the name of The Dark Lady."
+    UQ_TEST_GIVER_OBJECTIVE = 'Executor Zygand in the town of Brill wants you '
+        .. 'to assassinate Captain Melrache and his two bodyguards.'
+    UQ_TEST_QUEST_PACKET('At War With The Scarlet Crusade',
+        UQ_TEST_GIVER_OBJECTIVE, UQ_TEST_GIVER_DESCRIPTION)
+    UnrealQuest:GetModule('QuestGiverTranslation'):Refresh()
+""")
+check("the offer window carries the flag row, anchored to its own viewport",
+      rt.eval("""(function()
+    local row = UnrealQuest:GetModule('QuestLanguageFlags').rows.questgiver
+    local flags = row and row.buttons
+    local last = flags and flags.frFR
+    if not last then return 'no row' end
+    -- Parented to QuestFrame, which neither scrolls nor clips; anchored to the
+    -- viewport, packed right-to-left from the same -6 the log row uses.
+    return last:GetParent() == QuestFrame
+        and last:IsShown() == true
+        and last.point[1] == 'TOPRIGHT'
+        and last.point[2] == QuestDetailScrollFrame
+        and last.point[3] == 'TOPRIGHT'
+        and last.point[4] == -6 and last.point[5] == -4
+end)()"""))
+check("the log's own row keeps its own buttons rather than sharing them",
+      rt.eval("""(function()
+    local rows = UnrealQuest:GetModule('QuestLanguageFlags').rows
+    return rows.questlog.buttons.frFR ~= rows.questgiver.buttons.frFR
+end)()"""))
+
+rt.execute("""
+    UnrealQuest.SetQuestLanguageOverride(372, 'frFR')
+    UnrealQuest:GetModule('QuestGiverTranslation'):Refresh()
+""")
+check("clicking through to French rewrites title, objectives and description",
+      rt.eval("""(function()
+    local database = UnrealQuest:GetModule('Database')
+    local body = UQ_TEST_GIVER_BODY
+    return body.title:GetText()
+            == database:GetQuestDisplayText(372, 'T', UQ_TEST_QUEST_TITLE)
+        and body.objective:GetText()
+            == database:GetQuestDisplayText(372, 'O', UQ_TEST_GIVER_OBJECTIVE)
+        and body.description:GetText()
+            == database:GetQuestDisplayText(372, 'D', UQ_TEST_GIVER_DESCRIPTION)
+        and body.title:GetText() ~= UQ_TEST_QUEST_TITLE
+end)()"""),
+      str(rt.eval("UQ_TEST_GIVER_BODY.title:GetText()")))
+check("the French flag is the lit one and the client's is dimmed",
+      rt.eval("""(function()
+    local flags = UnrealQuest:GetModule('QuestLanguageFlags').rows.questgiver.buttons
+    return flags.frFR.unrealQuestSelected == true
+        and flags.frFR.unrealQuestIcon.vertex[4] == 1
+        and flags.enUS.unrealQuestIcon.vertex[4] == 0.3
+end)()"""))
+
+rt.execute("""
+    UnrealQuest:GetModule('QuestLanguageFlags').rows.questgiver.buttons.enUS
+        :GetScript('OnClick')()
+""")
+check("clicking the client's own flag puts the server's own words back",
+      rt.eval("""(function()
+    local body = UQ_TEST_GIVER_BODY
+    return UnrealQuest.GetQuestLanguageOverride(372) == 'enUS'
+        and body.title:GetText() == UQ_TEST_QUEST_TITLE
+        and body.objective:GetText() == UQ_TEST_GIVER_OBJECTIVE
+        and body.description:GetText() == UQ_TEST_GIVER_DESCRIPTION
+end)()"""),
+      str(rt.eval("UQ_TEST_GIVER_BODY.title:GetText()")))
+
+# A quest the giver window cannot name gets no row and no rewrite -- the same
+# refusal the reward rows make on the same window.
+rt.execute("""
+    UnrealQuest.SetQuestLanguageOverride(372, nil)
+    UQ_TEST_QUEST_PACKET('A Title No Bundled Quest Carries', 'Do a thing.',
+        'A thing wants doing.')
+    UnrealQuest:GetModule('QuestGiverTranslation'):Refresh()
+""")
+check("an unresolved offer gets no flags and keeps every word the server sent",
+      rt.eval("""(function()
+    local flags = UnrealQuest:GetModule('QuestLanguageFlags').rows.questgiver.buttons
+    return flags.frFR:IsShown() == false
+        and UQ_TEST_GIVER_BODY.title:GetText() == 'A Title No Bundled Quest Carries'
+end)()"""))
+
+# The completion surface carries its own title/body widgets plus localized
+# reward headings and item names. Its packet has completion speech but the
+# bundled locale row does not, so the translated quest description fills that
+# paragraph until the client-language flag restores the exact server text.
+rt.execute("""
+    local database = UnrealQuest:GetModule('Database')
+    local guard = 0
+    while not database.itemNameIndexReady and guard < 200 do
+        database:IndexItemNameChunk()
+        guard = guard + 1
+    end
+    QuestDetailScrollChildFrame:Hide()
+    QuestRewardScrollChildFrame:Show()
+    UQ_TEST_QUEST_TITLE = 'Bounty on Garrick Padfoot'
+    UQ_TEST_QUEST_DETAIL_TEXT = ''
+    UQ_TEST_QUEST_OBJECTIVE_TEXT = ''
+    UQ_TEST_QUEST_REWARD_TEXT = 'Native completion speech from the server.'
+    QuestRewardTitleText:SetText(UQ_TEST_QUEST_TITLE)
+    QuestRewardText:SetText(UQ_TEST_QUEST_REWARD_TEXT)
+    QuestRewardRewardTitleText:SetText('Rewards')
+    QuestRewardRewardTitleText:Show()
+    QuestRewardItemChooseText:SetText('Choose your reward:')
+    QuestRewardItemChooseText:Show()
+    QuestRewardItemReceiveText:SetText('You will receive:')
+    QuestRewardItemReceiveText:Show()
+    QuestRewardItem1Name:SetText('Ceremonial Knife')
+    QuestRewardItem1:Show()
+    UQ_TEST_QUEST_CHOICES = 1
+    UQ_TEST_QUEST_REWARDS = 0
+    UnrealQuest.SetQuestLanguageOverride(6, 'frFR')
+    UnrealQuest:GetModule('QuestGiverTranslation'):Refresh()
+    UnrealQuest:GetModule('QuestLogRewards'):Refresh()
+""")
+check("the completion flag translates its title, paragraph and reward block",
+      rt.eval("""(function()
+    local database = UnrealQuest:GetModule('Database')
+    return QuestRewardTitleText:GetText()
+            == database:GetQuestDisplayText(6, 'T', UQ_TEST_QUEST_TITLE)
+        and QuestRewardText:GetText()
+            == database:GetQuestDisplayText(6, 'D', UQ_TEST_QUEST_REWARD_TEXT)
+        and QuestRewardRewardTitleText:GetText() == 'Recompenses'
+        and QuestRewardItemChooseText:GetText() == 'Choisissez votre recompense :'
+        and QuestRewardItemReceiveText:GetText() == 'Vous recevrez :'
+        and QuestRewardItem1Name:GetText() == 'Couteau de ceremonie'
+        and getglobal('UnrealQuestCompleteReward1'):GetText() == 'Experience : 335'
+end)()"""),
+      str(rt.eval("QuestRewardText:GetText()")))
+check("the completion window has its own selected flag row",
+      rt.eval("""(function()
+    local row = UnrealQuest:GetModule('QuestLanguageFlags').rows.questcomplete
+    return row and row.buttons and row.buttons.frFR:IsShown()
+        and row.buttons.frFR.unrealQuestSelected == true
+        and row.buttons.frFR:GetParent() == QuestFrame
+        and row.buttons.frFR.point[2] == QuestRewardScrollFrame
+end)()"""))
+
+rt.execute("""
+    UQ_TEST_REAL_SET_NATIVE = UnrealQuest.Client.SetNativeObjectText
+    UnrealQuest.Client.SetNativeObjectText = function(object, text)
+        if object == QuestRewardText and text == UQ_TEST_QUEST_REWARD_TEXT then
+            return false
+        end
+        return UQ_TEST_REAL_SET_NATIVE(object, text)
+    end
+    UnrealQuest:GetModule('QuestLanguageFlags').rows.questcomplete.buttons.enUS
+        :GetScript('OnClick')()
+""")
+check("a refused completion-text restore keeps enough state to retry",
+      rt.eval("""(function()
+    return UnrealQuest.GetQuestLanguageOverride(6) == 'enUS'
+        and QuestRewardText:GetText() ~= UQ_TEST_QUEST_REWARD_TEXT
+end)()"""))
+
+rt.execute("""
+    UnrealQuest.Client.SetNativeObjectText = UQ_TEST_REAL_SET_NATIVE
+    UnrealQuest:GetModule('QuestGiverTranslation'):Refresh()
+""")
+check("the client flag restores the exact completion speech and native rewards",
+      rt.eval("""(function()
+    return QuestRewardTitleText:GetText() == 'Bounty on Garrick Padfoot'
+        and QuestRewardText:GetText() == 'Native completion speech from the server.'
+        and QuestRewardRewardTitleText:GetText() == 'Rewards'
+        and QuestRewardItemChooseText:GetText() == 'Choose your reward:'
+        and QuestRewardItemReceiveText:GetText() == 'You will receive:'
+        and QuestRewardItem1Name:GetText() == 'Ceremonial Knife'
+        and getglobal('UnrealQuestCompleteReward1'):GetText() == 'Experience: 335'
+end)()"""))
+
+rt.execute("""
+    QuestFrame:Hide()
+    QuestDetailScrollChildFrame:Hide()
+    UQ_TEST_QUEST_PACKET('', '', '')
+    UnrealQuest:GetModule('QuestGiverTranslation'):Refresh()
+""")
 
 rt.execute("""
     QuestDetailScrollChildFrame:Hide()
@@ -3772,6 +4228,19 @@ rt.execute("UnrealQuest:GetModule('EntityTooltip'):Refresh()")
 check("stable native changes eventually replace the cached rows", rt.eval(
     "UnrealQuestEntityTooltipNative.lines[1] == 'Level 5'"))
 rt.execute("""
+    -- Spawns sharing a name share one unit key. Rows showing the live
+    -- mouseover level must replace another spawn's held level row on the next
+    -- poll instead of serving the stability grace.
+    UQ_TEST_SAME_NAME_LEVEL = UQ_TEST_LEVEL
+    UQ_TEST_LEVEL = 6
+    GameTooltipTextLeft2.text = 'Level 6'
+    UnrealQuest:GetModule('EntityTooltip'):Refresh()
+    UQ_TEST_LEVEL = UQ_TEST_SAME_NAME_LEVEL
+""")
+check("rows showing the mouseover level replace another spawn's snapshot at once", rt.eval(
+    "UnrealQuestEntityTooltipNative.lines[1] == 'Level 6'"),
+    "same-name spawns of different levels showed the previous spawn's level")
+rt.execute("""
     GameTooltip:ClearLines()
     local module = UnrealQuest:GetModule('EntityTooltip')
     module:Refresh()
@@ -4615,6 +5084,73 @@ for completion_only in (False, True):
         return objective.have == 2 and objective.text == 'Spare Parts: 2/3'
             and table.getn(UQ_TEST_CHAT) == 1
     end)()"""))
+
+# The client's complete flag can outlive the item that earned it (quest 437,
+# "Essence of Nightlash: 0/1" while the row still said complete). A short
+# counter must demote the quest, and refilling it must promote it again.
+rt.execute("""
+    local row = UQ_TEST_LOG[UQ_TEST_COMPLETION_ROW]
+    UQ_TEST_STALE_SAVED = { row[1], row[6], row[7] }
+    UQ_TEST_STALE_LISTENED = {}
+    UnrealQuest:GetModule('QuestState'):AddListener(function(event, quest)
+        if quest and quest.title == 'Stale Completion Test' then
+            table.insert(UQ_TEST_STALE_LISTENED, event)
+        end
+    end)
+    row[1] = 'Stale Completion Test'
+    row[6] = 1
+    row[7] = { { 'Essence of Nightlash: 1/1', 'item', 1 } }
+    UQ_TEST_TICK(0.5, 4)
+""")
+check("a quest the client calls complete with full counters stays complete",
+      rt.eval("UnrealQuest:GetModule('QuestState'):GetQuestByTitle('Stale Completion Test').isComplete == 1"))
+rt.execute("""
+    UQ_TEST_STALE_LISTENED = {}
+    UQ_TEST_LOG[UQ_TEST_COMPLETION_ROW][7] = { { 'Essence of Nightlash: 0/1', 'item', nil } }
+    UQ_TEST_TICK(0.5, 2)
+""")
+check("a short counter demotes a quest the client still flags complete",
+      rt.eval("""(function()
+    local quest = UnrealQuest:GetModule('QuestState'):GetQuestByTitle('Stale Completion Test')
+    local added = false
+    local index = 1
+    while index <= table.getn(UQ_TEST_STALE_LISTENED) do
+        if UQ_TEST_STALE_LISTENED[index] == 'QUEST_ADDED' then added = true end
+        index = index + 1
+    end
+    return quest.isComplete ~= 1 and quest.clientComplete == 1
+        and quest.objectives[1].have == 0 and not added
+end)()"""))
+rt.execute("""
+    UQ_TEST_STALE_LISTENED = {}
+    UQ_TEST_LOG[UQ_TEST_COMPLETION_ROW][7] = { { 'Essence of Nightlash: 1/1', 'item', 1 } }
+    UQ_TEST_TICK(0.5, 2)
+""")
+check("refilling the counter makes the quest complete again and says so once",
+      rt.eval("""(function()
+    local quest = UnrealQuest:GetModule('QuestState'):GetQuestByTitle('Stale Completion Test')
+    local completed = 0
+    local index = 1
+    while index <= table.getn(UQ_TEST_STALE_LISTENED) do
+        if UQ_TEST_STALE_LISTENED[index] == 'QUEST_COMPLETED' then completed = completed + 1 end
+        index = index + 1
+    end
+    return quest.isComplete == 1 and completed == 1
+end)()"""))
+rt.execute("""
+    UQ_TEST_LOG[UQ_TEST_COMPLETION_ROW][7] = { { 'Essence of Nightlash: 0/1', 'item', nil } }
+    UnrealQuest:GetModule('QuestState').quests = {}
+    UnrealQuest:GetModule('QuestState'):Scan()
+""")
+check("a quest already short at login or reload is never complete on its first scan",
+      rt.eval("UnrealQuest:GetModule('QuestState'):GetQuestByTitle('Stale Completion Test').isComplete ~= 1"))
+rt.execute("""
+    local row = UQ_TEST_LOG[UQ_TEST_COMPLETION_ROW]
+    row[1] = UQ_TEST_STALE_SAVED[1]
+    row[6] = UQ_TEST_STALE_SAVED[2]
+    row[7] = UQ_TEST_STALE_SAVED[3]
+    UQ_TEST_TICK(0.5, 4)
+""")
 rt.execute("""
     UQ_TEST_LOG[UQ_TEST_COMPLETION_ROW][7][1][1] = 'Spare Parts: 12 / 3 collected'
     UQ_TEST_TICK(0.5, 4)
@@ -7699,6 +8235,12 @@ print("quest turn-in \"?\" markers")
 # and must therefore draw nothing on an Elwynn map.
 rt.execute("""
     UQ_TEST_LOG[2][6] = 1   -- Kobold Camp Cleanup is now ready to turn in
+    -- ...and its counters say so too: a complete flag over a short counter is
+    -- demoted by QuestState (see quest.complete_flag_can_outlive_objective).
+    for _, objective in ipairs(UQ_TEST_LOG[2][7] or {}) do
+        objective[1] = string.gsub(objective[1], '(%d+)%s*/%s*(%d+)', '%2/%2')
+        objective[3] = 1
+    end
     table.insert(UQ_TEST_LOG, { "Investigate Echo Ridge", 3, nil, nil, nil, nil, {} })
     UnrealQuest:GetModule('QuestState'):Scan()
     UnrealQuest:GetModule('MainQuest'):Set(
@@ -8318,6 +8860,36 @@ check("the required item's own sources are recognised", rt.eval("""(function()
     -- An item that is a plain loot objective is not a requirement item, so its
     -- sources stay in the unconditional walk where they belong.
     return table.getn(db:GetQuestItemUseSourceLocations(6395, 5811, 85)) == 0
+end)()"""))
+# Proving Allegiance (409). The bundled data records only Lillith Nefara
+# (1946) as the objective, and she is summoned, so her coords list is empty and
+# the quest drew nothing at all. Database's DATA_FIXES declares the missing
+# relations -- the Candle of Beckoning (3080) comes out of the Crate of Candles
+# (object 1586) and is used on Lillith's Dinner Table (object 1557) -- which
+# turns it into an ordinary item-use quest for every consumer downstream.
+check("a recorded data gap is filled in at attach", rt.eval("""(function()
+    local db = UnrealQuest:GetModule('Database')
+    local targets = db:GetQuestItemUseTargets(409)
+    if table.getn(targets) ~= 1 then return false end
+    local t = targets[1]
+    if t.itemId ~= 3080 or t.sourceType ~= 'object' or t.sourceId ~= 1557 then
+        return false
+    end
+    -- The crate is where the candle comes from, on the conditional path.
+    local found = db:GetQuestItemUseSourceLocations(409, 3080, 85)
+    if table.getn(found) ~= 1 then return false end
+    return found[1].sourceType == 'object' and found[1].sourceId == 1586
+end)()"""))
+check("a filled gap adds no unconditional objective", rt.eval("""(function()
+    local db = UnrealQuest:GetModule('Database')
+    local locations = db:GetQuestLocations(409, false, 85, 200)
+    for _, location in ipairs(locations) do
+        if location.sourceType == 'object'
+            and (location.sourceId == 1557 or location.sourceId == 1586) then
+            return false
+        end
+    end
+    return true
 end)()"""))
 # Frostmaw (quest 1136 / creature 4504). obj.I names both the Fresh Carcass
 # (5810) and Frostmaw's Mane (5811); only the Mane is an objective. The Carcass
@@ -9490,7 +10062,7 @@ rt.execute("""
 """)
 check("the language row sits in the detail pane's own top-right corner",
       rt.eval("""(function()
-    local flags = UnrealQuest:GetModule('QuestLogButtons').flags
+    local flags = UnrealQuest:GetModule('QuestLanguageFlags').rows.questlog.buttons
     local first = flags and flags.enUS
     local last = flags and flags.frFR
     if not first or not last then return 'missing flags' end
@@ -9509,7 +10081,7 @@ end)()"""))
 check("the row shades the quest's own language, and only that one",
       rt.eval("""(function()
     local buttons = UnrealQuest:GetModule('QuestLogButtons')
-    local flags = buttons.flags
+    local flags = UnrealQuest:GetModule('QuestLanguageFlags').rows.questlog.buttons
     local quest = buttons.currentQuest
     local nativeLit = flags.enUS.unrealQuestIcon.vertex[4]
     local otherDim = flags.frFR.unrealQuestIcon.vertex[4]
@@ -9526,10 +10098,11 @@ end)()"""))
 check("clicking a flag puts this quest in that flag's language",
       rt.eval("""(function()
     local buttons = UnrealQuest:GetModule('QuestLogButtons')
+    local flags = UnrealQuest:GetModule('QuestLanguageFlags').rows.questlog.buttons
     local quest = buttons.currentQuest
-    buttons.flags.ruRU:GetScript('OnClick')()
+    flags.ruRU:GetScript('OnClick')()
     local landed = UnrealQuest.GetQuestLanguageOverride(quest.questId)
-    local selected = buttons.flags.ruRU.unrealQuestSelected
+    local selected = flags.ruRU.unrealQuestSelected
     UnrealQuest.SetQuestLanguageOverride(quest.questId, nil)
     buttons:Refresh()
     return landed == 'ruRU' and selected == true
@@ -9601,6 +10174,27 @@ rt.execute("""
         'QuestLogTitle2Tag', 'ARTWORK')
     completion:SetPoint('RIGHT', QuestLogTitle2, 'RIGHT', -4, 0)
     QuestLogTitle2:SetFontString(title)
+    -- Model the modern failure from the live screenshot: native refresh left
+    -- both coin frames parented to the outer window with the reward row below
+    -- the parchment, and left the spacer on the old reward heading.
+    QuestLogMoneyFrame:SetParent(QuestLogFrame)
+    QuestLogMoneyFrame:Hide()
+    QuestLogMoneyFrame:ClearAllPoints()
+    QuestLogMoneyFrame:SetPoint('TOPLEFT', QuestLogFrame,
+        'BOTTOMLEFT', 200, -20)
+    QuestLogRequiredMoneyFrame:SetParent(QuestLogFrame)
+    QuestLogRequiredMoneyFrame:ClearAllPoints()
+    QuestLogRequiredMoneyFrame:SetPoint('LEFT', QuestLogFrame,
+        'BOTTOMLEFT', 200, -20)
+    QuestLogSpacerFrame:ClearAllPoints()
+    QuestLogSpacerFrame:SetPoint('TOP', QuestLogItemReceiveText,
+        'BOTTOM', 0, 0)
+    -- The native count may arrive before its pooled reward button is shown.
+    -- The coin row must use the visible receive label rather than disappearing
+    -- with that hidden item.
+    UQ_TEST_QUEST_LOG_REWARDS = 1
+    QuestLogItem1:Hide()
+    UQ_TEST_MODERN_REWARD_SCROLL_BEFORE = UQ_TEST_QUEST_LOG_SCROLL_UPDATES
     QuestLogFrame:Show()
     QuestLog_Update()
     local quest = UnrealQuest:GetModule('QuestState'):
@@ -9610,17 +10204,24 @@ rt.execute("""
 """)
 check("modern quest log highlights the visible followed row", rt.eval("""(function()
     local row = QuestLogTitle2
+    local highlight = row:GetHighlightTexture()
     return row.unrealQuestFollowingBackground ~= nil
         and row.unrealQuestFollowingBackground:IsShown() == true
         and row.unrealQuestFollowingMark:IsShown() == true
         and row.unrealQuestFollowingArrow == nil
         and row.unrealQuestFollowingLabel == nil
         and row:GetHeight() == 18
-        and row.unrealQuestFollowingBackground:GetDrawLayer() == 'BACKGROUND'
+        -- ARTWORK: a BACKGROUND plaque is hidden by uUI modern-wow's page art.
+        and row.unrealQuestFollowingBackground:GetDrawLayer() == 'ARTWORK'
+        -- Both row treatments stop four pixels before the row's right edge.
+        and highlight ~= nil and highlight.points[1][1] == 'TOPLEFT'
+        and highlight.points[1][4] == 0
+        and highlight.points[2][1] == 'BOTTOMRIGHT'
+        and highlight.points[2][4] == -4
         and getglobal('QuestLogTitle2TitleText'):GetDrawLayer() == 'OVERLAY'
         and getglobal('QuestLogTitle2Tag'):GetDrawLayer() == 'OVERLAY'
         and getglobal('QuestLogTitle2Tag').point[5] == -3
-        and getglobal('QuestLogTitle2Tag').point[4] == -6
+        and getglobal('QuestLogTitle2Tag').point[4] == -10
         and getglobal('QuestLogTitle2TitleText').point[4] == 23
         and row.unrealQuestQuestDot:IsShown() == false
         -- The tracked bar ends at x=8; the followed icon begins at x=10 and
@@ -9630,7 +10231,7 @@ check("modern quest log highlights the visible followed row", rt.eval("""(functi
         and row.unrealQuestFollowingBackground.points[1][1] == "TOPLEFT"
         and row.unrealQuestFollowingBackground.points[1][4] == 21
         and row.unrealQuestFollowingBackground.points[2][1] == "BOTTOMRIGHT"
-        and row.unrealQuestFollowingBackground.points[2][4] == 1
+        and row.unrealQuestFollowingBackground.points[2][4] == -3
         and row.unrealQuestFollowingPlaqueShift == 1
         and row.unrealQuestFollowingMark.points[1][4] == 10
 end)()"""))
@@ -9639,7 +10240,7 @@ end)()"""))
 # The viewport is the same frame on both surfaces, and it is the one used.
 check("the language row keeps clear of uUI's scroll-bar gutter",
       rt.eval("""(function()
-    local flags = UnrealQuest:GetModule('QuestLogButtons').flags
+    local flags = UnrealQuest:GetModule('QuestLanguageFlags').rows.questlog.buttons
     local last = flags and flags.frFR
     return last ~= nil
         and last:GetParent() == QuestLogFrame
@@ -9770,24 +10371,116 @@ check("the Following button is the quest log action that changes following", rt.
     return main:Get() == selected.titleKey
 end)()"""))
 check("modern reward coins scroll with the detail content", rt.eval("""(function()
+    local reward = QuestLogMoneyFrame.point
+    local required = QuestLogRequiredMoneyFrame.point
+    local spacer = QuestLogSpacerFrame.point
     return QuestLogMoneyFrame:GetParent() == QuestLogDetailScrollChildFrame
+        -- Hidden in favour of the addon's own coin line (checked below).
+        and QuestLogMoneyFrame:IsShown()
+            == (QuestLogMoneyFrame.unrealQuestMoneyReplaced ~= true)
+        and QuestLogMoneyFrame:GetFrameLevel()
+            == QuestLogDetailScrollChildFrame:GetFrameLevel() + 2
+        and reward and reward[1] == 'TOPLEFT'
+        and reward[2] == QuestLogItemReceiveText
+        and reward[3] == 'BOTTOMLEFT' and reward[4] == 0 and reward[5] == -2
         and QuestLogRequiredMoneyFrame:GetParent() == QuestLogDetailScrollChildFrame
+        and required and required[1] == 'LEFT'
+        and required[2] == QuestLogRequiredMoneyText
+        and required[3] == 'RIGHT' and required[4] == 10 and required[5] == 0
+        and spacer and spacer[1] == 'TOP'
+        and spacer[2] == QuestLogMoneyFrame and spacer[3] == 'BOTTOM'
+        and UQ_TEST_QUEST_LOG_SCROLL_UPDATES > UQ_TEST_MODERN_REWARD_SCROLL_BEFORE
 end)()"""))
-check("modern completed objectives are green", rt.eval("""(function()
+check("quest log coins are redrawn as coin icons under You will receive",
+      rt.eval("""(function()
+    local saved = UQ_TEST_QUEST_LOG_REWARD_MONEY
+    UQ_TEST_QUEST_LOG_REWARD_MONEY = 10045
+    QuestLogFrame:Show()
+    QuestLogItemReceiveText:Show()
+    UnrealQuest:GetModule('QuestLogRewards'):Refresh()
+    local row = getglobal('UnrealQuestLogRewardMoney')
+    local point = row and row.point
+    local coins = row and row.unrealQuestCoins
+    local ok = QuestLogMoneyFrame:IsShown() == false
+        and QuestLogMoneyFrame.unrealQuestMoneyReplaced == true
+        and row:IsShown() == true
+        and point and point[1] == 'TOPLEFT'
+        and point[2] == QuestLogItemReceiveText and point[3] == 'BOTTOMLEFT'
+        and coins and coins[1]:IsShown() == true
+        and coins[1].label:GetText() == '1'
+        and coins[2]:IsShown() == false
+        and coins[3]:IsShown() == true
+        and coins[3].label:GetText() == '45'
+    UQ_TEST_QUEST_LOG_REWARD_MONEY = 0
+    UnrealQuest:GetModule('QuestLogRewards'):Refresh()
+    ok = ok and row:IsShown() == false and QuestLogMoneyFrame:IsShown() == false
+    UQ_TEST_QUEST_LOG_REWARD_MONEY = saved
+    UnrealQuest:GetModule('QuestLogRewards'):Refresh()
+    return ok
+end)()"""))
+# Live probe questrewardlayout.live_geometry.v3 measured the shown silver
+# button wholly below the detail viewport after native quest details moved its
+# receive-label anchor. The anchor identity stayed unchanged, so the repair
+# must notice content-relative geometry without treating user scrolling as a
+# layout change (which previously caused visible flicker).
+check("modern reward range follows native geometry without polling scroll writes",
+      rt.eval("""(function()
+    QuestLogDetailScrollChildFrame.testBottom = 100
+    QuestLogMoneyFrame.testBottom = 75
+    local before = UQ_TEST_QUEST_LOG_SCROLL_UPDATES
+    UnrealQuest.Client.AttachModernQuestLogRewards(
+        QuestLogDetailScrollChildFrame)
+    local firstLayout = UQ_TEST_QUEST_LOG_SCROLL_UPDATES
+
+    -- Moving both rectangles together models a user's scroll. Their relative
+    -- geometry is unchanged, so the range must not be rewritten.
+    QuestLogDetailScrollChildFrame.testBottom = 120
+    QuestLogMoneyFrame.testBottom = 95
+    UnrealQuest.Client.AttachModernQuestLogRewards(
+        QuestLogDetailScrollChildFrame)
+    local afterScroll = UQ_TEST_QUEST_LOG_SCROLL_UPDATES
+
+    -- Native detail layout moves only the anchored money row.
+    QuestLogMoneyFrame.testBottom = 90
+    UnrealQuest.Client.AttachModernQuestLogRewards(
+        QuestLogDetailScrollChildFrame)
+    local afterNativeMove = UQ_TEST_QUEST_LOG_SCROLL_UPDATES
+    QuestLogDetailScrollChildFrame.testBottom = nil
+    QuestLogMoneyFrame.testBottom = nil
+    return firstLayout == before + 1
+        and afterScroll == firstLayout
+        and afterNativeMove == afterScroll + 1
+end)()"""))
+rt.execute("UQ_TEST_QUEST_LOG_REWARDS = 0")
+check("modern objectives are grey, orange when partly done, green when complete",
+      rt.eval("""(function()
     local quest = UnrealQuest:GetModule('QuestState'):
         GetQuestByTitle('Kobold Camp Cleanup')
-    quest.objectives[1].finished = true
+    local objective = quest.objectives[1]
+    local have, finished = objective.have, objective.finished
+    local function paint(nextHave, nextFinished)
+        objective.have = nextHave
+        objective.finished = nextFinished
+        UnrealQuest:GetModule('QuestLogButtons'):Refresh()
+        local c = QuestLogObjective1.color
+        return c and { c[1], c[2], c[3] } or {}
+    end
+    local grey = paint(0, false)
+    local orange = paint(4, false)
+    local green = paint(10, true)
+    objective.have = have
+    objective.finished = finished
     UnrealQuest:GetModule('QuestLogButtons'):Refresh()
-    local green = QuestLogObjective1.color
-    quest.objectives[1].finished = false
-    return green and green[1] == 0.30 and green[2] == 0.90 and green[3] == 0.30
+    return grey[1] == 96 / 255 and grey[3] == 96 / 255
+        and orange[1] == 162 / 255 and orange[2] == 96 / 255 and orange[3] == 3 / 255
+        and green[1] == 16 / 255 and green[2] == 154 / 255 and green[3] == 20 / 255
 end)()"""))
 check("modern quest detail places the level directly below its title", rt.eval("""(function()
     local label = QuestLogDetailScrollChildFrame.unrealQuestLevelLabel
     return label ~= nil and label:IsShown() == true
         and label:GetText() == UnrealQuest.L('QUESTLOG_LEVEL', '6')
         and label.point[2] == QuestLogQuestTitle
-        and label.point[5] == -15
+        and label.point[5] == -26
 end)()"""))
 rt.execute("""
     UnrealUIQuestLogListPanel = nil
@@ -9807,17 +10500,113 @@ check("native and Classic WoW quest logs carry the Following button at classic s
         and UnrealQuestLogFollowButton.point[1] == "TOPLEFT"
         and UnrealQuestLogFollowButton.point[4] == (72 + 4) * 2
 end)()"""))
+rt.execute("""
+    UQ_TEST_SAVED_UUI = UnrealUI
+    UnrealUI = nil
+    UnrealQuest:GetModule('QuestLogButtons'):Refresh()
+""")
+check("without unrealUI the quest log buttons wear the red and gold skins", rt.eval("""(function()
+    local show = UnrealQuestLogShowButton
+    local follow = UnrealQuestLogFollowButton
+    local slices = show.unrealQuestSkinSlices
+    local gold = follow.unrealQuestSkinSlices
+    return show.unrealQuestSkin == 'red'
+        and UnrealQuestLogTrackButton.unrealQuestSkin == 'red'
+        and follow.unrealQuestSkin == 'gold'
+        and slices ~= nil and slices[1]:IsShown() == true
+        and string.find(slices[2].path, '128RedButton') ~= nil
+        and string.find(gold[2].path, '128GoldRedButton') ~= nil
+        and slices[2].texCoordArgs == 4
+        and slices[2].texCoord[3] == 523 / 2048
+        and slices[1].width == 18 * 24 / 125
+        and show.unrealQuestEdges[1].vertex[4] == 0
+        -- Following keeps its gold label and arrow on the skin.
+        and follow.unrealQuestActive == true
+        and follow.unrealQuestActiveArrow:IsShown() == true
+        and follow.unrealQuestEdges[1].vertex[4] == 0
+end)()"""))
+check("hovering a skinned quest log button swaps to the recessed row", rt.eval("""(function()
+    local show = UnrealQuestLogShowButton
+    local middle = show.unrealQuestSkinSlices[2]
+    show:GetScript('OnEnter')()
+    local hover = middle.texCoord[3]
+    show:GetScript('OnLeave')()
+    return hover == 783 / 2048 and middle.texCoord[3] == 523 / 2048
+end)()"""))
+check("quest-log polling and repeated hover do not reanchor or resample the classic buttons",
+      rt.eval("""(function()
+    local show = UnrealQuestLogShowButton
+    local follow = UnrealQuestLogFollowButton
+    local middle = show.unrealQuestSkinSlices[2]
+    local point = follow.point
+    UnrealQuest:GetModule('QuestLogButtons'):Refresh()
+    UnrealQuest:GetModule('QuestLogButtons'):Refresh()
+    show:GetScript('OnEnter')()
+    local coords = middle.texCoord
+    show:GetScript('OnEnter')()
+    local stable = middle.texCoord == coords
+    show:GetScript('OnLeave')()
+    return follow.point == point and stable
+        and middle.texCoord[3] == 523 / 2048
+end)()"""))
+rt.execute("""
+    UnrealUI = { activeThemeStyle = 'classic-wow',
+        GetActiveThemeStyle = function() return 'classic-wow' end }
+    UnrealQuest:GetModule('QuestLogButtons'):Refresh()
+""")
+check("other unrealUI themes put the flat quest log buttons back", rt.eval("""(function()
+    local show = UnrealQuestLogShowButton
+    local follow = UnrealQuestLogFollowButton
+    return show.unrealQuestSkin == nil and follow.unrealQuestSkin == nil
+        and show.unrealQuestSkinSlices[1]:IsShown() == false
+        and show.unrealQuestEdges[1].vertex[4] == 1
+        and follow.unrealQuestEdges[1].vertex[1] == UnrealQuest.colors.accent[1]
+end)()"""))
+rt.execute("""
+    UnrealUI.GetActiveThemeStyle = function() return 'modern-wow' end
+    QuestLogMoneyFrame:SetParent(QuestLogFrame)
+    QuestLogMoneyFrame:ClearAllPoints()
+    QuestLogMoneyFrame:SetPoint('TOPLEFT', QuestLogItemReceiveText,
+        'BOTTOMLEFT', 7, -9)
+    UQ_TEST_MODERN_WOW_MONEY_POINT = QuestLogMoneyFrame.point
+    UQ_TEST_MODERN_WOW_SCROLL_BEFORE = UQ_TEST_QUEST_LOG_SCROLL_UPDATES
+    UnrealQuest:GetModule('QuestLogButtons'):Refresh()
+""")
+check("unrealUI's modern-wow theme uses the skinned quest log buttons", rt.eval("""(function()
+    return UnrealQuestLogShowButton.unrealQuestSkin == 'red'
+        and UnrealQuestLogFollowButton.unrealQuestSkin == 'gold'
+        and UnrealQuestLogShowButton.unrealQuestSkinSlices[1]:IsShown() == true
+end)()"""))
+check("modern-wow leaves the client's working coin ownership untouched",
+      rt.eval("""(function()
+    return QuestLogMoneyFrame:GetParent() == QuestLogFrame
+        and QuestLogMoneyFrame.point == UQ_TEST_MODERN_WOW_MONEY_POINT
+        and QuestLogMoneyFrame.point[4] == 7
+        and QuestLogMoneyFrame.point[5] == -9
+        and UQ_TEST_QUEST_LOG_SCROLL_UPDATES
+            == UQ_TEST_MODERN_WOW_SCROLL_BEFORE
+end)()"""))
+rt.execute("""
+    UnrealUI = UQ_TEST_SAVED_UUI
+    UQ_TEST_SAVED_UUI = nil
+    UnrealQuest:GetModule('QuestLogButtons'):Refresh()
+""")
 check("native and Classic WoW quest logs highlight the followed row too", rt.eval("""(function()
     local row = QuestLogTitle2
     return row.unrealQuestFollowingBackground:IsShown() == true
         and row.unrealQuestFollowingMark:IsShown() == true
         -- The denser modern row height is not adopted with it, and neither is
         -- the plaque's one-pixel modern shift: this row has no panel tail to
-        -- slide into, so the plaque stays flush with it.
+        -- slide into, so the plaque keeps its unshifted four-pixel right inset.
         and row:GetHeight() ~= 18
         and row.unrealQuestFollowingPlaqueShift == 0
         and row.unrealQuestFollowingBackground.points[1][4] == 20
-        and row.unrealQuestFollowingBackground.points[2][4] == 0
+        and row.unrealQuestFollowingBackground.points[2][4] == -4
+end)()"""))
+check("the native focused-quest texture is four pixels narrower", rt.eval("""(function()
+    return QuestLogHighlightFrame.unrealQuestOriginalWidth == 293
+        and QuestLogHighlightFrame:GetWidth() == 289
+        and QuestLogSkillHighlight.allPoints == QuestLogHighlightFrame
 end)()"""))
 check("the modern-only half of the integration stays hidden on the native log", rt.eval("""(function()
     return QuestLogDetailScrollChildFrame.unrealQuestLevelLabel:IsShown() == false
@@ -10557,7 +11346,7 @@ check("the navigator contains only the compact dial and distance, with no quest 
         and frame.unrealQuestDial.point[5] == -82
 end)()"""))
 
-check("the live distance is centred beneath the arrow", rt.eval("""(function()
+check("the distance and ETA row is horizontal and centred beneath the arrow", rt.eval("""(function()
     UQ_TEST_AIM(0)
     local frame = getglobal("UnrealQuestNavigator")
     local label = frame and frame.unrealQuestDistance
@@ -10566,11 +11355,48 @@ check("the live distance is centred beneath the arrow", rt.eval("""(function()
     return point ~= nil and point[1] == "TOP"
         and point[2] == frame.unrealQuestArrow and point[3] == "BOTTOM"
         and point[4] == 0 and point[5] == -8
+        and label.width == 220
         and label.justifyH == "CENTER"
+        and string.find(label:GetText(), "\\n", 1, true) == nil
         and label:GetText() == UnrealQuest.L('NAV_DISTANCE',
             math.floor(report.distanceYards + 0.5))
 end)()"""),
 "the fast arrow tick reuses its computed yard distance for the readout")
+
+check("the navigator estimates travel time from a three-second movement sample", rt.eval("""(function()
+    local nav = UnrealQuest:GetModule('Navigator')
+    local target = UnrealQuest:GetModule('QuestTarget')
+    nav:ResetEtaSample()
+    nav:RefreshContext()
+    UQ_TEST_PLAYER_POSITION = { 0.42, 0.65 }
+    nav:RefreshArrow()
+
+    local eastPerPercent = target:ToYards(nav.context.areaId, 1, 0)
+    UQ_TEST_CLOCK = UQ_TEST_CLOCK + 3
+    UQ_TEST_PLAYER_POSITION = { 0.43, 0.65 }
+    nav:RefreshETA()
+    nav:RefreshArrow()
+
+    local report = nav:GetReport()
+    local frame = getglobal('UnrealQuestNavigator')
+    local expectedSpeed = eastPerPercent / 3
+    local expectedText = UnrealQuest.L('NAV_DISTANCE_ETA',
+        math.floor(report.distanceYards + 0.5), nav.lastEtaText)
+    local valid = type(report.etaSeconds) == 'number' and report.etaSeconds > 0
+        and math.abs(report.speedYardsPerSecond - expectedSpeed) < 0.001
+        and frame.unrealQuestDistance:GetText() == expectedText
+
+    UQ_TEST_CLOCK = UQ_TEST_CLOCK + 3
+    nav:RefreshETA()
+    nav:RefreshArrow()
+    local stopped = nav:GetReport().etaSeconds == nil
+        and frame.unrealQuestDistance:GetText() == UnrealQuest.L('NAV_DISTANCE',
+            math.floor(nav:GetReport().distanceYards + 0.5))
+    UQ_TEST_PLAYER_POSITION = { 0.42, 0.65 }
+    nav:ResetEtaSample()
+    return valid and stopped
+end)()"""),
+"the estimate must use measured yards per second and disappear when speed is zero")
 
 check("the arrow sits seven rendered pixels below the arc", rt.eval("""(function()
     local frame = getglobal("UnrealQuestNavigator")
@@ -10727,17 +11553,19 @@ check("the navigator follows its nearest quest when no quest was selected", rt.e
         and main:Get() == nav.context.targetTitleKey
 end)()"""))
 
-check("the navigator runs on two jobs at two cadences", rt.eval("""(function()
+check("the navigator runs direction, context and ETA at separate cadences", rt.eval("""(function()
     local jobs = UnrealQuest:GetModule('Driver'):GetJobReport()
-    local fast, slow
+    local fast, slow, eta
     for _, job in ipairs(jobs) do
         if job.name == "nav.arrow" then fast = job end
         if job.name == "nav.context" then slow = job end
+        if job.name == "nav.eta" then eta = job end
     end
     -- The expensive half -- map view plus active-node collection -- must not
     -- run at the arrow's rate; that is the stuttering failure mode this client
     -- has already been reported with.
-    return fast ~= nil and slow ~= nil and slow.interval > fast.interval
+    return fast ~= nil and slow ~= nil and eta ~= nil
+        and slow.interval > fast.interval and eta.interval == 3
 end)()"""))
 
 check("navigator diagnostics are persisted for a post mortem", rt.eval("""(function()
@@ -14652,6 +15480,98 @@ check("the hosted minimap-dot slider spans 50% to 150% and applies live", rt.eva
         and UnrealQuestDB.minimapObjectiveDotScale == 150
         and dot ~= nil and dot.width == 16.2 and dot.height == 16.2
 end)()"""))
+
+print("settings: unrealUI's settings groups turn the page into a submenu")
+
+# The checks above ran against an unrealUI mock without RegisterSettingsGroup,
+# which is the single tabbed row. With groups available, the sidebar rows are
+# the tabs: one "UnrealQuest" group and one page per section, and no internal
+# tab strip on either page. The internal tabs' globals are cleared first so a
+# strip left over from the tabbed build cannot satisfy "there is none".
+rt.execute("""
+    UnrealUI.tabs = {}
+    UnrealUI.groups = {}
+    UnrealUI.opened = nil
+    local function Taken(id)
+        for _, entry in ipairs(UnrealUI.groups) do
+            if entry.id == id then return true end
+        end
+        for _, entry in ipairs(UnrealUI.tabs) do
+            if entry.id == id then return true end
+        end
+        return false
+    end
+    function UnrealUI.RegisterSettingsGroup(id, label)
+        if Taken(id) then return nil end
+        local entry = { id = id, label = label }
+        table.insert(UnrealUI.groups, entry)
+        return entry
+    end
+    function UnrealUI.RegisterSettingsTab(id, label, build, options)
+        if Taken(id) then return nil end
+        local entry = { id = id, label = label, build = build, options = options }
+        table.insert(UnrealUI.tabs, entry)
+        return entry
+    end
+    setglobal('UnrealQuestSettingsGeneralTab', nil)
+    setglobal('UnrealQuestSettingsMobTrackingTab', nil)
+
+    local settings = UnrealQuest:GetModule('Settings')
+    settings.host = nil
+    settings.hostWaited = 0
+    settings.registered = nil
+    settings.hostLayout = nil
+    settings.activePageTab = 'general'
+    settings:OnEnable()
+    UQ_TEST_TICK(0.5, 3)
+""")
+check("unrealUI with settings groups hosts UnrealQuest as a submenu",
+      rt.eval("UnrealQuest:GetModule('Settings').host == 'unrealui' "
+              "and UnrealQuest:GetModule('Settings').hostLayout == 'group'"))
+check("one UnrealQuest group holds a General page and a Mob tracking page", rt.eval("""(function()
+    local groups, tabs = UnrealUI.groups, UnrealUI.tabs
+    return table.getn(groups) == 1 and groups[1].id == 'unrealquest'
+        and groups[1].label == 'UnrealQuest'
+        and table.getn(tabs) == 2
+        and tabs[1].id == 'unrealquest.general'
+        and tabs[1].label == UnrealQuest.L('SETTINGS_TAB_GENERAL')
+        and tabs[1].options.parent == 'unrealquest'
+        and tabs[1].options.after == 'unrealquest'
+        and tabs[2].id == 'unrealquest.mobs'
+        and tabs[2].label == UnrealQuest.L('SETTINGS_TAB_MOB_TRACKING')
+        and tabs[2].options.parent == 'unrealquest'
+        and tabs[2].options.after == 'unrealquest.general'
+        and tabs[1].widgets == nil and tabs[2].widgets == nil
+end)()"""))
+
+rt.execute("SlashCmdList.UNREALQUEST('config')")
+check("/uq config opens the General page of the submenu, and builds only that one",
+      rt.eval("UnrealUI.opened == 'unrealquest.general' "
+              "and UnrealUI.tabs[1].widgets ~= nil and UnrealUI.tabs[2].widgets == nil"))
+check("the General page carries its options and no internal tab strip",
+      rt.eval("UnrealQuestSettingsTrackerCurrentZoneOnly ~= nil "
+              "and getglobal('UnrealQuestSettingsGeneralTab') == nil "
+              "and getglobal('UnrealQuestSettingsMobTrackingTab') == nil "
+              "and table.getn(UnrealQuest:GetModule('Settings').liveSliders) == 4"))
+
+rt.execute("""
+    setglobal('UnrealQuestSettingsMobSearchInput', nil)
+    UnrealUI.OpenSettingsPage('unrealquest.mobs')
+""")
+check("the Mob tracking page is its own page with the finder on it", rt.eval("""(function()
+    local settings = UnrealQuest:GetModule('Settings')
+    return UnrealUI.tabs[2].widgets ~= nil
+        and UnrealQuestSettingsMobSearchInput ~= nil
+        and UnrealQuestSettingsMobSearchInput:IsShown()
+        and settings.mobRowsPerPage > 30
+        and getglobal('UnrealQuestSettingsGeneralTab') == nil
+end)()"""))
+check("building the Mob tracking page keeps the General page's live sliders bound",
+      rt.eval("table.getn(UnrealQuest:GetModule('Settings').liveSliders) == 4 "
+              "and UnrealQuest:GetModule('Settings').liveSliders[1].key == 'trackerBackgroundOpacity'"))
+rt.execute("SlashCmdList.UNREALQUEST('config')")
+check("/uq config returns to the section the player last opened",
+      rt.eval("UnrealUI.opened == 'unrealquest.mobs'"))
 
 print("settings: UnrealQuest's own window when unrealUI is absent")
 rt.execute("""

@@ -198,7 +198,9 @@ def collect():
 def used_keys():
     """Every key the Lua source actually asks for."""
     call = re.compile(r'UQ\.(L|LN)\(\s*"([A-Z][A-Z0-9_]*)"')
-    table = re.compile(r'"((?:CMD_HELP|TRACKER_HINT|MARK|NPC_CATEGORY|RARE_RANK|RARE_DIR|RARE_NEARBY)_[A-Z0-9_]*)"')
+    explicit = re.compile(
+        r'UQ\.LForLanguage\([^,]+,\s*"([A-Z][A-Z0-9_]*)"')
+    table = re.compile(r'"((?:CMD_HELP|TRACKER_HINT|MARK|NPC_CATEGORY|QUEST_COMPLETE|RARE_RANK|RARE_DIR|RARE_NEARBY)_[A-Z0-9_]*)"')
     singular, plural = set(), set()
     for root, dirs, files in os.walk(ADDON):
         dirs[:] = [d for d in dirs
@@ -210,6 +212,7 @@ def used_keys():
             text = io.open(os.path.join(root, name), encoding="utf-8").read()
             for kind, key in call.findall(text):
                 (plural if kind == "LN" else singular).add(key)
+            singular.update(explicit.findall(text))
             for key in table.findall(text):
                 singular.add(key)
     singular.discard("KEY")          # the doc example in Core/Locale.lua

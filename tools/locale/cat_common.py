@@ -150,6 +150,12 @@ STRINGS.update({
     "%s м",
     "%s 码",
 ),
+"NAV_DISTANCE_ETA": (
+    "%s yd   %s",
+    "%s m   %s",
+    "%s м   %s",
+    "%s 码   %s",
+),
 "TRACKER_WARN_NO_HANDLE": (
     "the tracker window has no drag handle; it cannot be moved",
     "la fenêtre de suivi n'a pas de poignée ; elle ne peut pas être déplacée",
@@ -226,6 +232,24 @@ STRINGS.update({
     "Cette quete seulement ; les autres gardent leur reglage.",
     "Только это задание; остальные сохранят настройку.",
     "仅此任务；其他任务保持原设置。",
+),
+"QUEST_COMPLETE_REWARDS": (
+    "Rewards",
+    "Récompenses",
+    "Награды",
+    "奖励",
+),
+"QUEST_COMPLETE_CHOOSE_REWARD": (
+    "Choose your reward:",
+    "Choisissez votre récompense :",
+    "Выберите награду:",
+    "选择你的奖励：",
+),
+"QUEST_COMPLETE_RECEIVE_REWARD": (
+    "You will receive:",
+    "Vous recevrez :",
+    "Вы получите:",
+    "你将获得：",
 ),
 
 # --- world map ---------------------------------------------------------------
@@ -1020,6 +1044,12 @@ STRINGS.update({
     "Recompenses en experience et reputation",
     "Награды опытом и репутацией",
     "经验和声望奖励",
+),
+"SETTINGS_REWARD_QUALITY_COLORS": (
+    "Reward names in quality colours",
+    "Noms des recompenses en couleurs de qualite",
+    "Цвет качества у названий наград",
+    "奖励名称按品质着色",
 ),
 "SETTINGS_TOOLTIP_RESPAWN": (
     u"Respawn timers in tooltips",

@@ -70,7 +70,7 @@ straight to `Client.SetNavigatorArrowAngle` with no sign flip.
 for the shipped texture and is the one knob to reach for if the arrow is
 consistently rotated by a constant.
 
-## Two cadences
+## Three cadences
 
 Same split, and the same reason, as the tracker and the retired marker.
 `nav.context` at 4Hz chooses the nearest eligible node from a cached active-quest scene.
@@ -79,6 +79,9 @@ rebuilt only when its quest, area, visibility, or relevant quest-item inputs
 change.
 `nav.arrow` at 20Hz does one position read, one facing read and one rotation,
 which is the part that has to keep up with a turning player.
+`nav.eta` every three seconds measures the player's displacement in real yards
+over that window and updates the estimated travel time. The client exposes no
+player-speed API, so a stationary player has no ETA rather than an invented one.
 ]]
 
 local UQ = UnrealQuest
@@ -105,6 +108,13 @@ local ALPHA_ALIGNED = 1
 local ALPHA_OPPOSITE = 0.45
 local ARC_ALPHA = 0.65
 local ARC_ALPHA_AT_TARGET = 0.35
+
+-- GetUnitSpeed is not present in this client's documented or measured API.
+-- Sample map displacement over the requested three-second window instead. A
+-- sub-half-yard-per-second result is indistinguishable from the map's measured
+-- one-yard position quantization, so it means "no trustworthy ETA".
+local ETA_INTERVAL = 3
+local ETA_MIN_SPEED = 0.5
 
 -- The arc is 512x257; the arrow region is square. These are the authored
 -- dimensions before BASE_RENDER_SCALE is applied.
@@ -134,6 +144,14 @@ Navigator.rotations = 0
 Navigator.rotationFailures = 0
 Navigator.lastRelativeAngle = nil
 Navigator.lastDistanceYards = nil
+Navigator.etaSampleAreaId = nil
+Navigator.etaSampleU = nil
+Navigator.etaSampleV = nil
+Navigator.etaSampleAt = nil
+Navigator.lastSpeedYardsPerSecond = nil
+Navigator.lastEtaSeconds = nil
+Navigator.lastEtaText = nil
+Navigator.etaRefreshes = 0
 Navigator.lastFacingSource = nil
 Navigator.lastTargetKind = nil
 Navigator.lastTargetTitle = nil
@@ -624,6 +642,128 @@ local function DirectionAlpha(frameIndex)
         - (ALPHA_ALIGNED - ALPHA_OPPOSITE) * stepDistance / halfTurn
 end
 
+local function FormatEta(seconds)
+    local rounded = math.floor(seconds + 0.5)
+    if rounded < 0 then
+        rounded = 0
+    end
+    local hours = math.floor(rounded / 3600)
+    local minutes = math.floor((rounded - hours * 3600) / 60)
+    local remaining = rounded - hours * 3600 - minutes * 60
+    if hours > 0 then
+        return string.format("%d:%02d:%02d", hours, minutes, remaining)
+    end
+    return string.format("%d:%02d", minutes, remaining)
+end
+
+function Navigator:ResetEtaSample()
+    self.etaSampleAreaId = nil
+    self.etaSampleU = nil
+    self.etaSampleV = nil
+    self.etaSampleAt = nil
+    self.lastSpeedYardsPerSecond = nil
+    self.lastEtaSeconds = nil
+    self.lastEtaText = nil
+end
+
+-- The fast arrow tick seeds the first position so the first scheduled ETA pass
+-- can answer after one complete three-second window. Later seeds only happen
+-- after the viewed area changes or the clock restarts.
+function Navigator:SeedEtaSample(areaId, playerU, playerV)
+    if type(areaId) ~= "number" or type(playerU) ~= "number"
+        or type(playerV) ~= "number" then
+        return false
+    end
+    if self.etaSampleAreaId == areaId and self.etaSampleAt then
+        return true
+    end
+    local now = Client.Now()
+    if type(now) ~= "number" then
+        return false
+    end
+    self.etaSampleAreaId = areaId
+    self.etaSampleU = playerU
+    self.etaSampleV = playerV
+    self.etaSampleAt = now
+    self.lastSpeedYardsPerSecond = nil
+    self.lastEtaSeconds = nil
+    self.lastEtaText = nil
+    return true
+end
+
+-- Measures speed and refreshes the ETA only on the dedicated three-second job.
+-- Straight-line displacement is deliberate: sampling each one-yard quantized
+-- step at 20Hz would inflate diagonal movement into a Manhattan path.
+function Navigator:RefreshETA()
+    local context = self.context
+    if not context then
+        self:ResetEtaSample()
+        return
+    end
+
+    local playerU, playerV = Client.GetPlayerMapPosition("player")
+    local now = Client.Now()
+    if type(playerU) ~= "number" or type(playerV) ~= "number"
+        or type(now) ~= "number" then
+        self:ResetEtaSample()
+        return
+    end
+    if self.etaSampleAreaId ~= context.areaId or not self.etaSampleAt
+        or now <= self.etaSampleAt then
+        self:ResetEtaSample()
+        self:SeedEtaSample(context.areaId, playerU, playerV)
+        return
+    end
+
+    local questTarget = QuestTarget()
+    if not questTarget then
+        self:ResetEtaSample()
+        return
+    end
+    local elapsed = now - self.etaSampleAt
+    local eastMoved, southMoved = questTarget:ToYards(context.areaId,
+        (playerU - self.etaSampleU) * 100,
+        (playerV - self.etaSampleV) * 100)
+    local eastLeft, southLeft = questTarget:ToYards(context.areaId,
+        context.targetX - playerU * 100,
+        context.targetY - playerV * 100)
+
+    self.etaSampleAreaId = context.areaId
+    self.etaSampleU = playerU
+    self.etaSampleV = playerV
+    self.etaSampleAt = now
+    self.etaRefreshes = self.etaRefreshes + 1
+
+    if not eastMoved or not southMoved or not eastLeft or not southLeft then
+        self.lastSpeedYardsPerSecond = nil
+        self.lastEtaSeconds = nil
+        self.lastEtaText = nil
+        return
+    end
+
+    local moved = math.sqrt(eastMoved * eastMoved + southMoved * southMoved)
+    local speed = moved / elapsed
+    if speed < ETA_MIN_SPEED then
+        self.lastSpeedYardsPerSecond = nil
+        self.lastEtaSeconds = nil
+        self.lastEtaText = nil
+        return
+    end
+
+    local distance = math.sqrt(eastLeft * eastLeft + southLeft * southLeft)
+    self.lastSpeedYardsPerSecond = speed
+    self.lastEtaSeconds = distance / speed
+    self.lastEtaText = FormatEta(self.lastEtaSeconds)
+end
+
+function Navigator:DistanceText(distanceYards)
+    local distance = math.floor(distanceYards + 0.5)
+    if self.lastEtaText then
+        return UQ.L("NAV_DISTANCE_ETA", distance, self.lastEtaText)
+    end
+    return UQ.L("NAV_DISTANCE", distance)
+end
+
 function Navigator:RefreshArrow()
     local context = self.context
     if not context then
@@ -643,6 +783,7 @@ function Navigator:RefreshArrow()
     if not playerU then
         return self:Hide("playerNotOnView")
     end
+    self:SeedEtaSample(context.areaId, playerU, playerV)
 
     local questTarget = QuestTarget()
     if not questTarget then
@@ -699,8 +840,7 @@ function Navigator:RefreshArrow()
     else
         Client.SetNavigatorArrowTint(frame, 1, 1, 1, alpha)
     end
-    Client.SetNavigatorDistanceText(frame, UQ.L("NAV_DISTANCE",
-        math.floor(distanceYards + 0.5)))
+    Client.SetNavigatorDistanceText(frame, self:DistanceText(distanceYards))
 
     if frame.unrealQuestArc then
         local showArc = not config or config:Get("navigatorShowArc") ~= false
@@ -810,6 +950,9 @@ function Navigator:GetReport()
         hiddenCounts = self.hiddenCounts,
         relativeAngle = self.lastRelativeAngle,
         distanceYards = self.lastDistanceYards,
+        speedYardsPerSecond = self.lastSpeedYardsPerSecond,
+        etaSeconds = self.lastEtaSeconds,
+        etaRefreshes = self.etaRefreshes,
         facingSource = self.lastFacingSource,
         targetKind = self.lastTargetKind,
         targetTitle = self.lastTargetTitle,
@@ -852,6 +995,7 @@ function Navigator:RecordDiagnostics()
     config:SetSectionEntry("navigatorDiagnostics", "sceneBuilds", self.sceneBuilds)
     config:SetSectionEntry("navigatorDiagnostics", "sceneNodes",
         self.scene and self.scene.nodeCount or 0)
+    config:SetSectionEntry("navigatorDiagnostics", "etaRefreshes", self.etaRefreshes)
 end
 
 -- Lifecycle -------------------------------------------------------------------
@@ -904,6 +1048,12 @@ function Navigator:OnEnable()
     -- arrow sweeps rather than steps.
     driver:Schedule("nav.arrow", interval, function()
         Navigator:RefreshArrow()
+    end)
+
+    -- Player speed has no direct client API. One displacement sample per three
+    -- seconds is enough for a useful estimate and matches the visible cadence.
+    driver:Schedule("nav.eta", ETA_INTERVAL, function()
+        Navigator:RefreshETA()
     end)
 
     driver:Schedule("nav.diagnostics", 5, function()

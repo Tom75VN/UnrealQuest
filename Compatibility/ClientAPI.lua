@@ -522,6 +522,24 @@ function Client.GetQuestLogRewardCounts()
     return choices, rewards
 end
 
+-- OFFICIAL_CLIENT_DOCUMENTATION: reward and required money are separate
+-- copper totals for the selected quest. They are read here so the modern
+-- integration can restore a native money frame hidden during reparenting;
+-- zero or an unavailable call leaves native visibility untouched.
+function Client.GetQuestLogMoneyAmounts()
+    local reward = 0
+    local required = 0
+    local ok, value = Call0("GetQuestLogRewardMoney")
+    if ok and type(value) == "number" and value > 0 then
+        reward = value
+    end
+    ok, value = Call0("GetQuestLogRequiredMoney")
+    if ok and type(value) == "number" and value > 0 then
+        required = value
+    end
+    return reward, required
+end
+
 -- Rebuilds the stock quest-log rows and detail pane. A focused runtime probe
 -- called this public FrameXML helper successfully (questlogmark.public_refresh_ownership.v1,
 -- BEHAVIOR_PARTIALLY_TESTED, 2026-08-27). Translation uses it only to hand
@@ -680,6 +698,17 @@ end
 function Client.GetPlayerLevel()
     local ok, value = Call1("UnitLevel", "player")
     if ok and type(value) == "number" then
+        return value
+    end
+    return nil
+end
+
+-- Level of any unit token. Documented, not probed here: UnitLevel returns the
+-- level, -1 for a skull unit and 0 when the unit does not exist. Only a
+-- positive level is returned; everything else is nil.
+function Client.GetUnitLevel(unit)
+    local ok, value = Call1("UnitLevel", unit)
+    if ok and type(value) == "number" and value > 0 then
         return value
     end
     return nil
@@ -2540,6 +2569,12 @@ end
 -- made by the caller before this runs.
 local function RenderTooltipLines(tooltip, tooltipName, frame, lines, anchor,
                                   useNativeStyle)
+    -- Nothing to say is not a tooltip. Showing one anyway draws the flat
+    -- style's fill and outline around zero lines: a thin dark bar beside the
+    -- hovered pin. Returning before SetOwner leaves the tooltip untouched.
+    if table.getn(lines or {}) == 0 then
+        return false
+    end
     local ok = pcall(tooltip.SetOwner, tooltip, frame, anchor or "ANCHOR_RIGHT")
     if not ok then
         return false
@@ -4167,10 +4202,54 @@ end
 -- fallback. Both are pcall'd: this is the one place in the addon that writes
 -- into stock FrameXML's own widgets, and a client that refuses must leave the
 -- caller with a false rather than an error.
+-- A WALKED widget, exchanged for one that can actually be written to.
+--
+-- On this client GetRegions/GetChildren hand back a FRESH wrapper around the
+-- underlying widget rather than the global object, and those wrappers carry
+-- the READERS without the WRITERS. Measured, all three in the same session:
+--
+--   * questgiver.region_walk_returns_same_objects.v1 -- the FontString the
+--     depth-2 region walk returns for the quest title is NOT (==) the
+--     QuestTitleText global, while its own GetName() answers "QuestTitleText";
+--   * questgivertext run 1 -- SetText read as nil on all 86 walked objects,
+--     including UnrealQuestDetailReward1, a FontString THIS ADDON created and
+--     had just written to;
+--   * questgiver.settext_read_reports_function.v1 -- the same widgets reached
+--     through their globals report SetText as a function, accept both call
+--     forms, and the text changes.
+--
+-- So a wrapper is fine to read a widget through and useless to write through,
+-- and anything that FOUND a widget by walking a frame has to go back to the
+-- name before writing to it. The name comes off the wrapper itself, so this
+-- exchanges one handle on a widget for another handle on that same widget and
+-- never picks a different one: a caller that verified what a field is showing
+-- keeps that guarantee. An object that already accepts SetText -- everything
+-- resolved by name, which is most of this file -- is returned untouched, and
+-- so is an unnamed or unresolvable one, leaving the caller exactly where it
+-- would have been without this.
+function Client.ResolveWritableObject(object)
+    if not object then
+        return nil
+    end
+    if type(object.SetText) == "function" then
+        return object
+    end
+    local name = Client.GetObjectName(object)
+    if type(name) ~= "string" or name == "" then
+        return object
+    end
+    local named = ResolveObject(name)
+    if named and type(named.SetText) == "function" then
+        return named
+    end
+    return object
+end
+
 function Client.SetNativeObjectText(object, text)
     if not object or type(text) ~= "string" then
         return false
     end
+    object = Client.ResolveWritableObject(object)
     local target = nil
     if type(object.GetFontString) == "function" then
         local resolved, value = pcall(object.GetFontString, object)
@@ -4630,13 +4709,14 @@ local QUEST_LOG_FOLLOWING_PLAQUE_TEXTURE =
 local QUEST_LOG_QUEST_MARK_OFFSET_X = 10
 local QUEST_LOG_QUEST_DOT_OFFSET_X = 11
 local QUEST_LOG_FOLLOWING_PLAQUE_INSET = 20
+local QUEST_LOG_ROW_RIGHT_INSET = 4
 -- uUI Modern only: the whole plaque sits one pixel further right there, by
 -- request. Its list panel keeps a tail after the row for the scroll bar, so
 -- the plaque has that room to move into; the native and Classic WoW rows have
--- no such tail and keep the plaque flush with the row.
+-- no such tail and keep the plaque at its unshifted inset.
 local QUEST_LOG_FOLLOWING_PLAQUE_MODERN_SHIFT_X = 1
 local QUEST_LOG_TITLE_OFFSET_X = -1
-local QUEST_LOG_TAG_OFFSET_X = -2
+local QUEST_LOG_TAG_OFFSET_X = -6
 -- The row's own name, in its three template states. Both the offset pass and
 -- the difficulty-colour pass below write to all of them, so a hovered or
 -- disabled row never disagrees with the resting one.
@@ -4645,8 +4725,9 @@ local QUEST_LOG_TITLE_REGIONS = { "NormalText", "HighlightText", "DisabledText" 
 -- contain the scroll bar, and places its detail pane 35 pixels after the list.
 -- Those two numbers are its own; both are treated as the maximum here.
 --
--- The followed plaque ends at the row's right edge, so the tail after it is
--- dead space -- but only as far as the scroll bar allows. The tail is measured
+-- The followed plaque stops four pixels before the row's right edge, so the
+-- tail after it is dead space -- but only as far as the scroll bar allows. The
+-- tail is measured
 -- from the bar itself and keeps whatever the bar occupies plus a four-pixel
 -- margin; only the remainder is reclaimed, and the detail pane moves left by
 -- exactly that and grows by the same, so the panel gap and the Quest Log's
@@ -4901,6 +4982,30 @@ function Client.SetEntityTooltipFadeHold(seconds)
         end
     end
     return true, Client.GetEntityTooltipFadeHold()
+end
+
+-- Host integration, not a client API assumption: whether unrealUI is hosting
+-- with its Dragonflight-styled `modern-wow` theme, whose Quest Log page art
+-- needs some of this addon's placements nudged. Resolved on every call so a
+-- late-initialising host or a theme switch is picked up; false when the host
+-- or its theme accessor is absent.
+function Client.IsUnrealUIModernWowTheme()
+    local host = ResolveObject("UnrealUI")
+    if not host or type(host.GetActiveThemeStyle) ~= "function" then
+        return false
+    end
+    local ok, style = pcall(host.GetActiveThemeStyle)
+    return ok and style == "modern-wow" or false
+end
+
+-- Host integration: the quest log's action buttons wear their textured skins
+-- (Client.SetQuestLogButtonSkin) on a UI unrealUI does not theme at all, and
+-- under its modern-wow theme; every other unrealUI theme keeps the flat look.
+function Client.UsesQuestLogTexturedButtons()
+    if not ResolveObject("UnrealUI") then
+        return true
+    end
+    return Client.IsUnrealUIModernWowTheme()
 end
 
 function Client.GetEntityTooltipStyle()
@@ -6040,6 +6145,186 @@ function Client.CreateTextButton(parent, name, width, height, text)
     return CreateSizedButton(parent, name, width, height, text)
 end
 
+-- Textured skins for the quest log's action buttons -------------------------
+--
+-- Red (Show, Track) and gold-rimmed red (Following) art, drawn in place of the
+-- flat chrome when unrealUI is absent or hosts its modern-wow theme
+-- (Quest/QuestLogButtons.lua decides which). Both atlases are 32-bit RLE
+-- type-10 TGAs at fresh extensionless paths, the encoding and path rule of
+-- knowledge.json textures.uncompressed_512_tga_atlas_corrupts and
+-- textures.resources_cached_across_ui_reload.
+--
+-- Each button state in an atlas is a 291x125 bar whose RIGHT end carries the
+-- bevel, plus a separate 114x125 short button whose LEFT end does, so a button
+-- is drawn as three slices -- left cap from the short piece, the bar's middle
+-- stretched, the bar's right cap -- selected with the four-argument
+-- SetTexCoord form (textures.rle_512_tga_atlas_four_arg_supported). Cap width
+-- follows the button's height at the source aspect, so the bevel reads the
+-- same at the classic 18 and the modern 30 pixels. Hover swaps to the
+-- atlas's recessed row by coordinates alone: Additive blending and
+-- Texture:SetAlpha are both unreliable here (rendering.setblendmode_add_inert,
+-- rendering.texture_setalpha_darkens_not_translucent). Measured from the
+-- shipped files with an alpha > 8 bound; the red atlas is 512x2048, a size
+-- no probe has rendered yet.
+--
+-- One table rather than separate locals: this file sits at Lua's 200
+-- file-scope local limit.
+local QuestLogSkin = {
+    atlasWidth = 512,
+    cellHeight = 125,
+    barWidth = 291,
+    cap = 24,
+    skins = {
+        red = {
+            path = "Interface\\AddOns\\unrealQuest\\media\\128RedButton",
+            atlasHeight = 2048,
+            normal = { barTop = 523, capLeft = 392, capTop = 913 },
+            hover = { barTop = 783, capLeft = 378, capTop = 1043 },
+        },
+        gold = {
+            path = "Interface\\AddOns\\unrealQuest\\media\\128GoldRedButton",
+            atlasHeight = 1024,
+            normal = { barTop = 523, capLeft = 296, capTop = 523 },
+            hover = { barTop = 783, capLeft = 296, capTop = 783 },
+        },
+    },
+}
+
+-- The flat look's border and fill, active (accent) or at rest.
+function QuestLogSkin.ApplyFlat(button, active)
+    if active then
+        SetFlatBorderColor(button, UQ.colors.accent[1], UQ.colors.accent[2],
+            UQ.colors.accent[3], 1)
+        if type(button.SetBackdropColor) == "function" then
+            pcall(button.SetBackdropColor, button, UQ.colors.accent[1],
+                UQ.colors.accent[2], UQ.colors.accent[3], 0.10)
+        end
+    else
+        SetFlatBorderColor(button, FLAT_BORDER[1], FLAT_BORDER[2],
+            FLAT_BORDER[3], FLAT_BORDER[4])
+        if type(button.SetBackdropColor) == "function" then
+            pcall(button.SetBackdropColor, button, FLAT_BACKGROUND[1],
+                FLAT_BACKGROUND[2], FLAT_BACKGROUND[3], FLAT_BACKGROUND[4])
+        end
+    end
+end
+
+function QuestLogSkin.SetSlice(texture, skin, left, right, top)
+    pcall(texture.SetTexCoord, texture,
+        left / QuestLogSkin.atlasWidth, right / QuestLogSkin.atlasWidth,
+        top / skin.atlasHeight,
+        (top + QuestLogSkin.cellHeight) / skin.atlasHeight)
+end
+
+function QuestLogSkin.Paint(button, hover)
+    local skin = QuestLogSkin.skins[button.unrealQuestSkin or ""]
+    local slices = button.unrealQuestSkinSlices
+    if not skin or not slices then
+        return
+    end
+    -- Rewrite coordinates only on a real change of state; a repeated
+    -- OnEnter/OnLeave must not resample the atlas.
+    local wanted = hover and true or false
+    if button.unrealQuestSkinPainted == button.unrealQuestSkin
+        and button.unrealQuestSkinHover == wanted then
+        return
+    end
+    button.unrealQuestSkinPainted = button.unrealQuestSkin
+    button.unrealQuestSkinHover = wanted
+    button.unrealQuestDiagPaints = (button.unrealQuestDiagPaints or 0) + 1
+    local state = hover and skin.hover or skin.normal
+    local cap = QuestLogSkin.cap
+    local bar = QuestLogSkin.barWidth
+    QuestLogSkin.SetSlice(slices[1], skin, state.capLeft, state.capLeft + cap, state.capTop)
+    QuestLogSkin.SetSlice(slices[2], skin, cap, bar - cap, state.barTop)
+    QuestLogSkin.SetSlice(slices[3], skin, bar - cap, bar, state.barTop)
+end
+
+function QuestLogSkin.BuildSlices(button)
+    if type(button.CreateTexture) ~= "function" then
+        return nil
+    end
+    local slices = {}
+    local index = 1
+    while index <= 3 do
+        local ok, texture = pcall(button.CreateTexture, button, nil, "BACKGROUND")
+        if not ok or not texture or type(texture.SetTexCoord) ~= "function" then
+            return nil
+        end
+        slices[index] = texture
+        index = index + 1
+    end
+    local left, middle, right = slices[1], slices[2], slices[3]
+    pcall(left.SetPoint, left, "TOPLEFT", button, "TOPLEFT", 0, 0)
+    pcall(left.SetPoint, left, "BOTTOMLEFT", button, "BOTTOMLEFT", 0, 0)
+    pcall(right.SetPoint, right, "TOPRIGHT", button, "TOPRIGHT", 0, 0)
+    pcall(right.SetPoint, right, "BOTTOMRIGHT", button, "BOTTOMRIGHT", 0, 0)
+    pcall(middle.SetPoint, middle, "TOPLEFT", left, "TOPRIGHT", 0, 0)
+    pcall(middle.SetPoint, middle, "BOTTOMRIGHT", right, "BOTTOMLEFT", 0, 0)
+    button.unrealQuestSkinSlices = slices
+    return slices
+end
+
+-- skinName is "red", "gold" or nil for the flat look. Idempotent per name and
+-- height: the quest log polls this, and repainting every pass would fight the
+-- button's own hover state (see Client.SetStyledTextButtonActive). Returns
+-- whether the textured skin is on; a button that cannot build its slices stays
+-- flat.
+function Client.SetQuestLogButtonSkin(button, skinName)
+    if not button then
+        return false
+    end
+    local skin = skinName and QuestLogSkin.skins[skinName] or nil
+    local height = 0
+    if type(button.GetHeight) == "function" then
+        local ok, value = pcall(button.GetHeight, button)
+        if ok and type(value) == "number" then
+            height = value
+        end
+    end
+    local wanted = skin and skinName or nil
+    if button.unrealQuestSkin == wanted and button.unrealQuestSkinHeight == height then
+        return skin ~= nil
+    end
+
+    button.unrealQuestDiagApplies = (button.unrealQuestDiagApplies or 0) + 1
+    local slices = button.unrealQuestSkinSlices
+    if skin and not slices then
+        slices = QuestLogSkin.BuildSlices(button)
+    end
+    if skin and slices then
+        local cap = height * QuestLogSkin.cap / QuestLogSkin.cellHeight
+        local index = 1
+        while index <= 3 do
+            pcall(slices[index].SetTexture, slices[index], skin.path)
+            Client.ShowObject(slices[index])
+            index = index + 1
+        end
+        pcall(slices[1].SetWidth, slices[1], cap)
+        pcall(slices[3].SetWidth, slices[3], cap)
+        -- Vertex alpha, not SetAlpha, is this client's working translucency.
+        SetFlatBorderColor(button, 0, 0, 0, 0)
+        if type(button.SetBackdropColor) == "function" then
+            pcall(button.SetBackdropColor, button, 0, 0, 0, 0)
+        end
+        button.unrealQuestSkin = wanted
+        -- SetTexture just ran, so the coordinates are repainted regardless of
+        -- the last hover state recorded.
+        button.unrealQuestSkinPainted = nil
+        QuestLogSkin.Paint(button, false)
+    else
+        if slices then
+            Client.HideObject(slices[1])
+            Client.HideObject(slices[2])
+            Client.HideObject(slices[3])
+        end
+        button.unrealQuestSkin = nil
+        QuestLogSkin.ApplyFlat(button, button.unrealQuestActive)
+    end
+    button.unrealQuestSkinHeight = height
+    return button.unrealQuestSkin ~= nil
+end
+
 -- A text button in the same flat "modern" look as the tracker window and
 -- native-frame tooltips (FLAT_BACKGROUND/BuildFlatBorder above): near-black
 -- fill, one thin dark outline, orange accent (UQ.colors.accent) on hover. For
@@ -6095,12 +6380,22 @@ function Client.CreateStyledTextButton(parent, name, width, height, text)
         end
     end
     Client.SetObjectScript(button, "OnEnter", function()
+        -- Diagnostic counters only, read by UnrealRuntimeProbe's
+        -- questlogbtnflicker capture; never persisted.
+        button.unrealQuestDiagEnters = (button.unrealQuestDiagEnters or 0) + 1
+        if button.unrealQuestSkin then
+            QuestLogSkin.Paint(button, true)
+            return
+        end
         SetFlatBorderColor(button, UQ.colors.accent[1], UQ.colors.accent[2],
             UQ.colors.accent[3], button.unrealQuestActive and 1
                 or UQ.colors.accent[4])
     end)
     Client.SetObjectScript(button, "OnLeave", function()
-        if button.unrealQuestActive then
+        button.unrealQuestDiagLeaves = (button.unrealQuestDiagLeaves or 0) + 1
+        if button.unrealQuestSkin then
+            QuestLogSkin.Paint(button, false)
+        elseif button.unrealQuestActive then
             SetFlatBorderColor(button, UQ.colors.accent[1], UQ.colors.accent[2],
                 UQ.colors.accent[3], 1)
         else
@@ -6144,23 +6439,16 @@ function Client.SetStyledTextButtonActive(button, active)
         end
     end
 
+    -- A textured skin (Client.SetQuestLogButtonSkin) owns the border and fill;
+    -- only the label and the arrow carry the active state on it.
+    if not button.unrealQuestSkin then
+        QuestLogSkin.ApplyFlat(button, nextActive)
+    end
     if nextActive then
-        SetFlatBorderColor(button, UQ.colors.accent[1], UQ.colors.accent[2],
-            UQ.colors.accent[3], 1)
-        if type(button.SetBackdropColor) == "function" then
-            pcall(button.SetBackdropColor, button, UQ.colors.accent[1],
-                UQ.colors.accent[2], UQ.colors.accent[3], 0.10)
-        end
         Client.SetButtonLabel(button,
             nextText, 0.95, 0.78, 0.12)
         Client.ShowObject(arrow)
     else
-        SetFlatBorderColor(button, FLAT_BORDER[1], FLAT_BORDER[2],
-            FLAT_BORDER[3], FLAT_BORDER[4])
-        if type(button.SetBackdropColor) == "function" then
-            pcall(button.SetBackdropColor, button, FLAT_BACKGROUND[1],
-                FLAT_BACKGROUND[2], FLAT_BACKGROUND[3], FLAT_BACKGROUND[4])
-        end
         local label = button.unrealQuestLabel
         if label and type(label.SetTextColor) == "function" then
             pcall(label.SetTextColor, label, 0.90, 0.90, 0.90, 1.00)
@@ -6212,8 +6500,9 @@ end
 -- Tighten only uUI's Modern two-pane surface. The named panels do not exist
 -- in Classic WoW or standalone mode, so neither native layout can enter this
 -- path. uUI anchors its list panel five pixels before the scroll frame and 26
--- after it; the row (and therefore the followed plaque) ends at the scroll
--- frame's right edge. Keep exactly as much of that tail as the scroll bar
+-- after it; the row ends at the scroll frame's right edge and the followed
+-- plaque stops four pixels before that. Keep exactly as much of the panel tail
+-- as the scroll bar
 -- occupies, move the detail pane left by whatever is reclaimed, and give that
 -- width to its viewport and scroll child.
 function Client.SetModernQuestLogPanelLayout()
@@ -6368,7 +6657,12 @@ local function ResolveExtendedQuestLogMoneyAnchor(rewardText)
         local itemIndex = choices + finalRowReward
         local itemName = "QuestLogItem" .. tostring(itemIndex)
         local item = ResolveObject(itemName)
-        if item then
+        -- The count can lead the visible row pool while native reward details
+        -- are rebuilding. Never hang the coin frame from a hidden item: on the
+        -- modern surface that takes the coins out with it. With no visible
+        -- reward item, the requested stable position is immediately below
+        -- "You will receive".
+        if item and Client.IsObjectShown(item) then
             return item, itemName
         end
     end
@@ -6664,8 +6958,14 @@ function Client.RefreshExtendedClassicQuestLogRewards()
         or not detail or not detailChild or not rewardText
         or not rewardMoney or not rewardSpacer
         or not Client.IsObjectShown(frame)
-        or not Client.IsObjectShown(rewardText)
-        or not Client.IsObjectShown(rewardMoney) then
+        or not Client.IsObjectShown(rewardText) then
+        return false
+    end
+    -- A frame hidden by Client.SetQuestLogRewardMoney still carries the spacer,
+    -- so it keeps being re-placed while the quest has money to report.
+    if not Client.IsObjectShown(rewardMoney)
+        and not (rewardMoney.unrealQuestMoneyReplaced
+            and Client.GetQuestLogMoneyAmounts() > 0) then
         return false
     end
     local rewardAnchor, rewardAnchorName =
@@ -6726,6 +7026,17 @@ local QuestLogRewardRows = {
     -- them; 10 clears them without opening a hole in the pane.
     topMargin = 10,
     bottomMargin = 10,
+    -- Upper bound on the item buttons walked when measuring where the reward
+    -- block ends; the stock chain is QuestRewardItem1..10.
+    maxItemButtons = 10,
+    -- Extra clearance when the block ends on an item BUTTON rather than on the
+    -- coin row or a label. GetBottom reports the button's own frame edge, and
+    -- this client draws the button's plate and its name text past it, so the
+    -- measured bottom still left the first row sitting in the reward (user
+    -- confirmed in game). Measured clearance would need a probe of the drawn
+    -- plate's extent, which nothing here exposes; 15px is the confirmed gap
+    -- and is applied only to the case that needed it.
+    itemClearance = 15,
 }
 
 -- The same rows on all three places a quest states its rewards: the Quest Log,
@@ -6745,6 +7056,9 @@ QuestLogRewardRows.surfaces = {
         dock = "QuestLogDetailScrollChildFrame",
         scroll = "QuestLogDetailScrollFrame",
         money = "QuestLogMoneyFrame",
+        -- The addon's own coin line that replaces the native money frame on
+        -- this surface; see Client.SetQuestLogRewardMoney.
+        moneyRow = "UnrealQuestLogRewardMoney",
         item = "QuestLogItem",
         counts = "log",
         prefix = "UnrealQuestLogReward",
@@ -6807,10 +7121,88 @@ end
 -- is already placed under the items by FrameXML, so it is preferred when it is
 -- up; with no money the last item button is used directly, and only a quest
 -- with no items at all falls back to one of the headings.
-function QuestLogRewardRows.Anchor(surface)
+-- The reward widget that sits LOWEST on screen, measured with GetBottom.
+--
+-- Preferring the money frame and trusting FrameXML's stacking order is what
+-- the first version did, and this client does not stack it that way: on the
+-- quest-giver's offer window the coin row is drawn beside "You will receive:"
+-- ABOVE the item buttons, so anchoring to it put the rows back on top of the
+-- reward icon -- the very thing anchoring away from the heading was meant to
+-- stop (user confirmed in game, "The Prodigal Lich Returns"). Which widget
+-- ends the block is a layout question, so it is answered by measuring the
+-- layout rather than by assuming an order that differs per surface and per
+-- client.
+--
+-- Every shown member of the block is a candidate: the money frame and each
+-- item button, choices and guaranteed rewards alike. GetBottom is documented
+-- on Region by this client (OFFICIAL_CLIENT_DOCUMENTATION) and all candidates
+-- are siblings inside the same scroll child, so the comparison stays in one
+-- coordinate space. Nil-tolerant throughout: a candidate that cannot be
+-- measured is skipped, and if none can be, the caller falls back to the
+-- assumed chain rather than to nothing.
+function QuestLogRewardRows.LowestRewardWidget(surface)
+    local candidates = {}
+    local isItemButton = {}
     local money = ResolveObject(surface.money)
     if money and Client.IsObjectShown(money) then
-        return money
+        table.insert(candidates, money)
+        table.insert(isItemButton, false)
+    end
+    local moneyRow = surface.moneyRow and ResolveObject(surface.moneyRow)
+    if moneyRow and Client.IsObjectShown(moneyRow) then
+        table.insert(candidates, moneyRow)
+        table.insert(isItemButton, false)
+    end
+
+    local choices, rewards
+    if surface.counts == "giver" then
+        choices, rewards = Client.GetQuestGiverRewardCounts()
+    else
+        choices, rewards = Client.GetQuestLogRewardCounts()
+    end
+    local total = choices + rewards
+    if total > QuestLogRewardRows.maxItemButtons then
+        total = QuestLogRewardRows.maxItemButtons
+    end
+    local index = 1
+    while index <= total do
+        local item = ResolveObject(surface.item .. tostring(index))
+        if item and Client.IsObjectShown(item) then
+            table.insert(candidates, item)
+            table.insert(isItemButton, true)
+        end
+        index = index + 1
+    end
+
+    local lowest = nil
+    local lowestBottom = nil
+    local lowestIsItem = false
+    index = 1
+    while index <= table.getn(candidates) do
+        local candidate = candidates[index]
+        local bottom = ReadObjectMethod(candidate, "GetBottom")
+        if type(bottom) == "number"
+            and (lowestBottom == nil or bottom < lowestBottom) then
+            lowest = candidate
+            lowestBottom = bottom
+            lowestIsItem = isItemButton[index]
+        end
+        index = index + 1
+    end
+    return lowest, lowestIsItem
+end
+
+-- Returns the widget the rows hang from, plus whether it is an item BUTTON --
+-- which the caller pays extra clearance for, see itemClearance above.
+function QuestLogRewardRows.Anchor(surface)
+    local lowest, lowestIsItem = QuestLogRewardRows.LowestRewardWidget(surface)
+    if lowest then
+        return lowest, lowestIsItem
+    end
+
+    local money = ResolveObject(surface.money)
+    if money and Client.IsObjectShown(money) then
+        return money, false
     end
 
     local choices, rewards
@@ -6828,8 +7220,13 @@ function QuestLogRewardRows.Anchor(surface)
     if itemIndex then
         local item = ResolveObject(surface.item .. tostring(itemIndex))
         if item and Client.IsObjectShown(item) then
-            return item
+            return item, true
         end
+    end
+
+    local moneyRow = surface.moneyRow and ResolveObject(surface.moneyRow)
+    if moneyRow and Client.IsObjectShown(moneyRow) then
+        return moneyRow, false
     end
 
     local index = 1
@@ -6852,21 +7249,38 @@ function QuestLogRewardRows.Ensure(surface, dock, index)
     if rows[index] then
         return rows[index]
     end
+    local created = QuestLogRewardRows.CreateRow(dock,
+        surface.prefix .. tostring(index))
+    rows[index] = created
+    return created
+end
+
+function QuestLogRewardRows.CreateRow(dock, name)
     if type(dock.CreateFontString) ~= "function" then
         return nil
     end
     -- A stock font OBJECT through CreateFontString's inherits argument; this
     -- addon never sets a font by path.
     local ok, created = pcall(dock.CreateFontString, dock,
-        surface.prefix .. tostring(index), "OVERLAY", "GameFontNormalSmall")
+        name, "OVERLAY", "GameFontNormalSmall")
     if not ok or not created then
         return nil
     end
-    StripShadow(created)
+    -- A dark drop shadow so the experience and reputation lines read on both
+    -- parchment and dark page art. unrealUI's U.SetTextShadow recipe on this
+    -- client: colour first, retried without alpha for a client that refuses
+    -- the fourth argument (FontString:SetShadowColor is documented as r, g, b),
+    -- then a one-pixel offset.
+    if type(created.SetShadowColor) == "function"
+        and not pcall(created.SetShadowColor, created, 0, 0, 0, 1) then
+        pcall(created.SetShadowColor, created, 0, 0, 0)
+    end
+    if type(created.SetShadowOffset) == "function" then
+        pcall(created.SetShadowOffset, created, 1, -1)
+    end
     if type(created.SetJustifyH) == "function" then
         pcall(created.SetJustifyH, created, "LEFT")
     end
-    rows[index] = created
     return created
 end
 
@@ -6986,10 +7400,349 @@ function Client.GetQuestGiverTitle()
     return value
 end
 
+-- The two body texts of the quest the giver window is currently showing.
+--
+-- GetTitleText above is not a unique join: four Tirisfal quests are all called
+-- "At War With The Scarlet Crusade", and an offered quest has no log index to
+-- break the tie with. These are the only other live signals the giver panels
+-- expose, and both are in this client's own API reference (category Quest,
+-- DOCUMENTED_NOT_RUNTIME_VERIFIED): GetQuestText() as "story text from the open
+-- quest-detail window" and GetObjectiveText() as "objectives blurb from the
+-- open quest-detail window". Both are documented to return an empty string
+-- when there is none, which is normalised to nil here, so a surface that does
+-- not carry one -- the completion window is expected not to carry the story
+-- text the database recorded -- costs the caller that pass rather than
+-- producing a wrong string.
+function Client.GetQuestGiverDescription()
+    local ok, value = Call0("GetQuestText")
+    if not ok or type(value) ~= "string" or value == "" then
+        return nil
+    end
+    return value
+end
+
+function Client.GetQuestGiverObjective()
+    local ok, value = Call0("GetObjectiveText")
+    if not ok or type(value) ~= "string" or value == "" then
+        return nil
+    end
+    return value
+end
+
+-- Completion paragraph from the open turn-in window. Runtime probe
+-- questgivertextcomplete (2026-09-10) verified both that GetRewardText returns
+-- the visible QuestRewardText paragraph and that GetQuestText/GetObjectiveText
+-- are empty on this surface.
+function Client.GetQuestCompletionText()
+    local ok, value = Call0("GetRewardText")
+    if not ok or type(value) ~= "string" or value == "" then
+        return nil
+    end
+    return value
+end
+
 -- The quest log surface. Kept as its own entry point because it is what the
 -- log module and its tests already call.
 function Client.SetQuestLogRewardSummary(lines)
     return Client.SetQuestRewardSummary("log", lines)
+end
+
+-- Quest log reward money ------------------------------------------------------
+--
+-- The native QuestLogMoneyFrame is replaced on the Quest Log by the addon's own
+-- coin row, placed directly under "You will receive:". The native frame kept
+-- misbehaving once it was reparented into the extended/modern detail pane
+-- (user report 2026-09-13).
+--
+-- The row copies unrealUI's status overlay coins by request: per denomination
+-- a number followed by a 12px coin, sized to the rendered number, 1px apart.
+-- The coin is a slice of the shared Interface\MoneyFrame\UI-MoneyIcons atlas,
+-- the path knowledge record textures.separate_coin_paths_not_rendered
+-- (USER_CONFIRMED_INGAME) found rendering where the three separate
+-- UI-GoldIcon/SilverIcon/CopperIcon paths stay blank. A zero denomination is
+-- left out, as the native money frame does.
+--
+-- The native frame is hidden AND held at alpha 0: FrameXML shows it again on
+-- every selection, and the alpha keeps that one poll interval invisible
+-- instead of flashing the coins back. It stays parented and anchored where the
+-- extended/modern layout puts it, because QuestLogSpacerFrame still hangs off
+-- it for the scroll extent.
+--
+-- The guaranteed reward items start directly under the same label, so the
+-- first of them is moved under the coin line. Only an item still anchored to
+-- the label (or already to the coin line) is touched; the native refresh puts
+-- it back on the next selection and the next poll repeats the move. GetPoint
+-- reports the relative widget by NAME and inverts Y here (see
+-- ExtendedQuestLogAnchorMatches), so only the name and X are read back.
+QuestLogRewardRows.moneyLabel = "QuestLogItemReceiveText"
+QuestLogRewardRows.moneyGap = 2
+QuestLogRewardRows.moneyItemGap = 5
+QuestLogRewardRows.coinTexture = "Interface\\MoneyFrame\\UI-MoneyIcons"
+QuestLogRewardRows.coinHeight = 14
+QuestLogRewardRows.coinIconSize = 12
+QuestLogRewardRows.coinGap = 1
+-- The numbers are full white on every denomination, by request; the coin art
+-- alone says which is which.
+QuestLogRewardRows.coins = {
+    { copper = 10000, left = 0.00, right = 0.25, r = 1, g = 1, b = 1 },
+    { copper = 100, left = 0.25, right = 0.50, r = 1, g = 1, b = 1 },
+    { copper = 1, left = 0.50, right = 0.75, r = 1, g = 1, b = 1 },
+}
+
+-- No drop shadow on the coin numbers, by request, whatever unrealUI theme is
+-- hosting the log. Zeroing the shadow on a FontString that inherits
+-- GameFontNormalSmall is not proven to show on this client (knowledge record
+-- chat.shadow_private_font_matrix_v2: "shadow mutation is not visually
+-- demonstrated"). What is verified is binding a PRIVATE Font set from a stock
+-- path at the text's own size (chat.native_private_font_removes_shadow,
+-- BEHAVIOR_VERIFIED + USER_CONFIRMED_INGAME), with the text colour set again
+-- afterwards -- a fresh Font has no reliable colour, which is the failed
+-- approach that record lists. Only stock Fonts\ paths load here
+-- (fonts.setfont_silent_failure), so the label's own inherited face is reused
+-- when it reads back as one, else the stock FRIZQT face. One Font per label so
+-- a colour on one cannot leak to another. The instance shadow is zeroed too,
+-- as a harmless second line of defence if the Font route is refused.
+QuestLogRewardRows.coinFontFallback = "Fonts\\FRIZQT__.TTF"
+QuestLogRewardRows.coinFontSize = 10
+
+function QuestLogRewardRows.BindShadowFreeFont(label, index)
+    if type(label.SetShadowOffset) == "function" then
+        pcall(label.SetShadowOffset, label, 0, 0)
+    end
+    if type(label.SetShadowColor) == "function"
+        and not pcall(label.SetShadowColor, label, 0, 0, 0, 0) then
+        pcall(label.SetShadowColor, label, 0, 0, 0)
+    end
+
+    local createFont = Resolve("CreateFont")
+    if not createFont or type(label.SetFontObject) ~= "function" then
+        return false
+    end
+    local path = QuestLogRewardRows.coinFontFallback
+    local size = QuestLogRewardRows.coinFontSize
+    if type(label.GetFont) == "function" then
+        local ok, currentPath, currentSize = pcall(label.GetFont, label)
+        if ok and type(currentPath) == "string"
+            and string.find(string.lower(currentPath), "^fonts[\\/]") then
+            path = currentPath
+        end
+        if ok and type(currentSize) == "number" and currentSize > 0 then
+            size = currentSize
+        end
+    end
+    local fontName = "UnrealQuestCoinFont" .. tostring(index)
+    local font = ResolveObject(fontName)
+    if not font then
+        local ok, created = pcall(createFont, fontName)
+        if not ok or not created then
+            return false
+        end
+        font = created
+    end
+    if type(font.SetFont) ~= "function"
+        or not pcall(font.SetFont, font, path, size) then
+        return false
+    end
+    return pcall(label.SetFontObject, label, font) and true or false
+end
+
+-- A holder frame per denomination: the coin at its right edge, raised 2px
+-- because the art sits low in its atlas slice, and the number right-aligned
+-- against the coin and lowered back onto the text baseline.
+function QuestLogRewardRows.CreateMoneyRow(dock, name)
+    local createFrame = Resolve("CreateFrame")
+    if not createFrame then
+        return nil
+    end
+    local ok, row = pcall(createFrame, "Frame", name, dock)
+    if not ok or not row then
+        return nil
+    end
+    Client.SetObjectSize(row, 1, QuestLogRewardRows.coinHeight)
+    row.unrealQuestCoins = {}
+    local index = 1
+    while index <= table.getn(QuestLogRewardRows.coins) do
+        local spec = QuestLogRewardRows.coins[index]
+        local holderOk, holder = pcall(createFrame, "Frame", nil, row)
+        if not holderOk or not holder
+            or type(holder.CreateTexture) ~= "function"
+            or type(holder.CreateFontString) ~= "function" then
+            return nil
+        end
+        Client.SetObjectSize(holder, 26, QuestLogRewardRows.coinHeight)
+        local iconOk, icon = pcall(holder.CreateTexture, holder, nil, "OVERLAY")
+        if iconOk and icon then
+            Client.SetObjectSize(icon, QuestLogRewardRows.coinIconSize,
+                QuestLogRewardRows.coinIconSize)
+            pcall(icon.SetPoint, icon, "RIGHT", holder, "RIGHT", 0, 2)
+            pcall(icon.SetTexture, icon, QuestLogRewardRows.coinTexture)
+            pcall(icon.SetTexCoord, icon, spec.left, spec.right, 0, 1)
+        end
+        local labelOk, label = pcall(holder.CreateFontString, holder, nil,
+            "OVERLAY", "GameFontNormalSmall")
+        if not labelOk or not label then
+            return nil
+        end
+        if iconOk and icon then
+            pcall(label.SetPoint, label, "RIGHT", icon, "LEFT", -1, -2)
+        else
+            pcall(label.SetPoint, label, "RIGHT", holder, "RIGHT", 0, 0)
+        end
+        QuestLogRewardRows.BindShadowFreeFont(label, index)
+        pcall(label.SetTextColor, label, spec.r, spec.g, spec.b)
+        holder.label = label
+        row.unrealQuestCoins[index] = holder
+        index = index + 1
+    end
+    return row
+end
+
+-- Lays the denominations out left to right for `copper`. Returns whether any
+-- widget moved, so the caller can skip the scroll-range update otherwise.
+function QuestLogRewardRows.LayoutMoneyRow(row, copper)
+    if row.unrealQuestMoneyCopper == copper then
+        return false
+    end
+    row.unrealQuestMoneyCopper = copper
+    local x = 0
+    local index = 1
+    while index <= table.getn(QuestLogRewardRows.coins) do
+        local spec = QuestLogRewardRows.coins[index]
+        local holder = row.unrealQuestCoins[index]
+        local amount = math.floor(copper / spec.copper)
+        copper = copper - amount * spec.copper
+        if amount > 0 then
+            local text = tostring(amount)
+            pcall(holder.label.SetText, holder.label, text)
+            local width = ReadObjectMethod(holder.label, "GetStringWidth")
+            if type(width) ~= "number" or width <= 0 then
+                width = string.len(text) * 7
+            end
+            width = math.ceil(width) + 1 + QuestLogRewardRows.coinIconSize
+            Client.SetObjectSize(holder, width, QuestLogRewardRows.coinHeight)
+            SetExtendedQuestLogAnchor(holder, "TOPLEFT", row, "TOPLEFT", x, 0)
+            Client.ShowObject(holder)
+            x = x + width + QuestLogRewardRows.coinGap
+        else
+            Client.HideObject(holder)
+        end
+        index = index + 1
+    end
+    Client.SetObjectSize(row, x > 0 and x or 1, QuestLogRewardRows.coinHeight)
+    return true
+end
+
+function QuestLogRewardRows.PlaceMoneyItems(label, row, below)
+    local choices, rewards = Client.GetQuestLogRewardCounts()
+    if rewards <= 0 then
+        return false
+    end
+    local item = ResolveObject("QuestLogItem" .. tostring(choices + 1))
+    if not item or type(item.GetPoint) ~= "function" then
+        return false
+    end
+    local ok, point, relative, relativePoint, x = pcall(item.GetPoint, item, 1)
+    if not ok then
+        return false
+    end
+    local relativeName = relative
+    if type(relative) ~= "string" then
+        relativeName = Client.GetObjectName(relative)
+    end
+    local rowName = QuestLogRewardRows.surfaces.log.moneyRow
+    local target, targetName = label, QuestLogRewardRows.moneyLabel
+    if below then
+        target, targetName = row, rowName
+    end
+    if relativeName == targetName
+        or (relativeName ~= rowName
+            and relativeName ~= QuestLogRewardRows.moneyLabel) then
+        return false
+    end
+    return SetExtendedQuestLogAnchor(item, point or "TOPLEFT", target,
+        relativePoint or "BOTTOMLEFT", type(x) == "number" and x or 0,
+        -QuestLogRewardRows.moneyItemGap)
+end
+
+-- replace=false hands the native frame back untouched; replace=true hides it
+-- and draws `copper` (nil or 0 hides the row: no money on this quest).
+function Client.SetQuestLogRewardMoney(replace, copper)
+    local native = ResolveObject("QuestLogMoneyFrame")
+    if native then
+        if replace then
+            native.unrealQuestMoneyReplaced = true
+            if native.unrealQuestMoneyAlpha ~= 0
+                and type(native.SetAlpha) == "function"
+                and pcall(native.SetAlpha, native, 0) then
+                native.unrealQuestMoneyAlpha = 0
+            end
+            if Client.IsObjectShown(native) then
+                Client.HideObject(native)
+            end
+        elseif native.unrealQuestMoneyReplaced then
+            native.unrealQuestMoneyReplaced = nil
+            native.unrealQuestMoneyAlpha = nil
+            if type(native.SetAlpha) == "function" then
+                pcall(native.SetAlpha, native, 1)
+            end
+            if Client.GetQuestLogMoneyAmounts() > 0 then
+                Client.ShowObject(native)
+            end
+        end
+    end
+
+    local dock = ResolveObject("QuestLogDetailScrollChildFrame")
+    local label = ResolveObject(QuestLogRewardRows.moneyLabel)
+    if not dock or not label then
+        return false
+    end
+    local row = dock.unrealQuestMoneyRow
+    local changed = false
+    local wanted = replace and type(copper) == "number" and copper > 0
+        and Client.IsObjectShown(dock) and Client.IsObjectShown(label)
+    if not wanted then
+        if row and Client.IsObjectShown(row) then
+            Client.HideObject(row)
+            QuestLogRewardRows.PlaceMoneyItems(label, row, false)
+            Client.UpdateScrollChildRect(ResolveObject("QuestLogDetailScrollFrame"))
+        end
+        return false
+    end
+
+    if row == nil then
+        -- Created once and kept even if a holder failed: a half-built frame
+        -- cannot be destroyed here, so retrying would stack another each poll.
+        row = QuestLogRewardRows.CreateMoneyRow(dock,
+            QuestLogRewardRows.surfaces.log.moneyRow)
+        dock.unrealQuestMoneyRow = row or false
+    end
+    if not row then
+        return false
+    end
+    -- Above modern-wow's page art, like the native frame it replaces.
+    QuestLogRewardRows.RaiseMoneyFrame(row, dock)
+    if QuestLogRewardRows.LayoutMoneyRow(row, copper) then
+        changed = true
+    end
+    if not ExtendedQuestLogAnchorMatches(row, "TOPLEFT", label,
+        QuestLogRewardRows.moneyLabel, "BOTTOMLEFT") then
+        SetExtendedQuestLogAnchor(row, "TOPLEFT", label, "BOTTOMLEFT",
+            0, -QuestLogRewardRows.moneyGap)
+        changed = true
+    end
+    if not Client.IsObjectShown(row) then
+        Client.ShowObject(row)
+        changed = true
+    end
+    if QuestLogRewardRows.PlaceMoneyItems(label, row, true) then
+        changed = true
+    end
+    -- Only on a real change: re-laying the scroll child every poll is what
+    -- made the detail pane flicker (questlogbuttons.scroll_flicker_bisect.v1).
+    if changed then
+        Client.UpdateScrollChildRect(ResolveObject("QuestLogDetailScrollFrame"))
+    end
+    return true
 end
 
 function Client.SetQuestRewardSummary(surfaceName, lines)
@@ -7015,9 +7768,44 @@ function Client.SetQuestRewardSummary(surfaceName, lines)
         count = QuestLogRewardRows.maxRows
     end
 
-    local anchor = count > 0 and QuestLogRewardRows.Anchor(surface) or nil
+    local anchor, anchorIsItem = nil, false
+    if count > 0 then
+        anchor, anchorIsItem = QuestLogRewardRows.Anchor(surface)
+    end
+    -- An item button's drawn plate and name reach below the frame edge
+    -- GetBottom reports, so that case buys itself extra room.
+    local topMargin = QuestLogRewardRows.topMargin
+    if anchorIsItem then
+        topMargin = topMargin + QuestLogRewardRows.itemClearance
+    end
     local leftCorrection = anchor
         and QuestLogRewardRows.LeftCorrection(surface, dock, anchor) or 0
+
+    -- Lay out only on a change. This runs on a 0.3s poll, and re-anchoring the
+    -- rows and the spacer plus UpdateScrollChildRect on every pass made the
+    -- client draw every region in the scrolled detail pane at its UNSCROLLED
+    -- position for one frame per poll -- the quest log buttons' flicker.
+    -- Bisected in game: pausing this job alone stopped it
+    -- (questlogbuttons.scroll_flicker_bisect.v1). Anchored rows still follow
+    -- their anchor when the native layout moves it; only a new anchor, offset,
+    -- text or colour needs this pass.
+    local keyParts = { tostring(count), tostring(anchor),
+        tostring(math.floor(leftCorrection * 2 + 0.5)), tostring(topMargin) }
+    local keyIndex = 1
+    while keyIndex <= count do
+        local line = lines[keyIndex]
+        if type(line) == "table" then
+            table.insert(keyParts, tostring(line.text) .. ":" .. tostring(line.r)
+                .. ":" .. tostring(line.g) .. ":" .. tostring(line.b))
+        end
+        keyIndex = keyIndex + 1
+    end
+    local layoutKey = table.concat(keyParts, "|")
+    if dock.unrealQuestRewardLayoutKey == layoutKey then
+        return count > 0 and anchor ~= nil
+    end
+    dock.unrealQuestRewardLayoutKey = layoutKey
+
     local lastRow = nil
     local index = 1
     while index <= QuestLogRewardRows.maxRows do
@@ -7048,8 +7836,7 @@ function Client.SetQuestRewardSummary(surfaceName, lines)
                     pcall(row.ClearAllPoints, row)
                     pcall(row.SetPoint, row, "TOPLEFT", anchor, "BOTTOMLEFT",
                         leftCorrection + column * QuestLogRewardRows.columnWidth,
-                        -QuestLogRewardRows.topMargin
-                            - gridLine * QuestLogRewardRows.rowHeight)
+                        -topMargin - gridLine * QuestLogRewardRows.rowHeight)
                 end
                 Client.ShowObject(row)
                 lastRow = row
@@ -7072,6 +7859,162 @@ function Client.SetQuestRewardSummary(surfaceName, lines)
         Client.HideObject(dock.unrealQuestRewardSpacer)
     end
     return false
+end
+
+-- Item rarity colour on the completion window's reward names -----------------
+--
+-- The stock reward buttons draw every item name in one flat colour, so a green
+-- and a blue reward read alike on the one window where the player has to pick
+-- between them. The quality is available: GetQuestItemInfo(rewardType, index)
+-- returns name, texture, count, quality, isUsable and GetItemQualityColor
+-- turns that quality index into r, g, b plus a hex tag. Both are in this
+-- client's own API reference (categories Quest and Item,
+-- DOCUMENTED_NOT_RUNTIME_VERIFIED) and neither has been probed, so every step
+-- below falls through to leaving the button exactly as it was found.
+--
+-- Buttons are matched to rewards BY NAME rather than by index arithmetic. The
+-- choice buttons come first and the guaranteed rewards after them -- that much
+-- QuestLogRewardRows.Anchor above already leans on for placement -- but a
+-- learned spell also occupies a button on that chain and its position is not
+-- established anywhere here. Reading the button's own name string and looking
+-- it up among the rewards cannot be knocked out of step by a button this addon
+-- did not predict, and a name that matches nothing keeps the colour it had.
+--
+-- One local for the whole thing, for the reason stated above
+-- QuestLogRewardRows: this chunk is close to Lua's 200-local ceiling.
+local QuestRewardItemColors = {
+    -- QuestRewardItem1..10 and their Name FontStrings are in the frame
+    -- inventory of behaviour test questgiver.addon_resolves_quest.v1
+    -- (USER_CONFIRMED_INGAME); anything absent resolves to nil and is skipped.
+    max = 10,
+}
+
+-- Name -> quality for everything the open window is offering. Both lists are
+-- read on every pass because a reward the item cache has not yet filled in
+-- comes back with a nil name and quality 0, and gains both a moment later.
+function QuestRewardItemColors.Collect(rewardType, count, byName)
+    local index = 1
+    while index <= count do
+        local name, quality = Client.GetQuestGiverItemInfo(rewardType, index)
+        if name and quality then
+            byName[name] = quality
+        end
+        index = index + 1
+    end
+end
+
+-- The colour a region carried before this addon first tinted it is kept, so a
+-- button that stops being a coloured reward -- the option switched off, the
+-- window closed, a name that matches nothing -- is handed back exactly what it
+-- had rather than a guess at what the stock template wanted.
+function QuestRewardItemColors.Paint(region, red, green, blue)
+    if not region or type(region.SetTextColor) ~= "function" then
+        return false
+    end
+    if region.unrealQuestRewardColor == nil
+        and type(region.GetTextColor) == "function" then
+        local ok, r, g, b, a = pcall(region.GetTextColor, region)
+        if ok and type(r) == "number" and type(g) == "number"
+            and type(b) == "number" then
+            region.unrealQuestRewardColor = { r, g, b,
+                type(a) == "number" and a or 1 }
+        end
+    end
+
+    if type(red) ~= "number" then
+        local original = region.unrealQuestRewardColor
+        if not region.unrealQuestRewardTinted or not original then
+            return false
+        end
+        region.unrealQuestRewardTinted = nil
+        return pcall(region.SetTextColor, region, original[1], original[2],
+            original[3], original[4]) and true or false
+    end
+
+    -- Written on every pass rather than only when the value changes: the
+    -- native panel repaints these regions whenever it refreshes, so an
+    -- "already this colour" short-circuit would hand the flat colour back the
+    -- next time the window was opened.
+    if not pcall(region.SetTextColor, region, red, green, blue) then
+        return false
+    end
+    region.unrealQuestRewardTinted = true
+    return true
+end
+
+-- name, quality for one reward on the OPEN quest-giver window. Documented to
+-- return five values even when the item cache is missing the entry, with name
+-- nil and quality 0; both are normalised to nil here so the caller skips the
+-- button instead of painting it grey.
+function Client.GetQuestGiverItemInfo(rewardType, index)
+    local ok, name, texture, count, quality =
+        Call2("GetQuestItemInfo", rewardType, index)
+    if not ok or type(name) ~= "string" or name == "" then
+        return nil
+    end
+    if type(quality) ~= "number" then
+        return name, nil
+    end
+    return name, quality
+end
+
+function Client.GetItemQualityColor(quality)
+    if type(quality) ~= "number" then
+        return nil
+    end
+    local ok, red, green, blue = Call1("GetItemQualityColor", quality)
+    if not ok or type(red) ~= "number" or type(green) ~= "number"
+        or type(blue) ~= "number" then
+        return nil
+    end
+    return red, green, blue
+end
+
+-- The completion window only. The offer window states rewards too, but this is
+-- the surface the colour was asked for and the only one where the player picks
+-- one reward over another.
+--
+-- Passing false restores every button, so the option can be turned off without
+-- a reload and a window left open while it was on does not keep its tint.
+function Client.SetQuestRewardItemQualityColors(enabled)
+    local surface = QuestLogRewardRows.surfaces.complete
+    local dock = ResolveObject(surface.dock)
+    local byName = nil
+    if enabled and dock and Client.IsObjectShown(dock) then
+        local choices, rewards = Client.GetQuestGiverRewardCounts()
+        byName = {}
+        QuestRewardItemColors.Collect("choice", choices, byName)
+        QuestRewardItemColors.Collect("reward", rewards, byName)
+    end
+
+    local painted = false
+    local index = 1
+    while index <= QuestRewardItemColors.max do
+        local name = surface.item .. tostring(index)
+        local region = ResolveObject(name .. "Name")
+        local red, green, blue
+        if byName and Client.IsObjectShown(ResolveObject(name)) then
+            -- The text on screen is not always the name the client reported:
+            -- Quest/QuestGiverTranslation.lua rewrites these same regions with
+            -- the bundled localized item name, and GetQuestItemInfo keeps
+            -- answering in the server's language. That module records what it
+            -- replaced on the region itself, so the native string is preferred
+            -- whenever it is there and a translated window keeps its colours.
+            local text = region and region.unrealQuestGiverNativeText
+            if type(text) ~= "string" or text == "" then
+                text = Client.GetObjectText(region)
+            end
+            local quality = text and byName[text]
+            if quality then
+                red, green, blue = Client.GetItemQualityColor(quality)
+            end
+        end
+        if QuestRewardItemColors.Paint(region, red, green, blue) then
+            painted = true
+        end
+        index = index + 1
+    end
+    return painted
 end
 
 function Client.IsExtendedClassicQuestLogShown()
@@ -7145,9 +8088,9 @@ local function QuestLogNativeAnchor(object, row, field)
     return object[field]
 end
 
--- The stock completion state is the row's named Tag FontString. Move it two
--- pixels left and three down on every quest row so followed and ordinary
--- completed quests stay aligned.
+-- The stock completion state is the row's named Tag FontString. Move it six
+-- pixels left (four further than the original treatment) and three down on
+-- every quest row so followed and ordinary completed quests stay aligned.
 local function SetQuestLogTagOffset(row)
     local rowName = Client.GetObjectName(row)
     local tag = rowName and ResolveObject(rowName .. "Tag") or nil
@@ -7165,6 +8108,65 @@ local function SetQuestLogTagOffset(row)
         tag.unrealQuestFollowingTagDown = true
     end
     return ok and true or false
+end
+
+-- The stock quest-row hover is the Button's own anonymous highlight Texture.
+-- GetHighlightTexture is documented by this client
+-- (DOCUMENTED_NOT_RUNTIME_VERIFIED); every method remains guarded so a row
+-- without that texture keeps its native presentation. Re-anchor only when the
+-- returned texture changes: unlike the quest-log poll, the native template's
+-- highlight geometry is stable for the lifetime of that Texture.
+local function InsetQuestLogHighlight(row)
+    if not row or type(row.GetHighlightTexture) ~= "function" then
+        return false
+    end
+    local ok, highlight = pcall(row.GetHighlightTexture, row)
+    if not ok or not highlight then
+        return false
+    end
+    if row.unrealQuestInsetHighlight == highlight then
+        return true
+    end
+    if type(highlight.ClearAllPoints) ~= "function"
+        or type(highlight.SetPoint) ~= "function" then
+        return false
+    end
+    pcall(highlight.ClearAllPoints, highlight)
+    local topOk = pcall(highlight.SetPoint, highlight,
+        "TOPLEFT", row, "TOPLEFT", 0, 0)
+    local bottomOk = pcall(highlight.SetPoint, highlight,
+        "BOTTOMRIGHT", row, "BOTTOMRIGHT", -QUEST_LOG_ROW_RIGHT_INSET, 0)
+    if not topOk or not bottomOk then
+        return false
+    end
+    row.unrealQuestInsetHighlight = highlight
+    return true
+end
+
+-- The selected quest uses FrameXML's separate QuestLogHighlightFrame: its
+-- QuestLogSkillHighlight texture fills that frame, so shortening the frame is
+-- what shortens the native focus artwork. Extended Quest Log 3.6.1 preserves
+-- the same named-frame contract as Vanilla prior art. The lookup and methods
+-- remain optional, and the original width is retained so repeated polls never
+-- compound the four-pixel reduction.
+function Client.SetQuestLogFocusTextureInset()
+    local frame = ResolveObject("QuestLogHighlightFrame")
+    if not frame or type(frame.GetWidth) ~= "function"
+        or type(frame.SetWidth) ~= "function" then
+        return false
+    end
+    local ok, width = pcall(frame.GetWidth, frame)
+    if not ok or type(width) ~= "number" or width <= QUEST_LOG_ROW_RIGHT_INSET then
+        return false
+    end
+    if type(frame.unrealQuestOriginalWidth) ~= "number" then
+        frame.unrealQuestOriginalWidth = width
+    end
+    local target = frame.unrealQuestOriginalWidth - QUEST_LOG_ROW_RIGHT_INSET
+    if width == target then
+        return true
+    end
+    return pcall(frame.SetWidth, frame, target) and true or false
 end
 
 -- Shift only the button's title labels; the separate Tag FontString keeps its
@@ -7336,24 +8338,26 @@ local function EnsureQuestLogFollowingRow(row)
     end
 
     -- The authored plaque is the whole highlight: it carries its own gold edge,
-    -- so the row draws no accent fill and no flat border of its own. It starts
-    -- at the title rather than spanning the gutter, so the tracked bar and the
-    -- quest dot/followed marker stay outside its gold rim.
+    -- so the row draws no accent fill and no flat border of its own. ARTWORK
+    -- keeps it above modern-wow's list-page art; the row labels are raised to
+    -- OVERLAY, so the plaque still stays behind the text. It starts at the
+    -- title rather than spanning the gutter, so the tracked bar and the quest
+    -- dot/followed marker stay outside its gold rim.
     local background = nil
     if type(row.CreateTexture) == "function" then
-        local ok, created = pcall(row.CreateTexture, row, nil, "BACKGROUND")
+        local ok, created = pcall(row.CreateTexture, row, nil, "ARTWORK")
         if ok and created then
             pcall(created.SetTexture, created, QUEST_LOG_FOLLOWING_PLAQUE_TEXTURE)
             -- Restated after creation: the layer argument to CreateTexture is
-            -- all that holds the plaque behind the row's label, and a plaque
-            -- that landed on any other layer would draw over the text it is
-            -- meant to sit under.
+            -- what keeps the plaque above modern-wow's page art. The labels'
+            -- OVERLAY layer keeps them above it in turn.
             if type(created.SetDrawLayer) == "function" then
-                pcall(created.SetDrawLayer, created, "BACKGROUND")
+                pcall(created.SetDrawLayer, created, "ARTWORK")
             end
             pcall(created.SetPoint, created, "TOPLEFT", row, "TOPLEFT",
                 QUEST_LOG_FOLLOWING_PLAQUE_INSET, 0)
-            pcall(created.SetPoint, created, "BOTTOMRIGHT", row, "BOTTOMRIGHT", 0, 0)
+            pcall(created.SetPoint, created, "BOTTOMRIGHT", row, "BOTTOMRIGHT",
+                -QUEST_LOG_ROW_RIGHT_INSET, 0)
             pcall(created.Hide, created)
             background = created
         end
@@ -7419,25 +8423,168 @@ function Client.SetModernQuestLogRowLayout(row, modern)
     return pcall(row.SetHeight, row, height) and true or false
 end
 
--- Reward money is a separate native frame. Parent it to the modern detail
--- scroll child so the coin textures travel with the rest of the reward block
--- instead of remaining fixed while the description scrolls beneath them.
+-- A frame reparented into the detail child must sit above modern-wow's page
+-- art. The target is derived from the child rather than hardcoded, and is
+-- rewritten only when native code changes it.
+function QuestLogRewardRows.RaiseMoneyFrame(frame, scrollChild)
+    if not frame or not scrollChild
+        or type(frame.SetFrameLevel) ~= "function"
+        or type(scrollChild.GetFrameLevel) ~= "function" then
+        return false
+    end
+    local ok, base = pcall(scrollChild.GetFrameLevel, scrollChild)
+    if not ok or type(base) ~= "number" then
+        return false
+    end
+    local target = base + 2
+    if type(frame.GetFrameLevel) == "function" then
+        local currentOk, current = pcall(frame.GetFrameLevel, frame)
+        if currentOk and current == target then
+            return true
+        end
+    end
+    return pcall(frame.SetFrameLevel, frame, target) and true or false
+end
+
+-- The native detail refresh moves the receive label (and therefore the money
+-- frame anchored to it) without changing that anchor. Updating the scroll
+-- range only when SetPoint changes misses this case and leaves the coin row
+-- below the viewport. Compare geometry in scroll-child space so a real layout
+-- move triggers one range update, while ordinary user scrolling moves both
+-- objects together and stays read-only.
+function QuestLogRewardRows.MoneyGeometryChanged(frame, scrollChild, amount,
+    prefix, active)
+    if not frame or not scrollChild or type(prefix) ~= "string" then
+        return false
+    end
+    local relativeBottom = nil
+    local relativeTop = nil
+    if active then
+        local frameBottom = ReadObjectMethod(frame, "GetBottom")
+        local frameTop = ReadObjectMethod(frame, "GetTop")
+        local childBottom = ReadObjectMethod(scrollChild, "GetBottom")
+        local childTop = ReadObjectMethod(scrollChild, "GetTop")
+        if type(frameBottom) == "number" and type(childBottom) == "number" then
+            relativeBottom = math.floor((frameBottom - childBottom) * 10 + 0.5) / 10
+        end
+        if type(frameTop) == "number" and type(childTop) == "number" then
+            relativeTop = math.floor((frameTop - childTop) * 10 + 0.5) / 10
+        end
+    end
+
+    local amountKey = prefix .. "Amount"
+    local bottomKey = prefix .. "Bottom"
+    local topKey = prefix .. "Top"
+    local changed = frame[amountKey] ~= amount
+        or frame[bottomKey] ~= relativeBottom
+        or frame[topKey] ~= relativeTop
+    frame[amountKey] = amount
+    frame[bottomKey] = relativeBottom
+    frame[topKey] = relativeTop
+    return changed
+end
+
+-- Reward money is a separate native frame. Parent AND anchor it inside the
+-- modern detail scroll child: changing only the parent left the native
+-- screen-space anchor intact, which put the coin row below the parchment.
+-- QuestLogSpacerFrame follows the reward money so the scroll range contains
+-- that complete line. The required-money frame follows its own label in the
+-- same child. Stable geometry is read-only; a native refresh that rewrites an
+-- anchor is repaired without reparenting an already-correct frame.
 function Client.AttachModernQuestLogRewards(scrollChild)
     if not scrollChild then
         return false
     end
-    local names = { "QuestLogMoneyFrame", "QuestLogRequiredMoneyFrame" }
+
+    local rewardMoney = ResolveObject("QuestLogMoneyFrame")
+    local rewardText = ResolveObject("QuestLogItemReceiveText")
+    local rewardSpacer = ResolveObject("QuestLogSpacerFrame")
     local attached = false
-    local index = 1
-    while index <= table.getn(names) do
-        local frame = ResolveObject(names[index])
-        if frame and type(frame.SetParent) == "function" then
-            local ok = pcall(frame.SetParent, frame, scrollChild)
-            if ok then
+    local changed = false
+    local rewardAmount, requiredAmount = Client.GetQuestLogMoneyAmounts()
+    if rewardMoney and rewardText then
+        local rewardAnchor, rewardAnchorName =
+            ResolveExtendedQuestLogMoneyAnchor(rewardText)
+        local parentMatches = ExtendedQuestLogParentMatches(rewardMoney,
+            scrollChild, "QuestLogDetailScrollChildFrame")
+        local anchorMatches = ExtendedQuestLogAnchorMatches(rewardMoney,
+            "TOPLEFT", rewardAnchor, rewardAnchorName, "BOTTOMLEFT")
+        if rewardMoney.unrealQuestModernRewardAnchor ~= rewardAnchor
+            or not parentMatches or not anchorMatches then
+            local placed = false
+            if parentMatches then
+                placed = SetExtendedQuestLogAnchor(rewardMoney, "TOPLEFT",
+                    rewardAnchor, "BOTTOMLEFT", 0, -2)
+            else
+                placed = AttachExtendedQuestLogMoney(rewardMoney, rewardAnchor,
+                    scrollChild, "TOPLEFT", "BOTTOMLEFT", 0, -2)
+            end
+            if placed then
+                rewardMoney.unrealQuestModernRewardAnchor = rewardAnchor
                 attached = true
+                changed = true
+            end
+        else
+            attached = true
+        end
+        QuestLogRewardRows.RaiseMoneyFrame(rewardMoney, scrollChild)
+        -- Replaced by the addon's coin line: see Client.SetQuestLogRewardMoney.
+        if rewardAmount > 0 and not rewardMoney.unrealQuestMoneyReplaced then
+            Client.ShowObject(rewardMoney)
+        end
+        if QuestLogRewardRows.MoneyGeometryChanged(rewardMoney, scrollChild,
+            rewardAmount, "unrealQuestModernReward", rewardAmount > 0) then
+            changed = true
+        end
+
+        if rewardSpacer and (rewardSpacer.unrealQuestModernMoneyAnchor ~= rewardMoney
+            or not ExtendedQuestLogAnchorMatches(rewardSpacer, "TOP", rewardMoney,
+                "QuestLogMoneyFrame", "BOTTOM")) then
+            if SetExtendedQuestLogAnchor(rewardSpacer, "TOP", rewardMoney,
+                "BOTTOM", 0, 0) then
+                rewardSpacer.unrealQuestModernMoneyAnchor = rewardMoney
+                changed = true
             end
         end
-        index = index + 1
+    end
+
+    local requiredMoney = ResolveObject("QuestLogRequiredMoneyFrame")
+    local requiredText = ResolveObject("QuestLogRequiredMoneyText")
+    if requiredMoney and requiredText then
+        local parentMatches = ExtendedQuestLogParentMatches(requiredMoney,
+            scrollChild, "QuestLogDetailScrollChildFrame")
+        local anchorMatches = ExtendedQuestLogAnchorMatches(requiredMoney,
+            "LEFT", requiredText, "QuestLogRequiredMoneyText", "RIGHT")
+        if requiredMoney.unrealQuestModernRequiredAnchor ~= requiredText
+            or not parentMatches or not anchorMatches then
+            local placed = false
+            if parentMatches then
+                placed = SetExtendedQuestLogAnchor(requiredMoney, "LEFT",
+                    requiredText, "RIGHT", 10, 0)
+            else
+                placed = AttachExtendedQuestLogMoney(requiredMoney, requiredText,
+                    scrollChild, "LEFT", "RIGHT", 10, 0)
+            end
+            if placed then
+                requiredMoney.unrealQuestModernRequiredAnchor = requiredText
+                attached = true
+                changed = true
+            end
+        else
+            attached = true
+        end
+        QuestLogRewardRows.RaiseMoneyFrame(requiredMoney, scrollChild)
+        if requiredAmount > 0 then
+            Client.ShowObject(requiredMoney)
+        end
+        if QuestLogRewardRows.MoneyGeometryChanged(requiredMoney, scrollChild,
+            requiredAmount, "unrealQuestModernRequired", requiredAmount > 0) then
+            changed = true
+        end
+    end
+
+    if changed then
+        Client.UpdateScrollChildRect(ResolveObject("QuestLogDetailScrollFrame"))
     end
     return attached
 end
@@ -7450,11 +8597,15 @@ function Client.SetModernQuestLogObjectiveColors(objectives)
     while index <= 10 do
         local line = ResolveObject("QuestLogObjective" .. tostring(index))
         if line and type(line.SetTextColor) == "function" then
+            -- By request: #109a14 complete, #a26003 partly done (a counter
+            -- above zero), #606060 not started or with no counter at all.
             local objective = objectives and objectives[index]
             if objective and objective.finished then
-                pcall(line.SetTextColor, line, 0.30, 0.90, 0.30)
+                pcall(line.SetTextColor, line, 16 / 255, 154 / 255, 20 / 255)
+            elseif objective and type(objective.have) == "number" and objective.have > 0 then
+                pcall(line.SetTextColor, line, 162 / 255, 96 / 255, 3 / 255)
             else
-                pcall(line.SetTextColor, line, 1.00, 1.00, 1.00)
+                pcall(line.SetTextColor, line, 96 / 255, 96 / 255, 96 / 255)
             end
         end
         index = index + 1
@@ -7476,7 +8627,7 @@ local function SetQuestLogFollowingPlaqueShift(row, shift)
     local topOk = pcall(plaque.SetPoint, plaque, "TOPLEFT", row, "TOPLEFT",
         QUEST_LOG_FOLLOWING_PLAQUE_INSET + shift, 0)
     local bottomOk = pcall(plaque.SetPoint, plaque, "BOTTOMRIGHT", row,
-        "BOTTOMRIGHT", shift, 0)
+        "BOTTOMRIGHT", shift - QUEST_LOG_ROW_RIGHT_INSET, 0)
     if not topOk or not bottomOk then
         return false
     end
@@ -7488,6 +8639,7 @@ function Client.SetQuestLogFollowingRow(row, active, red, green, blue, modern)
     if not EnsureQuestLogFollowingRow(row) then
         return false
     end
+    InsetQuestLogHighlight(row)
     SetQuestLogFollowingPlaqueShift(row,
         modern and QUEST_LOG_FOLLOWING_PLAQUE_MODERN_SHIFT_X or 0)
     local shown = active and true or false
@@ -7497,15 +8649,35 @@ function Client.SetQuestLogFollowingRow(row, active, red, green, blue, modern)
     -- Built one at a time rather than through a list: either part can be nil
     -- when its CreateTexture call failed, and a hole makes table.getn lie.
     local parts = {}
+    local paths = {}
     if row.unrealQuestFollowingBackground then
         table.insert(parts, row.unrealQuestFollowingBackground)
+        table.insert(paths, QUEST_LOG_FOLLOWING_PLAQUE_TEXTURE)
     end
     if row.unrealQuestFollowingMark then
         table.insert(parts, row.unrealQuestFollowingMark)
+        table.insert(paths, TRACKER_FOLLOWING_QUEST_TEXTURE)
     end
     local index = 1
     while index <= table.getn(parts) do
-        if shown then Client.ShowObject(parts[index]) else Client.HideObject(parts[index]) end
+        local part = parts[index]
+        if shown then
+            -- Under unrealUI's modern-wow theme the followed plaque did not
+            -- show at all (USER_CONFIRMED_INGAME 2026-09-13). The host strips
+            -- stock regions through U.HideRegion, which clears the texture and
+            -- zeroes the alpha as well as hiding, and a later Show restores
+            -- neither. Both are restated before showing so a strip that caught
+            -- these regions cannot keep them invisible.
+            if type(part.SetTexture) == "function" then
+                pcall(part.SetTexture, part, paths[index])
+            end
+            if type(part.SetAlpha) == "function" then
+                pcall(part.SetAlpha, part, 1)
+            end
+            Client.ShowObject(part)
+        else
+            Client.HideObject(part)
+        end
         index = index + 1
     end
     local dot = row.unrealQuestQuestDot
@@ -7514,6 +8686,9 @@ function Client.SetQuestLogFollowingRow(row, active, red, green, blue, modern)
             or type(blue) ~= "number" then
             Client.HideObject(dot)
         else
+            -- Restated for the same host strip as the plaque above.
+            pcall(dot.SetTexture, dot, Client.MINIMAP_OBJECTIVE_TEXTURE)
+            pcall(dot.SetAlpha, dot, 1)
             if type(dot.SetVertexColor) == "function" then
                 pcall(dot.SetVertexColor, dot, red, green, blue, 1)
             end
@@ -7590,6 +8765,103 @@ function Client.PlaceQuestLogFlag(button, anchor, offsetX, offsetY)
     return Client.AnchorObject(button, "TOPRIGHT", anchor, "TOPRIGHT", offsetX, offsetY)
 end
 
+-- The quest-giver's offer window, for Quest/QuestGiverTranslation.lua --------
+--
+-- QuestDetailScrollFrame / QuestDetailScrollChildFrame are the same pair the
+-- reward rows already anchor to on this surface (QuestLogRewardRows.surfaces
+-- above), and the rows landing where they were asked to is what says these
+-- names are real here. Both are still resolved by name and both still fall
+-- through when absent.
+function Client.GetQuestGiverDetailAnchor()
+    return ResolveObject("QuestDetailScrollFrame")
+end
+
+function Client.GetQuestGiverDetailPanel()
+    return ResolveObject("QuestDetailScrollChildFrame")
+end
+
+-- The TURN-IN window's counterparts. QuestRewardScrollFrame /
+-- QuestRewardScrollChildFrame are the pair QuestLogRewardRows.surfaces.complete
+-- already docks the experience and reputation rows to, and both were measured
+-- present and shown on 2026-09-10 (questgivertextcomplete) alongside the panel's
+-- own named strings -- QuestRewardTitleText, QuestRewardText,
+-- QuestRewardRewardTitleText, QuestRewardItemChooseText and
+-- QuestRewardItem1..10Name. Resolved by name and falling through when absent,
+-- like every other name here.
+function Client.GetQuestCompleteDetailAnchor()
+    return ResolveObject("QuestRewardScrollFrame")
+end
+
+function Client.GetQuestCompleteDetailPanel()
+    return ResolveObject("QuestRewardScrollChildFrame")
+end
+
+-- Anchored to the offer viewport but PARENTED TO QuestFrame, and the split is
+-- the same one Client.PlaceQuestLogFlag makes on the log, for the same two
+-- reasons: the scroll CHILD slides away under the player's scroll wheel and
+-- would take the flag with it, and the scroll FRAME may clip its children to
+-- the visible rect. QuestFrame is the one frame that neither moves nor clips.
+function Client.PlaceQuestGiverFlag(button, anchor, offsetX, offsetY)
+    local parent = ResolveObject("QuestFrame")
+    if not button or not anchor or not parent then
+        return false
+    end
+    if button.unrealQuestFlagParent ~= parent then
+        if type(button.SetParent) ~= "function"
+            or not pcall(button.SetParent, button, parent) then
+            return false
+        end
+        button.unrealQuestFlagParent = parent
+    end
+    if type(parent.GetFrameLevel) == "function" and type(button.SetFrameLevel) == "function" then
+        local ok, level = pcall(parent.GetFrameLevel, parent)
+        if ok and type(level) == "number" then
+            pcall(button.SetFrameLevel, button, level + 20)
+        end
+    end
+    return Client.AnchorObject(button, "TOPRIGHT", anchor, "TOPRIGHT", offsetX, offsetY)
+end
+
+-- Every FontString under a frame, down to `depth` levels of child frames.
+--
+-- This exists because the quest-giver panel's body strings have no name this
+-- addon has evidence for. The confirmed record quest_dialog.
+-- detail_reward_text_globals names that panel's HEADINGS and nothing else, and
+-- guessing the Vanilla names for the three strings under them would be exactly
+-- the assumption rule 3 forbids. The caller therefore identifies its fields by
+-- CONTENT -- it already knows what the client says the title, objectives and
+-- description are -- and this is the inventory it matches against.
+--
+-- GetNumRegions() always reports zero on this client (see the note above
+-- Client.GetWorldFrame), so the walk is never gated on a count; GetRegionList
+-- and GetChildList both return the real varargs.
+function Client.CollectFontStrings(frame, depth, out)
+    out = out or {}
+    if not frame or type(depth) ~= "number" or depth < 0 then
+        return out
+    end
+    local regions = Client.GetRegionList(frame)
+    local index = 1
+    local total = regions and table.getn(regions) or 0
+    while index <= total do
+        local region = regions[index]
+        if region and Client.GetObjectType(region) == "FontString" then
+            table.insert(out, region)
+        end
+        index = index + 1
+    end
+    if depth > 0 then
+        local children = Client.GetChildList(frame)
+        index = 1
+        total = children and table.getn(children) or 0
+        while index <= total do
+            Client.CollectFontStrings(children[index], depth - 1, out)
+            index = index + 1
+        end
+    end
+    return out
+end
+
 function Client.SetModernQuestLogActionRule(parent, anchor, shown)
     if not parent or not anchor then
         return false
@@ -7603,12 +8875,18 @@ function Client.SetModernQuestLogActionRule(parent, anchor, shown)
         end
         parent.unrealQuestActionRule = rule
     end
-    if type(rule.ClearAllPoints) == "function" then
-        pcall(rule.ClearAllPoints, rule)
+    -- Anchored once per anchor: this is called on every quest-log poll, and
+    -- re-anchoring inside the detail scroll child every pass is what flashed
+    -- the scrolled pane (rendering.scroll_child_regions_flash_unscrolled_on_poll).
+    if parent.unrealQuestActionRuleAnchor ~= anchor then
+        if type(rule.ClearAllPoints) == "function" then
+            pcall(rule.ClearAllPoints, rule)
+        end
+        pcall(rule.SetPoint, rule, "TOPLEFT", anchor, "TOPLEFT", 0, 0)
+        pcall(rule.SetPoint, rule, "TOPRIGHT", anchor, "TOPRIGHT", 0, 0)
+        pcall(rule.SetHeight, rule, 1)
+        parent.unrealQuestActionRuleAnchor = anchor
     end
-    pcall(rule.SetPoint, rule, "TOPLEFT", anchor, "TOPLEFT", 0, 0)
-    pcall(rule.SetPoint, rule, "TOPRIGHT", anchor, "TOPRIGHT", 0, 0)
-    pcall(rule.SetHeight, rule, 1)
     if shown then Client.ShowObject(rule) else Client.HideObject(rule) end
     return true
 end
@@ -7622,7 +8900,8 @@ function Client.PrepareModernQuestLogLevel(parent, title)
         local ok, created = pcall(parent.CreateFontString, parent,
             "UnrealQuestLogLevel", "OVERLAY", "GameFontNormalSmall")
         if ok and created then
-            pcall(created.SetTextColor, created, 0.30, 0.90, 0.30)
+            -- #109a14, by request.
+            pcall(created.SetTextColor, created, 16 / 255, 154 / 255, 20 / 255)
             StripShadow(created)
             label = created
             parent.unrealQuestLevelLabel = created
@@ -7631,14 +8910,27 @@ function Client.PrepareModernQuestLogLevel(parent, title)
     if not label then
         return nil
     end
+    -- The level sits in its own row between the quest name and the summary
+    -- (which hangs off the title's bottom edge): the title grows by 24 and the
+    -- label starts 18 below the title's top, clear of the name above and the
+    -- summary below. Raised from 15/15, by request, so the two no longer crowd
+    -- each other. Literals, not file-scope constants: this file is at the
+    -- 200-local ceiling, past which the whole file silently fails to load.
     if not title.unrealQuestLevelPrepared then
-        if not Client.GrowObjectHeight(title, 15) then
+        if not Client.GrowObjectHeight(title, 24) then
             return nil
         end
         Client.SetFontStringJustifyV(title, "TOP")
         title.unrealQuestLevelPrepared = true
     end
-    Client.PlaceInsideObject(label, title, 0, -15)
+    -- 1 right and 26 down, by request (was 0, -18). Placed once per title:
+    -- this runs on every quest-log poll, and re-anchoring anything inside the
+    -- detail scroll child makes the client lay its regions out for one frame
+    -- at the UNSCROLLED position (probe questlogbuttons.scroll_flicker.v1).
+    if label.unrealQuestLevelAnchor ~= title then
+        Client.PlaceInsideObject(label, title, 1, -26)
+        label.unrealQuestLevelAnchor = title
+    end
     return label
 end
 
@@ -7646,8 +8938,13 @@ function Client.SetModernQuestLogLevel(label, text, shown)
     if not label then
         return false
     end
-    if type(label.SetText) == "function" then
-        pcall(label.SetText, label, text or "")
+    -- Only on a change, for the same scroll-child relayout reason as the
+    -- label's anchor above.
+    local nextText = text or ""
+    if label.unrealQuestLevelText ~= nextText and type(label.SetText) == "function" then
+        if pcall(label.SetText, label, nextText) then
+            label.unrealQuestLevelText = nextText
+        end
     end
     if shown then return Client.ShowObject(label) end
     return Client.HideObject(label)
@@ -11124,7 +12421,9 @@ function Client.CreateNavigator(name, arcWidth, arrowSize, withTitle)
             if distanceOk and distance then
                 pcall(distance.SetPoint, distance, "TOP", arrow, "BOTTOM", 0, -8)
                 if type(distance.SetWidth) == "function" then
-                    pcall(distance.SetWidth, distance, arrowSize)
+                    -- The quest navigator adds a localized ETA beside the yard
+                    -- count. Use the arc's width so the centred row is not clipped.
+                    pcall(distance.SetWidth, distance, arcWidth)
                 end
                 if type(distance.SetJustifyH) == "function" then
                     pcall(distance.SetJustifyH, distance, "CENTER")

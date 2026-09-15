@@ -42,6 +42,10 @@ local Settings = UQ:NewModule("Settings")
 -- collide with a page it already owns.
 local TAB_ID = "unrealquest"
 local TAB_LABEL = "UnrealQuest"
+-- The submenu's two pages, one per section of the page. Under a settings group
+-- TAB_ID names the group, and these name the rows inside it.
+local GENERAL_PAGE_ID = TAB_ID .. ".general"
+local MOBS_PAGE_ID = TAB_ID .. ".mobs"
 
 -- The page's own first line: "Unreal Quest" in the addon's two-tone wordmark,
 -- with the running version after it. The split is the one the TOC Title already
@@ -577,6 +581,16 @@ local function NewPage(parent)
 
         liveEntry = { key = key, control = slider, onLive = onLive,
             last = slider.current }
+        -- One binding per setting: a rebuilt slider replaces the one an earlier
+        -- build of the same setting left behind, so a stale control is never
+        -- read back into the store alongside the live one.
+        local existing = table.getn(Settings.liveSliders)
+        while existing >= 1 do
+            if Settings.liveSliders[existing].key == key then
+                table.remove(Settings.liveSliders, existing)
+            end
+            existing = existing - 1
+        end
         table.insert(Settings.liveSliders, liveEntry)
         page.Sync(function()
             local value = Setting(key)
@@ -603,81 +617,30 @@ end
 -- The contract is unrealUI's (modules/settings.lua, RegisterSettingsTab):
 -- build(parent) returns the array of regions the page owns, and optionally a
 -- refresh function that runs every time the page is opened. The standalone
--- window honours the same contract, so this function never learns which host
+-- window honours the same contract, so this builder never learns which host
 -- called it -- it is handed a parent frame and anchors everything to that.
 --
--- One host page, with two horizontal tabs INSIDE it. Registering two unrealUI
--- sidebar entries would make the standalone host structurally different; the
--- internal tab strip keeps both hosts identical.
+-- The page is two sections, General and Mob tracking, each built by its own
+-- function below. Where they are switched is the host's business: the
+-- standalone window has no sidebar, so it gets both sections under an
+-- internal tab strip; unrealUI's sidebar already is a list of pages, so it gets
+-- an "UnrealQuest" submenu with one page per section and no strip at all.
 
-function Settings:BuildPage(parent)
-    if not parent then
-        return {}, nil
+-- The height a section may fill. unrealUI can hand a builder a panel much
+-- taller than the standalone 428px content box; a host that reports less
+-- (or nothing) is held to that box.
+local function AvailableHeight(parent)
+    local height = Client.GetObjectHeight(parent)
+    if type(height) ~= "number" or height < CONTENT_HEIGHT then
+        return CONTENT_HEIGHT
     end
+    return height
+end
 
-    local page = NewPage(parent)
-    self.liveSliders = {}
-    local generalWidgets = {}
-    local mobWidgets = {}
-    local generalTab, mobTab
-    local ApplyInternalTab, RefreshMobResults
-
-    -- The page opens on the addon's own name and version (PageTitle), above the
-    -- tab strip: the wordmark titles the whole page, so it must not sit inside
-    -- either tab's own content, and it is drawn before the tabs so both tabs
-    -- start from the same cursor below it.
-    --
-    -- Skipped on the standalone host: that window's own header already carries
-    -- this wordmark (BuildWindow), so drawing it again here would show it twice.
-    -- unrealUI draws no such title, so under that host this stays the only
-    -- place the page names the addon. The tab strip simply starts one heading
-    -- higher when it is skipped.
-    if self.host ~= "standalone" then
-        page.Heading(PageTitle())
-    else
-        -- No heading to sit under here (the window's own header carries the
-        -- wordmark), so the tab strip would otherwise butt right against the
-        -- header rule. A little of the height the skipped heading freed up
-        -- goes back as breathing room.
-        page.Gap(7)
-    end
-
-    generalTab = page.Add(Client.CreateSettingsTab(parent,
-        WidgetName("generalTab"), UQ.L("SETTINGS_TAB_GENERAL"),
-        0, page.y, INTERNAL_TAB_WIDTH, INTERNAL_TAB_HEIGHT,
-        function() ApplyInternalTab("general") end))
-    mobTab = page.Add(Client.CreateSettingsTab(parent,
-        WidgetName("mobTrackingTab"), UQ.L("SETTINGS_TAB_MOB_TRACKING"),
-        INTERNAL_TAB_WIDTH + 6, page.y, INTERNAL_TAB_WIDTH,
-        INTERNAL_TAB_HEIGHT, function() ApplyInternalTab("mobs") end))
-    page.y = page.y - INTERNAL_TAB_ADVANCE
-    local contentTop = page.y
-
-    ApplyInternalTab = function(tab)
-        if tab ~= "mobs" then
-            tab = "general"
-        end
-        Settings.activePageTab = tab
-        local generalShown = tab == "general"
-        local index = 1
-        while index <= table.getn(generalWidgets) do
-            SetRegionShown(generalWidgets[index], generalShown)
-            index = index + 1
-        end
-        index = 1
-        while index <= table.getn(mobWidgets) do
-            SetRegionShown(mobWidgets[index], not generalShown)
-            index = index + 1
-        end
-        Client.SetSettingsTabSelected(generalTab, generalShown)
-        Client.SetSettingsTabSelected(mobTab, not generalShown)
-        if not generalShown and type(RefreshMobResults) == "function" then
-            RefreshMobResults()
-        end
-    end
-
-    page.Group(generalWidgets)
-
+-- The General section: every stored option, and the pfQuest history action.
+-- The caller has already put the cursor where the section starts and filed
+-- the widget group its regions go into.
+local function BuildGeneralSection(page)
     -- The tracker opacity and rare-alert range sliders share one row. The
     -- three alert ranks and the three tracker filters use the two compact rows
     -- beneath, the ranks packed three-across into one column.
@@ -810,7 +773,10 @@ function Settings:BuildPage(parent)
         { left = PAIR_COLUMN_RIGHT, width = rightWidth, advance = CHECKBOX_ADVANCE })
 
     page.Checkbox("mobNavigatorEnabled", UQ.L("SETTINGS_MOB_NAVIGATOR"), nil,
-        { width = pairWidth, advance = CHECKBOX_ADVANCE + 4 })
+        { width = pairWidth, advance = 0 })
+    page.Checkbox("questRewardItemColors", UQ.L("SETTINGS_REWARD_QUALITY_COLORS"), nil,
+        { left = PAIR_COLUMN_RIGHT, width = rightWidth,
+          advance = CHECKBOX_ADVANCE + 4 })
 
     -- The import button's label describes its action. The ordinary row gap
     -- above is enough separation; the old extra 8px is now used by the clearer
@@ -854,15 +820,21 @@ function Settings:BuildPage(parent)
     end)
 
     page.Sync(RefreshImportStatus)
+end
 
-    local generalHeight = -page.y
+-- The Mob tracking section: the creature search, the tracked-creature band and
+-- the paged results. `MobsShown` answers whether this section is the one on
+-- screen, which only the caller knows -- on the tabbed page it is the internal
+-- tab, as a page of unrealUI's submenu it always is. Returns the refresh
+-- closure and the search field, which the caller's sync needs.
+local function BuildMobSection(page, MobsShown)
+    local parent = page.parent
+    local RefreshMobResults
 
     -- Mob tracking ----------------------------------------------------------
     -- This page intentionally submits through a separate button. The native
     -- EditBox has no handlers at all, exactly matching the focused two-cycle
     -- probe that established focus/type/GetText/ClearFocus as safe here.
-    page.Group(mobWidgets)
-    page.y = contentTop
     page.Heading(UQ.L("SETTINGS_MOB_HEADING"))
     page.Body(UQ.L("SETTINGS_MOB_DESCRIPTION"), 0, 2)
 
@@ -925,24 +897,21 @@ function Settings:BuildPage(parent)
     -- The cross is a named widget; the line beside it is a FontString, which
     -- has no name on this client. Published so the offline test can read what
     -- the band actually says.
-    self.mobTrackedLabel = trackedLabel
-    self.mobTrackedPanel = trackedPanel
+    Settings.mobTrackedLabel = trackedLabel
+    Settings.mobTrackedPanel = trackedPanel
 
     -- unrealUI can hand this builder a panel much taller than the standalone
     -- 428px content box. Fill whichever host is actually drawing the page,
     -- leaving only the paging row and a small bottom margin unused.
-    local availableHeight = Client.GetObjectHeight(parent)
-    if type(availableHeight) ~= "number" or availableHeight < CONTENT_HEIGHT then
-        availableHeight = CONTENT_HEIGHT
-    end
+    local availableHeight = AvailableHeight(parent)
     local mobRowsPerPage = math.floor((availableHeight + page.y
         - MOB_STATUS_ADVANCE - MOB_PAGING_ADVANCE - MOB_BOTTOM_MARGIN)
         / MOB_ROW_ADVANCE)
     if mobRowsPerPage < MOB_MIN_ROWS_PER_PAGE then
         mobRowsPerPage = MOB_MIN_ROWS_PER_PAGE
     end
-    self.mobRowsPerPage = mobRowsPerPage
-    self.pageAvailableHeight = availableHeight
+    Settings.mobRowsPerPage = mobRowsPerPage
+    Settings.pageAvailableHeight = availableHeight
 
     local mobRows = {}
     local rowIndex = 1
@@ -1041,7 +1010,7 @@ function Settings:BuildPage(parent)
         local trackedId = pins and pins:GetTrackedMobId()
         local trackedRecord = trackedId and database
             and database:GetMobSearchRecord(trackedId)
-        if trackedRecord and Settings.activePageTab == "mobs" then
+        if trackedRecord and MobsShown() then
             local zone = MobZoneName(database, trackedId)
             local banner
             if zone then
@@ -1080,7 +1049,7 @@ function Settings:BuildPage(parent)
                 Client.SetButtonLabel(row.button,
                     MobDisplayName(record) .. "  " .. action)
                 Client.SetSettingsTabSelected(row.button, tracked)
-                if Settings.activePageTab == "mobs" then
+                if MobsShown() then
                     SetRegionShown(row.button, true)
                 end
             else
@@ -1097,16 +1066,135 @@ function Settings:BuildPage(parent)
             Settings.mobSearchPage < pages)
     end
 
-    local mobHeight = -page.y
-    page.Group(nil)
-    page.Sync(function()
-        Client.SetSettingsEditText(mobSearchInput, Settings.mobSearchQuery)
-        ApplyInternalTab(Settings.activePageTab)
-    end)
+    return RefreshMobResults, mobSearchInput
+end
 
-    -- Neither host scrolls this page, so compare its largest tab against the
-    -- actual host height. The standalone fallback remains 428px; unrealUI can
-    -- provide substantially more room and the mob rows above consume it.
+-- `section` nil builds the whole page, both sections under the internal tab
+-- strip: the standalone window, and an unrealUI without settings groups.
+-- "general" or "mobs" builds that section alone with no strip, for a page of
+-- unrealUI's submenu, where the sidebar rows are the tabs.
+function Settings:BuildPage(parent, section)
+    if not parent then
+        return {}, nil
+    end
+    if section ~= "general" and section ~= "mobs" then
+        section = nil
+    end
+
+    local page = NewPage(parent)
+    -- A whole page replaces the live slider bindings; a section adds to them,
+    -- because under the submenu the other section may already be built and
+    -- bound, and dropping its sliders would stop them applying live.
+    if not section then
+        self.liveSliders = {}
+    end
+    local generalWidgets = {}
+    local mobWidgets = {}
+    local generalTab, mobTab
+    local RefreshMobResults, mobSearchInput
+
+    -- The page opens on the addon's own name and version (PageTitle), above the
+    -- tab strip: the wordmark titles the whole page, so it must not sit inside
+    -- either tab's own content, and it is drawn before the tabs so both tabs
+    -- start from the same cursor below it.
+    --
+    -- Skipped on the standalone host: that window's own header already carries
+    -- this wordmark (BuildWindow), so drawing it again here would show it twice.
+    -- unrealUI draws no such title, so under that host this stays the only
+    -- place the page names the addon. The tab strip simply starts one heading
+    -- higher when it is skipped.
+    if self.host ~= "standalone" then
+        page.Heading(PageTitle())
+    else
+        -- No heading to sit under here (the window's own header carries the
+        -- wordmark), so the tab strip would otherwise butt right against the
+        -- header rule. A little of the height the skipped heading freed up
+        -- goes back as breathing room.
+        page.Gap(7)
+    end
+
+    local function MobsShown()
+        if section then
+            return section == "mobs"
+        end
+        return Settings.activePageTab == "mobs"
+    end
+
+    local function ApplyInternalTab(tab)
+        if tab ~= "mobs" then
+            tab = "general"
+        end
+        Settings.activePageTab = tab
+        local generalShown = tab == "general"
+        local index = 1
+        while index <= table.getn(generalWidgets) do
+            SetRegionShown(generalWidgets[index], generalShown)
+            index = index + 1
+        end
+        index = 1
+        while index <= table.getn(mobWidgets) do
+            SetRegionShown(mobWidgets[index], not generalShown)
+            index = index + 1
+        end
+        Client.SetSettingsTabSelected(generalTab, generalShown)
+        Client.SetSettingsTabSelected(mobTab, not generalShown)
+        if not generalShown and type(RefreshMobResults) == "function" then
+            RefreshMobResults()
+        end
+    end
+
+    if not section then
+        generalTab = page.Add(Client.CreateSettingsTab(parent,
+            WidgetName("generalTab"), UQ.L("SETTINGS_TAB_GENERAL"),
+            0, page.y, INTERNAL_TAB_WIDTH, INTERNAL_TAB_HEIGHT,
+            function() ApplyInternalTab("general") end))
+        mobTab = page.Add(Client.CreateSettingsTab(parent,
+            WidgetName("mobTrackingTab"), UQ.L("SETTINGS_TAB_MOB_TRACKING"),
+            INTERNAL_TAB_WIDTH + 6, page.y, INTERNAL_TAB_WIDTH,
+            INTERNAL_TAB_HEIGHT, function() ApplyInternalTab("mobs") end))
+        page.y = page.y - INTERNAL_TAB_ADVANCE
+    end
+    local contentTop = page.y
+
+    local generalHeight = 0
+    if section ~= "mobs" then
+        page.Group(generalWidgets)
+        BuildGeneralSection(page)
+        generalHeight = -page.y
+    end
+
+    local mobHeight = 0
+    if section ~= "general" then
+        page.Group(mobWidgets)
+        page.y = contentTop
+        RefreshMobResults, mobSearchInput = BuildMobSection(page, MobsShown)
+        mobHeight = -page.y
+    end
+    page.Group(nil)
+
+    -- Each open also records which section the player is on, so /uq config
+    -- returns to it under either host.
+    if section == "general" then
+        page.Sync(function()
+            Settings.activePageTab = "general"
+        end)
+    elseif section == "mobs" then
+        page.Sync(function()
+            Settings.activePageTab = "mobs"
+            Client.SetSettingsEditText(mobSearchInput, Settings.mobSearchQuery)
+            RefreshMobResults()
+        end)
+    else
+        page.Sync(function()
+            Client.SetSettingsEditText(mobSearchInput, Settings.mobSearchQuery)
+            ApplyInternalTab(Settings.activePageTab)
+        end)
+    end
+
+    -- Neither host scrolls this page, so compare its largest section against
+    -- the actual host height. The standalone fallback remains 428px; unrealUI
+    -- can provide substantially more room and the mob rows consume it.
+    local availableHeight = AvailableHeight(parent)
     self.pageHeight = generalHeight
     if mobHeight > self.pageHeight then
         self.pageHeight = mobHeight
@@ -1146,13 +1234,43 @@ end
 
 -- Host resolution -----------------------------------------------------------
 
--- One tab, once. Every UnrealQuest option lives on the page this registers, so
--- there is never a second call to make -- and the guard means a re-entered
--- resolution cannot file a duplicate id and get itself refused.
+-- Once. Where unrealUI has settings groups, UnrealQuest is an "UnrealQuest"
+-- submenu in its sidebar with one page per section (General, Mob tracking) --
+-- the sidebar rows replace the internal tab strip. An unrealUI without
+-- RegisterSettingsGroup gets the whole tabbed page as a single row instead.
+-- The guard means a re-entered resolution cannot file a duplicate id and get
+-- itself refused.
+--
+-- Both pages are placed explicitly `after` the group, so they sit under it
+-- whatever unrealUI's default placement for a new entry is.
 function Settings:RegisterWithUnrealUI(host)
     if self.registered then
         return true
     end
+
+    if type(host.RegisterSettingsGroup) == "function" then
+        local ok, group = pcall(host.RegisterSettingsGroup, TAB_ID, TAB_LABEL)
+        if not ok or not group then
+            return false
+        end
+        local okGeneral, general = pcall(host.RegisterSettingsTab, GENERAL_PAGE_ID,
+            UQ.L("SETTINGS_TAB_GENERAL"),
+            function(content)
+                return Settings:BuildPage(content, "general")
+            end, { parent = TAB_ID, after = TAB_ID })
+        local okMobs, mobs = pcall(host.RegisterSettingsTab, MOBS_PAGE_ID,
+            UQ.L("SETTINGS_TAB_MOB_TRACKING"),
+            function(content)
+                return Settings:BuildPage(content, "mobs")
+            end, { parent = TAB_ID, after = GENERAL_PAGE_ID })
+        if not okGeneral or not general or not okMobs or not mobs then
+            return false
+        end
+        self.registered = true
+        self.hostLayout = "group"
+        return true
+    end
+
     local ok, entry = pcall(host.RegisterSettingsTab, TAB_ID, TAB_LABEL,
         function(content)
             return Settings:BuildPage(content)
@@ -1160,6 +1278,8 @@ function Settings:RegisterWithUnrealUI(host)
     if not ok or not entry then
         return false
     end
+    self.registered = true
+    self.hostLayout = "tab"
     return true
 end
 
@@ -1183,7 +1303,11 @@ function Settings:ResolveHost(force)
             end
             UQ:DeclareCapability("unrealUISettingsHost", "detected",
                 "unrealUI was found at runtime and accepted UnrealQuest's options page "
-                .. "(U.RegisterSettingsTab, id '" .. TAB_ID .. "'). The page is drawn inside "
+                .. (self.hostLayout == "group"
+                    and ("as a submenu (U.RegisterSettingsGroup '" .. TAB_ID .. "', pages '"
+                        .. GENERAL_PAGE_ID .. "' and '" .. MOBS_PAGE_ID .. "')")
+                    or ("(U.RegisterSettingsTab, id '" .. TAB_ID .. "')"))
+                .. ". The page is drawn inside "
                 .. "unrealUI's settings window; /uq config opens it there. Detected by type-checking "
                 .. "the function this needs, not by IsAddOnLoaded, which is "
                 .. "DOCUMENTED_NOT_RUNTIME_VERIFIED here and would only report that files loaded")
@@ -1541,7 +1665,12 @@ function Settings:Open()
     if host == "unrealui" then
         local unrealUI = UnrealUI()
         if unrealUI and type(unrealUI.OpenSettingsPage) == "function" then
-            local ok, opened = pcall(unrealUI.OpenSettingsPage, TAB_ID)
+            -- Under the submenu, back to the section the player last opened.
+            local pageId = TAB_ID
+            if self.hostLayout == "group" then
+                pageId = self.activePageTab == "mobs" and MOBS_PAGE_ID or GENERAL_PAGE_ID
+            end
+            local ok, opened = pcall(unrealUI.OpenSettingsPage, pageId)
             if ok and opened then
                 return true
             end
@@ -1596,6 +1725,7 @@ function Settings:GetReport()
         host = self.host or "undecided",
         waited = self.hostWaited,
         registered = self.host == "unrealui",
+        layout = self.hostLayout,
         window = self.window ~= nil,
         page = self.page ~= nil,
         opens = self.opens,

@@ -60,6 +60,14 @@ Database.titleIndex = nil
 Database.indexReady = false
 Database.indexedCount = 0
 
+-- Native reward items expose a name but no dependable item ID on this
+-- client. Build a client-locale name -> item ID index incrementally so a
+-- quest panel can reach the same item's exact translated name without a
+-- synchronous walk of the full item table when the window opens.
+Database.itemNameIndex = nil
+Database.itemNameIndexReady = false
+Database.itemNameIndexedCount = 0
+
 -- Hover identity on this client is the tooltip's rendered name, not an entity
 -- ID. Build the name-to-duration join incrementally so the first tooltip does
 -- not synchronously walk both complete world tables.
@@ -127,6 +135,7 @@ Database.instanceAreaIndex = nil
 
 local db = nil
 local indexCursor = nil
+local itemNameIndexCursor = nil
 local giverIndexCursor = nil
 local rankIndexCursor = nil
 local respawnIndexCursor = nil
@@ -239,6 +248,116 @@ local function ExactLocaleTable(baseName, language)
     return localized
 end
 
+-- Recorded gaps in the bundled data -----------------------------------------
+-- The bundled tables are a reduction of what pfQuest packaged from VMaNGOS,
+-- and a few quests lost their whole point in the packaging rather than in the
+-- reduction: the relation that would place them was never in the upstream
+-- table either. Proving Allegiance (409) is the reference case. Its only
+-- recorded objective is Lillith Nefara (unit 1946), who is summoned and
+-- therefore has an empty `coords` list, so the quest drew no marker anywhere
+-- -- while the two things the player actually has to walk to, the Crate of
+-- Candles and the altar the candle is lit on, sit in `objects` with exact
+-- coordinates and no relation tying them to the quest.
+--
+-- Rather than hand-edit the bundled snapshot -- which must stay as packaged,
+-- for the attribution in Database/CREDITS.md to mean anything -- the missing
+-- relations are declared here and written into the loaded tables once, at
+-- attach. Every consumer downstream then sees an ordinary item-use quest and
+-- needs no special case: `obj.IR` names the item, `quests-itemreq` names what
+-- it is used on (negative = game object, positive = creature), and
+-- QuestTarget:AppendItemUseLocations already switches between "where to get
+-- it" and "where to use it" as the bags and the objective lines change.
+--
+-- A fix only ever ADDS a relation the tables do not have. It never overwrites
+-- a recorded one, so a later data sync that fills the gap upstream silently
+-- wins over the entry here.
+local DATA_FIXES = {
+    {
+        -- Proving Allegiance. Take a Candle of Beckoning from the Crate of
+        -- Candles on Gunther's island (68.2/42.0 Tirisfal), light it on
+        -- Lillith's Dinner Table on the islet south of it (66.6/44.9), kill
+        -- what it summons.
+        questId = 409,
+        itemId = 3080,
+        sourceObjectIds = { 1586 },
+        useTargets = { -1557 },
+    },
+}
+
+-- Writes one DATA_FIXES entry into the loaded tables. Silent on anything it
+-- cannot justify: a quest, item or table the data does not have is a sign the
+-- snapshot moved on, not something to fault over.
+local function ApplyDataFix(fix)
+    local quest = db.quests and db.quests[fix.questId]
+    if type(quest) ~= "table" then
+        return
+    end
+
+    if type(quest.obj) ~= "table" then
+        quest.obj = {}
+    end
+    if type(quest.obj.IR) ~= "table" then
+        quest.obj.IR = {}
+    end
+    local present = false
+    local _, existing
+    for _, existing in pairs(quest.obj.IR) do
+        if existing == fix.itemId then
+            present = true
+        end
+    end
+    if not present then
+        table.insert(quest.obj.IR, fix.itemId)
+    end
+
+    if type(db.items) == "table" then
+        if type(db.items[fix.itemId]) ~= "table" then
+            db.items[fix.itemId] = {}
+        end
+        local item = db.items[fix.itemId]
+        if type(item.O) ~= "table" then
+            item.O = {}
+        end
+        local index = 1
+        local total = table.getn(fix.sourceObjectIds)
+        while index <= total do
+            local objectId = fix.sourceObjectIds[index]
+            if item.O[objectId] == nil then
+                item.O[objectId] = 100
+            end
+            index = index + 1
+        end
+    end
+
+    if type(db["quests-itemreq"]) == "table" then
+        local requirements = db["quests-itemreq"]
+        if type(requirements[fix.itemId]) ~= "table" then
+            requirements[fix.itemId] = {}
+        end
+        local index = 1
+        local total = table.getn(fix.useTargets)
+        while index <= total do
+            local target = fix.useTargets[index]
+            if requirements[fix.itemId][target] == nil then
+                requirements[fix.itemId][target] = 0
+            end
+            index = index + 1
+        end
+    end
+end
+
+local function ApplyDataFixes()
+    if not db or type(db.quests) ~= "table" then
+        return
+    end
+    local index = 1
+    local total = table.getn(DATA_FIXES)
+    while index <= total do
+        ApplyDataFix(DATA_FIXES[index])
+        index = index + 1
+    end
+end
+
 function Database:OnInit()
     -- The data ships with the addon and loads before this file, so an absent
     -- or malformed table means a broken install rather than a missing
@@ -255,10 +374,17 @@ function Database:OnInit()
 
     db = value
     self.available = true
+    -- Before anything reads the tables: the fixes are part of the dataset as
+    -- far as every consumer is concerned.
+    ApplyDataFixes()
     -- A new data table voids every walk cached against the old one.
     FlushQuestLocationCache()
     self.instanceEntranceIndex = nil
     self.mobSearchIndex = nil
+    self.itemNameIndex = nil
+    self.itemNameIndexReady = false
+    self.itemNameIndexedCount = 0
+    itemNameIndexCursor = nil
     self.respawnIndex = {}
     self.respawnIndexReady = false
     self.respawnIndexRevision = 0
@@ -293,6 +419,7 @@ function Database:OnEnable()
     local driver = UQ:GetModule("Driver")
     if driver then
         driver:Schedule("database.index", 0, function() Database:IndexChunk() end)
+        driver:Schedule("database.itemnames", 0, function() Database:IndexItemNameChunk() end)
         driver:Schedule("database.giverindex", 0, function() Database:IndexGiverChunk() end)
         driver:Schedule("database.respawnindex", 0, function() Database:IndexRespawnChunk() end)
     end
@@ -1116,6 +1243,57 @@ function Database:GetItemName(itemId)
         return nil
     end
     return names[itemId]
+end
+
+function Database:GetItemNameForLanguage(itemId, language)
+    local names = ExactLocaleTable("items", language)
+    if type(names) ~= "table" then
+        return nil
+    end
+    local name = names[itemId]
+    if type(name) ~= "string" or name == "" then
+        return nil
+    end
+    return name
+end
+
+-- Translate a live client-locale item name only when every item ID carrying
+-- that exact native name agrees on the requested translation. Duplicate names
+-- are valid in the source data; disagreement therefore fails closed instead
+-- of putting another item's name on a reward button.
+function Database:GetItemDisplayNameForLanguage(nativeName, language)
+    if type(nativeName) ~= "string" or nativeName == ""
+        or not self.itemNameIndexReady or type(self.itemNameIndex) ~= "table" then
+        return nil
+    end
+    local ids = self.itemNameIndex[nativeName]
+    if type(ids) == "number" then
+        local translated = self:GetItemNameForLanguage(ids, language)
+        if translated and UQ.PrepareTranslatedGameText then
+            translated = UQ.PrepareTranslatedGameText(translated, language)
+        end
+        return translated
+    end
+    if type(ids) ~= "table" then
+        return nil
+    end
+    local translated = nil
+    local index = 1
+    local total = table.getn(ids)
+    while index <= total do
+        local candidate = self:GetItemNameForLanguage(ids[index], language)
+        if candidate then
+            if translated and translated ~= candidate then
+                return nil
+            end
+            translated = candidate
+        end
+        index = index + 1
+    end
+    if translated and UQ.PrepareTranslatedGameText then
+        translated = UQ.PrepareTranslatedGameText(translated, language)
+    end
+    return translated
 end
 
 -- The whole area-name table, for callers that need to build a reverse index.
@@ -2698,6 +2876,56 @@ end
 -- Quest titles are not unique in the source data, so the index maps a
 -- normalized title to a list of candidate quest IDs. Disambiguation is the
 -- matcher's job.
+
+function Database:IndexItemNameChunk()
+    if not self.available or self.itemNameIndexReady then
+        local driver = UQ:GetModule("Driver")
+        if driver then
+            driver:Unschedule("database.itemnames")
+        end
+        return
+    end
+
+    if not self.itemNameIndex then
+        self.itemNameIndex = {}
+    end
+
+    local names = LocaleTable("items")
+    if type(names) ~= "table" then
+        self.itemNameIndexReady = true
+        return
+    end
+
+    local processed = 0
+    while processed < INDEX_CHUNK do
+        local itemId, name = next(names, itemNameIndexCursor)
+        if itemId == nil then
+            self.itemNameIndexReady = true
+            UQ:Debug("item name index complete: "
+                .. self.itemNameIndexedCount .. " items")
+            local driver = UQ:GetModule("Driver")
+            if driver then
+                driver:Unschedule("database.itemnames")
+            end
+            return
+        end
+        itemNameIndexCursor = itemId
+
+        if type(name) == "string" and name ~= "" then
+            local existing = self.itemNameIndex[name]
+            if not existing then
+                self.itemNameIndex[name] = itemId
+            elseif type(existing) == "number" then
+                self.itemNameIndex[name] = { existing, itemId }
+            else
+                table.insert(existing, itemId)
+            end
+            self.itemNameIndexedCount = self.itemNameIndexedCount + 1
+        end
+
+        processed = processed + 1
+    end
+end
 
 function Database:IndexChunk()
     if not self.available or self.indexReady then

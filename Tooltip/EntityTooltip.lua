@@ -355,15 +355,51 @@ local function PlainRowText(line)
     return text
 end
 
+-- True when a row after the name carries the given level as a whole number.
+-- The level row's wording is localized, its digits are not. An unknown level
+-- (nil) never judges the rows.
+local function RowsShowLevel(lines, level)
+    if type(level) ~= "number" then
+        return true
+    end
+    local index = 2
+    local total = table.getn(lines or {})
+    while index <= total do
+        local line = lines[index]
+        local texts = { PlainRowText(line), PlainRowText({ text = line.right }) }
+        local slot = 1
+        while slot <= 2 do
+            if texts[slot] then
+                for digits in string.gfind(texts[slot], "%d+") do
+                    if tonumber(digits) == level then
+                        return true
+                    end
+                end
+            end
+            slot = slot + 1
+        end
+        index = index + 1
+    end
+    return false
+end
+
 -- A rebuild can publish only a prefix of the old rows. Keep the last complete
 -- snapshot until changed content repeats on three driver polls. OnShow is an
 -- accelerator only and cannot consume that grace period in a burst. An exact
 -- extension of the old snapshot can be displayed immediately.
-local function StableNativeLines(module, unitKey, lines, fromShow)
+local function StableNativeLines(module, unitKey, unitLevel, lines, fromShow)
     if lines and UQ.NameKey(PlainRowText(lines[1])) ~= unitKey then
         lines = nil
     end
     local previous = module.lastUnitKey == unitKey and module.nativeLines or nil
+    -- Spawns sharing a name share one unitKey, so the held snapshot can carry
+    -- another spawn's level row (or a rebuild that renamed row one before its
+    -- level row). Rows showing the live mouseover level replace a snapshot
+    -- that does not show it at once, without the stability grace.
+    if lines and previous and RowsShowLevel(lines, unitLevel)
+            and not RowsShowLevel(previous, unitLevel) then
+        previous = nil
+    end
     local stamp = NativeStamp(lines)
     if previous and stamp ~= NativeStamp(previous) then
         local extends = lines and table.getn(lines) > table.getn(previous)
@@ -544,7 +580,7 @@ function EntityTooltip:Refresh(fromShow)
     -- carry them itself. nil means the rows could not be read, which is the
     -- only case where the native tooltip is left visible.
     local nativeLines = StableNativeLines(self, unitKey,
-        Client.GetGameTooltipLines(), fromShow)
+        Client.GetUnitLevel("mouseover"), Client.GetGameTooltipLines(), fromShow)
     local nativeStamp = NativeStamp(nativeLines)
     -- Reassert only owned cover geometry during native rebuilds. Never write
     -- alpha to GameTooltip or any of its (possibly another addon's) regions.

@@ -16,12 +16,21 @@ height and only as many are installed as end inside the list page. That count
 is also what QUESTS_DISPLAYED is set to, so everything past it is what the
 client's own FauxScrollFrame scrolls -- exactly as the native log behaves.
 
-unrealUI's Modern and Modern WoW themes already replace the Quest Log with a
-two-pane surface of their own. Theme resolution is therefore delayed until
-unrealUI has published its active style, or until the same fifteen-second
-late-load grace period used by Core/Settings.lua expires. The extension is
-installed only for a standalone UnrealQuest session or unrealUI's Classic WoW
-theme, which intentionally retains native client chrome.
+STANDALONE ONLY.
+
+unrealUI now carries this same extension itself (unrealUI/modules/
+questlogextended.lua, with its own copy of the parchment art), on top of the
+two-pane Quest Log its Modern and Modern WoW themes already draw. unrealUI
+therefore owns the Quest Log under every one of its themes, and this module
+applies nothing at all whenever unrealUI is installed -- not merely when a
+non-native theme is active. Two addons re-anchoring the same native widgets is
+the failure mode being avoided here, and unrealUI wins by design.
+
+"Installed" means the UnrealUI global exists, which is also what
+Client.GetUnrealUIQuestLogMode reads for the diagnostic note below. Resolution
+is delayed until that global appears, or until the same fifteen-second
+late-load grace period used by Core/Settings.lua expires, because addon load
+order does not guarantee unrealUI has run when this module is enabled.
 ]]
 
 local UQ = UnrealQuest
@@ -54,32 +63,38 @@ function ExtendedQuestLog:StartRewardLayoutJob()
         end)
 end
 
+-- Which unrealUI surface owns the Quest Log. Diagnostic wording only; nothing
+-- branches on it, because any unrealUI at all is enough to stand down.
+function ExtendedQuestLog:DescribeHost()
+    local mode = Client.GetUnrealUIQuestLogMode()
+    if mode == "classic" then
+        return "its Classic WoW theme's extended two-page Quest Log"
+    elseif mode == "modern" then
+        return "its Modern two-pane Quest Log"
+    end
+    return "its own Quest Log"
+end
+
 function ExtendedQuestLog:Resolve(force)
     if self.mode then
         return self.mode
     end
 
-    local mode = Client.GetUnrealUIQuestLogMode()
-    if not mode and force then
-        if Client.HasObject("UnrealUI") then
-            -- A present but incomplete/older unrealUI is treated as owning the
-            -- Quest Log. This avoids modifying a native frame that it may skin
-            -- later in the same load sequence.
-            mode = "modern"
-        else
-            mode = "standalone"
-        end
-    end
-    if not mode then
-        return nil
+    if Client.HasObject("UnrealUI") then
+        -- Installed is enough. An older unrealUI without the extension is
+        -- still treated as owning this frame, so UnrealQuest never modifies a
+        -- native widget it may skin later in the same load sequence.
+        self.mode = "host"
+        UQ:DeclareCapability("extendedClassicQuestLog", "detected",
+            "unrealUI is installed and owns the Quest Log through "
+            .. self:DescribeHost()
+            .. "; UnrealQuest's EQL3 parchment extension is standalone-only and "
+            .. "intentionally left the native frame unchanged")
+        return self.mode
     end
 
-    if mode == "modern" then
-        self.mode = mode
-        UQ:DeclareCapability("extendedClassicQuestLog", "detected",
-            "unrealUI is using a non-native theme and owns its two-pane Quest Log; "
-            .. "the EQL3 parchment extension intentionally left the native frame unchanged")
-        return mode
+    if not force then
+        return nil
     end
 
     local applied = Client.ApplyExtendedClassicQuestLog()
@@ -89,13 +104,14 @@ function ExtendedQuestLog:Resolve(force)
         return nil
     end
 
-    self.mode = mode
+    self.mode = "standalone"
     self.applied = applied and true or false
     if self.applied then
         self:StartRewardLayoutJob()
         local rows = Client.GetExtendedClassicQuestLogRows()
         UQ:DeclareCapability("extendedClassicQuestLog", "unverified",
-            "the native Quest Log was expanded to " .. tostring(rows or "?")
+            "no unrealUI in this session, so the native Quest Log was expanded to "
+            .. tostring(rows or "?")
             .. " stock rows -- as many as the measured row height fits inside the left "
             .. "parchment page, so a longer quest list scrolls on the native FauxScrollFrame "
             .. "instead of running off the page -- with its stock detail pane on the EQL3 "
@@ -103,15 +119,15 @@ function ExtendedQuestLog:Resolve(force)
             .. "but the combined layout still needs one in-game visual confirmation")
     else
         UQ:DeclareCapability("extendedClassicQuestLog", "missing",
-            "the standalone/Classic WoW layout was selected, but one of the native Quest Log "
+            "the standalone layout was selected, but one of the native Quest Log "
             .. "widgets or EQL3 parchment textures could not be prepared")
     end
-    return mode
+    return self.mode
 end
 
 function ExtendedQuestLog:OnInit()
     UQ:DeclareCapability("extendedClassicQuestLog", "unverified",
-        "waiting to determine whether unrealUI owns the Quest Log or retains native Classic WoW chrome")
+        "waiting to determine whether unrealUI is installed and owns the Quest Log")
 end
 
 function ExtendedQuestLog:OnEnable()

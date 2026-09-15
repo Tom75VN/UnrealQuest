@@ -127,6 +127,11 @@ local defaults = {
     -- match, because the client reports neither.
     questLogRewards = true,
 
+    -- Paints each reward name on the quest-giver's completion window in its
+    -- item quality colour, so a choice between two rewards says which is the
+    -- rarer one. Off restores whatever colour the buttons carried.
+    questRewardItemColors = true,
+
     restoreTracking = true,
     -- Seasonal quests are hidden by default: the client cannot report which
     -- world events are running, so they would otherwise show all year.

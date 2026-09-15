@@ -160,6 +160,37 @@ local function ReadObjectives(quest)
     return changed, targetsChanged
 end
 
+-- The completion flag the rest of the addon reads. The client's own flag is
+-- kept as quest.clientComplete, but it is not trusted on its own: the user
+-- reported a quest ("The Dead Fields") whose log line read "Essence of
+-- Nightlash: 0/1" while the row still came back complete -- most likely the
+-- item was destroyed or sold after it had been looted. Believing the flag
+-- turned the map, tracker and navigator over to the turn-in NPC and left no
+-- way back to the objective. So a counter the log itself shows as short
+-- demotes the quest. Only a parsed shortfall does: an objective without a
+-- counter, or a finished flag the client left unset, is not evidence against
+-- the client, and demoting on it could strand a scripted quest the other way.
+-- The reverse is never inferred either -- all counters full with the client
+-- saying not complete stays not complete.
+local function EffectiveComplete(clientComplete, quest)
+    if clientComplete ~= 1 then
+        return clientComplete
+    end
+    local objectives = quest.objectives or {}
+    local index = 1
+    local total = table.getn(objectives)
+    while index <= total do
+        local objective = objectives[index]
+        if objective and type(objective.have) == "number"
+            and type(objective.need) == "number"
+            and objective.have < objective.need then
+            return nil
+        end
+        index = index + 1
+    end
+    return clientComplete
+end
+
 local function ResolveIdentity(quest)
     local matcher = UQ:GetModule("QuestMatch")
     if not matcher then
@@ -180,6 +211,8 @@ function QuestState:Scan()
     local collapsed = 0
     local added = {}
     local completed = {}
+    -- Objective re-reads done by the scan itself, notified after the diff.
+    local objectiveChanges = {}
     -- Quests whose identity was still "indexing" on a previous scan and has
     -- now resolved. The database title index builds across driver ticks, so on
     -- a login with a full quest log every quest is first modelled without a
@@ -251,7 +284,12 @@ function QuestState:Scan()
             isNew = true
         end
 
+        -- Identity and acceptance logic below compares the CLIENT's flag
+        -- between scans, exactly as before EffectiveComplete existed: a
+        -- demotion for a short counter is not a same-title follow-up being
+        -- accepted, and must not be announced or re-matched as one.
         local previousComplete = quest.isComplete
+        local previousClientComplete = quest.clientComplete
         local previousLevel = quest.level
         local previousSeenAt = quest.seenAt
         local previousRowCount = quest.rowCount or 1
@@ -261,6 +299,7 @@ function QuestState:Scan()
         quest.level = level
         quest.questTag = row.questTag
         quest.zone = row.zone
+        quest.clientComplete = isComplete
         quest.isComplete = isComplete
         quest.seenAt = self.scanCount
         quest.rowCount = row.count
@@ -268,7 +307,7 @@ function QuestState:Scan()
         local identityMayHaveChanged = not isNew and (
             previousLevel ~= level
             or previousRowCount ~= row.count
-            or (previousComplete == 1 and isComplete ~= 1)
+            or (previousClientComplete == 1 and isComplete ~= 1)
             or (type(previousSeenAt) == "number"
                 and previousSeenAt < self.scanCount - 1)
         )
@@ -301,19 +340,32 @@ function QuestState:Scan()
         -- A same-title follow-up is still a new acceptance, but losing a
         -- duplicate representative is not. Do not auto-track or announce
         -- acceptance merely because another copy remains unfinished.
-        if not isNew and previousComplete == 1 and isComplete ~= 1
+        if not isNew and previousClientComplete == 1 and isComplete ~= 1
             and previousRowCount == 1 and row.count == 1 then
             table.insert(added, quest)
         end
 
-        if isComplete == 1 and previousComplete ~= 1 then
+        -- A quest the client calls complete has its counters re-read on
+        -- every scan instead of waiting for the round-robin slice, so a quest
+        -- item destroyed or sold is noticed within one poll -- and on the
+        -- very first scan after login or a reload, where every quest is new
+        -- and was just read above. BAG_UPDATE wakes this scan early.
+        if not isNew and isComplete == 1 then
+            local changed, targetsChanged = ReadObjectives(quest)
+            if changed then
+                table.insert(objectiveChanges, { quest = quest, targetsChanged = targetsChanged })
+            end
+        end
+        quest.isComplete = EffectiveComplete(isComplete, quest)
+
+        if quest.isComplete == 1 and previousComplete ~= 1 then
             table.insert(completed, quest)
         end
 
         -- A changed copy count or completion reset can alter map state even
         -- if the ID stays the same and no acceptance was announced above.
         if not isNew and (previousRowCount ~= row.count
-            or (previousComplete == 1 and isComplete ~= 1)) then
+            or (previousComplete == 1 and quest.isComplete ~= 1)) then
             resolvedIdentities = resolvedIdentities + 1
         end
 
@@ -363,6 +415,14 @@ function QuestState:Scan()
     notifyTotal = table.getn(removed)
     while notifyIndex <= notifyTotal do
         Notify("QUEST_REMOVED", removed[notifyIndex])
+        notifyIndex = notifyIndex + 1
+    end
+
+    notifyIndex = 1
+    notifyTotal = table.getn(objectiveChanges)
+    while notifyIndex <= notifyTotal do
+        local entry = objectiveChanges[notifyIndex]
+        Notify("QUEST_OBJECTIVES_CHANGED", entry.quest, entry.targetsChanged)
         notifyIndex = notifyIndex + 1
     end
 

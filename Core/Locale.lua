@@ -226,6 +226,31 @@ function UQ.L(key, a, b, c, d)
     return text
 end
 
+-- Resolve one interface string in an explicitly named language without
+-- changing the account-wide interface language. Quest-panel language flags
+-- use this for labels that belong to one translated quest (for example its
+-- reward summary), while every ordinary addon label continues to use UQ.L.
+function UQ.LForLanguage(language, key, a, b, c, d)
+    local text = nil
+    if type(language) == "string" and type(strings[language]) == "table" then
+        text = strings[language][key]
+    end
+    if not text and fallbackStrings then
+        text = fallbackStrings[key]
+    end
+    if not text then
+        text = type(key) == "string" and key or ""
+    end
+    if a == nil then
+        return text
+    end
+    local ok, formatted = pcall(string.format, text, a, b, c, d)
+    if ok and type(formatted) == "string" then
+        return formatted
+    end
+    return text
+end
+
 -- Plural form of a counted string. The catalog holds one key per form,
 -- suffixed "_ONE" / "_FEW" / "_MANY" / "_OTHER"; only the forms a language
 -- actually uses need to exist, and the count is passed to the format as %d.
