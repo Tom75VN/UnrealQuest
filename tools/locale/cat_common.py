@@ -305,6 +305,30 @@ STRINGS.update({
     "Убрать с карты и из оповещений",
     "从地图和提醒中移除",
 ),
+"NPC_LOOT_HINT": (
+    "Click to show loot",
+    "Cliquez pour afficher le butin",
+    "Щелкните, чтобы показать добычу",
+    "点击以显示掉落物品",
+),
+"NPC_LOOT_NONE": (
+    "No uncommon or better loot",
+    "Aucun butin inhabituel ou meilleur",
+    "Нет необычной или лучшей добычи",
+    "没有优秀或更好的掉落物品",
+),
+"NPC_LOOT_PAGE": ("%s / %s", "%s / %s", "%s / %s", "%s / %s"),
+"NPC_LOOT_LOADING": (
+    "Loading %s more items...",
+    "Chargement de %s objets de plus...",
+    "Загрузка еще %s предметов...",
+    "正在加载另外 %s 件物品...",
+),"NPC_LOOT_UNKNOWN": (
+    "%s items unknown to the game client",
+    "%s objets inconnus du client",
+    "%s предметов неизвестны клиенту",
+    "%s 件物品客户端未知",
+),
 "NPC_RARE_REMOVED": (
     "%s removed from the map and proximity alerts",
     "%s retire de la carte et des alertes de proximite",
@@ -585,6 +609,12 @@ STRINGS.update({
     "Afficher les quetes de bas niveau",
     "Показывать задания низкого уровня",
     "显示低等级任务",
+),
+"SETTINGS_HIDE_PROFESSION_QUESTS": (
+    "Hide profession quests for professions you have not learned",
+    "Masquer les quetes des metiers que vous n'avez pas appris",
+    "Скрывать задания профессий, которые вы не изучили",
+    "隐藏未学习专业的专业任务",
 ),
 "SETTINGS_TRANSLATE_QUEST_TITLES": (
     "Translate quest text",

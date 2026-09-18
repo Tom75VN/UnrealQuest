@@ -139,6 +139,10 @@ local defaults = {
     -- Grey/trivial available quests are hidden like the native presentation.
     -- Opting in adds them to both maps with their own subdued giver icon.
     showLowLevelQuests = false,
+    -- Profession quests (the data's `skill` field) are hidden for a character
+    -- whose Skills pane does not list that profession. Anything the pane
+    -- cannot answer -- a collapsed header, an unreadable list -- shows them.
+    hideUnlearnedProfessionQuests = true,
     -- A quest that is ready to hand in always gets its turn-in "?" marker.
     -- This adds the dimmed "?" for quests still in progress, which is where a
     -- quest the player is carrying will eventually be handed in. On by

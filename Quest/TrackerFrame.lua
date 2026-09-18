@@ -442,7 +442,7 @@ end
 local function QuestLabel(quest)
     local label = ""
     if type(quest.level) == "number" and quest.level > 0 then
-        label = "[" .. quest.level .. "] "
+        label = "[" .. UQ.FormatQuestLevel(quest.level, quest) .. "] "
     end
     return label .. (UQ.GetQuestDisplayTitle(quest) or "?")
 end
@@ -1623,6 +1623,8 @@ function TrackerFrame:Refresh()
         return
     end
 
+    self:CheckPositionOnScreen()
+
     local lines, questCount, completed = self:BuildLines()
     local parts = { tostring(questCount), tostring(completed),
         Setting("trackerCollapsed") and "1" or "0", tostring(Setting("trackerWidth")),
@@ -1699,7 +1701,12 @@ end
 
 -- Position ----------------------------------------------------------------------
 
-function TrackerFrame:ApplyStoredPosition()
+-- `atLoad` skips the screen guard. At OnInit the window has not been laid out
+-- yet, so its edges say nothing about where it will be, and a guard "correction"
+-- taken from them was saved over a good position: the tracker came back in
+-- the top-left corner on every reload (user report 2026-09-18). The guard runs
+-- once later instead, from Refresh (CheckPositionOnScreen).
+function TrackerFrame:ApplyStoredPosition(atLoad)
     local window = self.window
     if not window then
         return false
@@ -1715,8 +1722,41 @@ function TrackerFrame:ApplyStoredPosition()
     -- numbers and nothing else: a relative frame is a live object that cannot
     -- be persisted, and anchoring to some other addon's frame would break the
     -- moment that addon is not loaded.
-    return Client.SetFrameAnchor(window, point, "UIParent",
-        type(relativePoint) == "string" and relativePoint or point, x, y)
+    local applied, placedX, placedY, moved = Client.SetFrameAnchor(window, point,
+        "UIParent", type(relativePoint) == "string" and relativePoint or point, x, y,
+        atLoad)
+    -- A stored position that left the window off screen was pulled back on;
+    -- keep the corrected one so it opens there next time too.
+    if applied and moved then
+        Store("trackerX", placedX)
+        Store("trackerY", placedY)
+    end
+    return applied
+end
+
+-- The deferred half of ApplyStoredPosition's screen guard: once per session,
+-- a few seconds after enable, when the window has been drawn at its real size.
+local POSITION_CHECK_DELAY = 3
+
+function TrackerFrame:CheckPositionOnScreen()
+    -- Never under a drag or a resize: re-applying the stored anchor then would
+    -- yank the window out from under the cursor.
+    if self.positionChecked or self.dragging or self.resizeStartX then
+        return
+    end
+    local now = Client.Now()
+    if not now then
+        return
+    end
+    if not self.positionCheckAt then
+        self.positionCheckAt = now + POSITION_CHECK_DELAY
+        return
+    end
+    if now < self.positionCheckAt then
+        return
+    end
+    self.positionChecked = true
+    self:ApplyStoredPosition()
 end
 
 function TrackerFrame:CapturePosition()
@@ -1736,6 +1776,9 @@ function TrackerFrame:CapturePosition()
     Store("trackerRelativePoint", type(relativePoint) == "string" and relativePoint or point)
     Store("trackerX", x)
     Store("trackerY", y)
+    -- Re-placed from what was just stored, so a drop past a screen edge snaps
+    -- flush with it, as the navigator does (Client.KeepFrameOnScreen).
+    self:ApplyStoredPosition()
     return true
 end
 
@@ -1966,6 +2009,7 @@ function TrackerFrame:OnInit()
         self.handle = handle
         Client.SetObjectScript(handle, "OnDragStart", function()
             if Client.StartFrameDrag(window) then
+                TrackerFrame.dragging = true
                 TrackerFrame.drags = TrackerFrame.drags + 1
             else
                 TrackerFrame.dragFailures = TrackerFrame.dragFailures + 1
@@ -1976,6 +2020,7 @@ function TrackerFrame:OnInit()
         end)
         Client.SetObjectScript(handle, "OnDragStop", function()
             Client.StopFrameDrag(window)
+            TrackerFrame.dragging = false
             TrackerFrame:CapturePosition()
         end)
     else
@@ -2012,7 +2057,7 @@ function TrackerFrame:OnInit()
         end,
         function() TrackerFrame:ToggleCollapsed() end)
 
-    if not self:ApplyStoredPosition() then
+    if not self:ApplyStoredPosition(true) then
         self:ResetPosition()
     end
 end

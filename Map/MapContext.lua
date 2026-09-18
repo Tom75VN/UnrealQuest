@@ -444,6 +444,8 @@ end
 -- once per session (primeAttempted), so it can never fight a player who later
 -- deliberately zooms out to browse a continent -- that zoneIndex 0 is left
 -- alone and correctly hides the layer.
+local RECENTER_SECONDS = 2
+
 function MapContext:InspectPrimed()
     local report = self:Inspect()
     -- Never while a view this module parked is standing. SetMapToCurrentZone
@@ -458,6 +460,28 @@ function MapContext:InspectPrimed()
         self.primeAttempted = true
         if Client.SetMapToCurrentZone() then
             report = self:Inspect()
+        end
+    end
+    -- A continent view left behind once the fullscreen map is CLOSED is nobody's
+    -- to keep: the player zoomed out, closed the map, and the view stayed on the
+    -- continent. Left alone it hid the navigator, minimap pins, HUD waypoint and
+    -- rare-alert proximity for the rest of the session, all reporting
+    -- continentView from Orgrimmar (user report 2026-09-18) -- the one-shot
+    -- primer above had already been spent. Only while the map is closed
+    -- (Client.IsGameUIHidden() == false, the signal WorldMapPins already uses;
+    -- nil, an unanswered question, is left alone), never while a view this
+    -- module parked is standing, and at most once every RECENTER_SECONDS so a
+    -- place where the call cannot resolve a zone does not re-issue it per tick.
+    -- A player browsing a continent has the map open and is never overruled.
+    if (not report.zoneIndex or report.zoneIndex == 0) and not self.parkedAreaId
+        and Client.IsGameUIHidden() == false then
+        local now = Client.Now()
+        if now and (not self.recenteredAt or now - self.recenteredAt >= RECENTER_SECONDS) then
+            self.recenteredAt = now
+            self.recenters = (self.recenters or 0) + 1
+            if Client.SetMapToCurrentZone() then
+                report = self:Inspect()
+            end
         end
     end
     return report

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.5
+
+- Added loot and drop rate to boss tooltips on the map.
+- Fixed the interface for the latest client update.
+- Fixed the progress bar not turning green when completing objectives for items not flagged as quest items.
+- Profession quests are no longer displayed on the map if you don't have the related profession.
+- Added a + to the quest level when the quest is related to a dungeon.
+- Fixed flickering red button on modern wow theme
+
+
 ## 0.3.4
 
 - Show experience and reputation in the interface when accepting or turning in a quest.

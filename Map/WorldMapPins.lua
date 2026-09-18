@@ -675,6 +675,11 @@ local function LowLevelQuestsEnabled(config)
     return config and config:Get("showLowLevelQuests") and true or false
 end
 
+local function ProfessionSignature()
+    local eligibility = UQ:GetModule("QuestEligibility")
+    return eligibility and eligibility:ProfessionSignature() or ""
+end
+
 local function ViewSignature(areaId, report)
     return tostring(areaId) .. "|" .. tostring(report and report.mapFile)
         .. "|" .. tostring(report and report.continent)
@@ -686,6 +691,7 @@ local function ViewSignature(areaId, report)
         .. "|" .. tostring(ObjectiveDotsEnabled())
         .. "|" .. tostring(ObjectiveDotSize())
         .. "|" .. tostring(LowLevelQuestsEnabled())
+        .. "|" .. ProfessionSignature()
 end
 
 local function RelevantBagSignature(itemIds)

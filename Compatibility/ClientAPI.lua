@@ -779,6 +779,53 @@ function Client.GetPlayerSex()
     return nil
 end
 
+-- The player's skill lines as a set of lowercased localized names, plus
+-- whether that set is complete. Returns nil when the list cannot be read.
+--
+-- OFFICIAL_CLIENT_DOCUMENTATION, not probed for its tuple here:
+-- GetNumSkillLines() counts the Skills pane rows -- headers plus the skills
+-- under EXPANDED headers only -- and GetSkillLineInfo(index) returns
+-- skillName, header, isExpanded, ... like Vanilla. GetNumSkillLines itself is
+-- runtime-measured (knowledge skills.fauxscroll_first_open_empty_slider_range
+-- sampled 13 rows). The list carries no skill id, only the localized name.
+--
+-- A collapsed header hides the skills under it, so `complete` is false as soon
+-- as one header reports it is not expanded; a caller must then treat a skill
+-- it did not find as unknown rather than absent. Expanding the header to read
+-- it would change the player's own Skills pane, so it is never done.
+function Client.GetPlayerSkillLines()
+    local okCount, count = Call0("GetNumSkillLines")
+    if not okCount or type(count) ~= "number" or count < 1 then
+        return nil
+    end
+    local names = {}
+    local complete = true
+    local found = 0
+    local index = 1
+    while index <= count do
+        local ok, name, isHeader, isExpanded = Call1("GetSkillLineInfo", index)
+        if ok and type(name) == "string" and name ~= "" then
+            if isHeader then
+                if not isExpanded then
+                    complete = false
+                end
+            else
+                names[string.lower(name)] = true
+                found = found + 1
+            end
+        elseif not ok then
+            complete = false
+        end
+        index = index + 1
+    end
+    if found == 0 and complete then
+        -- Rows existed but none read as a skill: the tuple is not what the
+        -- documentation describes, so nothing here can be trusted.
+        return nil
+    end
+    return names, complete
+end
+
 -- Locale -----------------------------------------------------------------
 -- Documented (OFFICIAL_CLIENT_DOCUMENTATION) to return a WoW-style locale
 -- token derived from the client's own culture: enUS, ruRU, esES, esMX, zhCN,
@@ -3031,6 +3078,932 @@ function Client.IsGiverQuestMenuOpenFor(anchorFrame)
     end
     local ok, shown = pcall(giverMenuFrame.IsShown, giverMenuFrame)
     return ok and shown and true or false
+end
+
+-- Scoped in a do-block: this file's main chunk sits near Lua's 200-local
+-- limit, and nothing outside the item/loot helpers needs their locals.
+do
+-- Item display data ---------------------------------------------------------
+-- GetItemInfo(itemID) is in the client's API reference
+-- (global:Item:GetItemInfo, DOCUMENTED_NOT_RUNTIME_VERIFIED) but no probe
+-- has recorded its full return tuple here. The reference only spells out the
+-- name. So the icon is not read from a fixed position: the first returned
+-- string that looks like an icon path is taken, and the quality only when the
+-- third return is a number in the 0..7 range. Anything unreadable degrades to
+-- the question-mark icon and the default colour. An item the client has not
+-- cached returns nothing at all, which lands on the same fallback.
+local ITEM_FALLBACK_ICON = "Interface\\Icons\\INV_Misc_QuestionMark"
+local ITEM_QUALITY_COLORS = {
+    [0] = { 0.62, 0.62, 0.62 },
+    [1] = { 1.00, 1.00, 1.00 },
+    [2] = { 0.12, 1.00, 0.00 },
+    [3] = { 0.00, 0.44, 0.87 },
+    [4] = { 0.64, 0.21, 0.93 },
+    [5] = { 1.00, 0.50, 0.00 },
+    [6] = { 0.90, 0.80, 0.50 },
+    [7] = { 0.90, 0.80, 0.50 },
+}
+
+local function CollectItemInfo(fn, itemId)
+    local r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11 = fn(itemId)
+    return { r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11 }
+end
+
+-- Returns name, icon path, quality -- each nil when the client did not say.
+function Client.GetItemDisplayInfo(itemId)
+    local fn = Resolve("GetItemInfo")
+    if not fn or type(itemId) ~= "number" then
+        return nil, nil, nil
+    end
+    local ok, values = pcall(CollectItemInfo, fn, itemId)
+    if not ok or type(values) ~= "table" or type(values[1]) ~= "string" then
+        return nil, nil, nil
+    end
+    -- Measured 2026-09-18 (items.getiteminfo_tuple_and_cache_fill.v1): the
+    -- documented 9-value tuple, texture 9th, written with FORWARD slashes
+    -- ("Interface/Icons/INV_Sword_04"). Position 9 is taken first; the scan is
+    -- only a fallback, and accepts either separator.
+    local icon = nil
+    if type(values[9]) == "string" and values[9] ~= "" then
+        icon = values[9]
+    end
+    local index = 2
+    while not icon and index <= 11 do
+        local value = values[index]
+        if type(value) == "string" and string.find(string.lower(value), "^interface[/\\]") then
+            icon = value
+        end
+        index = index + 1
+    end
+    local quality = nil
+    if type(values[3]) == "number" and values[3] >= 0 and values[3] <= 7 then
+        quality = values[3]
+    end
+    return values[1], icon, quality
+end
+
+function Client.GetItemQualityRGB(quality)
+    local color = ITEM_QUALITY_COLORS[quality or 1] or ITEM_QUALITY_COLORS[1]
+    return color[1], color[2], color[3]
+end
+
+-- Asks the server for an item the client has not cached, through a private
+-- hidden tooltip so no visible one flickers. Measured 2026-09-18
+-- (items.getiteminfo_tuple_and_cache_fill.v1): an uncached id returns no
+-- values at all; after this request one of four burst-requested ids came back
+-- within 2s and three never did in 6s, so callers space their requests out
+-- and retry instead of firing a batch once.
+local itemCacheTooltip = nil
+function Client.RequestItemCache(itemId)
+    if type(itemId) ~= "number" then
+        return false
+    end
+    if not itemCacheTooltip then
+        local create = Resolve("CreateFrame")
+        local parent = ResolveObject("UIParent")
+        if not create or not parent then
+            return false
+        end
+        local ok, tip = pcall(create, "GameTooltip", "UnrealQuestItemCacheTip", parent,
+            "GameTooltipTemplate")
+        if not ok or not tip then
+            return false
+        end
+        itemCacheTooltip = tip
+    end
+    local tip = itemCacheTooltip
+    local owned = pcall(tip.SetOwner, tip, ResolveObject("UIParent"), "ANCHOR_NONE")
+    local linked = owned and pcall(tip.SetHyperlink, tip, "item:" .. tostring(itemId) .. ":0:0:0")
+    pcall(tip.Hide, tip)
+    return linked and true or false
+end
+
+-- Item comparison ------------------------------------------------------------
+-- The equipped counterpart of a hovered gear item, beside the item tooltip.
+-- Not the client's ShoppingTooltip1/2: those are UIParent children, and the
+-- fullscreen map hides UIParent (docs/WORLD-MAP-PINS-RECOVERY.md), so over the
+-- map they would populate and never be seen. Two private GameTooltips are
+-- parented where the map tooltip is instead.
+--
+-- Slot resolution is unrealUI's (core/itemslot.lua COMPARE_SLOTS): GetItemInfo's
+-- 8th return, the INVTYPE token (measured, items.getiteminfo_tuple_and_cache_
+-- fill.v1), names the paper-doll slot(s); GetInventorySlotInfo turns a name
+-- into this client's slot id; GetInventoryItemLink says whether it is worn.
+-- SetInventoryItem on a GameTooltip is the path unrealUI's tooltipline probe
+-- populated ShoppingTooltip1 through. SetInventoryItem does not add the
+-- "Currently Equipped" heading, so the lines are read back and redrawn under
+-- the client's own CURRENTLY_EQUIPPED string.
+local COMPARE_SLOTS = {
+    INVTYPE_HEAD = { "HeadSlot" },
+    INVTYPE_NECK = { "NeckSlot" },
+    INVTYPE_SHOULDER = { "ShoulderSlot" },
+    INVTYPE_BODY = { "ShirtSlot" },
+    INVTYPE_CHEST = { "ChestSlot" },
+    INVTYPE_ROBE = { "ChestSlot" },
+    INVTYPE_WAIST = { "WaistSlot" },
+    INVTYPE_LEGS = { "LegsSlot" },
+    INVTYPE_FEET = { "FeetSlot" },
+    INVTYPE_WRIST = { "WristSlot" },
+    INVTYPE_HAND = { "HandsSlot" },
+    INVTYPE_FINGER = { "Finger0Slot", "Finger1Slot" },
+    INVTYPE_TRINKET = { "Trinket0Slot", "Trinket1Slot" },
+    INVTYPE_CLOAK = { "BackSlot" },
+    INVTYPE_WEAPON = { "MainHandSlot" },
+    INVTYPE_2HWEAPON = { "MainHandSlot" },
+    INVTYPE_WEAPONMAINHAND = { "MainHandSlot" },
+    INVTYPE_WEAPONOFFHAND = { "SecondaryHandSlot" },
+    INVTYPE_SHIELD = { "SecondaryHandSlot" },
+    INVTYPE_HOLDABLE = { "SecondaryHandSlot" },
+    INVTYPE_RANGED = { "RangedSlot" },
+    INVTYPE_RANGEDRIGHT = { "RangedSlot" },
+    INVTYPE_THROWN = { "RangedSlot" },
+    INVTYPE_RELIC = { "RangedSlot" },
+    INVTYPE_TABARD = { "TabardSlot" },
+}
+local COMPARE_MAX_LINES = 30
+local COMPARE_GAP = 2
+local compareTooltips = {}
+
+local function CollectEquipLoc(fn, itemId)
+    local _, _, _, _, _, _, _, equipLoc = fn(itemId)
+    return equipLoc
+end
+
+local function ResolveCompareTooltip(index, host)
+    local tooltip = compareTooltips[index]
+    if tooltip then
+        return tooltip
+    end
+    local create = Resolve("CreateFrame")
+    if not create or not host then
+        return nil
+    end
+    local parent = nil
+    if type(host.GetParent) == "function" then
+        local ok, value = pcall(host.GetParent, host)
+        if ok then parent = value end
+    end
+    parent = parent or ResolveObject("WorldMapFrame") or ResolveObject("UIParent")
+    local ok, created = pcall(create, "GameTooltip", "UnrealQuestLootCompare" .. tostring(index),
+        parent, "GameTooltipTemplate")
+    if not ok or not created then
+        return nil
+    end
+    local strataOk, strata = pcall(host.GetFrameStrata, host)
+    if strataOk and strata then
+        pcall(created.SetFrameStrata, created, strata)
+    end
+    compareTooltips[index] = created
+    return created
+end
+
+function Client.HideItemCompare()
+    local index = 1
+    while index <= 2 do
+        if compareTooltips[index] then
+            pcall(compareTooltips[index].Hide, compareTooltips[index])
+        end
+        index = index + 1
+    end
+end
+
+-- Reads a populated tooltip's rows back as RenderTooltipLines entries.
+local function ReadTooltipLines(name, count)
+    local lines = {}
+    local row = 1
+    while row <= count do
+        local left = ResolveObject(name .. "TextLeft" .. row)
+        local right = ResolveObject(name .. "TextRight" .. row)
+        local leftText, rightText = nil, nil
+        local lr, lg, lb, rr, rg, rb = 1, 1, 1, 1, 1, 1
+        if left then
+            local okText, text = pcall(left.GetText, left)
+            if okText then leftText = text end
+            local okColor, r, g, b = pcall(left.GetTextColor, left)
+            if okColor and r then lr, lg, lb = r, g, b end
+        end
+        if right then
+            local okShown, shown = pcall(right.IsShown, right)
+            local okText, text = pcall(right.GetText, right)
+            if okText and text and text ~= "" and (not okShown or shown) then
+                rightText = text
+                local okColor, r, g, b = pcall(right.GetTextColor, right)
+                if okColor and r then rr, rg, rb = r, g, b end
+            end
+        end
+        if type(leftText) == "string" and leftText ~= "" then
+            if rightText then
+                table.insert(lines, { left = leftText, right = rightText,
+                    r = lr, g = lg, b = lb, rightR = rr, rightG = rg, rightB = rb })
+            else
+                table.insert(lines, { text = leftText, r = lr, g = lg, b = lb })
+            end
+        end
+        row = row + 1
+    end
+    return lines
+end
+
+local function ShowItemCompare(host, itemId)
+    Client.HideItemCompare()
+    local infoFn = Resolve("GetItemInfo")
+    local slotInfo = Resolve("GetInventorySlotInfo")
+    local wornLink = Resolve("GetInventoryItemLink")
+    if not infoFn or not slotInfo or not wornLink then
+        return
+    end
+    local ok, equipLoc = pcall(CollectEquipLoc, infoFn, itemId)
+    local slots = ok and type(equipLoc) == "string" and COMPARE_SLOTS[equipLoc] or nil
+    if not slots then
+        return
+    end
+    local heading = Client.GetGlobalString("CURRENTLY_EQUIPPED")
+    local shown = {}
+    local index = 1
+    while index <= table.getn(slots) do
+        local slotOk, slotId = pcall(slotInfo, slots[index])
+        local linkOk, link = false, nil
+        if slotOk and slotId then
+            linkOk, link = pcall(wornLink, "player", slotId)
+        end
+        local tooltip = linkOk and link and ResolveCompareTooltip(table.getn(shown) + 1, host)
+        if tooltip and type(tooltip.SetInventoryItem) == "function" then
+            local name = "UnrealQuestLootCompare" .. tostring(table.getn(shown) + 1)
+            pcall(tooltip.SetOwner, tooltip, host, "ANCHOR_NONE")
+            local setOk = pcall(tooltip.SetInventoryItem, tooltip, "player", slotId)
+            local countOk, count = pcall(tooltip.NumLines, tooltip)
+            if not countOk or type(count) ~= "number" then count = COMPARE_MAX_LINES end
+            local lines = setOk and ReadTooltipLines(name, count) or {}
+            if table.getn(lines) > 0 then
+                if heading then
+                    table.insert(lines, 1, { text = heading, r = UQ.colors.accent[1],
+                        g = UQ.colors.accent[2], b = UQ.colors.accent[3] })
+                end
+                RenderTooltipLines(tooltip, name, host, lines, "ANCHOR_NONE")
+                if heading then
+                    -- The heading takes the title row; the item name keeps
+                    -- the ordinary line size under it, as the client draws a
+                    -- comparison.
+                    local headingLabel = ResolveObject(name .. "TextLeft1")
+                    local small = ResolveObject("GameFontNormalSmall")
+                    if headingLabel and small then
+                        pcall(headingLabel.SetFontObject, headingLabel, small)
+                        pcall(headingLabel.SetTextColor, headingLabel, UQ.colors.accent[1],
+                            UQ.colors.accent[2], UQ.colors.accent[3])
+                        pcall(tooltip.Show, tooltip)
+                    end
+                end
+                table.insert(shown, tooltip)
+            end
+        end
+        index = index + 1
+    end
+
+    -- To the right of the item tooltip, away from the loot panel it grew out
+    -- of; to the left only when the right would run past the map's edge.
+    local total = table.getn(shown)
+    if total == 0 then
+        return
+    end
+    local width = 0
+    index = 1
+    while index <= total do
+        local wOk, w = pcall(shown[index].GetWidth, shown[index])
+        if wOk and type(w) == "number" then width = width + w + COMPARE_GAP end
+        index = index + 1
+    end
+    local toLeft = false
+    local parentOk, parent = pcall(host.GetParent, host)
+    local rightOk, hostRight = pcall(host.GetRight, host)
+    local edgeOk, parentRight = false, nil
+    if parentOk and parent then
+        edgeOk, parentRight = pcall(parent.GetRight, parent)
+    end
+    if rightOk and edgeOk and type(hostRight) == "number" and type(parentRight) == "number"
+        and hostRight + width > parentRight then
+        toLeft = true
+    end
+    local previous = host
+    index = 1
+    while index <= total do
+        local tooltip = shown[index]
+        pcall(tooltip.ClearAllPoints, tooltip)
+        if toLeft then
+            pcall(tooltip.SetPoint, tooltip, "TOPRIGHT", previous, "TOPLEFT", -COMPARE_GAP, 0)
+        else
+            pcall(tooltip.SetPoint, tooltip, "TOPLEFT", previous, "TOPRIGHT", COMPARE_GAP, 0)
+        end
+        previous = tooltip
+        index = index + 1
+    end
+end
+
+-- The item tooltip over a loot cell, in the same flat style as every other
+-- tooltip this addon draws on the map. GameTooltip:SetHyperlink is documented
+-- (widget-method:GameTooltip:SetHyperlink); it is only asked for an item
+-- GetItemInfo already knows, and the caller's plain `fallbackLines` show
+-- otherwise. A gear item also gets its equipped counterpart beside it.
+function Client.ShowItemTooltip(frame, itemId, fallbackLines)
+    local tooltip = ResolveMapTooltip()
+    if not tooltip or not frame then
+        return false
+    end
+    local name = Client.GetItemDisplayInfo(itemId)
+    if name and type(tooltip.SetHyperlink) == "function" then
+        local owned = pcall(tooltip.SetOwner, tooltip, frame, "ANCHOR_RIGHT")
+        if owned then
+            if type(tooltip.ClearLines) == "function" then
+                pcall(tooltip.ClearLines, tooltip)
+            end
+            HideMapTooltipSeparators(tooltip)
+            local linked = pcall(tooltip.SetHyperlink, tooltip,
+                "item:" .. tostring(itemId) .. ":0:0:0")
+            if linked then
+                Client.ApplyFlatTooltipStyle(tooltip, mapTooltipName)
+                if type(tooltip.Show) == "function" then
+                    pcall(tooltip.Show, tooltip)
+                end
+                ShowItemCompare(tooltip, itemId)
+                return true
+            end
+        end
+    end
+    Client.HideItemCompare()
+    return RenderTooltipLines(tooltip, mapTooltipName, frame, fallbackLines)
+end
+-- Loot panel -----------------------------------------------------------------
+-- What a click on a world-map Rare/Elite/Boss pin opens: the pin's own hover
+-- tooltip lines, then the creature's loot as a grid of item icons with the
+-- drop rate printed over each, then a few dim notes. A frame of its own rather
+-- than the map tooltip: the tooltip belongs to whatever the mouse is over, so
+-- it cannot outlive the hover and it has no cells to point at. The frame, its
+-- level and its outside-click catcher follow the giver quest menu above, for
+-- the same reasons -- above every pin, and a click that dismisses the panel
+-- must not also land on the map underneath it.
+--
+-- Closing: a note carrying onClick (Close), or any click outside the panel,
+-- which includes the pin that opened it since the catcher sits over every pin.
+-- Map/NpcPins.lua closes it when the map goes away.
+local LOOT_PADDING = 8
+local LOOT_LINE_HEIGHT = 14
+local LOOT_TITLE_LINE_HEIGHT = 16
+local LOOT_SECTION_GAP = 6
+-- Cells follow unrealUI's Modern WoW character gear slot (modules/modernwow.lua,
+-- core/itemslot.lua U.SetGearQualityGlow): the icon edge to edge, and rarity
+-- carried by the action-button highlight art tinted in the quality colour at
+-- 0.8 alpha, with a second additive pass for
+-- blue items, whose colour reads darkest. No frame art: the glow alone
+-- carries the rarity. The art ships in this addon
+-- (media/LootGlow, a copy of unrealUI's button-highlight) so the panel looks
+-- the same with or without unrealUI. Unlike the gear slot, the glow is drawn
+-- at the icon's own size on top of it, not 4 units proud of it.
+local LOOT_CELL_SIZE = 25
+local LOOT_CELL_GAP = 2
+local LOOT_MIN_COLUMNS = 4
+local LOOT_MAX_COLUMNS = 10
+local LOOT_COLUMN_RATIO = 2.5
+local LOOT_CELL_BORDER = 0
+local LOOT_GLOW_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\LootGlow"
+local LOOT_GLOW_ALPHA = 0.8
+-- Blue draws both passes fully opaque: its colour reads darkest of all.
+local LOOT_RARE_ALPHA = 1
+local LOOT_RARE_BOOST = { 0.08, 0.20, 1.00, 1.00 }
+-- Height of the dark strip the drop rate sits on, so it reads over any icon.
+local LOOT_RATE_STRIP = 10
+local lootPanel = nil
+local lootCatcher = nil
+local lootLines = {}
+local lootCells = {}
+local lootNotes = {}
+local lootPager = nil
+local LOOT_PAGER_HEIGHT = 16
+local LOOT_PAGER_ARROW_WIDTH = 18
+local LOOT_PAGER_GOLD = { 1, 0.82, 0 }
+local LOOT_PAGER_DIM = { 0.4, 0.4, 0.4 }
+
+-- The page row under the grid: "<", "2 / 5", ">". Arrows are text glyphs
+-- rather than the stock page-turn art: nothing measured says which stock
+-- button textures this client ships, and a glyph always draws.
+local function PagerArrow(parent, name, glyph)
+    local create = Resolve("CreateFrame")
+    local ok, button = pcall(create, "Button", name, parent)
+    if not ok or not button then
+        return nil
+    end
+    pcall(button.SetWidth, button, LOOT_PAGER_ARROW_WIDTH)
+    pcall(button.SetHeight, button, LOOT_PAGER_HEIGHT)
+    local labelOk, label = pcall(button.CreateFontString, button, nil, "OVERLAY", "GameFontNormal")
+    if labelOk and label then
+        pcall(label.SetPoint, label, "CENTER", button, "CENTER", 0, 0)
+        pcall(label.SetText, label, glyph)
+        button.unrealQuestLabel = label
+    end
+    pcall(button.SetScript, button, "OnEnter", function()
+        if button.unrealQuestEnabled and button.unrealQuestLabel then
+            pcall(button.unrealQuestLabel.SetTextColor, button.unrealQuestLabel, 1, 1, 1)
+        end
+    end)
+    pcall(button.SetScript, button, "OnLeave", function()
+        if button.unrealQuestEnabled and button.unrealQuestLabel then
+            pcall(button.unrealQuestLabel.SetTextColor, button.unrealQuestLabel,
+                LOOT_PAGER_GOLD[1], LOOT_PAGER_GOLD[2], LOOT_PAGER_GOLD[3])
+        end
+    end)
+    return button
+end
+
+local function SetPagerArrow(button, handler)
+    if not button then
+        return
+    end
+    local enabled = handler ~= nil
+    local color = enabled and LOOT_PAGER_GOLD or LOOT_PAGER_DIM
+    button.unrealQuestEnabled = enabled
+    pcall(button.EnableMouse, button, enabled)
+    pcall(button.SetScript, button, "OnClick", handler)
+    if button.unrealQuestLabel then
+        pcall(button.unrealQuestLabel.SetTextColor, button.unrealQuestLabel,
+            color[1], color[2], color[3])
+    end
+end
+
+local function HideLootPanelNow()
+    Client.HideItemCompare()
+    if lootPanel then
+        lootPanel.unrealQuestOpenFor = nil
+        Client.HideObject(lootPanel)
+    end
+    if lootCatcher then
+        Client.HideObject(lootCatcher)
+    end
+    Client.HideMapTooltip(nil)
+end
+
+local function ResolveLootPanel()
+    if lootPanel then
+        return lootPanel
+    end
+    local canvas = Client.GetWorldMapCanvas()
+    local create = Resolve("CreateFrame")
+    if not canvas or not create then
+        return nil
+    end
+    local ok, frame = pcall(create, "Frame", "UnrealQuestLootPanel", canvas)
+    if not ok or not frame then
+        return nil
+    end
+    pcall(frame.EnableMouse, frame, true)
+    pcall(frame.Hide, frame)
+    lootPanel = frame
+    return frame
+end
+
+local function ResolveLootCatcher()
+    if lootCatcher then
+        return lootCatcher
+    end
+    local canvas = Client.GetWorldMapCanvas()
+    local create = Resolve("CreateFrame")
+    if not canvas or not create then
+        return nil
+    end
+    local ok, frame = pcall(create, "Button", "UnrealQuestLootPanelCatcher", canvas)
+    if not ok or not frame then
+        return nil
+    end
+    pcall(frame.SetAllPoints, frame, canvas)
+    pcall(frame.EnableMouse, frame, true)
+    if type(frame.RegisterForClicks) == "function" then
+        pcall(frame.RegisterForClicks, frame, "LeftButtonUp", "RightButtonUp")
+    end
+    pcall(frame.SetScript, frame, "OnClick", HideLootPanelNow)
+    pcall(frame.Hide, frame)
+    lootCatcher = frame
+    return frame
+end
+
+local function SolidTexture(parent, layer, red, green, blue, alpha)
+    local ok, texture = pcall(parent.CreateTexture, parent, nil, layer)
+    if not ok or not texture then
+        return nil
+    end
+    pcall(texture.SetTexture, texture, WORLD_MAP_PIN_TEXTURE)
+    pcall(texture.SetVertexColor, texture, red, green, blue, alpha)
+    return texture
+end
+
+local function GetLootLine(index)
+    local line = lootLines[index]
+    if line then
+        return line
+    end
+    local panel = ResolveLootPanel()
+    if not panel then
+        return nil
+    end
+    local font = index == 1 and "GameFontNormal" or "GameFontHighlightSmall"
+    local ok, label = pcall(panel.CreateFontString, panel, nil, "OVERLAY", font)
+    if not ok or not label then
+        return nil
+    end
+    pcall(label.SetJustifyH, label, "LEFT")
+    lootLines[index] = label
+    return label
+end
+
+local function GetLootCell(index)
+    local cell = lootCells[index]
+    if cell then
+        return cell
+    end
+    local panel = ResolveLootPanel()
+    local create = Resolve("CreateFrame")
+    if not panel or not create then
+        return nil
+    end
+    local ok, button = pcall(create, "Button", "UnrealQuestLootPanelCell" .. tostring(index), panel)
+    if not ok or not button then
+        return nil
+    end
+    pcall(button.SetWidth, button, LOOT_CELL_SIZE)
+    pcall(button.SetHeight, button, LOOT_CELL_SIZE)
+    pcall(button.EnableMouse, button, true)
+    -- Back to front: icon, rate strip, rarity glow, rate text.
+    local iconOk, icon = pcall(button.CreateTexture, button, nil, "BACKGROUND")
+    if iconOk and icon then
+        pcall(icon.SetPoint, icon, "TOPLEFT", button, "TOPLEFT", LOOT_CELL_BORDER, -LOOT_CELL_BORDER)
+        pcall(icon.SetPoint, icon, "BOTTOMRIGHT", button, "BOTTOMRIGHT",
+            -LOOT_CELL_BORDER, LOOT_CELL_BORDER)
+        -- Edge to edge, as the Modern WoW gear slot shows it.
+        pcall(icon.SetTexCoord, icon, 0, 1, 0, 1)
+        button.unrealQuestIcon = icon
+    end
+    local g
+    local glows = {}
+    for g = 1, 2 do
+        local glowOk, glow = pcall(button.CreateTexture, button, nil, "OVERLAY")
+        if glowOk and glow then
+            pcall(glow.SetTexture, glow, LOOT_GLOW_TEXTURE)
+            pcall(glow.SetBlendMode, glow, g == 1 and "BLEND" or "ADD")
+            -- Exactly the icon's size, above it: the rarity ring sits on the
+            -- icon's own edge rather than standing out around it.
+            pcall(glow.SetAllPoints, glow, button)
+            glows[g] = glow
+        end
+    end
+    button.unrealQuestGlow = glows[1]
+    button.unrealQuestRareBoost = glows[2]
+    local strip = SolidTexture(button, "BORDER", 0, 0, 0, 0.6)
+    if strip then
+        pcall(strip.SetPoint, strip, "BOTTOMLEFT", button, "BOTTOMLEFT", LOOT_CELL_BORDER, LOOT_CELL_BORDER)
+        pcall(strip.SetPoint, strip, "BOTTOMRIGHT", button, "BOTTOMRIGHT",
+            -LOOT_CELL_BORDER, LOOT_CELL_BORDER)
+        pcall(strip.SetHeight, strip, LOOT_RATE_STRIP)
+    end
+    local rateOk, rate = pcall(button.CreateFontString, button, nil, "OVERLAY", "GameFontHighlightSmall")
+    if rateOk and rate then
+        pcall(rate.SetPoint, rate, "BOTTOM", button, "BOTTOM", 0, LOOT_CELL_BORDER + 1)
+        pcall(rate.SetJustifyH, rate, "CENTER")
+        button.unrealQuestRate = rate
+    end
+    if type(button.SetHighlightTexture) == "function" then
+        pcall(button.SetHighlightTexture, button, WORLD_MAP_PIN_TEXTURE, "ADD")
+        local highlightOk, highlight = false, nil
+        if type(button.GetHighlightTexture) == "function" then
+            highlightOk, highlight = pcall(button.GetHighlightTexture, button)
+        end
+        if highlightOk and highlight then
+            pcall(highlight.SetVertexColor, highlight, 1, 1, 1, 0.15)
+        end
+    end
+    lootCells[index] = button
+    return button
+end
+
+local function GetLootNote(index)
+    local note = lootNotes[index]
+    if note then
+        return note
+    end
+    local panel = ResolveLootPanel()
+    local create = Resolve("CreateFrame")
+    if not panel or not create then
+        return nil
+    end
+    local ok, button = pcall(create, "Button", "UnrealQuestLootPanelNote" .. tostring(index), panel)
+    if not ok or not button then
+        return nil
+    end
+    pcall(button.SetHeight, button, LOOT_LINE_HEIGHT)
+    local labelOk, label = pcall(button.CreateFontString, button, nil, "OVERLAY", "GameFontHighlightSmall")
+    if labelOk and label then
+        pcall(label.SetPoint, label, "LEFT", button, "LEFT", 0, 0)
+        pcall(label.SetJustifyH, label, "LEFT")
+        button.unrealQuestLabel = label
+    end
+    lootNotes[index] = button
+    return button
+end
+
+local function StringWidth(label)
+    if not label or type(label.GetStringWidth) ~= "function" then
+        return 0
+    end
+    local ok, width = pcall(label.GetStringWidth, label)
+    if ok and type(width) == "number" then
+        return width
+    end
+    return 0
+end
+
+local function HidePoolFrom(pool, first)
+    local index = first
+    while pool[index] do
+        pcall(pool[index].Hide, pool[index])
+        index = index + 1
+    end
+end
+
+-- spec.lines: { text, r, g, b }, the hover tooltip's own lines.
+-- spec.cells: { icon, rate, r, g, b, quality, itemId, tooltipLines }, r/g/b the
+--   item quality colour; hovering a cell shows the item's own tooltip, with
+--   tooltipLines as the fallback for an item the client cannot link.
+-- spec.notes: { text, r, g, b, onClick }.
+-- spec.pager: { text, onPrevious, onNext }, or nil for a single page; a nil
+--   handler draws that arrow dimmed and unclickable.
+function Client.ShowLootPanel(anchorFrame, spec)
+    local panel = ResolveLootPanel()
+    if not panel or not anchorFrame or type(spec) ~= "table" then
+        return false
+    end
+    local lines = spec.lines or {}
+    local cells = spec.cells or {}
+    local notes = spec.notes or {}
+
+    -- Text first, so its measured width can size the panel.
+    local textWidth = 0
+    local lineTotal = table.getn(lines)
+    local index = 1
+    while index <= lineTotal do
+        local entry = lines[index]
+        local label = GetLootLine(index)
+        if label then
+            pcall(label.SetTextColor, label, entry.r or 1, entry.g or 1, entry.b or 1)
+            pcall(label.SetText, label, entry.text or "")
+            pcall(label.Show, label)
+            local width = StringWidth(label)
+            if width > textWidth then textWidth = width end
+        end
+        index = index + 1
+    end
+    HidePoolFrom(lootLines, lineTotal + 1)
+    local noteTotal = table.getn(notes)
+    index = 1
+    while index <= noteTotal do
+        local entry = notes[index]
+        local note = GetLootNote(index)
+        if note and note.unrealQuestLabel then
+            local label = note.unrealQuestLabel
+            pcall(label.SetTextColor, label, entry.r or 0.6, entry.g or 0.6, entry.b or 0.6)
+            pcall(label.SetText, label, entry.text or "")
+            local width = StringWidth(label)
+            if width > textWidth then textWidth = width end
+            pcall(note.SetWidth, note, width > 0 and width or 100)
+            pcall(note.EnableMouse, note, entry.onClick ~= nil)
+            pcall(note.SetScript, note, "OnClick", entry.onClick)
+            pcall(note.Show, note)
+        end
+        index = index + 1
+    end
+    HidePoolFrom(lootNotes, noteTotal + 1)
+
+    -- Columns follow the item count: the grid grows wider than tall (about
+    -- 2.5 columns per row squared), never narrower than the text already
+    -- made room for, then the count is spread evenly over the rows that
+    -- takes so the last row is not left nearly empty.
+    local cellTotal = table.getn(cells)
+    local columns = math.ceil(math.sqrt(cellTotal * LOOT_COLUMN_RATIO))
+    local textColumns = math.floor((textWidth + LOOT_CELL_GAP) / (LOOT_CELL_SIZE + LOOT_CELL_GAP))
+    if textColumns > columns then columns = textColumns end
+    if columns < LOOT_MIN_COLUMNS then columns = LOOT_MIN_COLUMNS end
+    if columns > LOOT_MAX_COLUMNS then columns = LOOT_MAX_COLUMNS end
+    if cellTotal > 0 then
+        if cellTotal < columns then
+            columns = cellTotal
+        else
+            local rowsNeeded = math.ceil(cellTotal / columns)
+            columns = math.ceil(cellTotal / rowsNeeded)
+        end
+    end
+    local gridWidth = columns * LOOT_CELL_SIZE + (columns - 1) * LOOT_CELL_GAP
+    local contentWidth = gridWidth
+    if textWidth > contentWidth then contentWidth = textWidth end
+
+    -- Place: lines, gap, grid, gap, notes.
+    local y = LOOT_PADDING
+    index = 1
+    while index <= lineTotal do
+        local label = lootLines[index]
+        if label then
+            pcall(label.ClearAllPoints, label)
+            pcall(label.SetPoint, label, "TOPLEFT", panel, "TOPLEFT", LOOT_PADDING, -y)
+        end
+        y = y + (index == 1 and LOOT_TITLE_LINE_HEIGHT or LOOT_LINE_HEIGHT)
+        index = index + 1
+    end
+
+    if cellTotal > 0 then
+        y = y + LOOT_SECTION_GAP
+        index = 1
+        while index <= cellTotal do
+            local entry = cells[index]
+            local cell = GetLootCell(index)
+            if cell then
+                -- floor, not a modulo: see the quest-log reward grid below.
+                local row = math.floor((index - 1) / columns)
+                local column = (index - 1) - row * columns
+                pcall(cell.ClearAllPoints, cell)
+                pcall(cell.SetPoint, cell, "TOPLEFT", panel, "TOPLEFT",
+                    LOOT_PADDING + column * (LOOT_CELL_SIZE + LOOT_CELL_GAP),
+                    -(y + row * (LOOT_CELL_SIZE + LOOT_CELL_GAP)))
+                if cell.unrealQuestIcon then
+                    pcall(cell.unrealQuestIcon.SetTexture, cell.unrealQuestIcon,
+                        entry.icon or ITEM_FALLBACK_ICON)
+                end
+                if cell.unrealQuestGlow then
+                    pcall(cell.unrealQuestGlow.SetVertexColor, cell.unrealQuestGlow,
+                        entry.r or 1, entry.g or 1, entry.b or 1,
+                        entry.quality == 3 and LOOT_RARE_ALPHA or LOOT_GLOW_ALPHA)
+                end
+                if cell.unrealQuestRareBoost then
+                    if entry.quality == 3 then
+                        pcall(cell.unrealQuestRareBoost.SetVertexColor, cell.unrealQuestRareBoost,
+                            LOOT_RARE_BOOST[1], LOOT_RARE_BOOST[2], LOOT_RARE_BOOST[3],
+                            LOOT_RARE_BOOST[4])
+                        pcall(cell.unrealQuestRareBoost.Show, cell.unrealQuestRareBoost)
+                    else
+                        pcall(cell.unrealQuestRareBoost.Hide, cell.unrealQuestRareBoost)
+                    end
+                end
+                if cell.unrealQuestRate then
+                    pcall(cell.unrealQuestRate.SetText, cell.unrealQuestRate, entry.rate or "")
+                end
+                local itemId = entry.itemId
+                local fallback = entry.tooltipLines
+                pcall(cell.SetScript, cell, "OnEnter", function()
+                    if itemId then
+                        Client.ShowItemTooltip(cell, itemId, fallback)
+                    end
+                end)
+                pcall(cell.SetScript, cell, "OnLeave", function()
+                    Client.HideItemCompare()
+                    Client.HideMapTooltip(cell)
+                end)
+                pcall(cell.Show, cell)
+            end
+            index = index + 1
+        end
+        local rows = math.floor((cellTotal - 1) / columns) + 1
+        y = y + rows * LOOT_CELL_SIZE + (rows - 1) * LOOT_CELL_GAP
+    end
+    HidePoolFrom(lootCells, cellTotal + 1)
+
+    local pager = spec.pager
+    if pager and not lootPager then
+        local create = Resolve("CreateFrame")
+        local ok, row = pcall(create, "Frame", "UnrealQuestLootPanelPager", panel)
+        if ok and row then
+            pcall(row.SetHeight, row, LOOT_PAGER_HEIGHT)
+            row.unrealQuestPrevious = PagerArrow(row, "UnrealQuestLootPanelPagerPrevious", "<")
+            row.unrealQuestNext = PagerArrow(row, "UnrealQuestLootPanelPagerNext", ">")
+            local labelOk, label = pcall(row.CreateFontString, row, nil, "OVERLAY",
+                "GameFontHighlightSmall")
+            if labelOk and label then
+                pcall(label.SetPoint, label, "CENTER", row, "CENTER", 0, 0)
+                row.unrealQuestLabel = label
+            end
+            if row.unrealQuestPrevious then
+                pcall(row.unrealQuestPrevious.SetPoint, row.unrealQuestPrevious,
+                    "RIGHT", row, "CENTER", -24, 0)
+            end
+            if row.unrealQuestNext then
+                pcall(row.unrealQuestNext.SetPoint, row.unrealQuestNext,
+                    "LEFT", row, "CENTER", 24, 0)
+            end
+            lootPager = row
+        end
+    end
+    if lootPager then
+        if pager then
+            y = y + LOOT_SECTION_GAP
+            pcall(lootPager.ClearAllPoints, lootPager)
+            pcall(lootPager.SetPoint, lootPager, "TOPLEFT", panel, "TOPLEFT", LOOT_PADDING, -y)
+            pcall(lootPager.SetWidth, lootPager, contentWidth)
+            if lootPager.unrealQuestLabel then
+                pcall(lootPager.unrealQuestLabel.SetText, lootPager.unrealQuestLabel, pager.text or "")
+            end
+            SetPagerArrow(lootPager.unrealQuestPrevious, pager.onPrevious)
+            SetPagerArrow(lootPager.unrealQuestNext, pager.onNext)
+            pcall(lootPager.Show, lootPager)
+            y = y + LOOT_PAGER_HEIGHT
+        else
+            pcall(lootPager.Hide, lootPager)
+        end
+    end
+    if noteTotal > 0 then
+        y = y + LOOT_SECTION_GAP
+        index = 1
+        while index <= noteTotal do
+            local note = lootNotes[index]
+            if note then
+                pcall(note.ClearAllPoints, note)
+                pcall(note.SetPoint, note, "TOPLEFT", panel, "TOPLEFT", LOOT_PADDING, -y)
+            end
+            y = y + LOOT_LINE_HEIGHT
+            index = index + 1
+        end
+    end
+
+    pcall(panel.SetWidth, panel, contentWidth + LOOT_PADDING * 2)
+    pcall(panel.SetHeight, panel, y + LOOT_PADDING)
+    -- Opens away from the nearer vertical edge of the map, so a long list on a
+    -- pin near the bottom grows upwards instead of running off the canvas.
+    local upwards = false
+    local canvas = Client.GetWorldMapCanvas()
+    if canvas and type(anchorFrame.GetCenter) == "function"
+        and type(canvas.GetCenter) == "function" then
+        local okPin, _, pinY = pcall(anchorFrame.GetCenter, anchorFrame)
+        local okCanvas, _, canvasY = pcall(canvas.GetCenter, canvas)
+        if okPin and okCanvas and type(pinY) == "number" and type(canvasY) == "number"
+            and pinY < canvasY then
+            upwards = true
+        end
+    end
+    pcall(panel.ClearAllPoints, panel)
+    if upwards then
+        pcall(panel.SetPoint, panel, "BOTTOMLEFT", anchorFrame, "TOPRIGHT", 4, 0)
+    else
+        pcall(panel.SetPoint, panel, "TOPLEFT", anchorFrame, "BOTTOMRIGHT", 4, 0)
+    end
+    Client.ApplyFlatTooltipStyle(panel, nil)
+    pcall(panel.Show, panel)
+    panel.unrealQuestOpenFor = anchorFrame
+
+    -- Levels are re-applied on every open, not only at creation: the canvas
+    -- level can change after the first open, and a catcher left under the
+    -- pins would let an outside click through to them instead of closing.
+    local floor = PinFloorLevel(canvas)
+    pcall(panel.SetFrameLevel, panel, floor + GIVER_MENU_LEVEL_BOOST)
+    local catcher = ResolveLootCatcher()
+    if catcher then
+        pcall(catcher.SetFrameLevel, catcher, floor + GIVER_MENU_CATCHER_LEVEL_BOOST)
+        pcall(catcher.Show, catcher)
+    end
+    if lootPager then
+        pcall(lootPager.SetFrameLevel, lootPager, floor + GIVER_MENU_LEVEL_BOOST + 1)
+        if lootPager.unrealQuestPrevious then
+            pcall(lootPager.unrealQuestPrevious.SetFrameLevel, lootPager.unrealQuestPrevious,
+                floor + GIVER_MENU_LEVEL_BOOST + 2)
+        end
+        if lootPager.unrealQuestNext then
+            pcall(lootPager.unrealQuestNext.SetFrameLevel, lootPager.unrealQuestNext,
+                floor + GIVER_MENU_LEVEL_BOOST + 2)
+        end
+    end
+    local pools = { lootCells, lootNotes }
+    local poolIndex = 1
+    while poolIndex <= 2 do
+        local pool = pools[poolIndex]
+        index = 1
+        while pool[index] do
+            pcall(pool[index].SetFrameLevel, pool[index], floor + GIVER_MENU_LEVEL_BOOST + 1)
+            index = index + 1
+        end
+        poolIndex = poolIndex + 1
+    end
+    return true
+end
+
+function Client.HideLootPanel()
+    if not lootPanel then
+        return false
+    end
+    HideLootPanelNow()
+    return true
+end
+
+-- Open state is this file's own bookkeeping, never IsShown: map-canvas
+-- children do not report visibility reliably here
+-- (docs/WORLD-MAP-PINS-RECOVERY.md), and a stale "shown" made the first click
+-- on a pin close a panel nobody could see instead of opening one.
+function Client.IsLootPanelOpenFor(anchorFrame)
+    return lootPanel ~= nil and anchorFrame ~= nil
+        and lootPanel.unrealQuestOpenFor == anchorFrame
+end
+
+function Client.IsLootPanelOpen()
+    return lootPanel ~= nil and lootPanel.unrealQuestOpenFor ~= nil
+end
 end
 
 -- Replaces a pin's surface image while keeping every other property of the
@@ -6029,38 +7002,202 @@ function Client.SetTrackerBackgroundOpacity(frame, percent)
 end
 
 -- Anchor capture and re-application ------------------------------------------
--- GetPoint's two documented deviations on this client are undone here so the
--- rest of the addon can treat an anchor as an ordinary SetPoint tuple.
+-- A captured anchor is returned as an ordinary SetPoint tuple the rest of the
+-- addon can store and replay against UIParent.
+--
+-- Offsets come from the frame's measured edges, never from GetPoint's own
+-- offsets. frames.getpoint_y_same_sign_as_setpoint (focused probe, 2026-09-17):
+-- for all nine same-name point pairs against UIParent, and for the TOPLEFT
+-- anchor the client writes after StartMoving/StopMovingOrSizing, GetPoint read
+-- Y back with the SAME sign SetPoint was given, 18 of 18. The negation this
+-- function used to apply (frames.getpoint_relative_name_y_inverted) therefore
+-- mirrored every saved position across its anchor. GetLeft/GetBottom and
+-- GetWidth/GetHeight are sign-safe and already in UIParent units whatever the
+-- frame's own scale (frames.own_scale_resizes_about_anchor_in_parent_space),
+-- so no scale conversion is applied. Only the point NAMES come from GetPoint.
 
-function Client.GetFrameAnchor(frame)
-    if not frame or type(frame.GetPoint) ~= "function" then
-        return nil
-    end
-    local ok, point, relative, relativePoint, offsetX, offsetY = pcall(frame.GetPoint, frame, 1)
-    if not ok or type(point) ~= "string" then
-        return nil
-    end
-    local relativeName = nil
-    if type(relative) == "string" then
-        relativeName = relative
-    elseif relative and type(relative.GetName) == "function" then
-        local nameOk, name = pcall(relative.GetName, relative)
-        if nameOk and type(name) == "string" then
-            relativeName = name
+-- Scoped: the file's main chunk is at the 200-local limit.
+do
+    local function AnchorPointFactor(point, low, high)
+        if type(point) ~= "string" then
+            return 0.5
         end
+        if string.find(point, low, 1, true) then
+            return 0
+        end
+        if string.find(point, high, 1, true) then
+            return 1
+        end
+        return 0.5
     end
-    if type(offsetX) ~= "number" then
-        offsetX = 0
+
+    local function IsUIParentObject(object, uiParent)
+        return object == uiParent
+            or (type(object) == "string" and object == "UIParent")
     end
-    if type(offsetY) ~= "number" then
-        offsetY = 0
+
+    -- The point pair a frame is captured through: its own when it has exactly one
+    -- point relative to UIParent (keeps its growth direction), TOPLEFT otherwise.
+    local function AnchorPointNames(frame, uiParent)
+        local count = ReadObjectMethod(frame, "GetNumPoints")
+        if type(frame.GetPoint) == "function" and (count == nil or count == 1) then
+            local ok, point, relative, relativePoint = pcall(frame.GetPoint, frame, 1)
+            if ok and type(point) == "string"
+                and (relative == nil or IsUIParentObject(relative, uiParent)) then
+                return point, type(relativePoint) == "string" and relativePoint or point
+            end
+        end
+        return "TOPLEFT", "TOPLEFT"
     end
-    -- The sign inversion, undone: this returns the offset SetPoint would have
-    -- to be given to reproduce the frame's current position.
-    return point, relativeName, relativePoint, offsetX, -offsetY
+
+    -- Where a UIParent child is, as SetPoint(point, UIParent, relativePoint, x, y)
+    -- arguments derived from its edges; nil when it is not a UIParent child or its
+    -- geometry cannot be read.
+    local function MeasuredFrameAnchor(frame)
+        local uiParent = ResolveObject("UIParent")
+        if not uiParent or not IsUIParentObject(ReadObjectMethod(frame, "GetParent"), uiParent) then
+            return nil
+        end
+        local left, bottom = Client.GetObjectCorner(frame)
+        local width = Client.GetObjectWidth(frame)
+        local height = Client.GetObjectHeight(frame)
+        local parentWidth = Client.GetObjectWidth(uiParent)
+        local parentHeight = Client.GetObjectHeight(uiParent)
+        if not left or not width or not height or width <= 0 or height <= 0
+            or not parentWidth or not parentHeight
+            or parentWidth <= 0 or parentHeight <= 0 then
+            return nil
+        end
+        local point, relativePoint = AnchorPointNames(frame, uiParent)
+        local x = left + width * AnchorPointFactor(point, "LEFT", "RIGHT")
+            - parentWidth * AnchorPointFactor(relativePoint, "LEFT", "RIGHT")
+        local y = bottom + height * AnchorPointFactor(point, "BOTTOM", "TOP")
+            - parentHeight * AnchorPointFactor(relativePoint, "BOTTOM", "TOP")
+        return point, "UIParent", relativePoint, x, y
+    end
+
+    -- Pulls a UIParent-anchored frame back fully on screen after it was placed
+    -- at SetPoint(point, UIParent, relativePoint, offsetX, offsetY), and returns
+    -- the offsets it now sits at plus whether they changed, so the caller can
+    -- persist them. A position saved before GetFrameAnchor read edges was stored
+    -- mirrored across its anchor and can sit wholly off screen; this heals it on
+    -- every player's client without a command.
+    --
+    -- The correction is the measured overshoot of the frame's edges added to the
+    -- offsets the caller just passed, never to GetPoint's offsets: that is the
+    -- mistake that made unrealUI's guard double its error every pass
+    -- (frames.getpoint_y_same_sign_as_setpoint). An offset moves the frame one
+    -- for one in UIParent units, whatever the frame's own scale
+    -- (frames.own_scale_resizes_about_anchor_in_parent_space). A frame larger
+    -- than the screen keeps its left and top edges on screen.
+    --
+    -- The rectangle clamped is what the frame DRAWS, so a drop against any edge
+    -- lands flush with it. A frame whose drawing does not fill its own rectangle
+    -- says so in frame.unrealQuestScreenInsets ({ left, right, top, bottom }, in
+    -- its own units, positive = inside, negative = drawn outside); they are
+    -- multiplied by the frame's own scale into the UIParent units its edges
+    -- report in. The navigator needs it: its frame has 82 units of empty room
+    -- above the arc, and clamping that pushed the arrow down whenever it was
+    -- dropped against the top of the screen (user report 2026-09-18).
+    local function ScreenInsets(frame)
+        local insets = frame.unrealQuestScreenInsets
+        if type(insets) ~= "table" then
+            return 0, 0, 0, 0
+        end
+        local scale = ReadObjectMethod(frame, "GetScale")
+        if type(scale) ~= "number" or scale <= 0 then
+            scale = 1
+        end
+        return (insets.left or 0) * scale, (insets.right or 0) * scale,
+            (insets.top or 0) * scale, (insets.bottom or 0) * scale
+    end
+
+    function Client.KeepFrameOnScreen(frame, point, relativePoint, offsetX, offsetY)
+        if type(offsetX) ~= "number" or type(offsetY) ~= "number" then
+            return offsetX, offsetY, false
+        end
+        local uiParent = ResolveObject("UIParent")
+        local left, bottom = Client.GetObjectCorner(frame)
+        local width = Client.GetObjectWidth(frame)
+        local height = Client.GetObjectHeight(frame)
+        local parentWidth = uiParent and Client.GetObjectWidth(uiParent)
+        local parentHeight = uiParent and Client.GetObjectHeight(uiParent)
+        if not left or not width or not height or width <= 0 or height <= 0
+            or not parentWidth or not parentHeight
+            or parentWidth <= 0 or parentHeight <= 0 then
+            return offsetX, offsetY, false
+        end
+        local insetLeft, insetRight, insetTop, insetBottom = ScreenInsets(frame)
+        left = left + insetLeft
+        bottom = bottom + insetBottom
+        width = width - insetLeft - insetRight
+        height = height - insetTop - insetBottom
+        if width <= 0 or height <= 0 then
+            return offsetX, offsetY, false
+        end
+        local dx, dy = 0, 0
+        if width >= parentWidth or left < 0 then
+            dx = -left
+        elseif left + width > parentWidth then
+            dx = parentWidth - (left + width)
+        end
+        if height >= parentHeight or bottom + height > parentHeight then
+            dy = parentHeight - (bottom + height)
+        elseif bottom < 0 then
+            dy = -bottom
+        end
+        if math.abs(dx) < 0.5 and math.abs(dy) < 0.5 then
+            return offsetX, offsetY, false
+        end
+        local x, y = offsetX + dx, offsetY + dy
+        if type(frame.ClearAllPoints) == "function" then
+            pcall(frame.ClearAllPoints, frame)
+        end
+        if not pcall(frame.SetPoint, frame, point, uiParent,
+            relativePoint or point, x, y) then
+            return offsetX, offsetY, false
+        end
+        return x, y, true
+    end
+
+    function Client.GetFrameAnchor(frame)
+        if not frame or type(frame.GetPoint) ~= "function" then
+            return nil
+        end
+        local measuredPoint, measuredRelative, measuredRelativePoint, measuredX, measuredY =
+            MeasuredFrameAnchor(frame)
+        if measuredPoint then
+            return measuredPoint, measuredRelative, measuredRelativePoint, measuredX, measuredY
+        end
+        -- Not a UIParent child: the raw GetPoint tuple, with the relative frame
+        -- normalized to its name. Its Y sign against a non-UIParent relative is
+        -- unmeasured (frames.getpoint_callers_sign_audit), so the old negation is
+        -- kept here rather than guessed away. Every current caller moves a
+        -- UIParent child and never reaches this branch.
+        local ok, point, relative, relativePoint, offsetX, offsetY = pcall(frame.GetPoint, frame, 1)
+        if not ok or type(point) ~= "string" then
+            return nil
+        end
+        local relativeName = nil
+        if type(relative) == "string" then
+            relativeName = relative
+        elseif relative and type(relative.GetName) == "function" then
+            local nameOk, name = pcall(relative.GetName, relative)
+            if nameOk and type(name) == "string" then
+                relativeName = name
+            end
+        end
+        if type(offsetX) ~= "number" then
+            offsetX = 0
+        end
+        if type(offsetY) ~= "number" then
+            offsetY = 0
+        end
+        return point, relativeName, relativePoint, offsetX, -offsetY
+    end
 end
 
-function Client.SetFrameAnchor(frame, point, relativeName, relativePoint, offsetX, offsetY)
+function Client.SetFrameAnchor(frame, point, relativeName, relativePoint, offsetX, offsetY, skipScreenGuard)
     if not frame or type(frame.SetPoint) ~= "function" or type(point) ~= "string" then
         return false
     end
@@ -6077,11 +7214,19 @@ function Client.SetFrameAnchor(frame, point, relativeName, relativePoint, offset
     if type(frame.ClearAllPoints) == "function" then
         pcall(frame.ClearAllPoints, frame)
     end
-    local ok = pcall(frame.SetPoint, frame, point, relative,
-        type(relativePoint) == "string" and relativePoint or point,
-        type(offsetX) == "number" and offsetX or 0,
-        type(offsetY) == "number" and offsetY or 0)
-    return ok and true or false
+    relativePoint = type(relativePoint) == "string" and relativePoint or point
+    offsetX = type(offsetX) == "number" and offsetX or 0
+    offsetY = type(offsetY) == "number" and offsetY or 0
+    if not pcall(frame.SetPoint, frame, point, relative, relativePoint, offsetX, offsetY) then
+        return false
+    end
+    -- Every caller stores a UIParent-relative position; one that would leave
+    -- the frame off screen is corrected here and handed back to be saved.
+    if skipScreenGuard or relative ~= ResolveObject("UIParent") then
+        return true, offsetX, offsetY, false
+    end
+    local x, y, moved = Client.KeepFrameOnScreen(frame, point, relativePoint, offsetX, offsetY)
+    return true, x, y, moved
 end
 
 -- Buttons ---------------------------------------------------------------------
@@ -6174,6 +7319,21 @@ local QuestLogSkin = {
     cellHeight = 125,
     barWidth = 291,
     cap = 24,
+    -- How far the action row's label sits below the button's centre.
+    --
+    -- This client reserves the font's descender inside a FontString's line box
+    -- and centres that BOX, so a descenderless word like Show, Track or Follow
+    -- draws above true visual centre. The gap is a property of the font, not of
+    -- the label's rect, so it cannot be computed away by sizing the rect -- it
+    -- is corrected by moving the label, and this is that correction. One unit
+    -- is one pixel, more negative is lower. Nothing else places the label.
+    --
+    -- Measured, not guessed: two screenshots of the live row, at -4 and at -6,
+    -- put the glyph block 7.56px and 4.77px above the button art's own centre
+    -- once the capture scale was taken out of them, which puts true centre at
+    -- -10.8. The reserved descender of GameFontNormalSmall at this row height
+    -- is what the number is made of.
+    labelOffsetY = -11,
     skins = {
         red = {
             path = "Interface\\AddOns\\unrealQuest\\media\\128RedButton",
@@ -6235,9 +7395,324 @@ function QuestLogSkin.Paint(button, hover)
     local state = hover and skin.hover or skin.normal
     local cap = QuestLogSkin.cap
     local bar = QuestLogSkin.barWidth
+    -- The carrier backend (Client.UseQuestLogButtonNormalTextureSkin) carves
+    -- the atlas exactly as the sliced one below does -- left cap from the cap
+    -- row, middle and right cap from the bar row, which opens FLAT at x = 0
+    -- and carries its own rounded cap only at [bar - cap, bar]. The difference
+    -- is only where each piece lands: on its own carrier button, each filling
+    -- it edge to edge, so no piece is stretched across another and no red bar
+    -- can run out past the left cap.
     QuestLogSkin.SetSlice(slices[1], skin, state.capLeft, state.capLeft + cap, state.capTop)
     QuestLogSkin.SetSlice(slices[2], skin, cap, bar - cap, state.barTop)
     QuestLogSkin.SetSlice(slices[3], skin, bar - cap, bar, state.barTop)
+end
+
+-- The quest log's own action row draws its skin without a single SetPoint.
+--
+-- questlogbuttons.scroll_region_kinds.v2 (PARTIAL, 3743 frames, modern-wow,
+-- and v1 before it over 8998): once QuestLogDetailScrollChildFrame is scrolled
+-- off its top, EVERY region positioned by SetPoint inside it reports a stale
+-- position for a frame. Our three skin slices, our CENTER-anchored label, a
+-- lone texture, a texture chained off another and a texture the scroll child
+-- itself owns all flipped in exact lockstep -- 9 flips while the window was
+-- dragged and 34 at rest -- and so did the native reward icon and its name,
+-- the two native regions QuestLog_Update re-anchors. Three shapes never
+-- flipped once in either run: a Button's NormalTexture, a Button's own
+-- FontString, and a texture filling its Button with SetAllPoints. None of the
+-- three is positioned by SetPoint. That is the whole rule, and it matches what
+-- the player sees: the row is steady at the top of the pane and flickers only
+-- once it is scrolled down.
+--
+-- So this row's art becomes the button's own NormalTexture and its label is
+-- stretched over the button with SetAllPoints. The three-slice carve is what
+-- that costs: the caps were already drawn 5.8px wide here against the 6.9px a
+-- whole-bar stretch gives, so it is the same picture within a pixel. The
+-- CENTER label anchor went with it, and with it the -2px optical correction
+-- CreateStyledTextButton applies elsewhere; SetAllPoints plus JustifyV MIDDLE
+-- is the nearest SetPoint-free equivalent.
+--
+-- Opt-in, and only these three buttons take it: nothing else this file skins
+-- lives inside a scroll child, and the native footer buttons must keep their
+-- own NormalTexture.
+function Client.UseQuestLogButtonNormalTextureSkin(button)
+    if not button or type(button.SetNormalTexture) ~= "function"
+        or type(button.GetNormalTexture) ~= "function" then
+        return false
+    end
+    button.unrealQuestSkinNormalTexture = true
+    -- The label cannot keep the CENTER anchor CreateStyledTextButton gives it,
+    -- and SetAllPoints alone cannot carry the optical correction that anchor
+    -- existed for: this client centres a FontString's glyphs within their line
+    -- height rather than their cap height, so a stretched label reads high.
+    -- The nudge moves to a carrier button instead, and the label fills that.
+    local host = button.unrealQuestLabelHost
+    if not host then
+        host = QuestLogSkin.BuildChildButton(button, "TOPLEFT", 0,
+            QuestLogSkin.labelOffsetY)
+        -- Above the cap's carrier, which is a sibling at the same level and
+        -- would otherwise win on creation order.
+        if host and type(host.SetFrameLevel) == "function"
+            and type(button.GetFrameLevel) == "function" then
+            local levelOk, level = pcall(button.GetFrameLevel, button)
+            if levelOk and type(level) == "number" then
+                pcall(host.SetFrameLevel, host, level + 3)
+            end
+        end
+        button.unrealQuestLabelHost = host
+    end
+    if not host or type(host.CreateFontString) ~= "function" then
+        return false
+    end
+    local hosted = button.unrealQuestLabelHosted
+    if not hosted then
+        local ok, created = pcall(host.CreateFontString, host, nil, "OVERLAY",
+            "GameFontNormalSmall")
+        if not ok or not created then
+            return false
+        end
+        hosted = created
+        button.unrealQuestLabelHosted = hosted
+    end
+    if type(hosted.SetAllPoints) == "function" then
+        pcall(hosted.SetAllPoints, hosted, host)
+    end
+    if type(hosted.SetJustifyH) == "function" then
+        pcall(hosted.SetJustifyH, hosted, "CENTER")
+    end
+    if type(hosted.SetJustifyV) == "function" then
+        pcall(hosted.SetJustifyV, hosted, "MIDDLE")
+    end
+    if type(hosted.SetTextColor) == "function" then
+        pcall(hosted.SetTextColor, hosted, 0.90, 0.90, 0.90, 1.00)
+    end
+    -- The row's own label stays, empty and hidden: Client.SetButtonLabel and
+    -- everything else that writes text goes through button.unrealQuestLabel,
+    -- so that field becomes the hosted one.
+    local label = button.unrealQuestLabel
+    if label then
+        if type(label.GetText) == "function" then
+            local textOk, text = pcall(label.GetText, label)
+            if textOk and text and type(hosted.SetText) == "function" then
+                pcall(hosted.SetText, hosted, text)
+            end
+        end
+        Client.HideObject(label)
+    end
+    button.unrealQuestLabel = hosted
+    button.unrealQuestCarrierWidth = nil
+    QuestLogSkin.SyncCarriers(button)
+    return true
+end
+
+-- Hand a carrier's mouse events back to the button it covers. Read through
+-- GetScript on every event rather than captured once: the row button's OnClick
+-- is installed by Quest/QuestLogButtons.lua after the carriers exist.
+function QuestLogSkin.ForwardMouse(child, owner)
+    local scripts = { "OnEnter", "OnLeave", "OnClick" }
+    local index = 1
+    while index <= table.getn(scripts) do
+        local scriptType = scripts[index]
+        Client.SetObjectScript(child, scriptType, function()
+            if not owner or type(owner.GetScript) ~= "function" then
+                return
+            end
+            local ok, handler = pcall(owner.GetScript, owner, scriptType)
+            if ok and type(handler) == "function" then
+                handler()
+            end
+        end)
+        index = index + 1
+    end
+end
+
+-- One carrier for a piece of the row that cannot be the row button's own
+-- NormalTexture: a child BUTTON placed with a single SetPoint and an explicit
+-- size. That is the exact shape both region runs measured steady inside the
+-- scrolled scroll child -- such a Button, its NormalTexture and its own
+-- FontString never flipped once across 12741 frames, while a child FRAME's
+-- texture flipped with everything else. Mouse disabled, so the row button
+-- keeps its own hover.
+function QuestLogSkin.BuildChildButton(button, point, offsetX, offsetY)
+    local create = Resolve("CreateFrame")
+    if not create then
+        return nil
+    end
+    local ok, child = pcall(create, "Button", nil, button)
+    if not ok or not child then
+        return nil
+    end
+    -- The mouse stays ENABLED and is handed back to the row button.
+    -- gamemenu.classic_visual_overlay_intercepts_native_rows
+    -- (RUNTIME_FAILURE_CONFIRMED, USER_CONFIRMED_INGAME): on this client a
+    -- Button drawn above another still swallows its input after
+    -- EnableMouse(false), so a carrier cannot be made transparent -- it has to
+    -- pass on what it catches. Both frames here are this addon's own and the
+    -- handlers are its own Lua closures, so this is not the native-handler
+    -- call that is confirmed to crash the client.
+    if type(child.EnableMouse) == "function" then
+        pcall(child.EnableMouse, child, true)
+    end
+    if type(child.RegisterForClicks) == "function" then
+        pcall(child.RegisterForClicks, child, "LeftButtonUp")
+    end
+    QuestLogSkin.ForwardMouse(child, button)
+    if type(child.SetPoint) ~= "function"
+        or not pcall(child.SetPoint, child, point, button, point, offsetX, offsetY) then
+        return nil
+    end
+    if type(button.GetFrameLevel) == "function"
+        and type(child.SetFrameLevel) == "function" then
+        local levelOk, level = pcall(button.GetFrameLevel, button)
+        if levelOk and type(level) == "number" then
+            pcall(child.SetFrameLevel, child, level + 1)
+        end
+    end
+    return child
+end
+
+-- Every carrier is placed with a single SetPoint and an explicit size, so none
+-- of them follows the row button when it is resized for a different surface.
+-- This is the one place that places and sizes them, and it does so only on a
+-- real change: the quest log calls into the skin on every poll. The cap width
+-- is the atlas cap scaled to the row's height, the same figure the sliced
+-- backend gives its own caps.
+function QuestLogSkin.SyncCarriers(button)
+    local width = Client.GetObjectWidth(button)
+    local height = Client.GetObjectHeight(button)
+    if type(width) ~= "number" or type(height) ~= "number" then
+        return
+    end
+    if button.unrealQuestCarrierWidth == width
+        and button.unrealQuestCarrierHeight == height then
+        return
+    end
+    button.unrealQuestCarrierWidth = width
+    button.unrealQuestCarrierHeight = height
+    local cap = height * QuestLogSkin.cap / QuestLogSkin.cellHeight
+    local middle = width - cap * 2
+    if middle < 1 then
+        middle = 1
+    end
+    local carriers = button.unrealQuestSkinCarriers
+    if carriers then
+        QuestLogSkin.PlaceCarrier(carriers.capLeft, button, "TOPLEFT", 0, 0,
+            cap, height)
+        QuestLogSkin.PlaceCarrier(carriers.bar, button, "TOPLEFT", cap, 0,
+            middle, height)
+        QuestLogSkin.PlaceCarrier(carriers.capRight, button, "TOPRIGHT", 0, 0,
+            cap, height)
+    end
+    -- Re-fitted rather than stretched, and re-fitted from scratch because the
+    -- row just changed size under it.
+    button.unrealQuestLabelHostWidth = nil
+    QuestLogSkin.FitLabelHost(button)
+end
+
+-- The label's carrier is fitted to the text, centred on the button.
+--
+-- This does NOT fix the vertical reading -- the glyphs sit the same way inside
+-- a tall rect as inside a short one, because the line box is the font's, not
+-- the rect's; QuestLogSkin.labelOffsetY is what corrects that. What fitting
+-- buys is mouse: a carrier cannot be made transparent on this client (see
+-- QuestLogSkin.ForwardMouse), so the smaller it is, the less of the row button
+-- it has to hand back.
+--
+-- Re-fitted whenever the text changes, because Track becomes Untrack and every
+-- locale measures differently. Falls back to the button's own rect if the
+-- string cannot be measured yet, which is only true before the first layout.
+function QuestLogSkin.FitLabelHost(button)
+    local host = button and button.unrealQuestLabelHost
+    local label = button and button.unrealQuestLabel
+    if not host or not label then
+        return
+    end
+    local width = ReadObjectMethod(label, "GetStringWidth")
+    local height = ReadObjectMethod(label, "GetStringHeight")
+    if type(width) ~= "number" or type(height) ~= "number"
+        or width < 1 or height < 1 then
+        width = button.unrealQuestCarrierWidth
+        height = button.unrealQuestCarrierHeight
+        if type(width) ~= "number" or type(height) ~= "number" then
+            return
+        end
+    end
+    if button.unrealQuestLabelHostWidth == width
+        and button.unrealQuestLabelHostHeight == height then
+        return
+    end
+    button.unrealQuestLabelHostWidth = width
+    button.unrealQuestLabelHostHeight = height
+    QuestLogSkin.PlaceCarrier(host, button, "CENTER", 0,
+        QuestLogSkin.labelOffsetY, width, height)
+end
+
+function QuestLogSkin.ShowCarriers(button, shown)
+    local carriers = button and button.unrealQuestSkinCarriers
+    if not carriers then
+        return
+    end
+    local order = { carriers.capLeft, carriers.bar, carriers.capRight }
+    local index = 1
+    while index <= 3 do
+        if shown then
+            Client.ShowObject(order[index])
+        else
+            Client.HideObject(order[index])
+        end
+        index = index + 1
+    end
+end
+
+function QuestLogSkin.PlaceCarrier(child, button, point, offsetX, offsetY,
+    width, height)
+    if not child then
+        return
+    end
+    if type(child.ClearAllPoints) == "function" then
+        pcall(child.ClearAllPoints, child)
+    end
+    if type(child.SetPoint) == "function" then
+        pcall(child.SetPoint, child, point, button, point, offsetX, offsetY)
+    end
+    Client.SetObjectSize(child, width, height)
+end
+
+-- One carrier per piece, each drawing it as its own NormalTexture. The row
+-- button's own NormalTexture is deliberately left alone: it fills the whole
+-- button, so the bar drawn there ran on underneath the left cap and showed
+-- past it wherever the cap art is not fully opaque.
+function QuestLogSkin.BuildCarrierSkin(button, skin)
+    local carriers = button.unrealQuestSkinCarriers
+    if not carriers then
+        carriers = {
+            capLeft = QuestLogSkin.BuildChildButton(button, "TOPLEFT", 0, 0),
+            bar = QuestLogSkin.BuildChildButton(button, "TOPLEFT", 0, 0),
+            capRight = QuestLogSkin.BuildChildButton(button, "TOPRIGHT", 0, 0),
+        }
+        if not carriers.capLeft or not carriers.bar or not carriers.capRight then
+            return nil
+        end
+        button.unrealQuestSkinCarriers = carriers
+    end
+    local order = { carriers.capLeft, carriers.bar, carriers.capRight }
+    local textures = {}
+    local index = 1
+    while index <= 3 do
+        local child = order[index]
+        if not pcall(child.SetNormalTexture, child, skin.path) then
+            return nil
+        end
+        local ok, texture = pcall(child.GetNormalTexture, child)
+        if not ok or not texture or type(texture.SetTexCoord) ~= "function" then
+            return nil
+        end
+        textures[index] = texture
+        index = index + 1
+    end
+    button.unrealQuestCarrierWidth = nil
+    QuestLogSkin.SyncCarriers(button)
+    button.unrealQuestSkinSlices = textures
+    return textures
 end
 
 function QuestLogSkin.BuildSlices(button)
@@ -6283,25 +7758,39 @@ function Client.SetQuestLogButtonSkin(button, skinName)
         end
     end
     local wanted = skin and skinName or nil
+    if button.unrealQuestSkinNormalTexture then
+        QuestLogSkin.SyncCarriers(button)
+    end
     if button.unrealQuestSkin == wanted and button.unrealQuestSkinHeight == height then
         return skin ~= nil
     end
 
     button.unrealQuestDiagApplies = (button.unrealQuestDiagApplies or 0) + 1
+    local normalTexture = button.unrealQuestSkinNormalTexture
     local slices = button.unrealQuestSkinSlices
     if skin and not slices then
-        slices = QuestLogSkin.BuildSlices(button)
+        if normalTexture then
+            slices = QuestLogSkin.BuildCarrierSkin(button, skin)
+        else
+            slices = QuestLogSkin.BuildSlices(button)
+        end
     end
     if skin and slices then
-        local cap = height * QuestLogSkin.cap / QuestLogSkin.cellHeight
         local index = 1
         while index <= 3 do
             pcall(slices[index].SetTexture, slices[index], skin.path)
             Client.ShowObject(slices[index])
             index = index + 1
         end
-        pcall(slices[1].SetWidth, slices[1], cap)
-        pcall(slices[3].SetWidth, slices[3], cap)
+        if normalTexture then
+            -- The carriers are what is sized, by QuestLogSkin.SyncCarriers;
+            -- their textures fill them and have no point of their own to keep.
+            QuestLogSkin.ShowCarriers(button, true)
+        else
+            local cap = height * QuestLogSkin.cap / QuestLogSkin.cellHeight
+            pcall(slices[1].SetWidth, slices[1], cap)
+            pcall(slices[3].SetWidth, slices[3], cap)
+        end
         -- Vertex alpha, not SetAlpha, is this client's working translucency.
         SetFlatBorderColor(button, 0, 0, 0, 0)
         if type(button.SetBackdropColor) == "function" then
@@ -6314,10 +7803,13 @@ function Client.SetQuestLogButtonSkin(button, skinName)
         QuestLogSkin.Paint(button, false)
     else
         if slices then
-            Client.HideObject(slices[1])
-            Client.HideObject(slices[2])
-            Client.HideObject(slices[3])
+            local index = 1
+            while index <= table.getn(slices) do
+                Client.HideObject(slices[index])
+                index = index + 1
+            end
         end
+        QuestLogSkin.ShowCarriers(button, false)
         button.unrealQuestSkin = nil
         QuestLogSkin.ApplyFlat(button, button.unrealQuestActive)
     end
@@ -7266,22 +8758,31 @@ function QuestLogRewardRows.CreateRow(dock, name)
     if not ok or not created then
         return nil
     end
-    -- A dark drop shadow so the experience and reputation lines read on both
-    -- parchment and dark page art. unrealUI's U.SetTextShadow recipe on this
-    -- client: colour first, retried without alpha for a client that refuses
-    -- the fourth argument (FontString:SetShadowColor is documented as r, g, b),
-    -- then a one-pixel offset.
-    if type(created.SetShadowColor) == "function"
-        and not pcall(created.SetShadowColor, created, 0, 0, 0, 1) then
-        pcall(created.SetShadowColor, created, 0, 0, 0)
-    end
-    if type(created.SetShadowOffset) == "function" then
-        pcall(created.SetShadowOffset, created, 1, -1)
-    end
+    QuestLogRewardRows.SetRowShadow(created, true)
     if type(created.SetJustifyH) == "function" then
         pcall(created.SetJustifyH, created, "LEFT")
     end
     return created
+end
+
+-- A dark drop shadow so the experience and reputation lines read on both
+-- parchment and dark page art. unrealUI's U.SetTextShadow recipe on this
+-- client: colour first, retried without alpha for a client that refuses the
+-- fourth argument (FontString:SetShadowColor is documented as r, g, b), then
+-- a one-pixel offset. Off is a zero offset, StripShadow's recipe -- the
+-- modern-wow Quest Log draws these rows without one (by request).
+function QuestLogRewardRows.SetRowShadow(row, enabled)
+    if enabled then
+        if type(row.SetShadowColor) == "function"
+            and not pcall(row.SetShadowColor, row, 0, 0, 0, 1) then
+            pcall(row.SetShadowColor, row, 0, 0, 0)
+        end
+        if type(row.SetShadowOffset) == "function" then
+            pcall(row.SetShadowOffset, row, 1, -1)
+        end
+    else
+        StripShadow(row)
+    end
 end
 
 -- The X the reward block's own TEXT starts at.
@@ -7796,7 +9297,8 @@ function Client.SetQuestRewardSummary(surfaceName, lines)
         local line = lines[keyIndex]
         if type(line) == "table" then
             table.insert(keyParts, tostring(line.text) .. ":" .. tostring(line.r)
-                .. ":" .. tostring(line.g) .. ":" .. tostring(line.b))
+                .. ":" .. tostring(line.g) .. ":" .. tostring(line.b)
+                .. ":" .. tostring(line.noShadow))
         end
         keyIndex = keyIndex + 1
     end
@@ -7824,6 +9326,7 @@ function Client.SetQuestRewardSummary(surfaceName, lines)
                 if text and line.r then
                     pcall(row.SetTextColor, row, line.r, line.g, line.b)
                 end
+                QuestLogRewardRows.SetRowShadow(row, not (text and line.noShadow))
                 if type(row.SetPoint) == "function" then
                     -- Grid position, not line position: column 0 or 1 across,
                     -- and only every second entry starts a new line. Derived
@@ -8735,6 +10238,33 @@ function Client.GetQuestLogDetailAnchor()
     return ResolveObject("QuestLogDetailScrollFrame")
 end
 
+-- How far that viewport has been scrolled, for the caller that draws in its
+-- resting top-right corner: the flag row is parented to QuestLogFrame and so
+-- does NOT travel with the scroll child, which is what keeps it on screen at
+-- rest and what puts it on top of the description the moment the text slides
+-- up under it.
+--
+-- OFFICIAL_CLIENT_DOCUMENTATION: ScrollFrame:GetVerticalScroll() returns the
+-- current vertical offset. It is more than documentation here:
+-- questlogbuttons.scroll_move_flicker.v2 (BEHAVIOR_PARTIALLY_TESTED,
+-- 2026-09-18) read it off this very frame to count its 52 scrolling frames, so
+-- the method answers on this client on this pane.
+--
+-- nil, not 0, when the pane or the method is absent: "cannot measure" and "at
+-- the top" are different answers, and a caller that hides on scroll must not
+-- hide a surface it never measured.
+function Client.GetQuestLogDetailScrollOffset()
+    local scroll = ResolveObject("QuestLogDetailScrollFrame")
+    if not scroll or type(scroll.GetVerticalScroll) ~= "function" then
+        return nil
+    end
+    local ok, value = pcall(scroll.GetVerticalScroll, scroll)
+    if not ok or type(value) ~= "number" then
+        return nil
+    end
+    return value
+end
+
 -- Anchored to that viewport but PARENTED TO QuestLogFrame, and the split
 -- matters both ways. Not the scroll child, which is what the scroll frame
 -- moves: a flag in there would slide away with the description text the first
@@ -8960,6 +10490,8 @@ function Client.SetButtonLabel(button, text, red, green, blue)
         local ok = pcall(label.SetText, label, nextText)
         if ok then
             button.unrealQuestLabelText = nextText
+            -- Track becomes Untrack, and the carrier is sized to the string.
+            QuestLogSkin.FitLabelHost(button)
         end
     end
     if red and type(label.SetTextColor) == "function" then
@@ -12327,7 +13859,8 @@ end
 -- transparent, mouse-disabled offset above the dial.
 -- One layout record also keeps this already-large compatibility chunk below
 -- Lua's 200-local compilation limit.
-local NAVIGATOR_LAYOUT = { arrowOffsetY = -14, dialTopOffset = 82 }
+local NAVIGATOR_LAYOUT = { arrowOffsetY = -14, dialTopOffset = 82,
+    readoutGap = 8, captionGap = 4, textHeight = 14 }
 
 -- Builds the navigator's arc and arrow.
 --
@@ -12370,6 +13903,20 @@ function Client.CreateNavigator(name, arcWidth, arrowSize, withTitle)
     end
     pcall(frame.SetWidth, frame, arcWidth)
     pcall(frame.SetHeight, frame, NAVIGATOR_LAYOUT.dialTopOffset + arrowSize)
+    -- What the tree actually draws, for Client.KeepFrameOnScreen: the top is
+    -- the arc's upper edge (centred in the dial, below the empty room reserved
+    -- above it) or the caption above the arc; the bottom is the distance line,
+    -- which hangs below the dial under the lowered arrow.
+    local arcHeight = arcWidth * 257 / 512
+    local drawnTop = NAVIGATOR_LAYOUT.dialTopOffset + (arrowSize - arcHeight) / 2
+    if withTitle then
+        drawnTop = drawnTop - NAVIGATOR_LAYOUT.captionGap - NAVIGATOR_LAYOUT.textHeight
+    end
+    frame.unrealQuestScreenInsets = {
+        left = 0, right = 0, top = drawnTop,
+        bottom = NAVIGATOR_LAYOUT.arrowOffsetY - NAVIGATOR_LAYOUT.readoutGap
+            - NAVIGATOR_LAYOUT.textHeight,
+    }
 
     -- The arc and the arrow ------------------------------------------------
     -- The arrow is shifted down a few visual pixels from the arc's centre so
@@ -12419,7 +13966,8 @@ function Client.CreateNavigator(name, arcWidth, arrowSize, withTitle)
             local distanceOk, distance = pcall(
                 dial.CreateFontString, dial, nil, "OVERLAY", "GameFontNormal")
             if distanceOk and distance then
-                pcall(distance.SetPoint, distance, "TOP", arrow, "BOTTOM", 0, -8)
+                pcall(distance.SetPoint, distance, "TOP", arrow, "BOTTOM", 0,
+                    -NAVIGATOR_LAYOUT.readoutGap)
                 if type(distance.SetWidth) == "function" then
                     -- The quest navigator adds a localized ETA beside the yard
                     -- count. Use the arc's width so the centred row is not clipped.
@@ -12445,7 +13993,8 @@ function Client.CreateNavigator(name, arcWidth, arrowSize, withTitle)
             local titleOk, title = pcall(
                 dial.CreateFontString, dial, nil, "OVERLAY", "GameFontNormal")
             if titleOk and title then
-                pcall(title.SetPoint, title, "BOTTOM", arc, "TOP", 0, 4)
+                pcall(title.SetPoint, title, "BOTTOM", arc, "TOP", 0,
+                    NAVIGATOR_LAYOUT.captionGap)
                 if type(title.SetWidth) == "function" then
                     pcall(title.SetWidth, title, arcWidth)
                 end
@@ -12585,7 +14134,8 @@ function Client.SetNavigatorTitleText(frame, text)
 end
 
 -- Places the navigator at its saved UIParent-relative anchor and applies the
--- complete-tree scale before it is shown.
+-- complete-tree scale before it is shown. Returns true plus the offsets it
+-- ended at and whether the screen guard had to move it.
 function Client.PositionNavigator(frame, offsetX, offsetY, scale, point, relativePoint)
     if not frame or type(frame.SetPoint) ~= "function" then
         return false
@@ -12600,11 +14150,11 @@ function Client.PositionNavigator(frame, offsetX, offsetY, scale, point, relativ
     if type(frame.ClearAllPoints) == "function" then
         pcall(frame.ClearAllPoints, frame)
     end
-    local ok = pcall(frame.SetPoint, frame,
-        type(point) == "string" and point or "TOP", parent,
-        type(relativePoint) == "string" and relativePoint or "CENTER",
-        type(offsetX) == "number" and offsetX or 0,
-        type(offsetY) == "number" and offsetY or 0)
+    point = type(point) == "string" and point or "TOP"
+    relativePoint = type(relativePoint) == "string" and relativePoint or "CENTER"
+    offsetX = type(offsetX) == "number" and offsetX or 0
+    offsetY = type(offsetY) == "number" and offsetY or 0
+    local ok = pcall(frame.SetPoint, frame, point, parent, relativePoint, offsetX, offsetY)
     if not ok then
         return false
     end
@@ -12613,7 +14163,10 @@ function Client.PositionNavigator(frame, offsetX, offsetY, scale, point, relativ
     -- to read from a bug report: every counter climbing, zero failures, and
     -- nothing on screen -- because positioning a hidden frame succeeds.
     pcall(frame.Show, frame)
-    return true
+    -- A saved anchor that leaves the dial off screen is pulled back and handed
+    -- to the caller to persist (Client.KeepFrameOnScreen).
+    local x, y, moved = Client.KeepFrameOnScreen(frame, point, relativePoint, offsetX, offsetY)
+    return true, x, y, moved
 end
 
 -- Frame census -------------------------------------------------------------
@@ -12664,6 +14217,10 @@ DeclareFunction("rareKillDeathState", "UnitIsDead", "documented",
 DeclareFunction("rareKillCombatState", "UnitAffectingCombat", "documented",
     "client API reference; both player and living target must have carried the combat flag before "
     .. "the death transition is attributed to this character")
+DeclareFunction("itemDisplayInfo", "GetItemInfo", "verified",
+    "measured 2026-09-18 (items.getiteminfo_tuple_and_cache_fill.v1): documented 9-value tuple, "
+    .. "texture 9th with forward slashes; no values for an uncached item. The loot panel requests "
+    .. "missing items through a hidden tooltip SetHyperlink and redraws as they arrive")
 DeclareFunction("frameCount", "GetNumFrames", "verified",
     "measured 2026-09-09: returned 4486, matching a full EnumerateFrames walk exactly, so the count "
     .. "is real rather than a stub. Diagnostic only -- reported by /uq status, never branched on")

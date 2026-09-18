@@ -481,6 +481,39 @@ function Database:GetQuestRewardReputation(questId)
     return list
 end
 
+-- quests[id].skill is the VMaNGOS RequiredSkillId: a profession or secondary
+-- skill line id (164 Blacksmithing, 185 Cooking, 129 First Aid, ...). 144
+-- quests carry it; the data records no minimum skill rank.
+function Database:GetQuestSkill(questId)
+    local quest = self:GetQuest(questId)
+    local skill = quest and quest.skill
+    if type(skill) ~= "number" or skill <= 0 then
+        return nil
+    end
+    return skill
+end
+
+-- Skill line id -> lowercased names the client may list it under: the
+-- client-locale name and the enUS one, since the Skills pane is the only place
+-- the player's skills can be read and it reports names, never ids. Returns an
+-- empty table when neither table names the id.
+function Database:GetSkillNames(skillId)
+    local names = {}
+    if not db or type(skillId) ~= "number" then
+        return names
+    end
+    local localized = LocaleTable("professions")
+    local english = db["professions_enUS"]
+    if type(localized) == "table" and type(localized[skillId]) == "string" then
+        table.insert(names, string.lower(localized[skillId]))
+    end
+    if type(english) == "table" and english ~= localized
+        and type(english[skillId]) == "string" then
+        table.insert(names, string.lower(english[skillId]))
+    end
+    return names
+end
+
 -- Faction id -> display name, or nil when nothing can name it.
 --
 -- Nothing in the bundled data or on this client maps a faction id to a name.
@@ -1218,6 +1251,38 @@ end
 -- records bearing this exact localized tooltip name. Same-named creature or
 -- object records can legitimately disagree, so callers present a range rather
 -- than guessing which numeric ID the name-only tooltip belongs to.
+-- The same shortest/longest pair for one creature ID, read straight off its
+-- spawns' fourth coordinate field (seconds). A map pin knows its creature's
+-- ID, so it does not need the name index above or to wait for it. With an
+-- area, only that zone's spawns count, unless none of them carries a value.
+function Database:GetUnitRespawn(unitId, areaId)
+    local unit = self:GetUnit(unitId)
+    local coords = type(unit) == "table" and unit.coords or nil
+    if type(coords) ~= "table" then
+        return nil, nil
+    end
+    local minimum, maximum, zoneMinimum, zoneMaximum
+    local index = 1
+    local total = table.getn(coords)
+    while index <= total do
+        local coordinate = coords[index]
+        local seconds = type(coordinate) == "table" and coordinate[4] or nil
+        if type(seconds) == "number" and seconds > 0 then
+            if not minimum or seconds < minimum then minimum = seconds end
+            if not maximum or seconds > maximum then maximum = seconds end
+            if areaId and coordinate[3] == areaId then
+                if not zoneMinimum or seconds < zoneMinimum then zoneMinimum = seconds end
+                if not zoneMaximum or seconds > zoneMaximum then zoneMaximum = seconds end
+            end
+        end
+        index = index + 1
+    end
+    if zoneMinimum then
+        return zoneMinimum, zoneMaximum
+    end
+    return minimum, maximum
+end
+
 function Database:GetEntityRespawn(unitKey)
     if type(unitKey) ~= "string" or unitKey == "" then
         return nil, nil, self.respawnIndexReady, self.respawnIndexRevision
@@ -1235,6 +1300,75 @@ function Database:GetItem(itemId)
         return nil
     end
     return db.items[itemId]
+end
+
+-- Everything a creature can drop, for the finder's loot tooltip.
+--
+-- The bundled tables only index item -> creature (`items[id].U`, the drop
+-- rate in percent), so this walks every item once per creature asked about
+-- and caches the answer. Only a click asks, and only for one creature at a
+-- time, so a full inverse index over ~200k links would be memory spent on
+-- creatures nobody opens.
+--
+-- `items[id].R` names reference loot tables (`refloot[ref].U` lists the
+-- creatures sharing one). 97% of those links carry a chance of 0: the item is
+-- one of an equal-chance group whose own roll was not packaged, so no real
+-- percentage exists for it. A reference link with a recorded chance is kept as
+-- a drop; the rest are only counted, never given an invented rate.
+--
+-- Returns a list of { itemId, chance } sorted by chance, highest first,
+-- plus the count of unrated shared-table items.
+function Database:GetUnitLoot(unitId)
+    if type(unitId) ~= "number" or not db or type(db.items) ~= "table" then
+        return {}, 0
+    end
+    self.unitLootCache = self.unitLootCache or {}
+    local cached = self.unitLootCache[unitId]
+    if cached then
+        return cached.drops, cached.shared
+    end
+    local refloot = db.refloot
+    local drops = {}
+    local shared = 0
+    local itemId, item
+    for itemId, item in pairs(db.items) do
+        if type(item) == "table" then
+            local chance = nil
+            if type(item.U) == "table" and type(item.U[unitId]) == "number" then
+                chance = item.U[unitId]
+            end
+            if not chance and type(item.R) == "table" and type(refloot) == "table" then
+                local refId, refChance
+                local unrated = false
+                for refId, refChance in pairs(item.R) do
+                    local ref = refloot[refId]
+                    if type(ref) == "table" and type(ref.U) == "table" and ref.U[unitId] then
+                        if type(refChance) == "number" and refChance > 0 then
+                            if not chance or refChance > chance then
+                                chance = refChance
+                            end
+                        else
+                            unrated = true
+                        end
+                    end
+                end
+                if not chance and unrated then
+                    shared = shared + 1
+                end
+            end
+            if chance and chance > 0 then
+                table.insert(drops, { itemId = itemId, chance = chance })
+            end
+        end
+    end
+    table.sort(drops, function(a, b)
+        if a.chance ~= b.chance then
+            return a.chance > b.chance
+        end
+        return a.itemId < b.itemId
+    end)
+    self.unitLootCache[unitId] = { drops = drops, shared = shared }
+    return drops, shared
 end
 
 function Database:GetItemName(itemId)
@@ -1625,6 +1759,32 @@ function Database:GetQuestInstanceMaps(questId)
     questInstanceMapCache[questId] = maps
     questInstanceMapCacheCount = questInstanceMapCacheCount + 1
     return maps
+end
+
+-- True when any recorded work of the quest -- an objective creature or the
+-- turn-in -- is inside a dungeon or raid. Bundled data only: GetQuestLogTitle's
+-- questTag was nil in every captured sample, so the client is not asked.
+function Database:IsDungeonQuest(questId)
+    local maps = self:GetQuestInstanceMaps(questId)
+    if not maps then
+        return false
+    end
+    return next(maps.objective) ~= nil or next(maps.turnIn) ~= nil
+end
+
+-- The one level label every addon-owned presentation shows: "24", or "24+"
+-- for a dungeon quest. An unmatched or ambiguous quest has no questId and so
+-- never gains the "+" -- a hypothesis must not be dressed up as a fact.
+function UQ.FormatQuestLevel(level, questOrId)
+    local text = tostring(level)
+    local questId = type(questOrId) == "table" and questOrId.questId or questOrId
+    local database = UQ:GetModule("Database")
+    if type(questId) == "number" and database
+        and type(database.IsDungeonQuest) == "function"
+        and database:IsDungeonQuest(questId) then
+        text = text .. "+"
+    end
+    return text
 end
 
 -- Nearby service NPCs and objects ------------------------------------------

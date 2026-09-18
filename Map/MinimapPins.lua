@@ -1430,10 +1430,14 @@ function MinimapPins:Refresh()
     end
 
     local showLowLevel = config and config:Get("showLowLevelQuests") and true or false
-    if self.dirty or self.lastAreaId ~= areaId or self.lastShowLowLevel ~= showLowLevel then
+    local eligibility = UQ:GetModule("QuestEligibility")
+    local professionSignature = eligibility and eligibility:ProfessionSignature() or ""
+    if self.dirty or self.lastAreaId ~= areaId or self.lastShowLowLevel ~= showLowLevel
+        or self.lastProfessionSignature ~= professionSignature then
         self.targets = self:BuildTargets(areaId, yards[1], yards[2], config)
         self.lastAreaId = areaId
         self.lastShowLowLevel = showLowLevel
+        self.lastProfessionSignature = professionSignature
         self.dirty = false
     end
 

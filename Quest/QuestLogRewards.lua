@@ -157,8 +157,20 @@ local function AddReputationLines(lines, database, questId, language)
     end
 end
 
+-- modern-wow's Quest Log page art: every reward row is plain white text with
+-- no drop shadow, like the rest of that themed detail pane (by request).
+local function ApplyModernLogStyle(lines)
+    local index = 1
+    while index <= table.getn(lines) do
+        local line = lines[index]
+        line.r, line.g, line.b = 1, 1, 1
+        line.noShadow = true
+        index = index + 1
+    end
+end
+
 -- nil when the quest is unmatched, or matched but records no reward.
-local function BuildLines(database, questId)
+local function BuildLines(database, questId, modernLog)
     if not database or not questId then
         return nil
     end
@@ -168,6 +180,9 @@ local function BuildLines(database, questId)
     AddReputationLines(lines, database, questId, language)
     if table.getn(lines) == 0 then
         return nil
+    end
+    if modernLog then
+        ApplyModernLogStyle(lines)
     end
     return lines
 end
@@ -202,7 +217,8 @@ function QuestLogRewards:Refresh()
     local logLines = nil
     local copper = nil
     if logFrame and Client.IsObjectShown(logFrame) then
-        logLines = BuildLines(database, ResolveSelectedQuestId())
+        logLines = BuildLines(database, ResolveSelectedQuestId(),
+            Client.IsUnrealUIModernWowTheme())
         copper = Client.GetQuestLogMoneyAmounts()
     end
     Client.SetQuestLogRewardMoney(true, copper)

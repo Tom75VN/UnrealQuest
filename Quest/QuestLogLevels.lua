@@ -273,7 +273,7 @@ local function ResolveRowEntry(row, rowIndex, text, bare)
                     and previous.text == text
                 if isOwnText or RowCarriesTitle(bare, title)
                     or RowCarriesTitle(bare, displayTitle) then
-                    return candidate, title, level, displayTitle, isOwnText
+                    return candidate, title, level, displayTitle, isOwnText, quest
                 end
             end
         end
@@ -298,7 +298,7 @@ local function DecorateRow(row, rowIndex, grouped)
 
     local indent, escape, rest = SplitLeadIn(text)
     local bare = StripLevelPrefix(rest)
-    local questIndex, title, level, displayTitle, isOwnText =
+    local questIndex, title, level, displayTitle, isOwnText, quest =
         ResolveRowEntry(row, rowIndex, text, bare)
     if not questIndex then
         return false
@@ -332,7 +332,7 @@ local function DecorateRow(row, rowIndex, grouped)
         end
     end
     local decorated = indent .. count .. escape
-        .. "[" .. level .. "] " .. displayTitle .. suffix
+        .. "[" .. UQ.FormatQuestLevel(level, quest) .. "] " .. displayTitle .. suffix
     if decorated == text then
         -- Already correct, whoever wrote it. Writing it again every 0.2s
         -- would be the only thing here that could make the list flicker.

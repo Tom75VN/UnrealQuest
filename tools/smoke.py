@@ -42,6 +42,12 @@ frameMeta.__index = frameMeta
 
 function frameMeta:SetScript(kind, handler) self.scripts[kind] = handler end
 function frameMeta:GetScript(kind) return self.scripts[kind] end
+function frameMeta:Enable() self.enabled = 1 end
+function frameMeta:Disable() self.enabled = 0 end
+function frameMeta:IsEnabled()
+    if self.enabled == nil then return 1 end
+    return self.enabled
+end
 function frameMeta:SetWidth(value) self.width = value end
 function frameMeta:SetHeight(value) self.height = value end
 function frameMeta:GetWidth() return self.width or 0 end
@@ -69,9 +75,33 @@ function frameMeta:GetAlpha() return self.alpha or 1 end
 function frameMeta:GetEffectiveScale() return self.effectiveScale or 1 end
 -- A frame the client is actively moving reports the corner it has been dragged
 -- to rather than the corner its anchor implies.
+-- A single point relative to a sized UIParent is laid out for real, as the
+-- client does (frames.getpoint_y_same_sign_as_setpoint: GetLeft/GetBottom agree
+-- with SetPoint's offsets in their own sign); anything else keeps reporting its
+-- anchor offset.
+local function PointFactor(point, low, high)
+    if type(point) ~= "string" then return 0.5 end
+    if string.find(point, low, 1, true) then return 0 end
+    if string.find(point, high, 1, true) then return 1 end
+    return 0.5
+end
+local function UIParentEdges(self)
+    local point = self.point
+    local parent = UIParent
+    if not point or not parent or not parent.width or not parent.height then return nil end
+    if point[2] ~= parent and point[2] ~= "UIParent" then return nil end
+    local width, height = self.width or 0, self.height or 0
+    local left = parent.width * PointFactor(point[3], "LEFT", "RIGHT")
+        + (point[4] or 0) - width * PointFactor(point[1], "LEFT", "RIGHT")
+    local bottom = parent.height * PointFactor(point[3], "BOTTOM", "TOP")
+        + (point[5] or 0) - height * PointFactor(point[1], "BOTTOM", "TOP")
+    return left, bottom
+end
 function frameMeta:GetLeft()
     if self.dragLeft then return self.dragLeft end
     if self.testLeft then return self.testLeft end
+    local left = UIParentEdges(self)
+    if left then return left end
     return self.point and self.point[4] or 0
 end
 -- The mock does no layout, so a test that needs a real edge sets one. Without
@@ -80,6 +110,8 @@ end
 function frameMeta:GetBottom()
     if self.dragBottom then return self.dragBottom end
     if self.testBottom then return self.testBottom end
+    local _, bottom = UIParentEdges(self)
+    if bottom then return bottom end
     return self.point and self.point[5] or 0
 end
 function frameMeta:GetTop() return self.point and -self.point[5] or 0 end
@@ -150,14 +182,17 @@ function frameMeta:GetName() return self.name end
 -- so the mock offers no count either -- nothing may come to depend on one.
 function frameMeta:GetRegions() return unpack(self.regions or {}) end
 function frameMeta:IsObjectType(name) return self.frameType == name end
+-- An explicit SetPoint is where the frame now is, so it ends a drag's corner
+-- override (the tests stand in for the client's own drop with one).
 function frameMeta:SetPoint(point, relative, relativePoint, x, y)
     self.point = { point, relative, relativePoint, x, y }
+    self.dragLeft, self.dragBottom = nil, nil
 end
--- Modelled on this client's two recorded GetPoint deviations
--- (frames.getpoint_relative_name_y_inverted): the relative frame comes back as
--- a NAME STRING, not an object, and the Y offset has the opposite sign from
--- the SetPoint that produced it. A mock that returned a Blizzard-shaped tuple
--- would let a broken position reader pass.
+-- Modelled on this client's GetPoint: the relative frame comes back as a NAME
+-- STRING, not an object (frames.getpoint_relative_name_y_inverted), and the Y
+-- offset keeps the sign SetPoint was given (frames.getpoint_y_same_sign_as_setpoint,
+-- 18 of 18 against UIParent). A position reader that still negates it saves a
+-- mirrored position, which the drop-and-restore checks below catch.
 function frameMeta:GetPoint(index)
     local point = self.point
     if not point then return nil end
@@ -168,7 +203,7 @@ function frameMeta:GetPoint(index)
     elseif relative and relative.GetName then
         name = relative:GetName()
     end
-    return point[1], name, point[3], point[4], -(point[5] or 0)
+    return point[1], name, point[3], point[4], point[5] or 0
 end
 function frameMeta:SetMovable(value) self.movable = value and true or false end
 function frameMeta:IsMovable() return self.movable and true or false end
@@ -321,7 +356,7 @@ function fontStringMeta:GetPoint(index)
     elseif relative and relative.GetName then
         name = relative:GetName()
     end
-    return point[1], name, point[3], point[4], -(point[5] or 0)
+    return point[1], name, point[3], point[4], point[5] or 0
 end
 -- GetLeft is documented on Region here (OFFICIAL_CLIENT_DOCUMENTATION), and a
 -- FontString is a LayeredRegion, so it carries the geometry readers too. Same
@@ -409,6 +444,9 @@ end
 -- is not its ancestor: hiding UIParent must not affect anything hanging off it.
 WorldFrame = CreateFrame("Frame", "WorldFrame")
 UIParent = CreateFrame("Frame", "UIParent")
+-- The size measured on this client (frames.getpoint_y_same_sign_as_setpoint).
+UIParent:SetWidth(1834.67)
+UIParent:SetHeight(768)
 GameFontHighlightSmall = {}
 WorldMapFrame = CreateFrame("Frame", "WorldMapFrame", UIParent)
 WorldMapButton = CreateFrame("Button", "WorldMapButton", WorldMapFrame)
@@ -1133,6 +1171,19 @@ UQ_TEST_SEX = 2
 UQ_TEST_FACTION = "Alliance"
 function UnitRace(unit) return UQ_TEST_RACE[1], UQ_TEST_RACE[2], UQ_TEST_RACE[3] end
 function UnitClass(unit) return UQ_TEST_CLASS[1], UQ_TEST_CLASS[2], UQ_TEST_CLASS[3] end
+-- The Skills pane as its documented tuple: name, isHeader, isExpanded. Nil
+-- (the default) models an empty pane. Defined before the addon loads because
+-- the compatibility layer caches a missing symbol as missing.
+UQ_TEST_SKILLS = nil
+function GetNumSkillLines()
+    if not UQ_TEST_SKILLS then return 0 end
+    return table.getn(UQ_TEST_SKILLS)
+end
+function GetSkillLineInfo(index)
+    local row = UQ_TEST_SKILLS and UQ_TEST_SKILLS[index]
+    if not row then return nil end
+    return row[1], row[2], row[3]
+end
 function UnitSex(unit) return UQ_TEST_SEX end
 function UnitFactionGroup(unit) return UQ_TEST_FACTION end
 function GetQuestGreenRange() return 5 end
@@ -1597,7 +1648,7 @@ for path in toc_files(os.path.join(ADDONS, "unrealQuest", "UnrealQuest.toc")):
 
 check("world data populated", rt.eval("UnrealQuestData ~= nil and UnrealQuestData.quests ~= nil"))
 
-check("namespace created", rt.eval("UnrealQuest ~= nil and UnrealQuest.version == '0.3.3'"))
+check("namespace created", rt.eval("UnrealQuest ~= nil and UnrealQuest.version == '0.3.5'"))
 check("slash command registered", rt.eval("SlashCmdList.UNREALQUEST == nil"),
       "should still be nil before init")
 
@@ -3213,14 +3264,101 @@ check("the temporary Rare/Elite/Boss right-click review surface is disabled",
         if target and target.rankLabelKey then
             local worldLines = pins:TooltipLines(target, true)
             local minimapLines = pins:TooltipLines(target)
-            if table.getn(worldLines) ~= table.getn(minimapLines)
-                or pin:GetScript('OnClick') ~= nil then
+            local lootHint = pins:HasLoot(target) and 1 or 0
+            if table.getn(worldLines) ~= table.getn(minimapLines) + lootHint then
                 return false
             end
             for _, token in ipairs(pin.clickTokens or {}) do
                 if token == 'RightButtonUp' then return false end
             end
             return true
+        end
+        index = index + 1
+    end
+    return false
+end)()"""))
+check("a left click opens a ranked pin's loot panel, which survives the mouse leaving",
+      rt.eval("""(function()
+    local pins = UnrealQuest:GetModule('NpcPins')
+    local database = UnrealQuest:GetModule('Database')
+    local index = 1
+    while index <= pins.worldVisible do
+        local pin = pins.worldPool[index]
+        local target = pin and pin.unrealQuestNpcTarget
+        if target and pins:HasLoot(target) then
+            local client = UnrealQuest.Client
+            -- The measured tuple (items.getiteminfo_tuple_and_cache_fill.v1):
+            -- texture 9th, forward slashes; odd ids read as white so the
+            -- green-and-better filter has something to drop.
+            GetItemInfo = function(id)
+                local quality = math.floor(id / 2) * 2 == id and 3 or 1
+                return 'Item ' .. id, 'item:' .. id .. ':0:0:0', quality, 1, 'Weapon',
+                    'Sword', 1, 'INVTYPE_WEAPON', 'Interface/Icons/INV_Sword_04'
+            end
+            client.ForgetSymbol('GetItemInfo')
+            local drops = database:GetUnitLoot(target.sourceId)
+            local k = 2
+            while k <= table.getn(drops) do
+                if drops[k].chance > drops[k - 1].chance then return false end
+                k = k + 1
+            end
+            local spec = pins:LootSpec(target)
+            if table.getn(spec.cells) == 0 or table.getn(spec.cells) > 30 then return false end
+            -- the panel opens on the pin's own tooltip lines
+            if table.getn(spec.lines) ~= table.getn(pins:TooltipLines(target)) then
+                return false
+            end
+            for _, cell in ipairs(spec.cells) do
+                local _, _, quality = client.GetItemDisplayInfo(cell.itemId)
+                if not quality or quality < 2 or not cell.rate then return false end
+            end
+            if not pins:ToggleLootPanel(pin) or not client.IsLootPanelOpenFor(pin) then
+                return false
+            end
+            -- the mouse leaving the pin must not close the panel
+            local onLeave = pin:GetScript('OnLeave')
+            if onLeave then onLeave() end
+            if not client.IsLootPanelOpenFor(pin) then return false end
+            pins:ToggleLootPanel(pin)
+            return not client.IsLootPanelOpenFor(pin)
+        end
+        index = index + 1
+    end
+    return false
+end)()"""))
+check("the loot grid pages 30 items at a time, with arrows and a page number",
+      rt.eval("""(function()
+    local pins = UnrealQuest:GetModule('NpcPins')
+    -- Anvilrage Overseer: 127 green-or-better drops in game, so several pages
+    -- under the test's even-id-is-blue GetItemInfo mock too.
+    local target = { sourceType = 'unit', sourceId = 8889, name = 'Anvilrage Overseer',
+                     rankLabelKey = 'RARE_RANK_ELITE', categories = {}, details = {} }
+    local first = pins:LootSpec(target, nil, 1)
+    local second = pins:LootSpec(target, nil, 2)
+    if table.getn(first.cells) ~= 30 or table.getn(second.cells) == 0 then return false end
+    if first.cells[1].itemId == second.cells[1].itemId then return false end
+    -- page 1: next only; page 2: both arrows; "1 / N" reads the page
+    local p1, p2 = first.pager, second.pager
+    if not p1 or not p2 then return false end
+    if p1.onPrevious or not p1.onNext then return false end
+    if not p2.onPrevious then return false end
+    return string.find(p1.text, '^1 / %d+$') ~= nil and string.find(p2.text, '^2 / ') ~= nil
+end)()"""))
+check("a Rare/Elite/Boss pin tooltip carries its respawn right under the rank line",
+      rt.eval("""(function()
+    local pins = UnrealQuest:GetModule('NpcPins')
+    local database = UnrealQuest:GetModule('Database')
+    local index = 1
+    while index <= pins.worldVisible do
+        local pin = pins.worldPool[index]
+        local target = pin and pin.unrealQuestNpcTarget
+        if target and target.rankLabelKey and target.sourceType == 'unit' then
+            local minimum = database:GetUnitRespawn(target.sourceId, target.areaId)
+            if minimum then
+                local lines = pins:TooltipLines(target, true)
+                return lines[3] ~= nil and string.find(lines[3].text, minimum >= 3600
+                    and '%d+:%d%d:%d%d' or '%d%d:%d%d') ~= nil
+            end
         end
         index = index + 1
     end
@@ -3790,9 +3928,9 @@ check("the health bar is drawn inside the owned box, not as a second one below i
        and relativePoint == 'BOTTOMLEFT'
        and panelPoint == 'BOTTOMRIGHT' and panelRelative == 'GameTooltip'
        and panelRelativePoint == 'BOTTOMRIGHT' and panelX == 4
-       and panelY == GameTooltipStatusBar:GetHeight() + 4
+       and panelY == -(GameTooltipStatusBar:GetHeight() + 4)
        and healthPoint == 'BOTTOMLEFT' and healthRelative == panel:GetName()
-       and healthRelativePoint == 'BOTTOMLEFT' and healthX == 4 and healthY == -4
+       and healthRelativePoint == 'BOTTOMLEFT' and healthX == 4 and healthY == 4
        and health:GetWidth() == panel:GetWidth() - 8
        and health:GetHeight() == GameTooltipStatusBar:GetHeight()
        and health.unrealQuestFill.width == health:GetWidth() * 0.65
@@ -8705,6 +8843,54 @@ check("unknown giver or player factions remain permissive", rt.eval("""(function
     return unknownPlayer and e:MatchesGiverFaction({})
         and e:MatchesGiverFaction({ faction = 'AH' })
 end)()"""))
+# Quest 90 requires Cooking (skill 185) and carries no race, class, event or
+# prerequisite, so only the level and the profession filter can hold it back.
+rt.execute("""
+function UQ_TestProfessionOffer(skills, option)
+    local e = UnrealQuest:GetModule('QuestEligibility')
+    local oldLevel = UQ_TEST_LEVEL
+    local oldOption = UnrealQuestDB.hideUnlearnedProfessionQuests
+    UQ_TEST_SKILLS = skills
+    UQ_TEST_LEVEL = 30
+    UnrealQuestDB.hideUnlearnedProfessionQuests = option
+    e.skillsReadAt = nil
+    e:RefreshPlayer()
+    local offerable, reason = e:IsOfferable(90)
+    UQ_TEST_SKILLS = nil
+    UQ_TEST_LEVEL = oldLevel
+    UnrealQuestDB.hideUnlearnedProfessionQuests = oldOption
+    e.skillsReadAt = nil
+    e:RefreshPlayer()
+    return offerable, reason
+end
+""")
+check("the profession filter is enabled by default",
+      rt.eval("UnrealQuest:GetModule('Config'):Get('hideUnlearnedProfessionQuests') == true"))
+check("a Cooking quest is hidden from a character whose full Skills pane lacks Cooking",
+      rt.eval("""(function()
+    local ok, reason = UQ_TestProfessionOffer({
+        { 'Professions', 1, 1 }, { 'Mining', nil, nil },
+        { 'Secondary Skills', 1, 1 }, { 'First Aid', nil, nil } }, true)
+    return ok == false and reason == 'profession'
+end)()"""))
+check("the same quest is offered once Cooking is on the pane",
+      rt.eval("""(function()
+    return UQ_TestProfessionOffer({
+        { 'Secondary Skills', 1, 1 }, { 'Cooking', nil, nil } }, true) == true
+end)()"""))
+check("a collapsed header leaves profession quests shown",
+      rt.eval("""(function()
+    return UQ_TestProfessionOffer({
+        { 'Professions', 1, 1 }, { 'Mining', nil, nil },
+        { 'Secondary Skills', 1, nil } }, true) == true
+end)()"""))
+check("an unreadable Skills pane leaves profession quests shown",
+      rt.eval("UQ_TestProfessionOffer(nil, true) == true"))
+check("turning the option off shows profession quests regardless of skills",
+      rt.eval("""(function()
+    return UQ_TestProfessionOffer({
+        { 'Professions', 1, 1 }, { 'Mining', nil, nil } }, false) == true
+end)()"""))
 # CLUCK! (3861) is started by the Chicken critter (unit 620, 108 spawn points
 # across 9 zones) and carries race mask 77 = Human+Dwarf+NightElf+Gnome, i.e.
 # Alliance only. It is the reason every chicken in the world became a marker.
@@ -10483,6 +10669,8 @@ check("modern quest detail places the level directly below its title", rt.eval("
         and label.point[5] == -26
 end)()"""))
 rt.execute("""
+    UQ_TEST_MODERN_LIST_PANEL = UnrealUIQuestLogListPanel
+    UQ_TEST_MODERN_DETAIL_PANEL = UnrealUIQuestLogDetailPanel
     UnrealUIQuestLogListPanel = nil
     UnrealUIQuestLogDetailPanel = nil
     UnrealQuest:GetModule('QuestLogButtons'):Refresh()
@@ -10564,6 +10752,8 @@ check("other unrealUI themes put the flat quest log buttons back", rt.eval("""(f
 end)()"""))
 rt.execute("""
     UnrealUI.GetActiveThemeStyle = function() return 'modern-wow' end
+    UnrealUIQuestLogListPanel = UQ_TEST_MODERN_LIST_PANEL
+    UnrealUIQuestLogDetailPanel = UQ_TEST_MODERN_DETAIL_PANEL
     QuestLogMoneyFrame:SetParent(QuestLogFrame)
     QuestLogMoneyFrame:ClearAllPoints()
     QuestLogMoneyFrame:SetPoint('TOPLEFT', QuestLogItemReceiveText,
@@ -10577,6 +10767,12 @@ check("unrealUI's modern-wow theme uses the skinned quest log buttons", rt.eval(
         and UnrealQuestLogFollowButton.unrealQuestSkin == 'gold'
         and UnrealQuestLogShowButton.unrealQuestSkinSlices[1]:IsShown() == true
 end)()"""))
+rt.execute("""
+    UnrealUIQuestLogListPanel = nil
+    UnrealUIQuestLogDetailPanel = nil
+    UnrealQuest:GetModule('QuestLogButtons'):Refresh()
+    UQ_TEST_MODERN_WOW_SCROLL_BEFORE = UQ_TEST_QUEST_LOG_SCROLL_UPDATES
+""")
 check("modern-wow leaves the client's working coin ownership untouched",
       rt.eval("""(function()
     return QuestLogMoneyFrame:GetParent() == QuestLogFrame
@@ -10589,6 +10785,8 @@ end)()"""))
 rt.execute("""
     UnrealUI = UQ_TEST_SAVED_UUI
     UQ_TEST_SAVED_UUI = nil
+    UnrealUIQuestLogListPanel = nil
+    UnrealUIQuestLogDetailPanel = nil
     UnrealQuest:GetModule('QuestLogButtons'):Refresh()
 """)
 check("native and Classic WoW quest logs highlight the followed row too", rt.eval("""(function()
@@ -11530,6 +11728,59 @@ check("the navigator reapplies its saved position without changing its half size
         and UnrealQuestNavigator:GetScale() == 0.5
 end)()"""))
 
+# A position an earlier release saved mirrored across its anchor (TOPLEFT
+# y = +683 instead of -683) puts the dial above the screen. It must heal on its
+# own, with no command, and the healed position must be the one kept.
+check("a saved navigator position off screen is pulled back and kept", rt.eval("""(function()
+    local nav = UnrealQuest:GetModule("Navigator")
+    local frame = UnrealQuestNavigator
+    UnrealQuestDB.navigatorPoint = "TOPLEFT"
+    UnrealQuestDB.navigatorRelativePoint = "TOPLEFT"
+    UnrealQuestDB.navigatorX = 900
+    UnrealQuestDB.navigatorY = 683
+    nav:RefreshArrow()
+    local insets = frame.unrealQuestScreenInsets
+    local scale = frame:GetScale()
+    local top = frame:GetBottom() + frame:GetHeight() - insets.top * scale
+    local bottom = frame:GetBottom() + insets.bottom * scale
+    local ok = frame:GetHeight() > 0 and top <= 768.001 and bottom >= -0.001
+        and math.abs(top - 768) < 0.001 and frame:GetLeft() == 900
+        and frame.point[5] == UnrealQuestDB.navigatorY
+    -- A second pass leaves an on-screen position exactly where it is.
+    local healed = UnrealQuestDB.navigatorY
+    nav:RefreshArrow()
+    ok = ok and UnrealQuestDB.navigatorY == healed
+    UnrealQuestDB.navigatorPoint = "CENTER"
+    UnrealQuestDB.navigatorRelativePoint = "CENTER"
+    UnrealQuestDB.navigatorX = 80
+    UnrealQuestDB.navigatorY = -40
+    nav:RefreshArrow()
+    return ok and frame.point[5] == -40
+end)()"""))
+
+# Dropped against the top edge, the dial's empty headroom hangs off screen.
+# The clamp measures what is drawn, so the arc lands flush with the top of the
+# screen rather than the invisible frame top being pulled down to it.
+check("a navigator dropped over the top edge lands flush with it", rt.eval("""(function()
+    local nav = UnrealQuest:GetModule("Navigator")
+    local frame = UnrealQuestNavigator
+    UnrealQuestDB.navigatorPoint = "TOPLEFT"
+    UnrealQuestDB.navigatorRelativePoint = "TOPLEFT"
+    UnrealQuestDB.navigatorX = 900
+    UnrealQuestDB.navigatorY = 60
+    nav:RefreshArrow()
+    local insets = frame.unrealQuestScreenInsets
+    local drawnTop = frame:GetBottom() + frame:GetHeight() - insets.top * frame:GetScale()
+    local ok = insets.top > 0 and math.abs(drawnTop - 768) < 0.001
+        and UnrealQuestDB.navigatorY < 60 and frame.point[5] == UnrealQuestDB.navigatorY
+    UnrealQuestDB.navigatorPoint = "CENTER"
+    UnrealQuestDB.navigatorRelativePoint = "CENTER"
+    UnrealQuestDB.navigatorX = 80
+    UnrealQuestDB.navigatorY = -40
+    nav:RefreshArrow()
+    return ok and frame.point[5] == -40
+end)()"""))
+
 rt.execute("""
     UQ_TEST_ALLOW_STARTMOVING = false
     UnrealQuestNavigatorDrag:GetScript('OnDragStart')()
@@ -12335,11 +12586,24 @@ rt.execute("""
     UnrealQuestTrackerHandle:GetScript('OnDragStop')()
 """)
 check("OnDragStop stops the move", rt.eval("UnrealQuestTracker.moving == false"))
-check("the dropped position is stored with this client's inverted GetPoint Y undone",
+check("the dropped position is stored in SetPoint's own Y sign, from the window's edges",
       rt.eval("""UnrealQuestDB.trackerPoint == 'TOPLEFT'
         and UnrealQuestDB.trackerX == 140
         and UnrealQuestDB.trackerY == -310"""),
       str(rt.eval("tostring(UnrealQuestDB.trackerY)")))
+check("a tracker dropped past the top edge snaps flush with it", rt.eval("""(function()
+    local window = UnrealQuestTracker
+    local saved = { UnrealQuestDB.trackerX, UnrealQuestDB.trackerY }
+    window:SetHeight(300)
+    UnrealQuestTrackerHandle:GetScript('OnDragStart')()
+    window:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 140, 50)
+    UnrealQuestTrackerHandle:GetScript('OnDragStop')()
+    local ok = UnrealQuestDB.trackerY == 0 and window.point[5] == 0
+        and window:GetBottom() + window:GetHeight() == 768
+    UnrealQuestDB.trackerX, UnrealQuestDB.trackerY = saved[1], saved[2]
+    UnrealQuest:GetModule('TrackerFrame'):ApplyStoredPosition(true)
+    return ok
+end)()"""), str(rt.eval("tostring(UnrealQuestDB.trackerY)")))
 check("nothing with a backslash is ever persisted for the tracker",
       rt.eval("""(function()
     for key, value in pairs(UnrealQuestDB) do
@@ -12348,11 +12612,26 @@ check("nothing with a backslash is ever persisted for the tracker",
     return true
 end)()"""))
 
+# At load the window has no layout yet, so the screen guard must not run there:
+# a "correction" read from unlaid-out edges was saved over a good position and
+# the tracker came back in the top-left corner on every reload.
+check("the load-time placement never rewrites the saved tracker position", rt.eval("""(function()
+    local tracker = UnrealQuest:GetModule('TrackerFrame')
+    local saved = { UnrealQuestDB.trackerPoint, UnrealQuestDB.trackerRelativePoint,
+        UnrealQuestDB.trackerX, UnrealQuestDB.trackerY }
+    UnrealQuestDB.trackerY = 900      -- wholly above the screen
+    local applied = tracker:ApplyStoredPosition(true)
+    local kept = UnrealQuestDB.trackerY == 900 and UnrealQuestTracker.point[5] == 900
+    UnrealQuestDB.trackerY = saved[4]
+    tracker:ApplyStoredPosition(true)
+    return applied and kept
+end)()"""))
+
 check("the stored position re-applies UIParent-relative", rt.eval("""(function()
     UnrealQuestTracker:ClearAllPoints()
     local applied = UnrealQuest:GetModule('TrackerFrame'):ApplyStoredPosition()
     local point, relative, relativePoint, x, y = UnrealQuestTracker:GetPoint(1)
-    return applied and point == 'TOPLEFT' and relative == 'UIParent' and x == 140 and y == 310
+    return applied and point == 'TOPLEFT' and relative == 'UIParent' and x == 140 and y == -310
 end)()"""))
 
 rt.execute("""
@@ -15412,6 +15691,13 @@ rt.execute("UnrealQuestSettingsShowLowLevelQuests:GetScript('OnClick')()")
 check("clicking the low-level quest option stores the opt-in",
       rt.eval("UnrealQuestDB.showLowLevelQuests == true"))
 rt.execute("UnrealQuestSettingsShowLowLevelQuests:GetScript('OnClick')()")
+check("the profession-quest option is on the page and enabled by default",
+      rt.eval("getglobal('UnrealQuestSettingsHideUnlearnedProfessionQuests') ~= nil "
+              "and UnrealQuestDB.hideUnlearnedProfessionQuests ~= false"))
+rt.execute("UnrealQuestSettingsHideUnlearnedProfessionQuests:GetScript('OnClick')()")
+check("clicking the profession-quest option stores the opt-out",
+      rt.eval("UnrealQuestDB.hideUnlearnedProfessionQuests == false"))
+rt.execute("UnrealQuestSettingsHideUnlearnedProfessionQuests:GetScript('OnClick')()")
 check("the radio row is built with a label unrealUI's page code can toggle",
       rt.eval("getglobal('UnrealQuestSettingsMapObjectiveDotsOption1') ~= nil "
               "and UnrealQuestSettingsMapObjectiveDotsOption1.label ~= nil"))
@@ -15778,7 +16064,7 @@ rt.execute("""
     UnrealQuestSettings:SetPoint('CENTER', UIParent, 'CENTER', 40, -60)
     UnrealQuestSettingsHandle:GetScript('OnDragStop')()
 """)
-check("the dropped position is captured UIParent-relative, through the inverted GetPoint",
+check("the dropped position is captured UIParent-relative, from the window's edges",
       rt.eval("UnrealQuestDB.settingsPoint == 'CENTER' and UnrealQuestDB.settingsX == 40 "
               "and UnrealQuestDB.settingsY == -60"),
       str(rt.eval("UnrealQuestDB.settingsY")))
@@ -16744,7 +17030,7 @@ rt.execute("""
     UnrealQuestRareAlert:SetPoint('BOTTOMLEFT', UIParent, 'BOTTOMLEFT', 220, 180)
     UnrealQuestRareAlertDrag:GetScript('OnDragStop')()
 """)
-check("the dropped card keeps its place, with the inverted GetPoint Y undone",
+check("the dropped card keeps its place, in SetPoint's own Y sign",
       rt.eval("""UnrealQuestRareAlert.moving == false
         and UnrealQuestDB.rareAlertPoint == 'BOTTOMLEFT'
         and UnrealQuestDB.rareAlertRelativePoint == 'BOTTOMLEFT'
@@ -16772,17 +17058,37 @@ check("/uq rare reset puts the card back at its default anchor",
     return point == 'TOP' and relative == 'UIParent'
 end)()"""))
 
-# Zoomed out to a continent there is no view that can project the player, and a
-# distance measured from an unprojected player would be fiction. The scan
-# pauses and reports why instead.
+# Zoomed out to a continent on the OPEN map there is no view that can project
+# the player, and a distance measured from an unprojected player would be
+# fiction. The scan pauses and reports why instead; the player browsing that
+# continent is not overruled.
 check("the scan pauses rather than guessing while the map is zoomed out",
       rt.eval("""(function()
     local alert = UnrealQuest:GetModule('RareAlert')
+    UnrealQuest:GetModule('MapContext').recenteredAt = nil
     UQ_TEST_CONTINENT_VIEW = true
+    UIParent.shown = false            -- the fullscreen map hides the game UI
     alert:Poll()
     local state = alert.state
+    local stillZoomed = UQ_TEST_CONTINENT_VIEW
+    UIParent.shown = true
     UQ_TEST_CONTINENT_VIEW = false
-    return state == 'continentView'
+    return state == 'continentView' and stillZoomed == true
+end)()"""), str(rt.eval("UnrealQuest:GetModule('RareAlert').state")))
+
+# The same continent view left behind after the map was CLOSED is put back on
+# the player's zone, so the navigator, minimap pins, waypoint and this scan do
+# not stay dark for the rest of the session (user report 2026-09-18).
+check("a continent view left after the map closed is re-centred, not kept",
+      rt.eval("""(function()
+    local alert = UnrealQuest:GetModule('RareAlert')
+    local context = UnrealQuest:GetModule('MapContext')
+    context.recenteredAt = nil
+    UQ_TEST_CONTINENT_VIEW = true
+    alert:Poll()
+    local healed = UQ_TEST_CONTINENT_VIEW == false
+    UQ_TEST_CONTINENT_VIEW = false
+    return healed and alert.state ~= 'continentView'
 end)()"""), str(rt.eval("UnrealQuest:GetModule('RareAlert').state")))
 
 rt.execute("""

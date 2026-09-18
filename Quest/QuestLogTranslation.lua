@@ -258,6 +258,7 @@ function QuestLogTranslation:Refresh()
     end
 
     local translated = 0
+    local written = 0
     local index = 1
     local total = table.getn(FIELDS)
     while index <= total do
@@ -285,6 +286,7 @@ function QuestLogTranslation:Refresh()
                 and Client.SetNativeObjectText(object, displayText) then
                 object.unrealQuestAppliedText = displayText
                 translated = translated + 1
+                written = written + 1
             elseif type(displayText) == "string" and displayText ~= ""
                 and displayText == currentText then
                 -- Already on screen: either this module wrote it on an earlier
@@ -299,7 +301,14 @@ function QuestLogTranslation:Refresh()
     if translated > 0 then
         self.appliedSignature = signature
         self.translatedFields = translated
-        Client.UpdateScrollChildRect(Client.GetNamedObject(SCROLL_NAME))
+        -- Only when a field's text actually changed. A translated quest stays
+        -- translated across polls, and recalculating the scroll range on every
+        -- pass makes the client draw the scrolled detail pane -- the action
+        -- buttons included -- at its unscrolled position for one frame
+        -- (rendering.scroll_child_regions_flash_unscrolled_on_poll).
+        if written > 0 then
+            Client.UpdateScrollChildRect(Client.GetNamedObject(SCROLL_NAME))
+        end
     else
         self.appliedSignature = nil
         self.translatedFields = 0

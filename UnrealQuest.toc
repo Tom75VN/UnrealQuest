@@ -1,8 +1,8 @@
-﻿## Interface: 11200
+## Interface: 11200
 ## Title: |cffffffffUnreal|cfff5ae0a Quest
 ## Notes: Quest helper for the Unreal Azeroth client. A movable quest tracker and service-NPC selector, current-zone world-map pins, minimap pins, quest tracking and entity tooltips. A quest navigator arc and arrow point the way to the quest you are following, and a second one to a tracked creature - see docs/HUD-NAVIGATOR.md.
 ## Author: unrealQuest
-## Version: 0.3.4
+## Version: 0.3.5
 ## X-License: MIT. Bundled world data from pfQuest (MIT), sourced from VMaNGOS. See LICENSE.
 ## SavedVariables: UnrealQuestDB
 ## SavedVariablesPerCharacter: UnrealQuestCharDB
@@ -31,26 +31,31 @@ Database\enUS\units.lua
 Database\enUS\objects.lua
 Database\enUS\items.lua
 Database\enUS\quests.lua
+Database\enUS\professions.lua
 Database\esES\zones.lua
 Database\esES\units.lua
 Database\esES\objects.lua
 Database\esES\items.lua
 Database\esES\quests.lua
+Database\esES\professions.lua
 Database\frFR\zones.lua
 Database\frFR\units.lua
 Database\frFR\objects.lua
 Database\frFR\items.lua
 Database\frFR\quests.lua
+Database\frFR\professions.lua
 Database\ruRU\zones.lua
 Database\ruRU\units.lua
 Database\ruRU\objects.lua
 Database\ruRU\items.lua
 Database\ruRU\quests.lua
+Database\ruRU\professions.lua
 Database\zhCN\zones.lua
 Database\zhCN\units.lua
 Database\zhCN\objects.lua
 Database\zhCN\items.lua
 Database\zhCN\quests.lua
+Database\zhCN\professions.lua
 
 Core\Namespace.lua
 Compatibility\ClientAPI.lua

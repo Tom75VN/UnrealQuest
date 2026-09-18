@@ -347,6 +347,7 @@ function NpcPins:HideAll()
     self:HideNavMark(self.minimapNavMark)
     self.minimapNavMarkVisible = false
     self:HidePatrolRoute(nil)
+    self:CloseLootPanel()
 end
 
 function NpcPins:HideNavMark(mark)
@@ -624,6 +625,22 @@ function NpcPins:BuildTargets(areaId, selected, selectedCount, trackedMobs)
     return targets
 end
 
+-- The Rare/Elite/Boss line's respawn, from the creature's own spawns in the
+-- pin's zone. Nil when the data has no positive respawn for it.
+function NpcPins:RespawnLine(target)
+    if target.sourceType ~= "unit" or type(target.sourceId) ~= "number" then
+        return nil
+    end
+    local database = Database()
+    local tooltip = UQ:GetModule("EntityTooltip")
+    if not database or type(database.GetUnitRespawn) ~= "function"
+        or not tooltip or type(tooltip.RespawnLine) ~= "function" then
+        return nil
+    end
+    local minimum, maximum = database:GetUnitRespawn(target.sourceId, target.areaId)
+    return tooltip.RespawnLine(minimum, maximum)
+end
+
 function NpcPins:TooltipLines(target, showRemoveHint)
     local lines = {
         { text = target.name, r = UQ.colors.accent[1], g = UQ.colors.accent[2],
@@ -658,8 +675,20 @@ function NpcPins:TooltipLines(target, showRemoveHint)
                 g = category.green,
                 b = category.blue,
             })
+            if key == "rares" then
+                local respawn = self:RespawnLine(target)
+                if respawn then
+                    table.insert(lines, respawn)
+                end
+            end
         end
         index = index + 1
+    end
+    if showRemoveHint and self:HasLoot(target) then
+        table.insert(lines, {
+            text = UQ.L("NPC_LOOT_HINT"),
+            r = 0.6, g = 0.6, b = 0.6,
+        })
     end
     if REVIEW_REMOVAL_ENABLED and showRemoveHint and target.rankLabelKey then
         table.insert(lines, {
@@ -668,6 +697,308 @@ function NpcPins:TooltipLines(target, showRemoveHint)
         })
     end
     return lines
+end
+
+-- Loot list of a Rare/Elite/Boss pin, opened by a left click. Only ranked
+-- creatures offer it: a vendor or a herb node has no drop table worth a click.
+-- It is a panel of its own (Client.ShowLootPanel) rather than the hover
+-- tooltip, so it stays open when the mouse leaves the pin and each row can
+-- show the item's own tooltip. The row cap keeps a boss's list on the map;
+-- what does not fit is counted, not dropped silently.
+--
+-- Only uncommon (green) and better is listed. The bundled data carries no
+-- quality, so it comes from the client (GetItemInfo), which knows nothing
+-- about an item it has not cached: such an item is neither listed nor
+-- dropped, it is requested and counted as loading until the answer says
+-- which side of the line it falls on.
+local MAX_LOOT_CELLS = 30
+local LOOT_MIN_QUALITY = 2
+-- The cache fill: one request per step (a burst was measured to leave most
+-- unanswered, see Client.RequestItemCache), a few retries each, then a grace
+-- period for a late answer before the item is reported as unknown.
+local LOOT_CACHE_INTERVAL = 0.3
+local LOOT_CACHE_RETRIES = 3
+local LOOT_CACHE_GRACE_STEPS = 10
+-- How often the open panel checks whether the map has closed under it.
+local LOOT_WATCH_INTERVAL = 0.1
+
+function NpcPins:HasLoot(target)
+    if type(target) ~= "table" or not target.rankLabelKey
+        or target.sourceType ~= "unit" or type(target.sourceId) ~= "number" then
+        return false
+    end
+    local database = Database()
+    if not database or type(database.GetUnitLoot) ~= "function" then
+        return false
+    end
+    local drops, shared = database:GetUnitLoot(target.sourceId)
+    return table.getn(drops) > 0 or shared > 0
+end
+
+local function FormatChance(chance)
+    if chance >= 10 then
+        return string.format("%.0f%%", chance)
+    elseif chance >= 1 then
+        return string.format("%.1f%%", chance)
+    elseif chance >= 0.01 then
+        return string.format("%.2f%%", chance)
+    end
+    return "<0.01%"
+end
+
+local function NoteRow(text)
+    return { text = text, r = 0.6, g = 0.6, b = 0.6 }
+end
+
+local function Driver()
+    return UQ:GetModule("Driver")
+end
+
+-- The open panel: the pin's own hover lines (without the click hint, which
+-- has just been acted on), then one icon cell per listed item, then notes.
+-- `pending` maps an item id still being fetched to true; nil means none is.
+-- `page` (1-based, default 1) picks which MAX_LOOT_CELLS-long slice of the
+-- listed items the grid shows; the arrows under the grid turn it.
+function NpcPins:LootSpec(target, pending, page)
+    page = page or 1
+    local skip = (page - 1) * MAX_LOOT_CELLS
+    local before = 0
+    local cells = {}
+    local notes = {}
+    local database = Database()
+    local drops, shared = {}, 0
+    if database and type(database.GetUnitLoot) == "function" then
+        drops, shared = database:GetUnitLoot(target.sourceId)
+    end
+    local shown, hidden, loading, unknown = 0, 0, 0, 0
+    local index = 1
+    local total = table.getn(drops)
+    while index <= total do
+        local drop = drops[index]
+        local clientName, icon, quality = Client.GetItemDisplayInfo(drop.itemId)
+        if not clientName then
+            if pending and pending[drop.itemId] then
+                loading = loading + 1
+            else
+                unknown = unknown + 1
+            end
+        elseif type(quality) == "number" and quality >= LOOT_MIN_QUALITY then
+            if before < skip then
+                before = before + 1
+            elseif shown < MAX_LOOT_CELLS then
+                -- The bundled name follows the addon's language setting like
+                -- every other name on the map; it only feeds the fallback.
+                local name = database:GetItemName(drop.itemId) or clientName
+                local r, g, b = Client.GetItemQualityRGB(quality)
+                local rate = FormatChance(drop.chance)
+                table.insert(cells, {
+                    icon = icon, rate = rate,
+                    r = r, g = g, b = b, quality = quality,
+                    itemId = drop.itemId,
+                    tooltipLines = {
+                        { text = name, r = r, g = g, b = b },
+                        { text = rate, r = 1, g = 0.82, b = 0 },
+                    },
+                })
+                shown = shown + 1
+            else
+                hidden = hidden + 1
+            end
+        end
+        index = index + 1
+    end
+    if shown == 0 and before == 0 and loading == 0 then
+        table.insert(notes, NoteRow(UQ.L("NPC_LOOT_NONE")))
+    end
+    local pager = nil
+    local pages = math.ceil((before + shown + hidden) / MAX_LOOT_CELLS)
+    if pages > 1 then
+        pager = { text = UQ.L("NPC_LOOT_PAGE", tostring(page), tostring(pages)) }
+        if page > 1 then
+            pager.onPrevious = function() NpcPins:TurnLootPage(-1) end
+        end
+        if page < pages then
+            pager.onNext = function() NpcPins:TurnLootPage(1) end
+        end
+    end
+    if loading > 0 then
+        table.insert(notes, NoteRow(UQ.L("NPC_LOOT_LOADING", tostring(loading))))
+    end
+    if unknown > 0 then
+        table.insert(notes, NoteRow(UQ.L("NPC_LOOT_UNKNOWN", tostring(unknown))))
+    end
+    return { lines = self:TooltipLines(target), cells = cells, notes = notes, pager = pager }
+end
+
+function NpcPins:PendingSet()
+    local state = self.loot
+    if not state then
+        return nil
+    end
+    local set = {}
+    local index = 1
+    while index <= table.getn(state.pending) do
+        set[state.pending[index].itemId] = true
+        index = index + 1
+    end
+    return set
+end
+
+function NpcPins:RedrawLootPanel()
+    local state = self.loot
+    if not state then
+        return false
+    end
+    return Client.ShowLootPanel(state.pin,
+        self:LootSpec(state.target, self:PendingSet(), state.page))
+end
+
+function NpcPins:TurnLootPage(step)
+    local state = self.loot
+    if not state then
+        return false
+    end
+    local page = (state.page or 1) + step
+    if page < 1 then page = 1 end
+    state.page = page
+    Client.HideMapTooltip(nil)
+    return self:RedrawLootPanel()
+end
+
+function NpcPins:CloseLootPanel()
+    self.loot = nil
+    Client.HideLootPanel()
+    local driver = Driver()
+    if driver then
+        driver:Unschedule("map.lootcache")
+        driver:Unschedule("map.lootwatch")
+    end
+end
+
+-- Open state is tracked here, per pin AND creature: pins are pooled, so after
+-- a redraw the same frame can carry another creature, and a click on it must
+-- open that creature's loot rather than close a panel for the previous one.
+function NpcPins:ToggleLootPanel(pin)
+    local target = pin and pin.unrealQuestNpcTarget
+    if not self:HasLoot(target) then
+        return false
+    end
+    if self.loot and self.loot.pin == pin and self.loot.target == target
+        and Client.IsLootPanelOpenFor(pin) then
+        self:CloseLootPanel()
+        return true
+    end
+    Client.HideMapTooltip(pin)
+
+    local pending = {}
+    local database = Database()
+    local drops = database:GetUnitLoot(target.sourceId)
+    local index = 1
+    while index <= table.getn(drops) do
+        if not Client.GetItemDisplayInfo(drops[index].itemId) then
+            table.insert(pending, { itemId = drops[index].itemId, tries = 0 })
+        end
+        index = index + 1
+    end
+    self.loot = { pin = pin, target = target, pending = pending, cursor = 1,
+                  sawMapHidden = false, page = 1 }
+    if not self:RedrawLootPanel() then
+        self.loot = nil
+        return false
+    end
+    local driver = Driver()
+    if driver then
+        driver:Schedule("map.lootwatch", LOOT_WATCH_INTERVAL, function()
+            NpcPins:WatchLootPanel()
+        end)
+        if table.getn(pending) > 0 then
+            driver:Schedule("map.lootcache", LOOT_CACHE_INTERVAL, function()
+                NpcPins:StepLootCacheFill()
+            end)
+        else
+            driver:Unschedule("map.lootcache")
+        end
+    end
+    return true
+end
+
+-- Closing with the map. The map's own frames cannot say whether it is up
+-- (docs/WORLD-MAP-PINS-RECOVERY.md) and an OnHide on a canvas child never
+-- closed the panel in game, so this polls the one signal the map layer
+-- already relies on: the fullscreen map hides UIParent. Only the transition
+-- counts -- hidden seen while the panel was open, then visible again -- so a
+-- client whose map leaves UIParent up never closes the panel by mistake, and
+-- an unknown answer (nil) changes nothing.
+function NpcPins:WatchLootPanel()
+    local state = self.loot
+    if not state or not Client.IsLootPanelOpenFor(state.pin) then
+        self:CloseLootPanel()
+        return
+    end
+    if state.pin.unrealQuestNpcTarget ~= state.target then
+        self:CloseLootPanel()
+        return
+    end
+    local hidden = Client.IsGameUIHidden()
+    if hidden == true then
+        state.sawMapHidden = true
+    elseif hidden == false and state.sawMapHidden then
+        self:CloseLootPanel()
+    end
+end
+
+function NpcPins:StepLootCacheFill()
+    local state = self.loot
+    local driver = Driver()
+    if not state then
+        if driver then driver:Unschedule("map.lootcache") end
+        return
+    end
+    -- Sweep for arrivals first, then send one request.
+    local changed = false
+    local remaining = {}
+    local index = 1
+    local total = table.getn(state.pending)
+    while index <= total do
+        local entry = state.pending[index]
+        if Client.GetItemDisplayInfo(entry.itemId) then
+            changed = true
+        elseif entry.tries < LOOT_CACHE_RETRIES then
+            table.insert(remaining, entry)
+        else
+            -- Out of retries, but the last answer may still be on its way.
+            entry.idle = (entry.idle or 0) + 1
+            if entry.idle < LOOT_CACHE_GRACE_STEPS then
+                table.insert(remaining, entry)
+            else
+                changed = true
+            end
+        end
+        index = index + 1
+    end
+    state.pending = remaining
+    if changed then
+        self:RedrawLootPanel()
+    end
+    total = table.getn(remaining)
+    if total == 0 then
+        if driver then driver:Unschedule("map.lootcache") end
+        return
+    end
+    local looked = 0
+    while looked < total do
+        if state.cursor > total then
+            state.cursor = 1
+        end
+        local entry = remaining[state.cursor]
+        state.cursor = state.cursor + 1
+        looked = looked + 1
+        if entry.tries < LOOT_CACHE_RETRIES then
+            entry.tries = entry.tries + 1
+            Client.RequestItemCache(entry.itemId)
+            return
+        end
+    end
 end
 
 -- Records one reviewed creature-area pair for later promotion into bundled
@@ -923,12 +1254,13 @@ function NpcPins:GetWorldPin(index)
         self.worldPool[index] = pin
         Client.SetWorldMapPinSize(pin, WORLD_PIN_SIZE, WORLD_PIN_SIZE)
         Client.RaiseWorldMapPin(pin, 6)
-        local onClick = nil
-        if REVIEW_REMOVAL_ENABLED then
-            onClick = function(first)
-                if Client.ResolveClickButton(first) == "RightButton" then
+        local onClick = function(first)
+            if Client.ResolveClickButton(first) == "RightButton" then
+                if REVIEW_REMOVAL_ENABLED then
                     NpcPins:ShowRemoveMenu(pin)
                 end
+            else
+                NpcPins:ToggleLootPanel(pin)
             end
         end
         Client.SetWorldMapPinHandlers(pin,

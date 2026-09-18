@@ -184,6 +184,10 @@ local function HideRow(row)
     while index <= total do
         local button = buttons[codes[index]]
         if button then
+            -- A row can be taken away while the cursor is still on one of its
+            -- flags -- the log pane hides it on scroll -- and a hidden button
+            -- gets no OnLeave. Owner-guarded, so it only ever closes its own.
+            Client.HideGameTooltip(button)
             Client.HideObject(button)
         end
         index = index + 1

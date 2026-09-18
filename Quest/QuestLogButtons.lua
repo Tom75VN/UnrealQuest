@@ -213,6 +213,12 @@ local function EnsureButtons()
     if not show or not track or not follow then
         return nil
     end
+    -- This row lives inside QuestLogDetailScrollChildFrame, where a region
+    -- placed with SetPoint reports a stale position for a frame once the pane
+    -- is scrolled off its top. See Client.UseQuestLogButtonNormalTextureSkin.
+    Client.UseQuestLogButtonNormalTextureSkin(show)
+    Client.UseQuestLogButtonNormalTextureSkin(track)
+    Client.UseQuestLogButtonNormalTextureSkin(follow)
 
     Client.SetObjectScript(show, "OnClick", function()
         local quest = QuestLogButtons.currentQuest
@@ -394,10 +400,33 @@ local function PlaceQuestLogFlag(button, anchor, offsetX, offsetY)
     return Client.PlaceQuestLogFlag(button, anchor, offsetX, offsetY)
 end
 
+-- The row does not scroll with the pane it sits in: it is anchored to the
+-- viewport and parented to QuestLogFrame (see Client.PlaceQuestLogFlag), which
+-- is what keeps it on screen at all and what makes it a lid over the quest
+-- text the moment the description slides up underneath it. So the flags are
+-- part of the pane's RESTING top-right corner only: past the first pixel of
+-- scroll the row goes away, and it comes back when the player scrolls home.
+--
+-- Read per refresh off the shared driver's poll rather than off a scroll
+-- script, so nothing here depends on the client firing anything.
+--
+-- The tolerance absorbs a resting offset that is not exactly zero; an
+-- unmeasurable pane (nil, not 0) counts as the top, because a surface this
+-- cannot read must keep the row it already had rather than lose it silently.
+local FLAG_SCROLL_TOLERANCE = 1
+
+local function DetailScrolledAwayFromTop()
+    local offset = Client.GetQuestLogDetailScrollOffset()
+    return offset ~= nil and offset > FLAG_SCROLL_TOLERANCE
+end
+
 local function RefreshFlags(quest)
     local flags = UQ:GetModule("QuestLanguageFlags")
     if not flags then
         return
+    end
+    if quest and DetailScrolledAwayFromTop() then
+        quest = nil
     end
     flags:Refresh({
         key = FLAG_ROW_KEY,
@@ -560,7 +589,8 @@ function QuestLogButtons:Refresh()
             local title = Client.GetNamedObject("QuestLogQuestTitle")
             local label = Client.PrepareModernQuestLogLevel(dock, title)
             Client.SetModernQuestLogLevel(label,
-                UQ.L("QUESTLOG_LEVEL", tostring(quest.level or "?")), true)
+                UQ.L("QUESTLOG_LEVEL", quest.level
+                    and UQ.FormatQuestLevel(quest.level, quest) or "?"), true)
         end
     else
         -- The native row text already carries the level (Quest/QuestLogLevels),

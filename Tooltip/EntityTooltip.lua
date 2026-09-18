@@ -186,6 +186,10 @@ local function RespawnLine(minimum, maximum)
     return { text = UQ.L("TOOLTIP_RESPAWN", duration), r = 0.7, g = 0.7, b = 0.7 }
 end
 
+-- Shared with the world-map Rare/Elite/Boss pins (Map/NpcPins.lua), so the
+-- same creature reads the same respawn line on the map and in the world.
+EntityTooltip.RespawnLine = RespawnLine
+
 -- Returns the addon rows for a hovered entity: any live quest progress plus
 -- the optional bundled respawn duration. The two counters describe only the
 -- ObjectiveMatch paths and remain nil for a respawn-only tooltip.

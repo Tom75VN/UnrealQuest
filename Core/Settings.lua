@@ -191,6 +191,9 @@ local BUTTON_WIDTH = 150
 local BUTTON_HEIGHT = 20
 local ROW_GAP = 8
 local NOTE_INDENT = 20
+-- Width of each option of a radio laid out on one line (page.Radio's
+-- inlineWidth): the check, the label gap and a one-word label.
+local RADIO_INLINE_WIDTH = 120
 local INTERNAL_TAB_HEIGHT = 20
 -- Tab height, its 2px gap, and a 5px margin under the strip so the first
 -- control of either tab does not sit against the row of tabs.
@@ -426,7 +429,11 @@ local function NewPage(parent)
     -- one clears the others, and only this closure knows who the others are.
     -- Nothing here reads the widgets' own state to decide -- the stored setting
     -- is the single source of truth, on the click and on every page open.
-    page.Radio = function(key, title, options, note)
+    --
+    -- `inlineWidth`, when given, lays the rows side by side, each that wide,
+    -- on a single line instead of one line per row. Only for short noteless
+    -- labels: a wrapped label or a note would run into its neighbour.
+    page.Radio = function(key, title, options, note, inlineWidth)
         if title then
             page.Body(title)
         end
@@ -448,20 +455,31 @@ local function NewPage(parent)
             -- below outlives this iteration.
             local rowIndex = index
             local rowValue = option.value
+            local rowLeft = NOTE_INDENT
+            local rowWidth = TEXT_WIDTH - NOTE_INDENT * 2
+            if inlineWidth then
+                rowLeft = NOTE_INDENT + (index - 1) * inlineWidth
+                rowWidth = inlineWidth - CHECKBOX_LABEL_GAP
+            end
             local button = Client.CreateSettingsRadio(page.parent,
                 WidgetName(key) .. "Option" .. tostring(index),
-                option.label, NOTE_INDENT, page.y, TEXT_WIDTH - NOTE_INDENT * 2,
+                option.label, rowLeft, page.y, rowWidth,
                 function()
                     Store(key, rowValue)
                     Select(rowIndex)
                 end)
             buttons[index] = button
             page.Add(button)
-            page.y = page.y - CHECKBOX_ADVANCE
-            if option.note then
-                page.Body(option.note, NOTE_INDENT * 2)
+            if not inlineWidth then
+                page.y = page.y - CHECKBOX_ADVANCE
+                if option.note then
+                    page.Body(option.note, NOTE_INDENT * 2)
+                end
             end
             index = index + 1
+        end
+        if inlineWidth then
+            page.y = page.y - CHECKBOX_ADVANCE
         end
 
         if note then
@@ -702,6 +720,9 @@ local function BuildGeneralSection(page)
     -- picking a row repaints the map on the next refresh with nothing here to
     -- notify.
     --
+    -- The two rows share one line: that 18px is what the profession-quest
+    -- switch below costs, and "Dots" / "Areas" are one word in every locale.
+    --
     -- The two rows carry no note of their own. The page is a fixed,
     -- non-scrolling 428px box, the minimap block below needs a fifth row for
     -- its own options, and this was the only place with height to give: two
@@ -710,7 +731,7 @@ local function BuildGeneralSection(page)
     page.Radio("mapObjectiveDots", UQ.L("SETTINGS_MAP_OBJECTIVE_STYLE"), {
         { value = true, label = UQ.L("SETTINGS_MAP_STYLE_DOTS") },
         { value = false, label = UQ.L("SETTINGS_MAP_STYLE_AREAS") },
-    })
+    }, nil, RADIO_INLINE_WIDTH)
 
     page.Slider("mapObjectiveDotScale", UQ.L("SETTINGS_MAP_DOT_SIZE"), 50, 150, 1,
         function()
@@ -775,8 +796,10 @@ local function BuildGeneralSection(page)
     page.Checkbox("mobNavigatorEnabled", UQ.L("SETTINGS_MOB_NAVIGATOR"), nil,
         { width = pairWidth, advance = 0 })
     page.Checkbox("questRewardItemColors", UQ.L("SETTINGS_REWARD_QUALITY_COLORS"), nil,
-        { left = PAIR_COLUMN_RIGHT, width = rightWidth,
-          advance = CHECKBOX_ADVANCE + 4 })
+        { left = PAIR_COLUMN_RIGHT, width = rightWidth, advance = CHECKBOX_ADVANCE })
+
+    page.Checkbox("hideUnlearnedProfessionQuests", UQ.L("SETTINGS_HIDE_PROFESSION_QUESTS"), nil,
+        { width = TEXT_WIDTH, advance = CHECKBOX_ADVANCE + 4 })
 
     -- The import button's label describes its action. The ordinary row gap
     -- above is enough separation; the old extra 8px is now used by the clearer
@@ -1249,7 +1272,12 @@ function Settings:RegisterWithUnrealUI(host)
     end
 
     if type(host.RegisterSettingsGroup) == "function" then
-        local ok, group = pcall(host.RegisterSettingsGroup, TAB_ID, TAB_LABEL)
+        -- `after = "profiles"` keeps the group last in the sidebar (unrealUI
+        -- slots groups ahead of profiles by default); `defaultPage` opens
+        -- General when the group is clicked. An unrealUI that predates the
+        -- options table ignores it and keeps its own placement.
+        local ok, group = pcall(host.RegisterSettingsGroup, TAB_ID, TAB_LABEL,
+            { after = "profiles", defaultPage = GENERAL_PAGE_ID })
         if not ok or not group then
             return false
         end
@@ -1533,8 +1561,15 @@ function Settings:ApplyStoredPosition()
     -- Always UIParent-relative, same rule as the tracker: a relative frame is a
     -- live object that cannot be persisted, and anchoring to another addon's
     -- frame would break the moment that addon is not loaded.
-    return Client.SetFrameAnchor(window, point, "UIParent",
-        type(relativePoint) == "string" and relativePoint or point, x, y)
+    local applied, placedX, placedY, moved = Client.SetFrameAnchor(window, point,
+        "UIParent", type(relativePoint) == "string" and relativePoint or point, x, y)
+    -- A stored position that left the window off screen was pulled back on;
+    -- keep the corrected one so it opens there next time too.
+    if applied and moved then
+        Store("settingsX", placedX)
+        Store("settingsY", placedY)
+    end
+    return applied
 end
 
 function Settings:CapturePosition()
@@ -1553,6 +1588,9 @@ function Settings:CapturePosition()
     Store("settingsRelativePoint", type(relativePoint) == "string" and relativePoint or point)
     Store("settingsX", x)
     Store("settingsY", y)
+    -- Re-placed from what was just stored, so a drop past a screen edge snaps
+    -- flush with it, as the navigator does (Client.KeepFrameOnScreen).
+    self:ApplyStoredPosition()
     return true
 end
 

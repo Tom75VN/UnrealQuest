@@ -18,6 +18,7 @@ The record fields this reads, and how many quests carry each:
   min   4416 quests   minimum character level
   event  342 quests   seasonal world event id
   pre   2399 quests   alternative prerequisite quest(s)
+  skill  144 quests   required profession/secondary skill line id
 
 The race and class bits are derived from the numeric ids the client returns,
 which is measured behaviour here (UnitRace/UnitClass both return a third
@@ -89,8 +90,77 @@ function QuestEligibility:RefreshPlayer()
     self.level = Client.GetPlayerLevel()
     self.greenRange = Client.GetQuestGreenRange() or 5
     self.faction = Client.GetPlayerFaction()
+    self:RefreshSkills()
     self.resolved = (self.raceBit ~= nil or self.classBit ~= nil or self.level ~= nil)
     return self.resolved
+end
+
+-- The skill walk is one guarded call per Skills-pane row, so it is throttled
+-- rather than repeated on every map pass; a newly learned profession shows
+-- its quests within SKILL_REFRESH_SECONDS.
+local SKILL_REFRESH_SECONDS = 10
+
+function QuestEligibility:RefreshSkills()
+    local now = Client.Now()
+    if now and self.skillsReadAt and now - self.skillsReadAt < SKILL_REFRESH_SECONDS then
+        return
+    end
+    self.skillsReadAt = now
+    local names, complete = Client.GetPlayerSkillLines()
+    self.skillNames = names
+    self.skillsComplete = (names ~= nil and complete) and true or false
+    local count = 0
+    if names then
+        for _ in pairs(names) do
+            count = count + 1
+        end
+    end
+    self.skillCount = count
+end
+
+-- Changes whenever the profession filter could give a different answer: the
+-- option, whether the Skills pane was read in full, and how many skills it
+-- listed (learning or dropping a profession changes the count). The map
+-- layers fold it into the key they rebuild on.
+function QuestEligibility:ProfessionSignature()
+    return tostring(self:HideUnlearnedProfessionQuests())
+        .. ":" .. tostring(self.skillsComplete)
+        .. ":" .. tostring(self.skillCount)
+end
+
+function QuestEligibility:HideUnlearnedProfessionQuests()
+    local config = UQ:GetModule("Config")
+    if not config then
+        return true
+    end
+    return config:Get("hideUnlearnedProfessionQuests") and true or false
+end
+
+-- False only when the Skills pane was read in full and none of the names the
+-- quest's required skill goes by is on it. A collapsed header, an unreadable
+-- list or a skill id with no known name all leave the quest shown: a missing
+-- input must over-show, never blank a giver the player can actually use.
+function QuestEligibility:HasRequiredSkill(record)
+    if type(record) ~= "table" or type(record.skill) ~= "number" then
+        return true
+    end
+    if not self.skillNames then
+        return true
+    end
+    local database = Database()
+    local names = database and database:GetSkillNames(record.skill) or {}
+    local total = table.getn(names)
+    if total == 0 then
+        return true
+    end
+    local index = 1
+    while index <= total do
+        if self.skillNames[names[index]] then
+            return true
+        end
+        index = index + 1
+    end
+    return not self.skillsComplete
 end
 
 -- A quest can omit its race mask even though its starting NPC belongs to one
@@ -204,6 +274,11 @@ function QuestEligibility:IsOfferable(questId, activeQuestIds, questHistory)
         return false, "event"
     end
 
+    if record.skill ~= nil and self:HideUnlearnedProfessionQuests()
+        and not self:HasRequiredSkill(record) then
+        return false, "profession"
+    end
+
     -- Match pfQuest's QuestFilter: prerequisites are alternatives, and one
     -- completed predecessor is enough to unlock the quest. Keep the stronger
     -- live safeguard too -- a predecessor still active is visibly not done.
@@ -236,4 +311,7 @@ function QuestEligibility:OnEnable()
     UQ:DeclareCapability("questEligibility", "verified",
         "race/class masks resolved from the measured numeric ids UnitRace/UnitClass return; "
         .. "prerequisites follow pfQuest's one-completed-predecessor rule using local or imported history")
+    UQ:DeclareCapability("professionQuestFilter", "unverified",
+        "GetNumSkillLines row count is measured; the GetSkillLineInfo name/header/isExpanded tuple "
+        .. "is documented only. Matched by localized name; a collapsed header leaves quests shown")
 end

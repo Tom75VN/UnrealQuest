@@ -472,8 +472,15 @@ function RareAlert:ApplyStoredPosition()
     if type(point) ~= "string" or type(x) ~= "number" or type(y) ~= "number" then
         return Client.PositionAlertWindow(frame, DEFAULT_POINT, DEFAULT_X, DEFAULT_Y)
     end
-    return Client.SetFrameAnchor(frame, point, "UIParent",
-        type(relativePoint) == "string" and relativePoint or point, x, y)
+    local applied, placedX, placedY, moved = Client.SetFrameAnchor(frame, point,
+        "UIParent", type(relativePoint) == "string" and relativePoint or point, x, y)
+    -- A stored position that left the card off screen was pulled back on;
+    -- keep the corrected one.
+    if applied and moved then
+        config:Set("rareAlertX", placedX)
+        config:Set("rareAlertY", placedY)
+    end
+    return applied
 end
 
 function RareAlert:CapturePosition()
@@ -495,6 +502,9 @@ function RareAlert:CapturePosition()
         type(relativePoint) == "string" and relativePoint or point)
     config:Set("rareAlertX", x)
     config:Set("rareAlertY", y)
+    -- Re-placed from what was just stored, so a drop past a screen edge snaps
+    -- flush with it, as the navigator does (Client.KeepFrameOnScreen).
+    self:ApplyStoredPosition()
     return true
 end
 

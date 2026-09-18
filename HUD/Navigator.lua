@@ -858,8 +858,17 @@ function Navigator:RefreshArrow()
     -- correctly wired drag look broken.
     if not self.dragging then
         local offsetX, offsetY, scale, point, relativePoint = self:Placement()
-        if Client.PositionNavigator(frame, offsetX, offsetY, scale,
-            point, relativePoint) then
+        local placed, placedX, placedY, moved = Client.PositionNavigator(frame,
+            offsetX, offsetY, scale, point, relativePoint)
+        if placed then
+            -- The saved anchor left the dial off screen (a position stored
+            -- mirrored by an earlier release, or a smaller screen); keep the
+            -- on-screen one it was pulled back to.
+            local store = moved and Config()
+            if store then
+                store:Set("navigatorX", placedX)
+                store:Set("navigatorY", placedY)
+            end
             self.placements = self.placements + 1
             self.shown = true
             self.hiddenReason = nil

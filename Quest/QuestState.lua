@@ -131,7 +131,10 @@ local function ReadObjectives(quest)
         local objective = {
             text = text,
             objectiveType = objectiveType,
-            finished = isFinished and true or false,
+            -- The client's own finished flag stays false for an ordinary
+            -- (non quest-flagged) item held at or above the requirement, so a
+            -- counter that reads need/need is finished regardless of it.
+            finished = (isFinished or (have and need and have >= need)) and true or false,
             have = have,
             need = need,
         }
