@@ -41,6 +41,14 @@ Rare/Elite/Boss world-map pins in game on 2026-08-29. It covers entrance-cave
 records that project onto an outdoor zone even though the source creature is
 not globally instance-only.
 
+## Vendor sell prices
+
+`sellprices.lua` is the sell half of pfUI's `pfSellData` table (pfUI -- Eric
+Mauser / Shagu -- MIT License), read from the local UnrealPfUI copy at
+`env/tables.lua` by `tools/make_sell_prices.py`. It is Vanilla 1.12 item data in
+copper: an item this server added has no row, and an item it re-priced keeps the
+Vanilla value.
+
 ## Patrol scope
 
 Battleground and instance patrols are intentionally not shipped in the optimized

@@ -146,6 +146,18 @@ local function UnrealUI()
     return host
 end
 
+-- One of unrealUI's shared settings components (U.CreateCheckbox,
+-- U.CreateRadioGroup, U.CreateSlider), or nil. When unrealUI hosts the page,
+-- its Game Settings window restyles exactly these components, so using them is
+-- what makes this page's controls match every other settings page there.
+local function HostComponent(name)
+    local host = UnrealUI()
+    if host and type(host[name]) == "function" then
+        return host[name]
+    end
+    return nil
+end
+
 -- Page layout ---------------------------------------------------------------
 --
 -- ADDING A CHECKBOX OR RADIO IS TWO LINES, AND NEITHER IS ABOUT THE HOST:
@@ -201,7 +213,14 @@ local INTERNAL_TAB_ADVANCE = 27
 local INTERNAL_TAB_WIDTH = 150
 local MOB_MIN_ROWS_PER_PAGE = 9
 local MOB_ROW_HEIGHT = 20
-local MOB_ROW_ADVANCE = 22
+-- Table rows touch, as Forever's own lists do; the stripe separates them.
+local MOB_ROW_ADVANCE = MOB_ROW_HEIGHT
+-- Space between the last table row and the result counter under it.
+local MOB_TABLE_GAP = 4
+-- The tracked band and the result table end where the Search button ends
+-- (field 296 + gap 10 + button 112), not at the page's full text width: at
+-- that width their right edge ran past the host window's page box.
+local MOB_LIST_WIDTH = 418
 -- The tracked-creature band between the search field and the results: one
 -- accent line naming the creature, and the square that stops tracking it, on
 -- an outlined panel tinted with the same accent at a tenth of its opacity.
@@ -235,6 +254,8 @@ local MOB_CLEAR_RED = 0.95
 local MOB_CLEAR_GREEN = 0.30
 local MOB_CLEAR_BLUE = 0.30
 local MOB_PAGING_ADVANCE = 26
+-- The pager's own row inside that advance.
+local MOB_PAGER_HEIGHT = 22
 -- The one reserved body line the result/page counter takes above the paging
 -- row, matching what page.Body advances for `reservedLines = 1`.
 local MOB_STATUS_ADVANCE = BODY_LINE_HEIGHT + 4
@@ -279,6 +300,12 @@ end
 -- Tracking tabs: parent visibility does not reliably reach children here.
 local function SetRegionShown(region, shown)
     if not region then
+        return
+    end
+    -- unrealUI's composite controls may own their visibility (a styled slider
+    -- keeps its min/max labels hidden, for one); honour that first.
+    if type(region.uuiSetShown) == "function" then
+        region.uuiSetShown(shown)
         return
     end
     if region.uuiParts then
@@ -393,17 +420,43 @@ local function NewPage(parent)
         local left = type(layout.left) == "number" and layout.left or 0
         local width = type(layout.width) == "number" and layout.width
             or (TEXT_WIDTH - NOTE_INDENT - left)
-        local box = Client.CreateSettingsCheckbox(page.parent, WidgetName(key), text,
-            left, page.y, width,
-            function(checked)
-                Store(key, checked)
-            end)
+        local box
+        local SyncBox
+        local createCheckbox = HostComponent("CreateCheckbox")
+        if createCheckbox then
+            box = createCheckbox(page.parent, {
+                name = WidgetName(key),
+                text = text,
+                textWidth = width,
+                value = Setting(key) and true or false,
+                onChange = function(checked)
+                    Store(key, checked and true or false)
+                    -- Controls that depend on this switch re-read it.
+                    page.Refresh()
+                end,
+            })
+            if box then
+                box.SetPoint("TOPLEFT", page.parent, "TOPLEFT", left, page.y)
+                SyncBox = function()
+                    box.SetValue(Setting(key) and true or false)
+                end
+            end
+        end
+        if not box then
+            box = Client.CreateSettingsCheckbox(page.parent, WidgetName(key), text,
+                left, page.y, width,
+                function(checked)
+                    Store(key, checked)
+                    page.Refresh()
+                end)
+            SyncBox = function()
+                Client.SetSettingsCheckbox(box, Setting(key) and true or false)
+            end
+        end
         page.Add(box)
         if type(layout.advance) == "number" then
             page.y = page.y - layout.advance
-            page.Sync(function()
-                Client.SetSettingsCheckbox(box, Setting(key) and true or false)
-            end)
+            page.Sync(SyncBox)
             return box
         end
         page.y = page.y - CHECKBOX_ADVANCE
@@ -411,9 +464,7 @@ local function NewPage(parent)
             page.Body(note, NOTE_INDENT)
         end
         page.y = page.y - ROW_GAP
-        page.Sync(function()
-            Client.SetSettingsCheckbox(box, Setting(key) and true or false)
-        end)
+        page.Sync(SyncBox)
         return box
     end
 
@@ -437,8 +488,65 @@ local function NewPage(parent)
         if title then
             page.Body(title)
         end
-        local buttons = {}
         local total = table.getn(options)
+
+        -- unrealUI's shared radio group when it hosts the page. It lays its
+        -- rows out itself, so it is used only when no option carries a note
+        -- line between rows (true of every radio on the page today).
+        local createRadio = HostComponent("CreateRadioGroup")
+        local hasNotes = false
+        local noteIndex = 1
+        while noteIndex <= total do
+            if options[noteIndex].note then
+                hasNotes = true
+            end
+            noteIndex = noteIndex + 1
+        end
+        if createRadio and not hasNotes then
+            local items = {}
+            local itemIndex = 1
+            while itemIndex <= total do
+                items[itemIndex] = { value = options[itemIndex].value,
+                    text = options[itemIndex].label }
+                itemIndex = itemIndex + 1
+            end
+            local group = createRadio(page.parent, {
+                name = WidgetName(key) .. "Option",
+                items = items,
+                value = Setting(key),
+                width = inlineWidth or (TEXT_WIDTH - NOTE_INDENT * 2),
+                rowHeight = CHECKBOX_ADVANCE,
+                columns = inlineWidth and total or 1,
+                columnGap = 0,
+                rowGap = 0,
+                onChange = function(value)
+                    Store(key, value)
+                    -- Controls that depend on this choice re-read it.
+                    page.Refresh()
+                end,
+            })
+            if group then
+                group.SetPoint("TOPLEFT", page.parent, "TOPLEFT", NOTE_INDENT, page.y)
+                page.Add(group)
+                if inlineWidth then
+                    page.y = page.y - CHECKBOX_ADVANCE
+                else
+                    page.y = page.y - CHECKBOX_ADVANCE * total
+                end
+                if note then
+                    page.Body(note, NOTE_INDENT)
+                end
+                page.y = page.y - ROW_GAP
+                page.Sync(function()
+                    -- A stored value no option names leaves the group as it is
+                    -- rather than writing a choice back for the player.
+                    group.SetValue(Setting(key), false)
+                end)
+                return group
+            end
+        end
+
+        local buttons = {}
 
         local function Select(index)
             local optionIndex = 1
@@ -467,6 +575,7 @@ local function NewPage(parent)
                 function()
                     Store(key, rowValue)
                     Select(rowIndex)
+                    page.Refresh()
                 end)
             buttons[index] = button
             page.Add(button)
@@ -618,6 +727,20 @@ local function NewPage(parent)
         return slider
     end
 
+    -- Greys out a checkbox whose option does not apply right now. Driven from
+    -- a page.Sync closure, so it follows the setting it depends on every time
+    -- that setting changes (page.Radio refreshes the page) and on every open.
+    page.SetCheckboxEnabled = function(box, enabled)
+        if not box then
+            return
+        end
+        if box.uuiParts and type(box.SetEnabled) == "function" then
+            box.SetEnabled(enabled and true or false)
+        else
+            Client.SetSettingsCheckboxEnabled(box, enabled)
+        end
+    end
+
     page.Refresh = function()
         local index = 1
         local total = table.getn(page.syncs)
@@ -648,6 +771,17 @@ end
 -- taller than the standalone 428px content box; a host that reports less
 -- (or nothing) is held to that box.
 local function AvailableHeight(parent)
+    -- unrealUI's canvas frame is TALLER than the box the player actually sees,
+    -- because that window fits its pages by scale. Sizing to the parent there
+    -- is what gave this page a scrollbar, so the host is asked for the height
+    -- that fits (user request, 2026-09-23: this page must not scroll).
+    local host = UnrealUI()
+    if host and type(host.GetIntegratedSettingsPageHeight) == "function" then
+        local ok, visible = pcall(host.GetIntegratedSettingsPageHeight)
+        if ok and type(visible) == "number" and visible >= CONTENT_HEIGHT then
+            return visible
+        end
+    end
     local height = Client.GetObjectHeight(parent)
     if type(height) ~= "number" or height < CONTENT_HEIGHT then
         return CONTENT_HEIGHT
@@ -714,24 +848,31 @@ local function BuildGeneralSection(page)
 
     page.Heading(UQ.L("SETTINGS_HEADING_WORLD_MAP"), 7)
 
-    -- Two presentations of one scene, and neither is the absence of the other,
-    -- so the choice is a radio rather than a checkbox naming one of them.
-    -- Map/WorldMapPins.lua carries the setting into its view signature, so
-    -- picking a row repaints the map on the next refresh with nothing here to
-    -- notify.
+    -- Two presentations of one scene, each its own switch: dots, areas, both
+    -- or neither. Map/WorldMapPins.lua carries both settings into its view
+    -- signature, so ticking one repaints the map on the next refresh with
+    -- nothing here to notify.
     --
-    -- The two rows share one line: that 18px is what the profession-quest
-    -- switch below costs, and "Dots" / "Areas" are one word in every locale.
-    --
-    -- The two rows carry no note of their own. The page is a fixed,
-    -- non-scrolling 428px box, the minimap block below needs a fifth row for
-    -- its own options, and this was the only place with height to give: two
-    -- indented note lines cost 34px to restate what "Dots" and "Areas" already
-    -- say under a title that names the question.
-    page.Radio("mapObjectiveDots", UQ.L("SETTINGS_MAP_OBJECTIVE_STYLE"), {
-        { value = true, label = UQ.L("SETTINGS_MAP_STYLE_DOTS") },
-        { value = false, label = UQ.L("SETTINGS_MAP_STYLE_AREAS") },
-    }, nil, RADIO_INLINE_WIDTH)
+    -- Areas (the default) on the left, Dots on the right, and "Show all
+    -- areas" on its own line beneath them, 6px further down so the two rows
+    -- read apart. Areas and "Show all areas" sit on the page's left edge like
+    -- every other switch, not indented under the title (user request,
+    -- 2026-09-27). No notes: the page is a fixed, non-scrolling 428px box.
+    page.Body(UQ.L("SETTINGS_MAP_OBJECTIVE_STYLE"))
+    local styleWidth = RADIO_INLINE_WIDTH - CHECKBOX_LABEL_GAP
+    page.Checkbox("mapObjectiveAreas", UQ.L("SETTINGS_MAP_STYLE_AREAS"), nil,
+        { width = styleWidth, advance = 0 })
+    page.Checkbox("mapObjectiveDots", UQ.L("SETTINGS_MAP_STYLE_DOTS"), nil,
+        { left = RADIO_INLINE_WIDTH, width = styleWidth,
+          advance = CHECKBOX_ADVANCE + 6 })
+    -- Only means anything with areas drawn, so it is greyed out without them;
+    -- page.Checkbox refreshes the page on every click, which re-runs this.
+    local showAllAreas = page.Checkbox("mapShowAllAreas",
+        UQ.L("SETTINGS_MAP_SHOW_ALL_AREAS"), nil,
+        { width = TEXT_WIDTH, advance = CHECKBOX_ADVANCE + ROW_GAP })
+    page.Sync(function()
+        page.SetCheckboxEnabled(showAllAreas, Setting("mapObjectiveAreas") and true or false)
+    end)
 
     page.Slider("mapObjectiveDotScale", UQ.L("SETTINGS_MAP_DOT_SIZE"), 50, 150, 1,
         function()
@@ -799,6 +940,8 @@ local function BuildGeneralSection(page)
         { left = PAIR_COLUMN_RIGHT, width = rightWidth, advance = CHECKBOX_ADVANCE })
 
     page.Checkbox("hideUnlearnedProfessionQuests", UQ.L("SETTINGS_HIDE_PROFESSION_QUESTS"), nil,
+        { width = TEXT_WIDTH, advance = CHECKBOX_ADVANCE })
+    page.Checkbox("questRewardGearAdvisor", UQ.L("SETTINGS_REWARD_GEAR_ADVISOR"), nil,
         { width = TEXT_WIDTH, advance = CHECKBOX_ADVANCE + 4 })
 
     -- The import button's label describes its action. The ordinary row gap
@@ -894,7 +1037,7 @@ local function BuildMobSection(page, MobsShown)
     local trackedRowTop = page.y
     local accent = UQ.colors.accent
     local trackedPanel = page.Add(Client.CreateSettingsPanel(parent,
-        0, page.y - MOB_TRACKED_GAP, TEXT_WIDTH, MOB_TRACKED_HEIGHT,
+        0, page.y - MOB_TRACKED_GAP, MOB_LIST_WIDTH, MOB_TRACKED_HEIGHT,
         accent[1], accent[2], accent[3],
         MOB_TRACKED_FILL_ALPHA, MOB_TRACKED_BORDER_ALPHA))
     local trackedContentTop = page.y - MOB_TRACKED_GAP - MOB_TRACKED_INSET
@@ -910,7 +1053,7 @@ local function BuildMobSection(page, MobsShown)
                 RefreshMobResults()
             end
         end, MOB_CLEAR_SIZE,
-        { left = TEXT_WIDTH - MOB_TRACKED_INSET - MOB_CLEAR_SIZE,
+        { left = MOB_LIST_WIDTH - MOB_TRACKED_INSET - MOB_CLEAR_SIZE,
           height = MOB_CLEAR_SIZE,
           -- Past the cross, past the panel's lower inset, then the gap: the
           -- cursor has to clear the panel itself, not just the control on it.
@@ -928,7 +1071,8 @@ local function BuildMobSection(page, MobsShown)
     -- leaving only the paging row and a small bottom margin unused.
     local availableHeight = AvailableHeight(parent)
     local mobRowsPerPage = math.floor((availableHeight + page.y
-        - MOB_STATUS_ADVANCE - MOB_PAGING_ADVANCE - MOB_BOTTOM_MARGIN)
+        - MOB_TABLE_GAP - MOB_STATUS_ADVANCE - MOB_PAGING_ADVANCE
+        - MOB_BOTTOM_MARGIN)
         / MOB_ROW_ADVANCE)
     if mobRowsPerPage < MOB_MIN_ROWS_PER_PAGE then
         mobRowsPerPage = MOB_MIN_ROWS_PER_PAGE
@@ -936,42 +1080,53 @@ local function BuildMobSection(page, MobsShown)
     Settings.mobRowsPerPage = mobRowsPerPage
     Settings.pageAvailableHeight = availableHeight
 
+    -- The results are a plain table (Client.CreateSettingsListRow): touching
+    -- rows, every second one striped, no button chrome per line.
     local mobRows = {}
     local rowIndex = 1
     while rowIndex <= mobRowsPerPage do
         local capturedIndex = rowIndex
-        local rowButton
-        rowButton = page.Button("mobResult" .. tostring(rowIndex), "", function()
-            local row = mobRows[capturedIndex]
-            local record = row and row.record
-            local pins = UQ:GetModule("NpcPins")
-            if record and pins then
-                pins:SetMobTracked(record.unitId,
-                    not pins:IsMobTracked(record.unitId))
-                RefreshMobResults()
-            end
-        end, TEXT_WIDTH, { height = MOB_ROW_HEIGHT, advance = MOB_ROW_ADVANCE })
-        mobRows[rowIndex] = { button = rowButton, record = nil }
+        local line = Client.CreateSettingsListRow(parent,
+            WidgetName("mobResult" .. tostring(rowIndex)), 0, page.y,
+            MOB_LIST_WIDTH, MOB_ROW_HEIGHT,
+            rowIndex - math.floor(rowIndex / 2) * 2 == 0,
+            function()
+                local row = mobRows[capturedIndex]
+                local record = row and row.record
+                local pins = UQ:GetModule("NpcPins")
+                if record and pins then
+                    pins:SetMobTracked(record.unitId,
+                        not pins:IsMobTracked(record.unitId))
+                    RefreshMobResults()
+                end
+            end)
+        page.Add(line)
+        page.y = page.y - MOB_ROW_ADVANCE
+        mobRows[rowIndex] = { button = line, record = nil }
         rowIndex = rowIndex + 1
     end
+    page.Gap(MOB_TABLE_GAP)
 
     -- The result/page counter sits directly above the paging row it describes,
     -- under the results it counts. One reserved line, because its text is
     -- rewritten at runtime and everything below was placed from this height.
     local resultStatus = page.Body(UQ.L("SETTINGS_MOB_READY"), 0, 1)
 
-    local previousButton = page.Button("mobPrevious", UQ.L("SETTINGS_MOB_PREVIOUS"),
+    -- Pagination centred under the table: previous arrow, "page / pages",
+    -- next arrow (Client.CreateSettingsPager).
+    local pager = page.Add(Client.CreateSettingsPager(parent,
+        WidgetName("mobPager"), 0, page.y, MOB_LIST_WIDTH, MOB_PAGER_HEIGHT,
         function()
             if Settings.mobSearchPage > 1 then
                 Settings.mobSearchPage = Settings.mobSearchPage - 1
                 RefreshMobResults()
             end
-        end, 110, { left = 0, height = 22, advance = 0 })
-    local nextButton = page.Button("mobNext", UQ.L("SETTINGS_MOB_NEXT"),
+        end,
         function()
             Settings.mobSearchPage = Settings.mobSearchPage + 1
             RefreshMobResults()
-        end, 110, { left = 120, height = 22, advance = MOB_PAGING_ADVANCE })
+        end))
+    page.y = page.y - MOB_PAGING_ADVANCE
 
     -- A creature's name as both surfaces say it: the name, then its level range
     -- when the data has one. `units[id].lvl` is a STRING here and may be a
@@ -1069,24 +1224,19 @@ local function BuildMobSection(page, MobsShown)
                 local tracked = pins and pins:IsMobTracked(record.unitId)
                 local action = UQ.L(tracked and "QUESTLOG_BUTTON_UNTRACK"
                     or "QUESTLOG_BUTTON_TRACK")
-                Client.SetButtonLabel(row.button,
-                    MobDisplayName(record) .. "  " .. action)
-                Client.SetSettingsTabSelected(row.button, tracked)
+                Client.SetSettingsListRow(row.button, MobDisplayName(record),
+                    action, tracked)
                 if MobsShown() then
                     SetRegionShown(row.button, true)
                 end
             else
-                Client.SetButtonLabel(row.button, "")
-                Client.SetSettingsTabSelected(row.button, false)
+                Client.SetSettingsListRow(row.button, "", "", false)
                 SetRegionShown(row.button, false)
             end
             index = index + 1
         end
 
-        Client.SetSettingsTabSelected(previousButton,
-            Settings.mobSearchPage > 1)
-        Client.SetSettingsTabSelected(nextButton,
-            Settings.mobSearchPage < pages)
+        Client.SetSettingsPager(pager, Settings.mobSearchPage, pages)
     end
 
     return RefreshMobResults, mobSearchInput
@@ -1116,23 +1266,13 @@ function Settings:BuildPage(parent, section)
     local generalTab, mobTab
     local RefreshMobResults, mobSearchInput
 
-    -- The page opens on the addon's own name and version (PageTitle), above the
-    -- tab strip: the wordmark titles the whole page, so it must not sit inside
-    -- either tab's own content, and it is drawn before the tabs so both tabs
-    -- start from the same cursor below it.
-    --
-    -- Skipped on the standalone host: that window's own header already carries
-    -- this wordmark (BuildWindow), so drawing it again here would show it twice.
-    -- unrealUI draws no such title, so under that host this stays the only
-    -- place the page names the addon. The tab strip simply starts one heading
-    -- higher when it is skipped.
-    if self.host ~= "standalone" then
-        page.Heading(PageTitle())
-    else
-        -- No heading to sit under here (the window's own header carries the
-        -- wordmark), so the tab strip would otherwise butt right against the
-        -- header rule. A little of the height the skipped heading freed up
-        -- goes back as breathing room.
+    -- The page draws no wordmark heading of its own: both hosts already title
+    -- it with PageTitle -- the standalone window in its header (BuildWindow),
+    -- unrealUI's Game Settings window in its page title (user request,
+    -- 2026-09-23) -- so a heading here would show the same line twice.
+    if self.host == "standalone" then
+        -- No heading to sit under here, so the tab strip would otherwise butt
+        -- right against the header rule. A little breathing room instead.
         page.Gap(7)
     end
 

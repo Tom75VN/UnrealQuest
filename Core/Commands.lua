@@ -106,6 +106,7 @@ local HELP_TAIL_KEYS = {
     "CMD_HELP_RARE_RESET",
     "CMD_HELP_ANNOUNCE",
     "CMD_HELP_ANNOUNCE_ONOFF",
+    "CMD_HELP_GEAR",
     "CMD_HELP_MARKS",
     "CMD_HELP_MARKS_ONOFF",
     "CMD_HELP_MARKS_ICON",
@@ -294,17 +295,20 @@ local function ShowMap(target)
     -- Writing the setting is all this has to do: WorldMapPins carries it in
     -- its view signature and repaints on the next refresh.
     target = string.lower(UQ.Trim(target) or "")
-    if target == "dots" or target == "areas" then
+    if target == "dots" or target == "areas" or target == "both" then
         local config = UQ:GetModule("Config")
         if not config then
             Line(UQ.L("CMD_MODULE_MISSING_CONFIG"))
             return
         end
-        config:Set("mapObjectiveDots", target == "dots")
+        config:Set("mapObjectiveDots", target ~= "areas")
+        config:Set("mapObjectiveAreas", target ~= "dots")
         if target == "dots" then
             Line(UQ.L("CMD_MAP_STYLE_SET_DOTS"))
-        else
+        elseif target == "areas" then
             Line(UQ.L("CMD_MAP_STYLE_SET_AREAS"))
+        else
+            Line(UQ.L("CMD_MAP_STYLE_SET_BOTH"))
         end
         return
     end
@@ -384,9 +388,15 @@ local function ShowMap(target)
             end
         end
         if status.renderEnabled and status.areasEnabled then
-            Line("  " .. UQ.L("CMD_MAP_OBJECTIVE_STYLE",
-                status.objectiveDots and UQ.L("CMD_MAP_STYLE_DOTS")
-                    or UQ.L("CMD_MAP_STYLE_AREAS")))
+            local style = UQ.L("CMD_MAP_STYLE_NONE")
+            if status.objectiveDots and status.objectiveAreas then
+                style = UQ.L("CMD_MAP_STYLE_BOTH")
+            elseif status.objectiveDots then
+                style = UQ.L("CMD_MAP_STYLE_DOTS")
+            elseif status.objectiveAreas then
+                style = UQ.L("CMD_MAP_STYLE_AREAS")
+            end
+            Line("  " .. UQ.L("CMD_MAP_OBJECTIVE_STYLE", style))
             Line("  " .. UQ.L("CMD_MAP_OBJECTIVE_FRAMES",
                 tostring(status.areaVisible), tostring(status.areaPooled)))
             Line("  " .. UQ.L("CMD_MAP_COLOURS")
@@ -1859,6 +1869,22 @@ local function DumpFrame(label, frame, depth)
     end
 end
 
+-- The gear advisor's inputs and verdict for the open turn-in window. The rows
+-- are a diagnostic dump and stay untranslated.
+local function ShowGearAdvisor()
+    local advisor = UQ:GetModule("GearAdvisor")
+    if not advisor or not Client.IsQuestGiverCompletionShown() or not advisor.marks then
+        Line(UQ.L("CMD_GEAR_USAGE"))
+        return
+    end
+    local lines = advisor:Describe()
+    local index = 1
+    while index <= table.getn(lines) do
+        Line(lines[index])
+        index = index + 1
+    end
+end
+
 local function ShowQuestLogDump()
     local logFrame = Client.GetNamedObject("QuestLogFrame")
     if not logFrame or not Client.IsObjectShown(logFrame) then
@@ -1984,6 +2010,8 @@ local function Handler(message)
         ShowWorldScan(UQ.Trim(target) or "")
     elseif command == "questlog" then
         ShowQuestLogDump()
+    elseif command == "gear" then
+        ShowGearAdvisor()
     elseif command == "debug" then
         local config = UQ:GetModule("Config")
         UQ.debug = not UQ.debug

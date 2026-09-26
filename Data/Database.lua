@@ -262,11 +262,10 @@ end
 -- Rather than hand-edit the bundled snapshot -- which must stay as packaged,
 -- for the attribution in Database/CREDITS.md to mean anything -- the missing
 -- relations are declared here and written into the loaded tables once, at
--- attach. Every consumer downstream then sees an ordinary item-use quest and
--- needs no special case: `obj.IR` names the item, `quests-itemreq` names what
--- it is used on (negative = game object, positive = creature), and
--- QuestTarget:AppendItemUseLocations already switches between "where to get
--- it" and "where to use it" as the bags and the objective lines change.
+-- attach. Every consumer downstream then sees the missing relation in its
+-- normal data shape and needs no quest-specific rendering: conditional
+-- item-use work uses `obj.IR` plus `quests-itemreq`, while an ordinary loot
+-- objective needs only its missing `items[id].U` or `items[id].O` source.
 --
 -- A fix only ever ADDS a relation the tables do not have. It never overwrites
 -- a recorded one, so a later data sync that fills the gap upstream silently
@@ -282,6 +281,14 @@ local DATA_FIXES = {
         sourceObjectIds = { 1586 },
         useTargets = { -1557 },
     },
+    {
+        -- Snatch and Grab. The Defias Shipping Schedule is the ordinary loot
+        -- objective, but the reduced item record has no source relation. It
+        -- comes from the Defias Dockmaster at Jerod's Landing.
+        questId = 2206,
+        itemId = 7675,
+        sourceUnitIds = { 6846 },
+    },
 }
 
 -- Writes one DATA_FIXES entry into the loaded tables. Silent on anything it
@@ -293,21 +300,23 @@ local function ApplyDataFix(fix)
         return
     end
 
-    if type(quest.obj) ~= "table" then
-        quest.obj = {}
-    end
-    if type(quest.obj.IR) ~= "table" then
-        quest.obj.IR = {}
-    end
-    local present = false
-    local _, existing
-    for _, existing in pairs(quest.obj.IR) do
-        if existing == fix.itemId then
-            present = true
+    if type(fix.useTargets) == "table" then
+        if type(quest.obj) ~= "table" then
+            quest.obj = {}
         end
-    end
-    if not present then
-        table.insert(quest.obj.IR, fix.itemId)
+        if type(quest.obj.IR) ~= "table" then
+            quest.obj.IR = {}
+        end
+        local present = false
+        local _, existing
+        for _, existing in pairs(quest.obj.IR) do
+            if existing == fix.itemId then
+                present = true
+            end
+        end
+        if not present then
+            table.insert(quest.obj.IR, fix.itemId)
+        end
     end
 
     if type(db.items) == "table" then
@@ -315,21 +324,37 @@ local function ApplyDataFix(fix)
             db.items[fix.itemId] = {}
         end
         local item = db.items[fix.itemId]
-        if type(item.O) ~= "table" then
-            item.O = {}
-        end
-        local index = 1
-        local total = table.getn(fix.sourceObjectIds)
-        while index <= total do
-            local objectId = fix.sourceObjectIds[index]
-            if item.O[objectId] == nil then
-                item.O[objectId] = 100
+        if type(fix.sourceObjectIds) == "table" then
+            if type(item.O) ~= "table" then
+                item.O = {}
             end
-            index = index + 1
+            local index = 1
+            local total = table.getn(fix.sourceObjectIds)
+            while index <= total do
+                local objectId = fix.sourceObjectIds[index]
+                if item.O[objectId] == nil then
+                    item.O[objectId] = 100
+                end
+                index = index + 1
+            end
+        end
+        if type(fix.sourceUnitIds) == "table" then
+            if type(item.U) ~= "table" then
+                item.U = {}
+            end
+            local index = 1
+            local total = table.getn(fix.sourceUnitIds)
+            while index <= total do
+                local unitId = fix.sourceUnitIds[index]
+                if item.U[unitId] == nil then
+                    item.U[unitId] = 100
+                end
+                index = index + 1
+            end
         end
     end
 
-    if type(db["quests-itemreq"]) == "table" then
+    if type(fix.useTargets) == "table" and type(db["quests-itemreq"]) == "table" then
         local requirements = db["quests-itemreq"]
         if type(requirements[fix.itemId]) ~= "table" then
             requirements[fix.itemId] = {}
@@ -1428,6 +1453,49 @@ function Database:GetItemDisplayNameForLanguage(nativeName, language)
         translated = UQ.PrepareTranslatedGameText(translated, language)
     end
     return translated
+end
+
+-- Vendor sell price in copper, 0 for an unsellable item, nil when the bundled
+-- table has no row (Vanilla prices; see Database/CREDITS.md).
+function Database:GetItemSellPrice(itemId)
+    local prices = db and db.sellprices
+    if type(prices) ~= "table" or type(itemId) ~= "number" then
+        return nil
+    end
+    local price = prices[itemId]
+    if type(price) ~= "number" then
+        return nil
+    end
+    return price
+end
+
+-- The sell price of a live client-locale item name, under the same rule as
+-- GetItemDisplayNameForLanguage: every item ID carrying that name must agree,
+-- or the name has no price.
+function Database:GetItemSellPriceByName(nativeName)
+    if type(nativeName) ~= "string" or nativeName == ""
+        or not self.itemNameIndexReady or type(self.itemNameIndex) ~= "table" then
+        return nil
+    end
+    local ids = self.itemNameIndex[nativeName]
+    if type(ids) == "number" then
+        return self:GetItemSellPrice(ids)
+    end
+    if type(ids) ~= "table" then
+        return nil
+    end
+    local price = nil
+    local index = 1
+    local total = table.getn(ids)
+    while index <= total do
+        local candidate = self:GetItemSellPrice(ids[index])
+        if candidate == nil or (price ~= nil and price ~= candidate) then
+            return nil
+        end
+        price = candidate
+        index = index + 1
+    end
+    return price
 end
 
 -- The whole area-name table, for callers that need to build a reverse index.

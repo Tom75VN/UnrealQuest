@@ -157,20 +157,23 @@ local function AddReputationLines(lines, database, questId, language)
     end
 end
 
--- modern-wow's Quest Log page art: every reward row is plain white text with
--- no drop shadow, like the rest of that themed detail pane (by request).
-local function ApplyModernLogStyle(lines)
+-- Every theme but unrealUI's flat `modern` one, and a UI with no unrealUI at
+-- all: every reward row is #5A1F1F ink with no drop shadow, gains and losses
+-- alike (by request).
+local PARCHMENT_COLOR = { r = 0x5A / 255, g = 0x1F / 255, b = 0x1F / 255 }
+
+local function ApplyParchmentStyle(lines)
     local index = 1
     while index <= table.getn(lines) do
         local line = lines[index]
-        line.r, line.g, line.b = 1, 1, 1
+        line.r, line.g, line.b = PARCHMENT_COLOR.r, PARCHMENT_COLOR.g, PARCHMENT_COLOR.b
         line.noShadow = true
         index = index + 1
     end
 end
 
 -- nil when the quest is unmatched, or matched but records no reward.
-local function BuildLines(database, questId, modernLog)
+local function BuildLines(database, questId, parchment)
     if not database or not questId then
         return nil
     end
@@ -181,8 +184,8 @@ local function BuildLines(database, questId, modernLog)
     if table.getn(lines) == 0 then
         return nil
     end
-    if modernLog then
-        ApplyModernLogStyle(lines)
+    if parchment then
+        ApplyParchmentStyle(lines)
     end
     return lines
 end
@@ -213,12 +216,12 @@ function QuestLogRewards:Refresh()
     -- The coin row goes first: the experience and reputation rows measure the
     -- reward block's bottom, and the coin row pushes the items down. Unlike
     -- them it needs no quest match -- the amount is the client's own.
+    local parchment = not Client.IsUnrealUIFlatModernTheme()
     local logFrame = Client.GetNamedObject(LOG_FRAME_NAME)
     local logLines = nil
     local copper = nil
     if logFrame and Client.IsObjectShown(logFrame) then
-        logLines = BuildLines(database, ResolveSelectedQuestId(),
-            Client.IsUnrealUIModernWowTheme())
+        logLines = BuildLines(database, ResolveSelectedQuestId(), parchment)
         copper = Client.GetQuestLogMoneyAmounts()
     end
     Client.SetQuestLogRewardMoney(true, copper)
@@ -227,7 +230,7 @@ function QuestLogRewards:Refresh()
     -- Offer and completion windows. Both are asked on every pass and the one
     -- that is not on screen clears itself inside SetQuestRewardSummary, so a
     -- swap between them cannot leave the other holding a stale line.
-    local giverLines = BuildLines(database, ResolveGiverQuestId())
+    local giverLines = BuildLines(database, ResolveGiverQuestId(), parchment)
     local index = 1
     while index <= table.getn(GIVER_SURFACES) do
         Client.SetQuestRewardSummary(GIVER_SURFACES[index], giverLines)

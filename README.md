@@ -125,8 +125,8 @@ visible click.
 
 ## Version
 
-Current release: 0.3.5
+Current release: 0.4.0
 
 ## License
 
-UnrealQuest is released under the MIT License. Bundled world data originates from VMaNGOS and was packaged by pfQuest under the MIT License. The EQL3 parchment artwork retains Daniel Rehn's original 2006 copyright; see [LICENSE](LICENSE) and [Database/CREDITS.md](Database/CREDITS.md).
+UnrealQuest is released under the MIT License. Bundled world data originates from VMaNGOS and was packaged by pfQuest under the MIT License. The Dragonflight Quest Log artwork under `media/QuestLog/` is imported art with its own provenance; see [LICENSE](LICENSE), [media/QuestLog/ATTRIBUTION.md](media/QuestLog/ATTRIBUTION.md) and [Database/CREDITS.md](Database/CREDITS.md).

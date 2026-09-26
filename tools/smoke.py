@@ -6,6 +6,8 @@ module wiring works end to end. This is a wiring/logic check only; it proves
 nothing about the actual client and is not runtime evidence.
 """
 import io, lupa, os, sys
+import make_area_contour_textures as area_contour_assets
+from PIL import Image
 
 ADDONS = r"C:\Games\Azeroth Launcher\Azeroth\Binaries\Win64\Games\Emberveil\live\Azeroth\Interface\AddOns"
 
@@ -130,6 +132,7 @@ function frameMeta:RegisterForClicks(a, b, c, d)
 end
 function frameMeta:ClearAllPoints()
     self.point = nil
+    self.points = nil
     self.dragLeft = nil
     self.dragBottom = nil
 end
@@ -186,6 +189,10 @@ function frameMeta:IsObjectType(name) return self.frameType == name end
 -- override (the tests stand in for the client's own drop with one).
 function frameMeta:SetPoint(point, relative, relativePoint, x, y)
     self.point = { point, relative, relativePoint, x, y }
+    -- Every point, in order: an object anchored at both ends (a scroll bar
+    -- spanning its pane) keeps only its last one in self.point.
+    self.points = self.points or {}
+    self.points[#self.points+1] = self.point
     self.dragLeft, self.dragBottom = nil, nil
 end
 -- Modelled on this client's GetPoint: the relative frame comes back as a NAME
@@ -249,6 +256,8 @@ function textureMeta:ClearAllPoints()
 end
 function textureMeta:SetWidth(value) self.width = value end
 function textureMeta:SetHeight(value) self.height = value end
+function textureMeta:GetWidth() return self.width or 0 end
+function textureMeta:GetHeight() return self.height or 0 end
 function textureMeta:GetDrawLayer() return self.layer end
 function textureMeta:SetDrawLayer(value) self.layer = value end
 function textureMeta:GetAlpha() return self.alpha or 1 end
@@ -535,6 +544,12 @@ local function BuildTooltipMock()
             return texture
         end,
         GetName = function(self) return self.name end,
+        -- Placement, for the map tooltip's cursor follow.
+        GetEffectiveScale = function(self) return self.effectiveScale or 1 end,
+        ClearAllPoints = function(self) self.point = nil end,
+        SetPoint = function(self, point, relative, relativePoint, x, y)
+            self.point = { point, relative, relativePoint, x, y }
+        end,
         SetBackdrop = function(self, backdrop) self.backdrop = backdrop end,
         SetBackdropColor = function(self, r, g, b, a) self.bgColor = { r, g, b, a } end,
         SetBackdropBorderColor = function(self, r, g, b, a) self.edgeColor = { r, g, b, a } end,
@@ -662,6 +677,24 @@ QuestLogListScrollFrame = CreateFrame("ScrollFrame", "QuestLogListScrollFrame", 
 QuestLogDetailScrollFrame = CreateFrame("ScrollFrame", "QuestLogDetailScrollFrame", QuestLogFrame)
 QuestLogDetailScrollChildFrame = CreateFrame("Frame", "QuestLogDetailScrollChildFrame",
                                              QuestLogDetailScrollFrame)
+-- The native scroll bars and their arrows. UIPanelScrollBarTemplate hangs each
+-- arrow off the bar; the standalone Quest Log re-places the bars and nudges the
+-- arrows, and Client.HasModernQuestLog's panel tail measures the list bar.
+QuestLogListScrollFrameScrollBar = CreateFrame("Slider",
+    "QuestLogListScrollFrameScrollBar", QuestLogListScrollFrame)
+QuestLogListScrollFrameScrollBar:SetWidth(16)
+QuestLogListScrollFrameScrollBarScrollUpButton = CreateFrame("Button",
+    "QuestLogListScrollFrameScrollBarScrollUpButton",
+    QuestLogListScrollFrameScrollBar)
+QuestLogListScrollFrameScrollBarScrollDownButton = CreateFrame("Button",
+    "QuestLogListScrollFrameScrollBarScrollDownButton",
+    QuestLogListScrollFrameScrollBar)
+QuestLogDetailScrollFrameScrollBar = CreateFrame("Slider",
+    "QuestLogDetailScrollFrameScrollBar", QuestLogDetailScrollFrame)
+QuestLogDetailScrollFrameScrollBar:SetWidth(16)
+QuestLogDetailScrollFrameScrollBarScrollDownButton = CreateFrame("Button",
+    "QuestLogDetailScrollFrameScrollBarScrollDownButton",
+    QuestLogDetailScrollFrameScrollBar)
 QuestLogFrameCloseButton = CreateFrame("Button", "QuestLogFrameCloseButton", QuestLogFrame)
 QuestLogFrameAbandonButton = CreateFrame("Button", "QuestLogFrameAbandonButton", QuestLogFrame)
 QuestFramePushQuestButton = CreateFrame("Button", "QuestFramePushQuestButton", QuestLogFrame)
@@ -1566,15 +1599,132 @@ check("all four navigator atlases use the client's proven 512px RLE TGA form",
           for header in arrow_atlas_headers),
       "the full-size uncompressed type-2 atlas drew as diagonal corruption")
 
+area_contour_headers = []
+for area_contour_asset in (
+        "AreaContourProfile.tga",
+        "AreaContourProfileNeutral.tga"):
+    area_contour_path = os.path.join(
+        ADDONS, "unrealQuest", "media", area_contour_asset)
+    with open(area_contour_path, "rb") as area_contour_file:
+        area_contour_headers.append(area_contour_file.read(18))
+check("both area-contour profile strips use the proven RLE TGA encoding",
+      len(area_contour_headers) == 2 and all(
+          len(header) == 18 and header[2] == 10
+          and int.from_bytes(header[12:14], "little") == 256
+          and int.from_bytes(header[14:16], "little") == 4
+          and header[16] == 32 and header[17] == 8
+          for header in area_contour_headers))
+check("area contours preserve the exact Forever quest-blob brush profile",
+      area_contour_assets.FOREVER_FILL_RGB == (57, 109, 255)
+      and area_contour_assets.FOREVER_BORDER_RGB == (104, 187, 255)
+      and area_contour_assets.FOREVER_FILL_ALPHA == 128
+      and area_contour_assets.FOREVER_BORDER_ALPHA_RAMP
+          == (220, 198, 155, 113, 82, 53, 34, 16, 5, 0, 0, 0, 0, 0, 0, 0)
+      and all(abs(
+          area_contour_assets.forever_border_alpha(
+              index * area_contour_assets.BORDER_WIDTH / 15)
+          - alpha * 192 / 255) < 0.000001
+          for index, alpha in enumerate(
+              area_contour_assets.FOREVER_BORDER_ALPHA_RAMP)))
+area_contour_image = Image.open(os.path.join(
+    ADDONS, "unrealQuest", "media", "AreaContourProfile.tga")).convert("RGBA")
+check("the profile's fill end carries the Forever fill colour and native alpha",
+      area_contour_image.getpixel((255, 1)) == (57, 109, 255, 128)
+      and area_contour_image.getpixel((0, 1))[3] == 0)
+check("one profile carries both the outer glow and the inner shadow",
+      area_contour_assets.profile(-0.01,
+          area_contour_assets.FOREVER_BORDER_RGB,
+          area_contour_assets.FOREVER_SHADOW_RGB,
+          area_contour_assets.FOREVER_FILL_RGB)[0]
+          == area_contour_assets.FOREVER_BORDER_RGB
+      and area_contour_assets.profile(0,
+          area_contour_assets.FOREVER_BORDER_RGB,
+          area_contour_assets.FOREVER_SHADOW_RGB,
+          area_contour_assets.FOREVER_FILL_RGB)
+          == (area_contour_assets.FOREVER_SHADOW_RGB,
+              area_contour_assets.FOREVER_SHADOW_ALPHA))
+
+# A contour cell is 1-2 screen pixels, so each patch sweeps the strip by its
+# exact distance to the hull: texel k is the profile box-filtered over a cell
+# at an evenly spaced distance, and opacity rises from the outer glow inwards.
+for contour_name in ("AreaContourProfile.tga", "AreaContourProfileNeutral.tga"):
+    contour_strip = Image.open(os.path.join(
+        ADDONS, "unrealQuest", "media", contour_name)).convert("RGBA")
+    contour_columns_flat = all(
+        len(set(contour_strip.crop((texel, 0, texel + 1, 4)).getdata())) == 1
+        for texel in range(256))
+    contour_alphas = [contour_strip.getpixel((texel, 1))[3] for texel in range(256)]
+    check(contour_name + " stores a 256-texel box-filtered distance gradient",
+          contour_columns_flat and contour_alphas[0] == 0
+          and contour_alphas[60] < contour_alphas[100] < contour_alphas[160]
+          # Transparent texels keep the glow colour, so filtering never darkens.
+          and contour_strip.getpixel((0, 1))[:3] == contour_strip.getpixel((70, 1))[:3])
+
+quest_number_path = os.path.join(
+    ADDONS, "unrealQuest", "media", "UIQuestPOINumberIcons.tga")
+with open(quest_number_path, "rb") as quest_number_file:
+    quest_number_header = quest_number_file.read(18)
+check("the imported quest-number atlas uses the proven RLE TGA encoding",
+      len(quest_number_header) == 18 and quest_number_header[2] == 10
+      and int.from_bytes(quest_number_header[12:14], "little") == 256
+      and int.from_bytes(quest_number_header[14:16], "little") == 256
+      and quest_number_header[16] == 32 and quest_number_header[17] == 8)
+quest_number_image = Image.open(quest_number_path).convert("RGBA")
+check("the quest-number atlas preserves Forever's separate POI layers",
+      quest_number_image.crop((0, 0, 32, 32)).getchannel("A").getbbox()
+          == (14, 11, 18, 20)
+      and quest_number_image.crop((0, 128, 32, 160)).getchannel("A").getbbox()
+          == (11, 8, 22, 24)
+      and quest_number_image.crop((224, 96, 256, 128)).getchannel("A").getbbox()
+          == (6, 6, 26, 26)
+      and quest_number_image.crop((128, 96, 160, 128)).getchannel("A").getbbox()
+          == (6, 6, 26, 26)
+      and quest_number_image.crop((160, 224, 192, 256)).getchannel("A").getbbox()
+          == (2, 2, 30, 30))
+
+def read_tga_header(name):
+    with open(os.path.join(ADDONS, "unrealQuest", "media", name), "rb") as handle:
+        return handle.read(18)
+
+quest_poi_circle_header = read_tga_header("questpoi-v2.tga")
+quest_poi_number_header = read_tga_header("QuestPOINumbers.tga")
+check("the quest-area POI textures use the proven power-of-two RLE TGA encoding",
+      all(len(header) == 18 and header[2] == 10
+          and header[16] == 32 and header[17] == 8
+          for header in (quest_poi_circle_header, quest_poi_number_header))
+      and int.from_bytes(quest_poi_circle_header[12:14], "little") == 256
+      and int.from_bytes(quest_poi_circle_header[14:16], "little") == 64
+      and int.from_bytes(quest_poi_number_header[12:14], "little") == 512
+      and int.from_bytes(quest_poi_number_header[14:16], "little") == 512)
+quest_poi_circles = Image.open(os.path.join(
+    ADDONS, "unrealQuest", "media", "questpoi-v2.tga")).convert("RGBA")
+quest_poi_numbers = Image.open(os.path.join(
+    ADDONS, "unrealQuest", "media", "QuestPOINumbers.tga")).convert("RGBA")
+check("questpoi-v2.tga keeps main, hover, active and the transparent glow in 64px cells",
+      all(quest_poi_circles.crop((cell * 64, 0, cell * 64 + 64, 64))
+          .getchannel("A").getbbox() is not None for cell in range(4))
+      and quest_poi_circles.getpixel((0, 0))[3] == 0
+      and quest_poi_circles.getpixel((192, 0))[3] < 8
+      and quest_poi_circles.getpixel((224, 32))[3] > 200)
+check("quest-area numbers are gold on main/hover and dark on the active circle",
+      quest_poi_numbers.getpixel((32, 32 + 256))[:3] == (0xF8, 0xC6, 0x62)
+      and quest_poi_numbers.getpixel((32, 32))[:3] == (0x2C, 0x15, 0x01)
+      and quest_poi_numbers.getpixel((32, 32))[3] == 255)
+# Twice the source's definition, same layout: glyph 1 keeps its place and
+# proportions within two texels of the doubled source bounds (the sharpened
+# edge drops the source's faintest antialiasing).
+quest_poi_glyph_box = quest_poi_numbers.crop((0, 0, 64, 64)).getchannel("A").getbbox()
+quest_source_glyph_box = quest_number_image.crop((0, 0, 32, 32)).getchannel("A").getbbox()
+check("the quest-area number atlas doubles the glyphs without moving them",
+      all(abs(quest_poi_glyph_box[side] - quest_source_glyph_box[side] * 2) <= 2
+          for side in range(4)))
+
+# The imported Dragonflight Quest Log art, at the canvases the measured
+# geometry in ClientAPI.lua was taken from, in the client's proven RLE form.
 quest_log_asset_sizes = {
-    "EQL3_TopLeft.tga": (256, 256),
-    "EQL3_TopSwitchOn.tga": (128, 256),
-    "EQL3_TopMiddle.tga": (256, 256),
-    "EQL3_TopRight.tga": (64, 256),
-    "EQL3_BottomLeft.tga": (256, 256),
-    "EQL3_BottomSwitchOn.tga": (128, 256),
-    "EQL3_BottomMiddle.tga": (256, 256),
-    "EQL3_BottomRight.tga": (64, 256),
+    "QuestLogPageLeft.tga": (896, 896),
+    "QuestLogPageRight.tga": (448, 896),
+    "QuestLogRedButton.tga": (256, 128),
 }
 quest_log_assets_valid = True
 for quest_log_asset, expected_size in quest_log_asset_sizes.items():
@@ -1589,13 +1739,23 @@ for quest_log_asset, expected_size in quest_log_asset_sizes.items():
         int.from_bytes(quest_log_header[12:14], "little"),
         int.from_bytes(quest_log_header[14:16], "little"),
     )
-    if (len(quest_log_header) != 18 or quest_log_header[2] != 2
+    if (len(quest_log_header) != 18 or quest_log_header[2] != 10
             or quest_log_header[16] != 32 or quest_log_header[17] != 8
             or actual_size != expected_size):
         quest_log_assets_valid = False
         break
-check("all eight EQL3 parchment assets retain their source TGA dimensions",
-      quest_log_assets_valid)
+check("the imported Quest Log pages keep their source canvases and RLE form",
+      quest_log_assets_valid,
+      "the geometry in ClientAPI.lua is measured against these exact canvases")
+
+eql3_leftovers = [
+    name for name in os.listdir(
+        os.path.join(ADDONS, "unrealQuest", "media", "QuestLog"))
+    if name.find("EQL3") == 0
+]
+check("the replaced EQL3 parchment set is no longer shipped",
+      eql3_leftovers == [], "nothing draws it since the standalone log became "
+      "the Dragonflight spread")
 
 followed_circle_path = os.path.join(
     ADDONS, "unrealQuest", "media", "quest-circle.tga")
@@ -1648,7 +1808,7 @@ for path in toc_files(os.path.join(ADDONS, "unrealQuest", "UnrealQuest.toc")):
 
 check("world data populated", rt.eval("UnrealQuestData ~= nil and UnrealQuestData.quests ~= nil"))
 
-check("namespace created", rt.eval("UnrealQuest ~= nil and UnrealQuest.version == '0.3.5'"))
+check("namespace created", rt.eval("UnrealQuest ~= nil and UnrealQuest.version == '0.4.0'"))
 check("slash command registered", rt.eval("SlashCmdList.UNREALQUEST == nil"),
       "should still be nil before init")
 
@@ -1709,36 +1869,132 @@ rt.execute("""
     UnrealQuest:GetModule('QuestState'):RefreshObjectiveSlice()
 """)
 
-print("extended native quest log")
-check("standalone mode installs a two-page native quest log whose rows fit the page",
+print("standalone dragonflight quest log")
+check("standalone mode installs the two-page quest log whose rows fit the page",
       rt.eval("""(function()
-    local module = UnrealQuest:GetModule('ExtendedQuestLog')
-    -- 16-pixel rows from 75 down the 411-pixel page that starts at 74: the
-    -- last row must end above 485, so 25 fit and a 26th would not.
+    local module = UnrealQuest:GetModule('StandaloneQuestLog')
+    -- 16-pixel rows from the pane's own origin down its 341-pixel page: 21 fit
+    -- and a 22nd would end past it.
     return module and module.mode == 'standalone' and module.applied == true
-        and QUESTS_DISPLAYED == 25
-        and UnrealQuest.Client.GetExtendedClassicQuestLogRows() == 25
-        and QuestLogTitle25 ~= nil and QuestLogTitle26 == nil
-        and QuestLogFrame:GetWidth() == 704 and QuestLogFrame:GetHeight() == 512
-        and QuestLogListScrollFrame:GetWidth() == 300
-        and QuestLogListScrollFrame:GetHeight() == 411
-        and QuestLogDetailScrollFrame:GetWidth() == 300
-        and QuestLogDetailScrollFrame:GetHeight() == 413
-        and QuestLogDetailScrollChildFrame:GetWidth() == 300
-        and QuestLogDetailScrollChildFrame:GetHeight() == 413
+        and QUESTS_DISPLAYED == 21
+        and UnrealQuest.Client.GetStandaloneQuestLogRows() == 21
+        and QuestLogTitle21 ~= nil and QuestLogTitle22 == nil
+        and QuestLogFrame:GetWidth() == 676 and QuestLogFrame:GetHeight() == 440
+        and QuestLogListScrollFrame:GetHeight() == 341
+        and QuestLogDetailScrollFrame:GetHeight() == 340
+        and QuestLogDetailScrollChildFrame:GetHeight() == 376
         and UIPanelWindows.QuestLogFrame.area == 'doublewide'
 end)()"""))
-check("the two native panes use EQL3's left-list/right-detail anchors", rt.eval("""(function()
+check("the list page holds the rows and the details page follows it",
+      rt.eval("""(function()
     local list = QuestLogListScrollFrame.point
     local detail = QuestLogDetailScrollFrame.point
     local first = QuestLogTitle1.point
-    local last = QuestLogTitle25.point
+    local last = QuestLogTitle21.point
     return list and list[1] == 'TOPLEFT' and list[2] == QuestLogFrame
-        and list[4] == 20 and list[5] == -74
-        and detail and detail[1] == 'TOPLEFT' and detail[2] == QuestLogFrame
-        and detail[4] == 350 and detail[5] == -72
-        and first and first[2] == QuestLogFrame and first[4] == 19 and first[5] == -75
-        and last and last[2] == QuestLogFrame and last[4] == 19 and last[5] == -459
+        and list[4] == 20 and list[5] == -72
+        -- One hop to the list pane, so a different native list width moves the
+        -- details page with it instead of dropping it into the seam.
+        and detail and detail[1] == 'TOPLEFT'
+        and detail[2] == QuestLogListScrollFrame and detail[3] == 'TOPRIGHT'
+        and detail[4] == 30 and detail[5] == 0
+        and first and first[2] == QuestLogFrame and first[4] == 20 and first[5] == -72
+        and last and last[2] == QuestLogFrame and last[4] == 20 and last[5] == -392
+end)()"""))
+check("both pages are drawn on chrome below the window, never on the window",
+      rt.eval("""(function()
+    local art = QuestLogFrame.unrealQuestStandaloneQuestLogArt
+    if not art or not art.left or not art.right or not art.chrome then
+        return false
+    end
+    local left = art.left:GetTexture() or ''
+    local right = art.right:GetTexture() or ''
+    return string.find(left, 'QuestLogPageLeft', 1, true) ~= nil
+        and string.find(right, 'QuestLogPageRight', 1, true) ~= nil
+        and art.chrome:GetParent() == QuestLogFrame
+        -- Never above the window: the real client's Quest Log sits above level
+        -- 1, where this drops a level; the mock leaves every frame at 0.
+        and art.chrome:GetFrameLevel() <= QuestLogFrame:GetFrameLevel()
+        and art.chrome.mouseEnabled == false
+        -- The seam sits where the two source canvases meet, not at half width.
+        and math.abs(art.left:GetWidth() - 676 * (896 / (896 + 298))) < 0.5
+        and math.abs(art.right:GetWidth() - (676 - 676 * (896 / (896 + 298)))) < 0.5
+        and art.left:GetHeight() == 440 and art.right:GetHeight() == 440
+end)()"""))
+check("the three quest actions sit in the beds the art draws for them",
+      rt.eval("""(function()
+    local page = 676 * (896 / (896 + 298))
+    local beds = {
+        { 22 / 507, 112 / 507 },
+        { 144 / 507, 111 / 507 },
+        { 265 / 507, 71 / 507 },
+    }
+    local buttons = { QuestLogFrameAbandonButton, QuestFramePushQuestButton,
+        QuestFrameExitButton }
+    local index = 1
+    while index <= 3 do
+        local button = buttons[index]
+        local point = button and button.point
+        local bed = beds[index]
+        if not point or point[1] ~= 'BOTTOMLEFT' or point[2] ~= QuestLogFrame
+            or point[3] ~= 'BOTTOMLEFT' then
+            return false
+        end
+        if math.abs(point[4] - (bed[1] * page - 2)) > 0.5 then return false end
+        if math.abs(point[5] - (15 - 2)) > 0.01 then return false end
+        if math.abs(button:GetWidth() - (bed[2] * page + 4)) > 0.5 then
+            return false
+        end
+        if math.abs(button:GetHeight() - (14 + 4)) > 0.01 then return false end
+        index = index + 1
+    end
+    return true
+end)()"""))
+check("both native scroll bars move into the gutter and the channel",
+      rt.eval("""(function()
+    local listPoints = QuestLogListScrollFrameScrollBar.points
+    local detailPoints = QuestLogDetailScrollFrameScrollBar.points
+    if not listPoints or not detailPoints
+        or table.getn(listPoints) ~= 2 or table.getn(detailPoints) ~= 2 then
+        return false
+    end
+    local list = listPoints[1]
+    local detail = detailPoints[1]
+    -- Top inside the pane, bottom giving back the 19 the taller list page took.
+    if list[1] ~= 'TOPLEFT'
+        or list[2] ~= QuestLogListScrollFrame or list[3] ~= 'TOPRIGHT'
+        or list[4] ~= 3 or list[5] ~= -16 then
+        return false
+    end
+    local listBottom = listPoints[2]
+    if listBottom[1] ~= 'BOTTOMLEFT' or listBottom[3] ~= 'BOTTOMRIGHT'
+        or listBottom[4] ~= 3 or listBottom[5] ~= 16 - (11 - 19) then
+        return false
+    end
+    -- The channel is on the right piece: its fractions are of that piece and
+    -- are offset by the seam, and the bar is centred in it less a 2px nudge.
+    local page = 676 * (896 / (896 + 298))
+    local rightWidth = 676 - page
+    local channelLeft = page + (247 / 298) * rightWidth
+    local channelWidth = ((285 - 247) / 298) * rightWidth
+    local expected = channelLeft
+        + (channelWidth - QuestLogDetailScrollFrameScrollBar:GetWidth()) / 2 - 2
+    return detail and detail[1] == 'TOPLEFT' and detail[2] == QuestLogFrame
+        and detail[3] == 'TOPLEFT'
+        and math.abs(detail[4] - expected) < 0.5
+        and math.abs(detail[5] - -(161 / 823) * 440) < 0.5
+end)()"""))
+check("the standalone log reports itself as drawing the Dragonflight art",
+      rt.eval("UnrealQuest.Client.UsesModernWowQuestLog() == true"),
+      "the flag row and reward lines take the same nudges as on the host's art")
+check("the close button wears the imported red cell beside the header",
+      rt.eval("""(function()
+    local close = QuestLogFrameCloseButton
+    local point = close and close.point
+    local normal = close and close.normalTexture
+    return point and point[1] == 'TOPRIGHT' and point[2] == QuestLogFrame
+        and point[4] == -10 and point[5] == -16
+        and close:GetWidth() == 17 and close:GetHeight() == 17
 end)()"""))
 
 # Every row is anchored to the frame itself, so no chained one-pixel nudge can
@@ -1746,14 +2002,14 @@ end)()"""))
 check("no quest row is anchored to the row above it, and none leaves the page",
       rt.eval("""(function()
     local index = 1
-    while index <= 25 do
+    while index <= 21 do
         local row = getglobal('QuestLogTitle' .. index)
         local point = row and row.point
         if not point or point[1] ~= 'TOPLEFT' or point[2] ~= QuestLogFrame then
             return false
         end
-        if point[5] ~= -(75 + (index - 1) * 16) then return false end
-        if -point[5] + row:GetHeight() > 74 + 411 then return false end
+        if point[5] ~= -(72 + (index - 1) * 16) then return false end
+        if -point[5] + row:GetHeight() > 72 + 341 then return false end
         index = index + 1
     end
     return true
@@ -1794,8 +2050,8 @@ check("the reward-layout observer restores the money row after native refresh",
 end)()"""))
 rt.execute("""
     UQ_TEST_REWARD_SCROLL_UPDATES = UQ_TEST_QUEST_LOG_SCROLL_UPDATES
-    UnrealQuest.Client.RefreshExtendedClassicQuestLogRewards()
-    UnrealQuest.Client.RefreshExtendedClassicQuestLogRewards()
+    UnrealQuest.Client.RefreshStandaloneQuestLogRewards()
+    UnrealQuest.Client.RefreshStandaloneQuestLogRewards()
 """)
 check("a stable money row is observed without repeated scroll-range writes",
       rt.eval("UQ_TEST_QUEST_LOG_SCROLL_UPDATES == UQ_TEST_REWARD_SCROLL_UPDATES"))
@@ -1804,7 +2060,7 @@ rt.execute("""
     UQ_TEST_QUEST_LOG_REWARDS = 1
     QuestLogMoneyFrame:SetPoint('TOPLEFT', QuestLogItemReceiveText,
         'BOTTOMLEFT', 0, -2)
-    UnrealQuest.Client.RefreshExtendedClassicQuestLogRewards()
+    UnrealQuest.Client.RefreshStandaloneQuestLogRewards()
 """)
 check("coins follow a guaranteed item instead of overlapping it",
       rt.eval("""(function()
@@ -1815,7 +2071,7 @@ end)()"""))
 rt.execute("""
     UQ_TEST_QUEST_LOG_CHOICES = 1
     UQ_TEST_QUEST_LOG_REWARDS = 2
-    UnrealQuest.Client.RefreshExtendedClassicQuestLogRewards()
+    UnrealQuest.Client.RefreshStandaloneQuestLogRewards()
 """)
 check("coins align below the left item of the final guaranteed-reward row",
       rt.eval("""(function()
@@ -1825,7 +2081,7 @@ check("coins align below the left item of the final guaranteed-reward row",
 end)()"""))
 rt.execute("""
     QuestLogMoneyFrame:SetParent(QuestLogFrame)
-    UnrealQuest.Client.RefreshExtendedClassicQuestLogRewards()
+    UnrealQuest.Client.RefreshStandaloneQuestLogRewards()
 """)
 check("the observer restores scroll-child ownership after a native refresh",
       rt.eval("QuestLogMoneyFrame:GetParent() == QuestLogDetailScrollChildFrame"))
@@ -1834,6 +2090,14 @@ rt.execute("""
     UQ_TEST_SELECTION = 0
     UQ_TEST_QUEST_LOG_CHOICES = 0
     UQ_TEST_QUEST_LOG_REWARDS = 0
+    -- The earlier standalone-money tests intentionally keep the preallocated
+    -- button pool visible. Native FrameXML hides unused reward buttons before
+    -- the summary is laid out, so isolate these tests with the same state.
+    local index = 1
+    while index <= 6 do
+        getglobal('QuestLogItem' .. index):Hide()
+        index = index + 1
+    end
 """)
 # Quest reward rows (Quest/QuestLogRewards.lua). The values are read from the
 # real bundled Database/quests.lua, so these also assert the reward fields are
@@ -2034,6 +2298,28 @@ check("with no coins the rows clear the item grid instead of the receive label",
         and first.point[2] == QuestLogItem1
         and first.point[3] == 'BOTTOMLEFT'
 end)()"""))
+# A learned spell occupies another reward button but is not included in the
+# choice/item counts. The visible button must still end the reward block.
+rt.execute("""
+    QuestLogItem1:Hide()
+    QuestLogItem2:Show()
+    QuestLogItem2.testBottom = 80
+    UQ_TEST_QUEST_LOG_CHOICES = 0
+    UQ_TEST_QUEST_LOG_REWARDS = 0
+    UnrealQuest.Client.SetQuestLogRewardSummary({ { text = 'Experience: 420' } })
+""")
+check("a spell-only reward button clears the quest-log experience row",
+      rt.eval("""(function()
+    local first = getglobal('UnrealQuestLogReward1')
+    return first ~= nil and first.point ~= nil
+        and first.point[2] == QuestLogItem2
+        and first.point[3] == 'BOTTOMLEFT'
+        and first.point[5] == -25
+end)()"""))
+rt.execute("""
+    QuestLogItem2:Hide()
+    QuestLogItem2.testBottom = nil
+""")
 rt.execute("""
     QuestLogItem1:Show()
     QuestLogItem2:Show()
@@ -2044,6 +2330,8 @@ rt.execute("""
 check("a full two-item row anchors on its left button, not its right one",
       rt.eval("getglobal('UnrealQuestLogReward1').point[2] == QuestLogItem1"))
 rt.execute("""
+    QuestLogItem1:Hide()
+    QuestLogItem2:Hide()
     QuestLogMoneyFrame:Show()
     UQ_TEST_QUEST_LOG_CHOICES = 0
     UQ_TEST_QUEST_LOG_REWARDS = 0
@@ -2112,6 +2400,23 @@ check("the offer window, which is not on screen, is left empty",
     return row == nil or not row:IsShown()
 end)()"""))
 
+# A counted item followed by an uncounted learned-spell button is the mixed
+# reward case from the quest-giver window. The visually lower spell wins.
+rt.execute("""
+    QuestRewardItem1.testBottom = 150
+    QuestRewardItem2:Show()
+    QuestRewardItem2.testBottom = 80
+    UnrealQuest:GetModule('QuestLogRewards'):Refresh()
+""")
+check("a learned-spell button clears the quest-giver experience row",
+      rt.eval("getglobal('UnrealQuestCompleteReward1').point[2] == QuestRewardItem2"))
+rt.execute("""
+    QuestRewardItem2:Hide()
+    QuestRewardItem2.testBottom = nil
+    QuestRewardItem1.testBottom = nil
+    UnrealQuest:GetModule('QuestLogRewards'):Refresh()
+""")
+
 # --- reward item rarity colours on the completion window ---------------------
 # The panel is still the completion one from the block above.
 rt.execute("""
@@ -2173,6 +2478,278 @@ rt.execute("""
     QuestRewardItem3:Hide()
     QuestRewardItem4:Hide()
     QuestRewardItem2Name.unrealQuestGiverNativeText = nil
+""")
+
+# --- gear advisor marks on the completion window's choose-one rewards --------
+# A Combat rogue is offered four choices: a chest that beats the worn one by
+# the most, a cloak for an empty back slot, a staff a rogue cannot use (and
+# which sells for the most), and a belt worse than the worn one. Tooltips and
+# equipped items are modelled as the rows the private scanner reads back.
+rt.execute(r"""
+    UQ_TEST_GEAR_SAVED = {
+        class = UQ_TEST_CLASS, iteminfo = GetQuestItemInfo,
+        name1 = QuestRewardItem1Name:GetText(), frameShown = QuestFrame:IsShown(),
+    }
+    UQ_TEST_GEAR_TOOLTIPS = {}
+    UQ_TEST_EQUIPPED = {}
+    local slotIds = {
+        HeadSlot = 1, NeckSlot = 2, ShoulderSlot = 3, ChestSlot = 5, WaistSlot = 6,
+        LegsSlot = 7, FeetSlot = 8, WristSlot = 9, HandsSlot = 10, Finger0Slot = 11,
+        Finger1Slot = 12, Trinket0Slot = 13, Trinket1Slot = 14, BackSlot = 15,
+        MainHandSlot = 16, SecondaryHandSlot = 17, RangedSlot = 18,
+    }
+    function GetInventorySlotInfo(name) return slotIds[name], 'Interface\\Paperdoll\\Empty' end
+    -- An empty gear slot answers an item:0 link on this client.
+    function GetInventoryItemLink(unit, slot)
+        local rows = UQ_TEST_EQUIPPED[slot]
+        if not rows then return 'item:0:0:0:0' end
+        return '|cff1eff00|Hitem:' .. rows.id .. ':0:0:0|h[' .. rows[1] .. ']|h|r'
+    end
+    UQ_TEST_TALENTS = {}
+    function GetNumTalentTabs() return table.getn(UQ_TEST_TALENTS) end
+    function GetTalentTabInfo(index)
+        local tree = UQ_TEST_TALENTS[index]
+        if not tree then return nil, nil, 0, nil end
+        return tree[1], 'Interface\\Icons\\x', tree[2], tree[3]
+    end
+    function GetQuestItemInfo(rewardType, index)
+        local entry = UQ_TEST_QUEST_REWARD_ITEMS[string.lower(rewardType) .. tostring(index)]
+        if not entry then return nil, 'x', 1, 0, 1 end
+        local usable = entry[3]
+        if usable == nil then usable = true end
+        return entry[1], 'x', 1, entry[2], usable
+    end
+    local function Region(text)
+        return { text = text, GetText = function(self) return self.text end,
+                 GetTextColor = function() return 1, 1, 1 end,
+                 IsShown = function(self) return self.text ~= nil end }
+    end
+    local function Fill(tooltip, rows)
+        tooltip.lines = {}
+        for index, row in ipairs(rows) do
+            local left, right = row, nil
+            if type(row) == 'table' then left, right = row[1], row[2] end
+            tooltip.lines[index] = left
+            setglobal(tooltip.name .. 'TextLeft' .. index, Region(left))
+            setglobal(tooltip.name .. 'TextRight' .. index, Region(right))
+        end
+    end
+    local meta = getmetatable(UIParent)
+    function meta:SetQuestItem(kind, index)
+        local rows = UQ_TEST_GEAR_TOOLTIPS[string.lower(kind) .. tostring(index)]
+        if rows then Fill(self, rows) end
+    end
+    function meta:SetInventoryItem(unit, slot)
+        local rows = UQ_TEST_EQUIPPED[slot]
+        if not rows then return false end
+        Fill(self, rows)
+        return true
+    end
+    for _, name in ipairs({ 'GetInventorySlotInfo', 'GetInventoryItemLink',
+            'GetNumTalentTabs', 'GetTalentTabInfo', 'GetQuestItemInfo' }) do
+        UnrealQuest.Client.ForgetSymbol(name)
+    end
+
+    local database = UnrealQuest:GetModule('Database')
+    local guard = 0
+    while not database.itemNameIndexReady and guard < 1000 do
+        database:IndexItemNameChunk()
+        guard = guard + 1
+    end
+
+    UQ_TEST_CLASS = { 'Rogue', 'ROGUE', 4 }
+    UQ_TEST_TALENTS = { { 'Combat', 11, 'RogueCombat' }, { 'Assassination', 0, 'RogueAssassination' },
+                        { 'Subtlety', 0, 'RogueSubtlety' } }
+    UQ_TEST_EQUIPPED = {
+        [5] = { 'Worn Leather Vest', { 'Chest', 'Leather' }, '40 Armor', '+2 Agility', id = 9001 },
+        [6] = { 'Sturdy Belt', { 'Waist', 'Leather' }, '20 Armor', '+3 Agility', id = 9002 },
+        [16] = { 'Sharp Dagger', { 'One-Hand', 'Dagger' }, '(9.0 damage per second)', id = 9003 },
+    }
+    UQ_TEST_GEAR_TOOLTIPS = {
+        choice1 = { 'Tunic of Westfall', 'Binds when picked up', { 'Chest', 'Leather' },
+                    '76 Armor', '+7 Agility', '+3 Stamina' },
+        choice2 = { 'Wolfmaster Cape', { 'Back', nil }, '20 Armor', '+2 Agility' },
+        choice3 = { 'Staff of Westfall', { 'Two-Hand', 'Staff' }, '(11.3 damage per second)',
+                    '+5 Intellect' },
+        choice4 = { 'Forest Leather Belt', { 'Waist', 'Leather' }, '15 Armor', '+1 Spirit' },
+    }
+    UQ_TEST_QUEST_CHOICES = 4
+    UQ_TEST_QUEST_REWARDS = 0
+    UQ_TEST_QUEST_REWARD_ITEMS = {
+        choice1 = { 'Tunic of Westfall', 2 },
+        choice2 = { 'Wolfmaster Cape', 2 },
+        choice3 = { 'Staff of Westfall', 2, false },
+        choice4 = { 'Forest Leather Belt', 2 },
+    }
+    QuestFrame:Show()
+    QuestRewardScrollChildFrame:Show()
+    for index = 1, 4 do
+        getglobal('QuestRewardItem' .. index):Show()
+        getglobal('QuestRewardItem' .. index .. 'Name'):SetText(
+            UQ_TEST_QUEST_REWARD_ITEMS['choice' .. index][1])
+    end
+    UnrealQuest:GetModule('GearAdvisor'):Refresh()
+""")
+
+def gear_mark(index):
+    return "QuestRewardItem%d.unrealQuestGearMark" % index
+
+def arrow_cell(index, cell):
+    return rt.eval("""(function()
+    local mark = %s
+    if not mark or not mark.shown then return false end
+    local arrow = mark.unrealQuestArrow
+    local t = arrow.texCoord
+    return arrow.shown ~= false and t ~= nil and t[1] == %s and t[2] == %s
+        and t[3] == %s and t[4] == %s and arrow:GetTexture()
+        == 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\GearAdvisor'
+end)()""" % ((gear_mark(index),) + cell))
+
+def coin_shown(index):
+    return rt.eval("""(function()
+    local mark = %s
+    return mark ~= nil and mark.shown == true and mark.unrealQuestCoin.shown ~= false
+end)()""" % gear_mark(index))
+
+check("the spec comes from the talent tree with the most points",
+      rt.eval("UnrealQuest:GetModule('GearAdvisor'):ResolveSpec() == 'ROGUE'"))
+check("the largest upgrade gets the green arrow",
+      arrow_cell(1, (0.5, 1, 0, 0.5)))
+check("the runner-up upgrade gets the yellow arrow",
+      arrow_cell(2, (0, 0.5, 0, 0.5)))
+check("a wearable reward worse than the worn item gets the red arrow, upside down",
+      arrow_cell(4, (0.5, 1, 1, 0.5)))
+check("a reward the class cannot use gets no arrow",
+      rt.eval("%s == nil or %s.unrealQuestArrow.shown == false" % (gear_mark(3), gear_mark(3))))
+check("the coin sits on the reward that sells for the most, and only there",
+      coin_shown(3) and not coin_shown(1) and not coin_shown(2) and not coin_shown(4))
+check("the coin is the atlas's coin cell, in the name plate's top-right corner",
+      rt.eval("""(function()
+    local coin = %s.unrealQuestCoin
+    local t, p = coin.texCoord, coin.points and coin.points[1]
+    return t ~= nil and t[1] == 16 / 128 and t[2] == 48 / 128
+        and t[3] == 81 / 128 and t[4] == 108 / 128
+        and p ~= nil and p[1] == 'TOPRIGHT' and p[2] == QuestRewardItem3
+        and p[3] == 'TOPRIGHT' and p[4] < 0 and p[5] < 0
+end)()""" % gear_mark(3)))
+check("the arrow sits in the icon's bottom-right corner at about half its size",
+      rt.eval("""(function()
+    local mark = %s
+    local arrow = mark.unrealQuestArrow
+    local p = arrow.points and arrow.points[1]
+    return p ~= nil and p[1] == 'BOTTOMRIGHT' and p[2] == mark
+        and p[3] == 'BOTTOMRIGHT' and arrow.width == arrow.height
+        and arrow.width * 2 >= mark.width and arrow.width < mark.width
+end)()""" % gear_mark(1)))
+
+rt.execute("UQ_TEST_MESSAGES_BEFORE_GEAR = table.getn(UQ_TEST_MESSAGES); SlashCmdList.UNREALQUEST('gear')")
+check("/uq gear reports the spec and each choice's numbers",
+      rt.eval("""(function()
+    local spec, tunic = false, false
+    for index = UQ_TEST_MESSAGES_BEFORE_GEAR + 1, table.getn(UQ_TEST_MESSAGES) do
+        local text = UQ_TEST_MESSAGES[index]
+        if string.find(text, 'spec ROGUE', 1, true) then spec = true end
+        if string.find(text, 'Tunic of Westfall', 1, true)
+            and string.find(text, 'arrow=best', 1, true) then tunic = true end
+    end
+    return spec and tunic
+end)()"""))
+
+# One choice the bundled price table cannot name: the coin is a comparison, so
+# no reward is marked rather than the most expensive of the ones it knows.
+rt.execute("""
+    UQ_TEST_QUEST_REWARD_ITEMS.choice4 = { 'A Belt No Price Table Knows', 2 }
+    QuestRewardItem4Name:SetText('A Belt No Price Table Knows')
+    UnrealQuest:GetModule('GearAdvisor'):Refresh()
+""")
+check("an unpriced choice withdraws the coin from every reward",
+      not coin_shown(1) and not coin_shown(2) and not coin_shown(3) and not coin_shown(4))
+check("the arrows still stand without prices",
+      arrow_cell(1, (0.5, 1, 0, 0.5)) and arrow_cell(4, (0.5, 1, 1, 0.5)))
+
+# Wearing a better cloak than the offered one turns the cloak red and the
+# runner-up slot passes to nothing: only one upgrade is left.
+rt.execute("""
+    UQ_TEST_EQUIPPED[15] = { 'Fine Cloak', { 'Back', nil }, '30 Armor', '+5 Agility', id = 9004 }
+    UnrealQuest:GetModule('GearAdvisor'):Refresh()
+""")
+check("a change of equipped gear re-ranks the rewards",
+      arrow_cell(2, (0.5, 1, 1, 0.5)) and arrow_cell(1, (0.5, 1, 0, 0.5)))
+
+rt.execute("""
+    UnrealQuest:GetModule('Config'):Set('questRewardGearAdvisor', false)
+    UnrealQuest:GetModule('GearAdvisor'):Refresh()
+""")
+check("turning the option off hides every mark",
+      rt.eval("not %s.shown and not %s.shown and not %s.shown"
+              % (gear_mark(1), gear_mark(2), gear_mark(4))))
+rt.execute("""
+    UnrealQuest:GetModule('Config'):Set('questRewardGearAdvisor', true)
+    UnrealQuest:GetModule('GearAdvisor'):Refresh()
+    QuestFrame:Hide()
+    UnrealQuest:GetModule('GearAdvisor'):Refresh()
+""")
+check("closing the quest window hides every mark",
+      rt.eval("not %s.shown and not %s.shown" % (gear_mark(1), gear_mark(4))))
+
+check("each class and tree maps to its stat profile",
+      rt.eval("""(function()
+    local advisor = UnrealQuest:GetModule('GearAdvisor')
+    local function Spec(class, trees)
+        UQ_TEST_CLASS = class
+        UQ_TEST_TALENTS = trees
+        return advisor:ResolveSpec()
+    end
+    return Spec({ 'Warrior', 'WARRIOR', 1 }, { { 'Arms', 2, 'WarriorArms' },
+               { 'Fury', 0, 'WarriorFury' }, { 'Protection', 9, 'WarriorProtection' } }) == 'WARRIOR_TANK'
+        and Spec({ 'Paladin', 'PALADIN', 2 }, { { 'Holy', 0, 'PaladinHoly' },
+               { 'Protection', 0, 'PaladinProtection' }, { 'Retribution', 12, 'PaladinCombat' } }) == 'PALADIN_DPS'
+        and Spec({ 'Priest', 'PRIEST', 5 }, { { 'Shadow', 20, 'PriestShadow' } }) == 'PRIEST_DPS'
+        and Spec({ 'Druid', 'DRUID', 11 }, {}) == 'DRUID_CASTER'
+        and Spec({ 'Druid', 'DRUID', 11 }, { { 'Feral Combat', 5, 'DruidFeralCombat' } }) == 'DRUID_FERAL'
+        and Spec({ 'Mage', 'MAGE', 8 }, { { 'Fire', 0, 'MageFire' } }) == 'MAGE'
+end)()"""))
+
+check("tooltip rows parse into a slot and stats, Equip: effects included",
+      rt.eval("""(function()
+    local item = UnrealQuest:GetModule('GearAdvisor').ParseItem({
+        { text = 'Some Dagger' },
+        { left = 'One-Hand', right = 'Dagger' },
+        { left = '11 - 21 Damage', right = 'Speed 1.80' },
+        { text = '(8.9 damage per second)' },
+        { text = '+2 Strength' },
+        { text = '-1 Spirit' },
+        { text = 'Equip: Improves your chance to get a critical strike by 1%.' },
+        { text = 'Equip: +12 Attack Power.' },
+        { text = 'Equip: Increases damage done by Fire spells and effects by up to 7.' },
+        { text = '(2) Set: Improves your chance to hit by 1%.' },
+    })
+    local s = item.stats
+    return item.group == 'ONEHAND' and s.MDPS == 8.9 and s.STR == 2 and s.SPI == -1
+        and s.CRIT == 1 and s.AP == 12 and s.SCHOOL_FIRE == 7 and s.HIT == nil
+end)()"""))
+
+rt.execute("""
+    UnrealQuest:GetModule('GearAdvisor'):Clear()
+    UQ_TEST_CLASS = UQ_TEST_GEAR_SAVED.class
+    GetQuestItemInfo = UQ_TEST_GEAR_SAVED.iteminfo
+    GetInventorySlotInfo, GetInventoryItemLink = nil, nil
+    GetNumTalentTabs, GetTalentTabInfo = nil, nil
+    local meta = getmetatable(UIParent)
+    meta.SetQuestItem, meta.SetInventoryItem = nil, nil
+    for _, name in ipairs({ 'GetInventorySlotInfo', 'GetInventoryItemLink',
+            'GetNumTalentTabs', 'GetTalentTabInfo', 'GetQuestItemInfo' }) do
+        UnrealQuest.Client.ForgetSymbol(name)
+    end
+    if UQ_TEST_GEAR_SAVED.frameShown then QuestFrame:Show() else QuestFrame:Hide() end
+    UQ_TEST_QUEST_REWARD_ITEMS = {}
+    UQ_TEST_QUEST_CHOICES = 0
+    UQ_TEST_QUEST_REWARDS = 1
+    for index = 2, 4 do
+        getglobal('QuestRewardItem' .. index):Hide()
+        getglobal('QuestRewardItem' .. index .. 'Name'):SetText('')
+    end
+    QuestRewardItem1Name:SetText(UQ_TEST_GEAR_SAVED.name1)
 """)
 
 rt.execute("""
@@ -2460,31 +3037,20 @@ rt.execute("""
     UQ_TEST_QUEST_TITLE = ''
 """)
 
-check("Abandon, Share and Exit occupy the reserved parchment footer", rt.eval("""(function()
-    local abandon = QuestLogFrameAbandonButton.point
-    local push = QuestFramePushQuestButton.point
-    local exit = QuestFrameExitButton.point
-    return abandon and abandon[1] == 'BOTTOMLEFT'
-        and abandon[2] == QuestLogFrame and abandon[3] == 'BOTTOMLEFT'
-        and abandon[4] == 16 and abandon[5] == 5
-        and QuestLogFrameAbandonButton:GetWidth() == 125
-        and QuestLogFrameAbandonButton:GetHeight() == 21
-        and exit and exit[1] == 'BOTTOMRIGHT'
-        and exit[2] == QuestLogFrame and exit[3] == 'BOTTOMRIGHT'
-        and exit[4] == -30 and exit[5] == 5
-        and QuestFrameExitButton:GetWidth() == 78
-        and QuestFrameExitButton:GetHeight() == 21
-        and push and push[1] == 'BOTTOMRIGHT'
-        and push[2] == QuestFrameExitButton and push[3] == 'BOTTOMLEFT'
-        and push[4] == -4 and push[5] == 0
-        and QuestFramePushQuestButton:GetWidth() == 123
-        and QuestFramePushQuestButton:GetHeight() == 21
-end)()"""))
-check("the extended frame owns the complete eight-texture EQL3 parchment", rt.eval("""(function()
-    local textures = QuestLogFrame.unrealQuestExtendedClassicTextures
-    return textures and table.getn(textures) == 8
-        and string.find(textures[1]:GetTexture(), 'EQL3_TopLeft', 1, true) ~= nil
-        and string.find(textures[8]:GetTexture(), 'EQL3_BottomRight', 1, true) ~= nil
+check("the stock book portrait is redrawn inside the art's gold ring",
+      rt.eval("""(function()
+    local art = QuestLogFrame.unrealQuestStandaloneQuestLogArt
+    local book = art and art.book
+    if not book then return false end
+    local page = 676 * (896 / (896 + 298))
+    local ringWidth = ((122 - 8) / 896) * page
+    local ringHeight = ((118 - 4) / 823) * 440
+    local point = book.points and book.points[1]
+    return string.find(book:GetTexture() or '', 'BookIcon', 1, true) ~= nil
+        and point and point[1] == 'CENTER' and point[2] == QuestLogFrame
+        and point[3] == 'TOPLEFT'
+        and math.abs(book:GetWidth() - (ringWidth * 0.84 + 4)) < 0.5
+        and math.abs(book:GetHeight() - (ringHeight * 0.84 + 4)) < 0.5
 end)()"""))
 rt.execute("""
     UnrealUI = { activeThemeStyle = 'classic-wow',
@@ -2495,8 +3061,32 @@ rt.execute("""
     UQ_TEST_EQL_MODERN_MODE = UnrealQuest.Client.GetUnrealUIQuestLogMode()
     UnrealUI = nil
 """)
-check("unrealUI Classic selects EQL3 while a modern theme retains its own log",
+check("unrealUI Classic and Modern are both reported as owning the log",
       rt.eval("UQ_TEST_EQL_CLASSIC_MODE == 'classic' and UQ_TEST_EQL_MODERN_MODE == 'modern'"))
+rt.execute("""
+    -- The host's Dragonflight Quest Log is no longer one theme: its own design
+    -- flag answers, and only the legacy theme read is left as the fallback.
+    UnrealUI = { activeThemeStyle = 'classic-wow',
+        GetActiveThemeStyle = function() return 'classic-wow' end,
+        ThemeStyleUsesNativeChrome = function() return true end,
+        ModernWowQuestLogActive = function() return true end }
+    UQ_TEST_HOST_CLASSIC_DESIGN = UnrealQuest.Client.UsesModernWowQuestLog()
+    UnrealUI.ModernWowQuestLogActive = function() return false end
+    UQ_TEST_HOST_CLASSIC_FLAT = UnrealQuest.Client.UsesModernWowQuestLog()
+    UnrealUI.ModernWowQuestLogActive = nil
+    UnrealUI.GetActiveThemeStyle = function() return 'modern-wow' end
+    UQ_TEST_HOST_LEGACY_THEME = UnrealQuest.Client.UsesModernWowQuestLog()
+    UQ_TEST_HOST_TEXTURED = UnrealQuest.Client.UsesQuestLogTexturedButtons()
+    UnrealUI = nil
+    UQ_TEST_NO_HOST_TEXTURED = UnrealQuest.Client.UsesQuestLogTexturedButtons()
+""")
+check("the host's quest-log design decides the nudges, not its theme name",
+      rt.eval("""UQ_TEST_HOST_CLASSIC_DESIGN == true
+        and UQ_TEST_HOST_CLASSIC_FLAT == false
+        and UQ_TEST_HOST_LEGACY_THEME == true
+        and UQ_TEST_HOST_TEXTURED == true
+        and UQ_TEST_NO_HOST_TEXTURED == true"""),
+      "classic-wow draws the same design, so the theme read alone said flat")
 
 check("database indexed", rt.eval("UnrealQuest:GetModule('Database'):IsIndexReady()"))
 print("     indexed titles:", rt.eval("UnrealQuest:GetModule('Database').indexedCount"))
@@ -2738,7 +3328,7 @@ rt.execute("""
     -- ends 100 above the screen bottom, so rows 1..17 end inside it and 18
     -- does not.
     QuestLogListScrollFrame.testBottom = 100
-    for row = 1, 25 do
+    for row = 1, 21 do
         local button = getglobal('QuestLogTitle' .. row)
         button.testBottom = 400 - 17 * row
         button:Show()
@@ -2757,7 +3347,7 @@ check("quest rows that end below the list page are taken off it and scrolled",
 end)()"""))
 rt.execute("""
     QuestLogListScrollFrame.testBottom = nil
-    for row = 1, 25 do
+    for row = 1, 21 do
         getglobal('QuestLogTitle' .. row).testBottom = nil
     end
     QUESTS_DISPLAYED = 25
@@ -5371,6 +5961,122 @@ rt.execute("""
 """)
 
 
+print("minimap quest areas")
+# The areas are clipped to the minimap circle before they are placed, because
+# nothing clips a child of Minimap on this client. Every texture drawn must lie
+# inside the circle, a patch wholly inside stays one texture, a patch wholly
+# outside draws nothing, and a trimmed strip keeps its texels (u interpolated).
+rt.execute("""
+    UQ_TEST_AREA_PLACED = function(areas)
+        local placed = {}
+        for index = 1, areas.visible do
+            local texture = areas.textures[index]
+            local point = texture.points[table.getn(texture.points)]
+            table.insert(placed, { left = point[4], top = point[5],
+                width = texture.width, height = texture.height,
+                u1 = texture.texCoord[1], u2 = texture.texCoord[2] })
+        end
+        return placed
+    end
+""")
+check("minimap areas never draw outside the minimap circle", rt.eval("""(function()
+    local areas = UnrealQuest:GetModule('MinimapAreas')
+    areas.entries = { { quest = { titleKey = 'uqtestarea' },
+        records = { { -100, -100, 100, 100, 0.1, 0.9 } },
+        minX = -100, minY = -100, maxX = 100, maxY = 100 } }
+    areas.lastProjectKey = nil
+    areas:Project(0, 0, 1, 72, nil, nil, true)
+    local radius = 70 + 1e-6
+    local placed = UQ_TEST_AREA_PLACED(areas)
+    if table.getn(placed) < 50 then return false end
+    for _, rect in ipairs(placed) do
+        local corners = {
+            { rect.left, rect.top }, { rect.left + rect.width, rect.top },
+            { rect.left, rect.top - rect.height },
+            { rect.left + rect.width, rect.top - rect.height },
+        }
+        for _, corner in ipairs(corners) do
+            if corner[1] * corner[1] + corner[2] * corner[2] > radius * radius then
+                return false
+            end
+        end
+    end
+    return true
+end)()"""))
+check("a patch inside the circle is one texture; one outside draws nothing",
+      rt.eval("""(function()
+    local areas = UnrealQuest:GetModule('MinimapAreas')
+    areas.entries = {
+        { quest = { titleKey = 'uqtestin' }, records = { { -5, -5, 5, 5, 0.2, 0.8 } },
+          minX = -5, minY = -5, maxX = 5, maxY = 5 },
+        { quest = { titleKey = 'uqtestout' }, records = { { 80, 80, 90, 90, 0.2, 0.8 } },
+          minX = 80, minY = 80, maxX = 90, maxY = 90 },
+    }
+    areas.lastProjectKey = nil
+    areas:Project(0, 0, 1, 72, nil, nil, true)
+    local placed = UQ_TEST_AREA_PLACED(areas)
+    return table.getn(placed) == 1 and placed[1].width == 10 and placed[1].height == 10
+        and placed[1].left == -5 and placed[1].top == 5
+        and placed[1].u1 == 0.2 and placed[1].u2 == 0.8
+end)()"""))
+check("a strip trimmed at the rim interpolates its texels", rt.eval("""(function()
+    local areas = UnrealQuest:GetModule('MinimapAreas')
+    -- A wide one-strip patch through the centre, cut by the circle on both sides.
+    areas.entries = { { quest = { titleKey = 'uqteststrip' },
+        records = { { -100, -0.5, 100, 0.5, 0, 1 } },
+        minX = -100, minY = -0.5, maxX = 100, maxY = 0.5 } }
+    areas.lastProjectKey = nil
+    areas:Project(0, 0, 1, 72, nil, nil, true)
+    local placed = UQ_TEST_AREA_PLACED(areas)
+    local rect = placed[1]
+    local expected1 = (rect.left + 100) / 200
+    local expected2 = (rect.left + rect.width + 100) / 200
+    return table.getn(placed) == 1 and rect.left > -70 and rect.left < -69
+        and math.abs(rect.u1 - expected1) < 1e-6 and math.abs(rect.u2 - expected2) < 1e-6
+end)()"""))
+check("only pinned or hovered quests draw, and an unchanged view is not redrawn",
+      rt.eval("""(function()
+    local areas = UnrealQuest:GetModule('MinimapAreas')
+    local owner = { hovered = nil }
+    function owner:IsQuestAreaHovered(quest) return quest == self.hovered end
+    local quest = { titleKey = 'uqtesthover' }
+    areas.entries = { { quest = quest, records = { { -5, -5, 5, 5, 0.2, 0.8 } },
+        minX = -5, minY = -5, maxX = 5, maxY = 5 } }
+    areas.lastProjectKey = nil
+    areas:Project(0, 0, 1, 72, owner, nil, false)
+    local hiddenAtRest = areas.visible == 0
+    owner.hovered = quest
+    areas:Project(0, 0, 1, 72, owner, nil, false)
+    local shownOnHover = areas.visible == 1
+        and areas.textures[1].path == UnrealQuest.Client.WORLD_MAP_AREA_CONTOUR_NEUTRAL_TEXTURE
+    local key = areas.lastProjectKey
+    areas:Project(0, 0, 1, 72, owner, nil, false)
+    local cached = areas.lastProjectKey == key
+    areas.entries = {}
+    areas:HideAll()
+    return hiddenAtRest and shownOnHover and cached and areas.visible == 0
+end)()"""))
+check("the minimap rebuild takes its area geometry from the shared contour cache",
+      rt.eval("""(function()
+    local areas = UnrealQuest:GetModule('MinimapAreas')
+    local config = UnrealQuest:GetModule('Config')
+    local oldAreas = config:Get('mapObjectiveAreas')
+    config:Set('mapObjectiveAreas', true)
+    local quests = UnrealQuest:GetModule('QuestState'):GetOrderedQuests()
+    local yards = UnrealQuest:GetModule('Database'):GetZoneYards(12)
+    areas:Rebuild(quests, 12, yards[1], yards[2], config)
+    UQ_TEST_TICK(0.05, 40)
+    local built = table.getn(areas.entries) > 0 and table.getn(areas.buildQueue) == 0
+    for _, entry in ipairs(areas.entries) do
+        if not entry.records or table.getn(entry.records) == 0 then built = false end
+    end
+    config:Set('mapObjectiveAreas', false)
+    areas:Rebuild(quests, 12, yards[1], yards[2], config)
+    local cleared = table.getn(areas.entries) == 0
+    config:Set('mapObjectiveAreas', oldAreas)
+    return built and cleared
+end)()"""))
+
 print("minimap indoors")
 # Indoors the minimap covers fewer yards at the same zoom step and this client
 # exposes no way to learn how many, so the pins are withheld rather than drawn
@@ -6143,31 +6849,166 @@ end)()"""))
 # as before; the dots are tested on top of it further down.
 rt.execute("""
     UnrealQuest:GetModule('Config'):Set('mapObjectiveDots', false)
+    UnrealQuest:GetModule('Config'):Set('mapObjectiveAreas', true)
     UnrealQuest:GetModule('WorldMapPins').dirty = true
     table.insert(UQ_TEST_LOG, { "Gold Dust Exchange", 7, nil, nil, nil, nil,
       { { "Gold Dust: 5/10", "item", nil } } })
     UnrealQuest:GetModule('QuestState'):Scan()
     UQ_TEST_TICK(0.5, 2)
 """)
-check("quest areas use the confirmed construction", rt.eval("""(function()
+check("quest areas use contour textures over invisible hover targets", rt.eval("""(function()
     local pins = UnrealQuest:GetModule('WorldMapPins')
+    local contours = UnrealQuest:GetModule('AreaContours')
     local area = pins and pins.areaPool[1]
+    local entry = contours and contours.groups[1]
+    local group = entry and entry.frame
+    local patch = entry and entry.textures[1]
     local diagnostics = UnrealQuestDB.mapDiagnostics
     return pins ~= nil and area ~= nil and pins.areaVisibleCount > 0
         and area.shown == true and area.point ~= nil
         and area.frameType == 'Button' and area.frameLevel >= 120
         and area.width == 25 and area.height == 17.5
-        and area.unrealQuestTexture ~= nil and area.unrealQuestTexture.alpha == 0.5
+        and area.unrealQuestTexture ~= nil
+        and area.unrealQuestTexture.shown == false
         and area.unrealQuestLabel == nil
+        and contours.visibleCount > 0 and group.shown == true
+        and group.frameType == 'Frame' and group.mouseEnabled == false
+        and patch ~= nil and patch.shown == true and patch.texCoordArgs == 4
+        and (patch.path == UnrealQuest.Client.WORLD_MAP_AREA_CONTOUR_TEXTURE
+            or patch.path == UnrealQuest.Client.WORLD_MAP_AREA_CONTOUR_NEUTRAL_TEXTURE)
+        and patch.alpha == nil and patch.width > 0 and patch.height > 0
         and diagnostics ~= nil and pins.areaVisibleCount <= diagnostics.pooledAreas
 end)()"""))
-# The yellow numbered square is retired: the areas are the whole quest layer,
-# and hovering one names the quest. No marker may be created or drawn at all.
-check("no numbered marker is drawn above a quest area", rt.eval("""(function()
-    local pins = UnrealQuest:GetModule('WorldMapPins')
-    return pins.visibleCount == 0 and pins.pool[1] == nil
-        and pins.areaPool[1].unrealQuestMarkerPin == nil
+check("one location becomes a padded rounded contour", rt.eval("""(function()
+    local contours = UnrealQuest:GetModule('AreaContours')
+    local rows, minimum, maximum = contours:AreaRows({ { x = 50, y = 50 } })
+    local middle = rows[400] and rows[400][1]
+    local top = rows[minimum] and rows[minimum][1]
+    return minimum < 400 and maximum > 400
+        and middle and top
+        and middle[2] - middle[1] > top[2] - top[1]
 end)()"""))
+# Every patch sweeps the profile strip by its exact distance to the rounded
+# hull: a flat interior, gradient pieces along the edge (antialiasing done by
+# the texture filter), and nothing outside the glow. Pieces merge along rows
+# and down columns, so a round area stays a few dozen textures.
+check("a contour is drawn as distance-gradient pieces of the real hull", rt.eval("""(function()
+    local contours = UnrealQuest:GetModule('AreaContours')
+    local profile = contours.PROFILE
+    local patches = contours:ProfilePatches({ { x = 50, y = 50 } })
+    local gradients, interiorCell = 0, false
+    local minX, maxX
+    for _, patch in ipairs(patches) do
+        local left, right = patch[5], patch[6]
+        if left < profile.dMin or left > profile.dMax
+            or right < profile.dMin or right > profile.dMax then
+            return false
+        end
+        if left ~= right then gradients = gradients + 1 end
+        if left == profile.dMax and right == profile.dMax
+            and patch[1] <= 400 and patch[3] > 400
+            and patch[2] <= 400 and patch[4] > 400 then
+            interiorCell = true
+        end
+        if not minX or patch[1] < minX then minX = patch[1] end
+        if not maxX or patch[3] > maxX then maxX = patch[3] end
+    end
+    -- 0.85 percent padding either side is about 6.8 cells; the glow adds ~1.
+    local width = maxX - minX
+    return gradients > 8 and interiorCell
+        and table.getn(patches) < 120
+        and width >= 13 and width <= 18
+        and profile.dMin == -1.22 and profile.dMax == 0.94 and profile.size == 256
+end)()"""))
+# The interactive marker is the TOP frame and draws the number; the circle,
+# the hover circle and the glow are mouse-disabled Buttons below it. A
+# mouse-disabled number layer above the marker left the circle with neither
+# hover nor click in game.
+check("quest areas carry numbered POI circle markers", rt.eval("""(function()
+    local pins = UnrealQuest:GetModule('WorldMapPins')
+    local marker = pins and pins.pool[1]
+    local circle = marker and marker.unrealQuestCircleLayer
+    local hover = marker and marker.unrealQuestHoverLayer
+    local glow = marker and marker.unrealQuestGlowLayer
+    return pins.visibleCount > 0 and marker ~= nil and marker.shown == true
+        and marker.width == 24 and marker.height == 24
+        -- Glow (+2) and circle (+3) both clear a dot (+1) over the cells (+0).
+        and marker.frameLevel == pins.areaPool[1].frameLevel + 4
+        and marker.mouseEnabled ~= false
+        and marker.unrealQuestTexture.path
+            == UnrealQuest.Client.WORLD_MAP_QUEST_POI_NUMBER_TEXTURE
+        and marker.unrealQuestTexture.texCoordArgs == 4
+        and marker.unrealQuestNumberLayer == nil
+        and marker.unrealQuestHighlightLayer == nil
+        and circle ~= nil and hover ~= nil and glow ~= nil
+        and circle.frameLevel == marker.frameLevel - 1
+        and hover.frameLevel == marker.frameLevel - 1
+        and glow.frameLevel == marker.frameLevel - 2
+        and circle.mouseEnabled == false and hover.mouseEnabled == false
+        and glow.mouseEnabled == false
+        and circle.unrealQuestTexture.path
+            == UnrealQuest.Client.WORLD_MAP_QUEST_POI_CIRCLE_TEXTURE
+        and math.abs(glow.width - 24 * UnrealQuest.Client.QUEST_POI_GLOW_SCALE) < 1e-6
+        and glow.unrealQuestTexture.vertex[4] == UnrealQuest.Client.QUEST_POI_GLOW_ALPHA
+        and glow.unrealQuestTexture.texCoord[1] == 192 / 256
+        and marker.unrealQuestLabel == nil
+        and marker.unrealQuestQuest ~= nil
+        and type(marker.scripts.OnEnter) == 'function'
+        and type(marker.scripts.OnLeave) == 'function'
+        and type(marker.scripts.OnClick) == 'function'
+        and pins.areaPool[1].unrealQuestMarkerPin ~= nil
+end)()"""))
+rt.execute("""
+    UQ_TEST_QUEST_POI_MARKER = UnrealQuest.Client.CreateWorldMapPin(9002, 1, 1, 1)
+    UQ_TEST_QUEST_POI_MARKER.unrealQuestPoolIndex = 9002
+    UQ_TEST_QUEST_POI_NORMAL = UnrealQuest.Client.SetWorldMapQuestNumber(
+        UQ_TEST_QUEST_POI_MARKER, 1, false)
+""")
+check("quest POI uses the main circle and a gold glyph", rt.eval("""(function()
+    local marker = UQ_TEST_QUEST_POI_MARKER
+    local circle = marker.unrealQuestCircleLayer.unrealQuestTexture.texCoord
+    local glyph = marker.unrealQuestTexture.texCoord
+    return UQ_TEST_QUEST_POI_NORMAL == true
+        and circle[1] == 0 and circle[2] == 64 / 256
+        and circle[3] == 0 and circle[4] == 1
+        and glyph[1] == 4 / 256 and glyph[2] == 28 / 256
+        and glyph[3] == 132 / 256 and glyph[4] == 156 / 256
+        and marker.unrealQuestCircleLayer.unrealQuestSuppressed == nil
+        and marker.unrealQuestGlowLayer.unrealQuestSuppressed == true
+end)()"""))
+# A texcoord change on an already drawn map child never reached the screen in
+# game; hover swaps which of two layers is shown instead.
+check("quest POI hover swaps the circle layer for the hover-circle layer", rt.eval("""(function()
+    local marker = UQ_TEST_QUEST_POI_MARKER
+    local circle = marker.unrealQuestCircleLayer
+    local hover = marker.unrealQuestHoverLayer
+    local coord = hover.unrealQuestTexture.texCoord
+    if coord[1] ~= 64 / 256 or coord[2] ~= 128 / 256
+        or hover.unrealQuestSuppressed ~= true then
+        return false
+    end
+    UnrealQuest.Client.SetWorldMapQuestNumberHover(marker, true)
+    local shown = hover.unrealQuestSuppressed == nil
+        and circle.unrealQuestSuppressed == true
+    UnrealQuest.Client.SetWorldMapQuestNumberHover(marker, false)
+    return shown and hover.unrealQuestSuppressed == true
+        and circle.unrealQuestSuppressed == nil
+end)()"""))
+check("quest POI followed state uses the active circle, a dark glyph and the glow", rt.eval("""(function()
+    local marker = UQ_TEST_QUEST_POI_MARKER
+    if not UnrealQuest.Client.SetWorldMapQuestNumber(marker, 25, true) then return false end
+    UnrealQuest.Client.SetWorldMapQuestNumberHover(marker, true)
+    local circle = marker.unrealQuestCircleLayer.unrealQuestTexture.texCoord
+    local glyph = marker.unrealQuestTexture.texCoord
+    return circle[1] == 128 / 256 and circle[2] == 192 / 256
+        and glyph[1] == 4 / 256 and glyph[2] == 28 / 256
+        and glyph[3] == 100 / 256 and glyph[4] == 124 / 256
+        and marker.unrealQuestCircleLayer.unrealQuestSuppressed == nil
+        and marker.unrealQuestGlowLayer.unrealQuestSuppressed == nil
+        and marker.unrealQuestHoverLayer.unrealQuestSuppressed == true
+end)()"""))
+check("quest-number atlas refuses values outside 1-25", rt.eval(
+    "UnrealQuest.Client.SetWorldMapQuestNumber(UQ_TEST_QUEST_POI_MARKER, 26, false) == false"))
 check("stable map refresh reapplies cached area positions", rt.eval("""(function()
     local pins = UnrealQuest:GetModule('WorldMapPins')
     local area = pins and pins.areaPool[1]
@@ -6182,10 +7023,29 @@ end)()"""))
 # restores the canvas-relative tiles rather than leaving a stretched dot.
 rt.execute("""
     UnrealQuest:GetModule('Config'):Set('mapObjectiveDots', true)
+    UnrealQuest:GetModule('Config'):Set('mapObjectiveAreas', false)
     UQ_TEST_TICK(0.5, 2)
 """)
+check("dots and areas can both be drawn in one pass", rt.eval("""(function()
+    local config = UnrealQuest:GetModule('Config')
+    local pins = UnrealQuest:GetModule('WorldMapPins')
+    local contours = UnrealQuest:GetModule('AreaContours')
+    config:Set('mapObjectiveAreas', true)
+    UQ_TEST_TICK(0.5, 2)
+    local dots, cells = 0, 0
+    for index = 1, pins.areaVisibleCount do
+        if pins.areaPool[index].unrealQuestDotStyle then dots = dots + 1 else cells = cells + 1 end
+    end
+    local both = dots > 0 and cells > 0 and contours.visibleCount > 0
+        and pins.visibleCount > 0
+        and UnrealQuestDB.mapDiagnostics.objectiveStyle == 'both'
+    config:Set('mapObjectiveAreas', false)
+    UQ_TEST_TICK(0.5, 2)
+    return both and contours.visibleCount == 0 and pins.visibleCount > 0
+end)()"""))
 check("objective dots replace the area tiles when the setting is on", rt.eval("""(function()
     local pins = UnrealQuest:GetModule('WorldMapPins')
+    local contours = UnrealQuest:GetModule('AreaContours')
     local dot = pins and pins.areaPool[1]
     return dot ~= nil and pins.areaVisibleCount > 0
         and dot.shown == true and dot.point ~= nil
@@ -6194,7 +7054,11 @@ check("objective dots replace the area tiles when the setting is on", rt.eval(""
         and dot.unrealQuestAreaWidthPercent == nil
         and dot.unrealQuestAreaHeightPercent == nil
         and dot.unrealQuestTexture ~= nil
+        and dot.unrealQuestTexture.shown == true
         and dot.unrealQuestTexture.path == UnrealQuest.Client.MINIMAP_OBJECTIVE_TEXTURE
+        and contours.visibleCount == 0 and contours.groups[1].frame.shown == false
+        -- The numbered circles stay: they are drawn with dots alone too.
+        and pins.visibleCount > 0 and pins.pool[1].shown == true
         and UnrealQuestDB.mapDiagnostics.objectiveStyle == 'dots'
 end)()"""))
 check("a dot keeps its fixed size across a stable refresh", rt.eval("""(function()
@@ -6485,14 +7349,13 @@ check("a dot's tooltip names every quest sharing its spawn", rt.eval("""(functio
     end
     return foundB and blocks == 2
 end)()"""))
-# The colour is the whole point of listing both: it is what lets the player
-# match a line in the tooltip to the dot it belongs to.
-check("each stacked quest's heading carries that quest's own dot colour",
+# Each heading carries its own quest's level colour, the one the tracker uses.
+check("each stacked quest's heading carries that quest's level colour",
       rt.eval("""(function()
     local a = UQ_TEST_STACK_A.unrealQuestQuest
     local b = UQ_TEST_STACK_B.unrealQuestQuest
-    local ar, ag, ab = UnrealQuest.GetQuestColor(a)
-    local br, bg, bb = UnrealQuest.GetQuestColor(b)
+    local ar, ag, ab = UnrealQuest.Client.GetQuestLevelColor(a.level)
+    local br, bg, bb = UnrealQuest.Client.GetQuestLevelColor(b.level)
     local head = WorldMapTooltip.textColor
     if not head or head[1] ~= ar or head[2] ~= ag or head[3] ~= ab then return false end
     for index, line in ipairs(WorldMapTooltip.lines or {}) do
@@ -6504,21 +7367,22 @@ check("each stacked quest's heading carries that quest's own dot colour",
     end
     return false
 end)()"""))
-# A lone dot must be untouched by any of this: one block, and the gold heading
-# every other map tooltip in the file uses.
+# A lone dot describes only its own quest, headed in that quest's level colour.
 rt.execute("""
     UQ_TEST_STACK_B.unrealQuestMapX, UQ_TEST_STACK_B.unrealQuestMapY = 0.95, 0.95
     UQ_TEST_STACK_A.scripts.OnEnter()
 """)
-check("an isolated dot still describes only its own quest, in gold",
+check("an isolated dot still describes only its own quest, in its level colour",
       rt.eval("""(function()
     local blocks = 0
     for _, pair in ipairs(WorldMapTooltip.doubles or {}) do
         if pair[1] == 'Status:' then blocks = blocks + 1 end
     end
+    local quest = UQ_TEST_STACK_A.unrealQuestQuest
+    local r, g, b = UnrealQuest.Client.GetQuestLevelColor(quest.level)
     local head = WorldMapTooltip.textColor
-    return blocks == 1 and WorldMapTooltip.text == UQ_TEST_STACK_A.unrealQuestQuest.title
-        and head ~= nil and head[1] == 1 and head[2] == 0.82 and head[3] == 0
+    return blocks == 1 and WorldMapTooltip.text == quest.title
+        and head ~= nil and head[1] == r and head[2] == g and head[3] == b
 end)()"""))
 # Same opt-out as the giver/turn-in clusters it borrows the radius and cap from.
 rt.execute("""
@@ -6794,32 +7658,245 @@ end)()"""))
 
 rt.execute("""
     UnrealQuest:GetModule('Config'):Set('mapObjectiveDots', false)
+    UnrealQuest:GetModule('Config'):Set('mapObjectiveAreas', true)
+    UnrealQuest:GetModule('Config'):Set('mapShowAllAreas', false)
     UQ_TEST_LOG = UQ_TEST_DOT_TEST_LOG
     UnrealQuest:GetModule('QuestState'):Scan()
     UQ_TEST_TICK(0.5, 2)
 """)
-check("turning the setting off restores the area tiles", rt.eval("""(function()
+# Areas mode, default: only the followed quest's area stays on screen. Any
+# other in-progress quest's contour is drawn hidden, has no hit cells over bare
+# terrain, and shows exactly while its quest is hovered. A complete quest draws
+# no area at all -- its turn-in "?" is where it goes.
+check("areas default: only pinned contours show, the rest appear on hover",
+      rt.eval("""(function()
     local pins = UnrealQuest:GetModule('WorldMapPins')
+    local contours = UnrealQuest:GetModule('AreaContours')
+    local hidden = nil
+    for index = 1, contours.visibleCount do
+        local entry = contours.groups[index]
+        local quest = entry.frame.unrealQuestQuest
+        if quest and quest.isComplete == 1 then return false end
+        if entry.frame.shown ~= (entry.pinned == true) then return false end
+        if not entry.pinned then hidden = hidden or entry end
+    end
+    if not hidden then return false end
+    local quest = hidden.frame.unrealQuestQuest
+    -- Its hit cells exist but ignore the mouse until its quest is in focus.
+    local cells = {}
+    for index = 1, pins.areaVisibleCount do
+        local cell = pins.areaPool[index]
+        if cell.unrealQuestQuest == quest then
+            if cell.mouseEnabled ~= false or not cell.unrealQuestHoverOnly then return false end
+            table.insert(cells, cell)
+        end
+    end
+    if table.getn(cells) == 0 then return false end
+    pins:ApplyQuestFocus(quest)
+    local shownOnHover = hidden.frame.shown == true and cells[1].mouseEnabled == true
+    pins:ApplyQuestFocus(nil)
+    return shownOnHover and hidden.frame.shown == false and cells[1].mouseEnabled == false
+end)()"""))
+# Leaving the POI into its own revealed area keeps the focus, the area and
+# one unchanged tooltip; leaving the area then lets all three go.
+# Hovering a tracker row shows its quest on the map as a POI hover would: the
+# hidden area appears, the circle takes its hover state and glow; leaving the
+# row lets both go.
+check("a tracker-row hover reveals its quest on the map like a POI hover",
+      rt.eval("""(function()
+    local pins = UnrealQuest:GetModule('WorldMapPins')
+    local contours = UnrealQuest:GetModule('AreaContours')
+    local entry = nil
+    for index = 1, contours.visibleCount do
+        if not contours.groups[index].pinned then entry = contours.groups[index] break end
+    end
+    local quest = entry and entry.frame.unrealQuestQuest
+    local marker = nil
+    for index = 1, pins.visibleCount do
+        if pins.pool[index].unrealQuestQuest == quest then marker = pins.pool[index] end
+    end
+    if not marker then return false end
+    pins:SetExternalQuestHover(quest)
+    local shown = entry.frame.shown == true and pins.focusQuest == quest
+        and marker.unrealQuestQuestNumberHovered == true
+        and marker.unrealQuestGlowLayer.unrealQuestSuppressed == nil
+    pins:SetExternalQuestHover(nil)
+    return shown and entry.frame.shown == false and pins.focusQuest == nil
+        and marker.unrealQuestQuestNumberHovered == nil
+        and marker.unrealQuestGlowLayer.unrealQuestSuppressed == true
+end)()"""))
+# A merchant selling what the quest needs pulses while its tracker row is
+# hovered, and is part of the reveal flash.
+check("a tracker-row hover and the reveal flash pulse the quest's merchants",
+      rt.eval("""(function()
+    local pins = UnrealQuest:GetModule('WorldMapPins')
+    local vendors = UnrealQuest:GetModule('QuestVendorPins')
+    local contours = UnrealQuest:GetModule('AreaContours')
+    local quest = contours.groups[1] and contours.groups[1].frame.unrealQuestQuest
+    if not quest then return false end
+    local pin = vendors:GetWorldPin(1)
+    local savedVisible, savedTarget = vendors.worldVisible, pin.unrealQuestVendorTarget
+    vendors.worldVisible = 1
+    pin.unrealQuestVendorTarget = { entries = { { quest = quest } } }
+    pin:Show()
+    local base = pin.unrealQuestPixelWidth
+    pins:StopFlash() -- a reveal flash still running is never overridden
+    pins:SetExternalQuestHover(quest)
+    UQ_TEST_TICK(0.05, 6)
+    -- Size only: the hover pulse never touches the merchant's opacity.
+    local pulsing = pin.unrealQuestFlashActive == true and pins.flashIsHoverPulse == true
+        and pin:GetAlpha() == 1
+    pins:SetExternalQuestHover(nil)
+    local stopped = pin.unrealQuestFlashActive == nil and pins.flashTargets == nil
+        and pin.unrealQuestPixelWidth == base
+    -- The vendor layer's own refresh re-drew its pool during the ticks.
+    vendors.worldVisible = 1
+    pin.unrealQuestVendorTarget = { entries = { { quest = quest } } }
+    pin:Show()
+    local flashed = pins:FlashQuest(quest.questId) and pin.unrealQuestFlashActive == true
+    pins:StopFlash()
+    vendors.worldVisible, pin.unrealQuestVendorTarget = savedVisible, savedTarget
+    return pulsing and stopped and flashed
+end)()"""))
+check("the POI hover carries into its revealed area with one tooltip",
+      rt.eval("""(function()
+    local pins = UnrealQuest:GetModule('WorldMapPins')
+    local contours = UnrealQuest:GetModule('AreaContours')
+    local entry = nil
+    for index = 1, contours.visibleCount do
+        if not contours.groups[index].pinned then entry = contours.groups[index] break end
+    end
+    local quest = entry and entry.frame.unrealQuestQuest
+    local marker, cell = nil, nil
+    for index = 1, pins.visibleCount do
+        if pins.pool[index].unrealQuestQuest == quest then marker = pins.pool[index] end
+    end
+    for index = 1, pins.areaVisibleCount do
+        if pins.areaPool[index].unrealQuestQuest == quest then cell = pins.areaPool[index] end
+    end
+    if not marker or not cell then return false end
+    local savedX, savedY = UQ_TEST_CURSOR_X, UQ_TEST_CURSOR_Y
+    UQ_TEST_CURSOR_X, UQ_TEST_CURSOR_Y = 200, 150
+    marker.scripts.OnEnter()
+    local owner = pins.hoverTooltipOwner
+    -- Follows the cursor: above-right of it in the lower-left of the screen.
+    local point = WorldMapTooltip.point
+    local follows = point ~= nil and point[1] == 'BOTTOMLEFT' and point[2] == UIParent
+        and point[4] == 200 + 18 and point[5] == 150 + 18
+    UQ_TEST_CURSOR_X, UQ_TEST_CURSOR_Y = savedX, savedY
+    if not follows then return false end
+    marker.scripts.OnLeave()
+    cell.scripts.OnEnter()
+    UQ_TEST_TICK(0.05, 4)
+    local carried = entry.frame.shown == true and pins.focusQuest == quest
+        and WorldMapTooltip.shown == true and pins.hoverTooltipOwner == owner
+    cell.scripts.OnLeave()
+    UQ_TEST_TICK(0.05, 4)
+    return carried and entry.frame.shown == false and pins.focusQuest == nil
+        and WorldMapTooltip.shown == false
+end)()"""))
+check("show all areas keeps every in-progress contour on screen",
+      rt.eval("""(function()
+    UnrealQuest:GetModule('Config'):Set('mapShowAllAreas', true)
+    UQ_TEST_TICK(0.5, 2)
+    local contours = UnrealQuest:GetModule('AreaContours')
+    if contours.visibleCount == 0 then return false end
+    for index = 1, contours.visibleCount do
+        if contours.groups[index].frame.shown ~= true then return false end
+    end
+    return true
+end)()"""))
+# The same switch sits in the map tracker's header, in the slot the NPC finder
+# used to hold, writes the same setting, and leaves with the Areas
+# presentation. The finder stays on the ordinary tracker only.
+check("the map tracker's show-all toggle follows and writes the setting",
+      rt.eval("""(function()
+    local config = UnrealQuest:GetModule('Config')
+    local box = UnrealQuestMapTrackerShowAllAreas
+    if not box or UnrealQuestMapTrackerNpcFinder ~= nil
+        or UnrealQuestTrackerNpcFinder == nil then return false end
+    UQ_TEST_TICK(0.5, 2)
+    if box.shown ~= true or box.unrealQuestChecked ~= true then return false end
+    -- The Modern checkbox with its short label, on the title line.
+    if not box.label or box.label.shown ~= true
+        or box.label:GetText() ~= UnrealQuest.L('TRACKER_MAP_ALL_AREAS')
+        or not box.unrealQuestMark
+        or not string.find(box.unrealQuestMark.path or '', 'checkbox%-modern$')
+        or box.unrealQuestMark.shown ~= true then return false end
+    box.scripts.OnClick()
+    UQ_TEST_TICK(0.5, 2)
+    if config:Get('mapShowAllAreas') ~= false or box.shown ~= true
+        or box.unrealQuestChecked ~= false then return false end
+    box.scripts.OnClick()
+    UQ_TEST_TICK(0.5, 2)
+    if config:Get('mapShowAllAreas') ~= true then return false end
+    config:Set('mapObjectiveAreas', false)
+    UQ_TEST_TICK(0.5, 2)
+    local hiddenUnderDots = box.shown == false and box.label.shown == false
+    config:Set('mapObjectiveAreas', true)
+    UQ_TEST_TICK(0.5, 2)
+    return hiddenUnderDots and box.shown == true
+end)()"""))
+
+rt.execute("""
+    UnrealQuest:GetModule('Config'):Set('mapObjectiveDots', false)
+    UnrealQuest:GetModule('Config'):Set('mapObjectiveAreas', true)
+    UQ_TEST_LOG = UQ_TEST_DOT_TEST_LOG
+    UnrealQuest:GetModule('QuestState'):Scan()
+    UQ_TEST_TICK(0.5, 2)
+""")
+check("turning the setting off restores contour areas and hover targets", rt.eval("""(function()
+    local pins = UnrealQuest:GetModule('WorldMapPins')
+    local contours = UnrealQuest:GetModule('AreaContours')
     local area = pins and pins.areaPool[1]
     return area ~= nil and pins.areaVisibleCount > 0
         and area.width == 25 and area.height == 17.5
         and type(area.unrealQuestAreaWidthPercent) == 'number'
-        and area.unrealQuestTexture.path == UnrealQuest.Client.WORLD_MAP_PIN_TEXTURE
+        and area.unrealQuestTexture.shown == false
+        and contours.visibleCount > 0 and contours.groups[1].frame.shown == true
+        and pins.visibleCount > 0 and pins.pool[1].shown == true
         and UnrealQuestDB.mapDiagnostics.objectiveStyle == 'areas'
 end)()"""))
 check("map diagnostics record rendered state", rt.eval("""(function()
     local diagnostics = UnrealQuestDB.mapDiagnostics
     return diagnostics ~= nil and diagnostics.state == 'rendered'
-        and diagnostics.visiblePins == 0 and diagnostics.visibleAreas > 0
+        and diagnostics.visiblePins > 0 and diagnostics.visibleAreas > 0
+        and diagnostics.visibleAreaContours > 0
         and diagnostics.candidateLocations > diagnostics.visibleAreas
-        and diagnostics.renderMode == 'fileBackedAreasHoverTooltipV1'
-        -- The snapshot now samples the area tile, the only quest child left on
-        -- the canvas, and it must still satisfy the confirmed contract.
+        and diagnostics.renderMode == 'contourAreasForeverNumbersV1'
+        -- The snapshot samples the invisible Button that owns interaction;
+        -- the contour group is deliberately mouse-disabled beneath it.
         and diagnostics.pinType == 'Button' and diagnostics.pinLevel >= 120
         and diagnostics.pinWidth == 25 and diagnostics.pinHeight == 17.5
         and diagnostics.parentMatches == true and diagnostics.textureLayer == 'BACKGROUND'
         and diagnostics.textureHasPath == true
 end)()"""))
+rt.execute("""
+    local contours = UnrealQuest:GetModule('AreaContours')
+    local pins = UnrealQuest:GetModule('WorldMapPins')
+    UQ_TEST_CONTOUR_FLASH = contours.groups[1].frame
+    UQ_TEST_CONTOUR_FLASH_LEVEL = UQ_TEST_CONTOUR_FLASH:GetFrameLevel()
+    UQ_TEST_CONTOUR_HOVER = nil
+    for index = 1, pins.areaVisibleCount do
+        if pins.areaPool[index].unrealQuestQuest
+            == UQ_TEST_CONTOUR_FLASH.unrealQuestQuest then
+            UQ_TEST_CONTOUR_HOVER = pins.areaPool[index]
+            break
+        end
+    end
+    pins:FlashQuest(UQ_TEST_CONTOUR_FLASH.unrealQuestQuest.questId)
+    UQ_TEST_TICK(0.05, 6)
+""")
+check("area reveal pulses the contour group, not its invisible hover targets",
+      rt.eval("""UQ_TEST_CONTOUR_FLASH:GetAlpha() ~= 1
+        and UQ_TEST_CONTOUR_FLASH:GetFrameLevel() > UQ_TEST_CONTOUR_FLASH_LEVEL
+        and UQ_TEST_CONTOUR_HOVER:GetAlpha() == 1
+        and UQ_TEST_CONTOUR_HOVER.width == 25"""))
+rt.execute("UQ_TEST_TICK(0.05, 120)")
+check("the contour reveal restores its group alpha and level", rt.eval("""
+    UQ_TEST_CONTOUR_FLASH:GetAlpha() == 1
+        and UQ_TEST_CONTOUR_FLASH:GetFrameLevel() == UQ_TEST_CONTOUR_FLASH_LEVEL
+"""))
 print("browsing another zone's map")
 # The map layer follows the OPEN map, not the player. Standing in Elwynn
 # Forest with Westfall's map open, the client stops projecting the player
@@ -6894,17 +7971,32 @@ check("hovering an area shows that quest's title and live objective progress", r
     end
     return false
 end)()"""))
-check("passing a dot shows its tooltip without applying quest effects", rt.eval("""(function()
+check("area hover applies its focus at once, with no entry dwell", rt.eval("""(function()
     local pins = UnrealQuest:GetModule('WorldMapPins')
-    if pins.focusQuest ~= nil then return false end
-    UQ_TEST_AREA.scripts.OnLeave()
-    UQ_TEST_TICK(0.05, 5)
-    local ignored = pins.focusQuest == nil and not WorldMapTooltip.shown
-    UQ_TEST_AREA.scripts.OnEnter()
-    return ignored and WorldMapTooltip.shown == true
+    return pins.objectiveDotsMode == false
+        and pins.focusQuest == UQ_TEST_AREA.unrealQuestQuest
+        and WorldMapTooltip.shown == true
 end)()"""))
-rt.execute("UQ_TEST_TICK(0.01, 21)")
-check("after the hover dwell marker emphasis begins below its target size", rt.eval("""(function()
+check("area focus highlights both tracker rows at once", rt.eval("""(function()
+    local pins = UnrealQuest:GetModule('WorldMapPins')
+    local job = UnrealQuest:GetModule('Driver').jobsByName['map.questfocus']
+    local quest = UQ_TEST_AREA.unrealQuestQuest
+    local function highlighted(window)
+        local rows = window.unrealQuestRows.quest
+        for index = 1, table.getn(rows) do
+            local row = rows[index]
+            if row.unrealQuestSubject
+                and row.unrealQuestSubject.titleKey == quest.titleKey then
+                return row.unrealQuestHover:IsShown() == true
+            end
+        end
+        return false
+    end
+    return pins.focusQuest == quest and not job.active
+        and highlighted(UnrealQuestTracker)
+        and highlighted(UnrealQuestMapTracker)
+end)()"""))
+check("area focus starts marker emphasis below its target size", rt.eval("""(function()
     local pins = UnrealQuest:GetModule('WorldMapPins')
     local quest = UQ_TEST_AREA.unrealQuestQuest
     for i = 1, pins.turnInVisibleCount do
@@ -6936,15 +8028,9 @@ check("marker enlargement eases through an intermediate size", rt.eval("""(funct
     return false
 end)()"""))
 rt.execute("""
-    local pins = UnrealQuest:GetModule('WorldMapPins')
-    UQ_TEST_AREA_BASE_COLOR = {
-        UQ_TEST_AREA.unrealQuestTexture.vertex[1],
-        UQ_TEST_AREA.unrealQuestTexture.vertex[2],
-        UQ_TEST_AREA.unrealQuestTexture.vertex[3],
-    }
     UQ_TEST_TICK(0.5, 2)
 """)
-check("hovering one area leaves every area of its quest unchanged", rt.eval("""(function()
+check("hovering one area keeps every legacy hit-target texture hidden", rt.eval("""(function()
     local pins = UnrealQuest:GetModule('WorldMapPins')
     local quest = UQ_TEST_AREA.unrealQuestQuest
     local index = 1
@@ -6952,35 +8038,97 @@ check("hovering one area leaves every area of its quest unchanged", rt.eval("""(
     while index <= pins.areaVisibleCount do
         local area = pins.areaPool[index]
         if area.unrealQuestQuest == quest then
-            local color = area.unrealQuestTexture.vertex
-            if color[1] ~= UQ_TEST_AREA_BASE_COLOR[1]
-                or color[2] ~= UQ_TEST_AREA_BASE_COLOR[2]
-                or color[3] ~= UQ_TEST_AREA_BASE_COLOR[3] then
-                return false
-            end
+            if area.unrealQuestTexture.shown ~= false then return false end
             seen = seen + 1
         end
         index = index + 1
     end
     return seen > 1
 end)()"""))
-check("hovering one quest fades every area of another quest", rt.eval("""(function()
+# Whether a quest reads as hovered on the map. Areas are recoloured, never
+# faded; dots still fade everything that is not the hovered quest.
+rt.execute("""
+    function UQ_TEST_QUEST_HOVERED(quest)
+        local pins = UnrealQuest:GetModule('WorldMapPins')
+        if pins.objectiveDotsMode then
+            for i = 1, pins.areaVisibleCount do
+                local area = pins.areaPool[i]
+                if area.unrealQuestQuest == quest then return area:GetAlpha() == 1 end
+            end
+            return false
+        end
+        local contours = UnrealQuest:GetModule('AreaContours')
+        for i = 1, contours.visibleCount do
+            local entry = contours.groups[i]
+            if entry.frame.unrealQuestQuest == quest then
+                return entry.hovered == true
+            end
+        end
+        return false
+    end
+""")
+check("hovering one quest tints only other quests' areas and fades none", rt.eval("""(function()
     local pins = UnrealQuest:GetModule('WorldMapPins')
+    local contours = UnrealQuest:GetModule('AreaContours')
+    local client = UnrealQuest.Client
     local quest = UQ_TEST_AREA.unrealQuestQuest
-    local own, other = 0, 0
+    local own, other, ownGroups, otherGroups = 0, 0, 0, 0
     local index = 1
     while index <= pins.areaVisibleCount do
         local area = pins.areaPool[index]
-        if area.unrealQuestQuest == quest then
-            if area:GetAlpha() ~= 1 then return false end
-            own = own + 1
+        if area:GetAlpha() ~= 1 then return false end
+        if area.unrealQuestQuest == quest then own = own + 1 else other = other + 1 end
+        index = index + 1
+    end
+    index = 1
+    while index <= contours.visibleCount do
+        local entry = contours.groups[index]
+        if entry.frame:GetAlpha() ~= 1 then return false end
+        if entry.frame.unrealQuestQuest == quest then
+            -- The test area belongs to the followed quest: it keeps the
+            -- untinted baked blue under the cursor.
+            if not entry.hovered or entry.hoverStyle ~= nil
+                or entry.path ~= client.WORLD_MAP_AREA_CONTOUR_TEXTURE
+                or entry.red ~= 1 or entry.green ~= 1 or entry.blue ~= 1 then
+                return false
+            end
+            ownGroups = ownGroups + 1
         else
-            if area:GetAlpha() ~= 0.25 then return false end
-            other = other + 1
+            if entry.hovered then return false end
+            -- Every other quest rests on the baked blue and carries the light
+            -- blue it takes under the cursor.
+            local hover = entry.hoverStyle
+            if entry.path ~= client.WORLD_MAP_AREA_CONTOUR_TEXTURE
+                or not hover or hover.path ~= client.WORLD_MAP_AREA_CONTOUR_NEUTRAL_TEXTURE
+                or hover.red ~= 0.45 or hover.green ~= 0.82 or hover.blue ~= 1 then
+                return false
+            end
+            otherGroups = otherGroups + 1
         end
         index = index + 1
     end
-    return own > 1 and other > 0
+    return own > 1 and other > 0 and ownGroups > 0 and otherGroups > 0
+end)()"""))
+check("hovering another quest tints only its contour, then restores it", rt.eval("""(function()
+    local pins = UnrealQuest:GetModule('WorldMapPins')
+    local contours = UnrealQuest:GetModule('AreaContours')
+    local client = UnrealQuest.Client
+    local saved = pins.focusQuest
+    local entry
+    for i = 1, contours.visibleCount do
+        if contours.groups[i].hoverStyle then entry = contours.groups[i] break end
+    end
+    if not entry then return false end
+    local basePath, baseRed = entry.path, entry.red
+    pins:ApplyQuestFocus(entry.frame.unrealQuestQuest)
+    local hovered = entry.hovered == true
+        and entry.path == client.WORLD_MAP_AREA_CONTOUR_NEUTRAL_TEXTURE
+        and entry.red == entry.hoverStyle.red and entry.frame:GetAlpha() == 1
+    pins:ApplyQuestFocus(nil)
+    local restored = entry.hovered == false
+        and entry.path == basePath and entry.red == baseRed
+    pins:ApplyQuestFocus(saved)
+    return hovered and restored
 end)()"""))
 check("hovering one quest grows the marker that quest is linked to", rt.eval("""(function()
     local pins = UnrealQuest:GetModule('WorldMapPins')
@@ -7013,7 +8161,7 @@ check("the area tooltip carries the quest level and its status", rt.eval("""(fun
 end)()"""))
 rt.execute("UQ_TEST_TICK(0.5, 2)")
 check("a stable map refresh leaves the tooltip up", rt.eval("WorldMapTooltip.shown == true"))
-check("gaps and passing other quests preserve the current quest effects", rt.eval("""(function()
+check("one area stays focused while the cursor crosses its hit cells", rt.eval("""(function()
     local pins = UnrealQuest:GetModule('WorldMapPins')
     local first = UQ_TEST_AREA
     local quest = first.unrealQuestQuest
@@ -7024,26 +8172,28 @@ check("gaps and passing other quests preserve the current quest effects", rt.eva
         if dot.unrealQuestQuest ~= quest then other = dot end
     end
     if not nextDot or not other then return false end
-    local pulse = pins.followedRingPulseStart
     local rebuilds = pins.rebuildCount
     first.scripts.OnLeave()
-    UQ_TEST_TICK(0.05, 8)
-    local gap = pins.focusQuest == quest and other:GetAlpha() == 0.25
+    local leaveJob = UnrealQuest:GetModule('Driver').jobsByName['map.questfocus']
+    -- The tooltip is released, not hidden: it stays up through the grace.
+    local held = pins.focusQuest == quest and not UQ_TEST_QUEST_HOVERED(other.unrealQuestQuest)
+        and WorldMapTooltip.shown == true and leaveJob.active
     nextDot.scripts.OnEnter()
     first.scripts.OnLeave() -- a late leave must not cancel the new owner
     UQ_TEST_TICK(0.05, 4)
     local crossed = pins.focusQuest == quest
-        and pins.followedRingPulseStart == pulse
-        and other:GetAlpha() == 0.25
+        and not UQ_TEST_QUEST_HOVERED(other.unrealQuestQuest) and WorldMapTooltip.shown == true
     other.scripts.OnEnter()
     nextDot.scripts.OnLeave()
-    UQ_TEST_TICK(0.05, 1)
+    UQ_TEST_TICK(0.05, 4)
+    local switched = pins.focusQuest == other.unrealQuestQuest
+        and UQ_TEST_QUEST_HOVERED(other.unrealQuestQuest) and not UQ_TEST_QUEST_HOVERED(first.unrealQuestQuest)
     other.scripts.OnLeave()
     first.scripts.OnEnter()
     UQ_TEST_TICK(0.05, 4)
-    return gap and crossed and pins.focusQuest == quest
-        and pins.followedRingPulseStart == pulse
-        and other:GetAlpha() == 0.25 and first:GetAlpha() == 1
+    local returned = pins.focusQuest == quest
+    return held and crossed and switched and returned
+        and not UQ_TEST_QUEST_HOVERED(other.unrealQuestQuest) and UQ_TEST_QUEST_HOVERED(first.unrealQuestQuest)
         and pins.rebuildCount == rebuilds
 end)()"""))
 check("a deliberate quest switch applies once and respects marker hover ownership",
@@ -7060,7 +8210,7 @@ check("a deliberate quest switch applies once and respects marker hover ownershi
     first.scripts.OnLeave()
     UQ_TEST_TICK(0.05, 4)
     local switched = pins.focusQuest == other.unrealQuestQuest
-        and other:GetAlpha() == 1 and first:GetAlpha() == 0.25
+        and UQ_TEST_QUEST_HOVERED(other.unrealQuestQuest) and not UQ_TEST_QUEST_HOVERED(first.unrealQuestQuest)
     local marker = pins.turnInPool[1]
     first.scripts.OnEnter() -- pending objective switch
     pins:OnTurnInEnter(marker)
@@ -7083,31 +8233,48 @@ check("a hover held across a full rebuild keeps the tooltip", rt.eval("""(functi
 end)()"""))
 rt.execute("UQ_TEST_TICK(0.05, 7)")
 rt.execute("UQ_TEST_AREA.scripts.OnLeave()")
-check("leaving the area hides the tooltip", rt.eval("WorldMapTooltip.shown == false"))
-rt.execute("UQ_TEST_TICK(0.05, 18)")
-check("the quest highlight survives a gap shorter than one second", rt.eval(
-    "UnrealQuest:GetModule('WorldMapPins').focusQuest == UQ_TEST_AREA.unrealQuestQuest"))
-rt.execute("UQ_TEST_TICK(0.11, 1)")
-check("one second after leaving restores every objective marker opacity", rt.eval("""(function()
+check("an area exit retains focus through the dot-style release grace", rt.eval("""(function()
+    local pins = UnrealQuest:GetModule('WorldMapPins')
+    local job = UnrealQuest:GetModule('Driver').jobsByName['map.questfocus']
+    local quest = UQ_TEST_AREA.unrealQuestQuest
+    local function highlighted(window)
+        local rows = window.unrealQuestRows.quest
+        for index = 1, table.getn(rows) do
+            local row = rows[index]
+            if row.unrealQuestSubject
+                and row.unrealQuestSubject.titleKey == quest.titleKey then
+                return row.unrealQuestHover:IsShown() == true
+            end
+        end
+        return false
+    end
+    return job.active and pins.focusQuest == UQ_TEST_AREA.unrealQuestQuest
+        and WorldMapTooltip.shown == true
+        and highlighted(UnrealQuestTracker)
+        and highlighted(UnrealQuestMapTracker)
+end)()"""))
+check("leaving the area hides the tooltip once its short grace ends",
+      rt.eval("(function() UQ_TEST_TICK(0.05, 3) return WorldMapTooltip.shown == false end)()"))
+rt.execute("UQ_TEST_TICK(0.05, 25)")
+check("the release grace restores every objective marker opacity", rt.eval("""(function()
     local pins = UnrealQuest:GetModule('WorldMapPins')
     local index = 1
     while index <= pins.areaVisibleCount do
         if pins.areaPool[index]:GetAlpha() ~= 1 then return false end
         index = index + 1
     end
-    return true
+    local job = UnrealQuest:GetModule('Driver').jobsByName['map.questfocus']
+    local tracker = UnrealQuest:GetModule('TrackerFrame')
+    return pins.focusQuest == nil and not job.active
+        and tracker.mapHoveredQuest == nil
 end)()"""))
-check("marker shrink starts from the emphasized size", rt.eval("""(function()
+check("the release grace returns marker emphasis to its base target", rt.eval("""(function()
     local pins = UnrealQuest:GetModule('WorldMapPins')
     for i = 1, pins.turnInVisibleCount do
         local pin = pins.turnInPool[i]
-        if pin.unrealQuestEmphasisTarget == 1
-            and pin.width > pin.unrealQuestBaseWidth then
-            return pin.width > pin.unrealQuestBaseWidth
-                and pins.markerEmphasisAnimating == true
-        end
+        if pin.unrealQuestEmphasisTarget ~= 1 then return false end
     end
-    return false
+    return pins.turnInVisibleCount > 0
 end)()"""))
 rt.execute("UQ_TEST_TICK(0.16, 1)")
 check("leaving the area returns every marker to its base size", rt.eval("""(function()
@@ -7125,9 +8292,25 @@ check("the marker animation job sleeps once easing is complete", rt.eval("""(fun
     local job = UnrealQuest:GetModule('Driver').jobsByName['map.markeremphasis']
     return job ~= nil and job.active == false
 end)()"""))
+check("an area exit releases the dim after a short grace, entry applies at once",
+      rt.eval("""(function()
+    local pins = UnrealQuest:GetModule('WorldMapPins')
+    local dotsMode = pins.objectiveDotsMode
+    pins.objectiveDotsMode = false
+    local area = UQ_TEST_AREA
+    area.scripts.OnEnter()
+    local focused = pins.focusQuest == area.unrealQuestQuest
+    UQ_TEST_TICK(0.05, 4)
+    area.scripts.OnLeave()
+    -- A few driver polls, where the dots' release grace takes a full second.
+    UQ_TEST_TICK(0.05, 3)
+    local released = pins.focusQuest == nil
+    pins.objectiveDotsMode = dotsMode
+    return focused and released
+end)()"""))
 check("area hovers are counted for the SavedVariables record", rt.eval(
     "UnrealQuestDB.mapDiagnostics.areaHovers > 0"))
-# Marker suppression still ships behind MARKER_RENDER_ENABLED, so its one
+# Marker suppression hides the area number under its own hover tooltip. Its
 # load-bearing property is tested directly on the layer: the pools re-apply
 # every visible pin's point on stable ticks and re-applying a point calls Show,
 # which is exactly what a plain Hide would lose.
@@ -7271,14 +8454,17 @@ end)()"""))
 # A "!" offers quests the player has not taken, so nothing else on this map
 # belongs to them -- and the fade says exactly that: the marker under the
 # cursor is the only place that quest is, and the rest of the layer steps back.
-check("hovering a giver fades the objectives of every other quest", rt.eval("""(function()
+check("hovering a giver fades no area and recolours none", rt.eval("""(function()
     local pins = UnrealQuest:GetModule('WorldMapPins')
-    local faded = 0
+    local seen = 0
     for index = 1, pins.areaVisibleCount do
-        if pins.areaPool[index]:GetAlpha() ~= 0.25 then return false end
-        faded = faded + 1
+        local area = pins.areaPool[index]
+        if area:GetAlpha() ~= 1 or UQ_TEST_QUEST_HOVERED(area.unrealQuestQuest) then
+            return false
+        end
+        seen = seen + 1
     end
-    return faded > 0 and pins.giverPool[1]:GetAlpha() == 1
+    return seen > 0 and pins.giverPool[1]:GetAlpha() == 1
 end)()"""))
 rt.execute("""
     local pins = UnrealQuest:GetModule('WorldMapPins')
@@ -7446,23 +8632,22 @@ rt.execute("""
 # The "?" keeps every objective COLOUR stable and uses the shared marker-size
 # emphasis, without a rebuild. What it does change is opacity: an objective of
 # a quest that does not hand in here fades behind the ones that do.
-check("hovering a turn-in marker fades objectives it does not take", rt.eval("""(function()
+check("hovering a turn-in marker recolours the areas it takes and fades none", rt.eval("""(function()
     local pins = UnrealQuest:GetModule('WorldMapPins')
-    local faded = 0
+    local plain = 0
     for i = 1, pins.areaVisibleCount do
         local area = pins.areaPool[i]
         local related = false
         for _, carried in ipairs((UQ_TEST_CHICKEN_TURNIN.unrealQuestTurnIn or {}).quests or {}) do
             if carried == area.unrealQuestQuest then related = true end
         end
-        if related then
-            if area:GetAlpha() ~= 1 then return false end
-        else
-            if area:GetAlpha() ~= 0.25 then return false end
-            faded = faded + 1
+        if area:GetAlpha() ~= 1
+            or UQ_TEST_QUEST_HOVERED(area.unrealQuestQuest) ~= related then
+            return false
         end
+        if not related then plain = plain + 1 end
     end
-    return pins.areaVisibleCount > 0 and faded > 0
+    return pins.areaVisibleCount > 0 and plain > 0
         and UQ_TEST_CHICKEN_TURNIN:GetAlpha() == 1
 end)()"""))
 check("hovering a turn-in marker does not rebuild the layer", rt.eval(
@@ -7610,7 +8795,10 @@ check("the patrol disappears with its NPC's last visible marker", rt.eval(
 rt.execute("""
     UQ_TEST_PATROL_DOTS_WERE_ENABLED =
         UnrealQuest:GetModule('Config'):Get('mapObjectiveDots')
+    UQ_TEST_PATROL_AREAS_WERE_ENABLED =
+        UnrealQuest:GetModule('Config'):Get('mapObjectiveAreas')
     UnrealQuest:GetModule('Config'):Set('mapObjectiveDots', true)
+    UnrealQuest:GetModule('Config'):Set('mapObjectiveAreas', false)
     table.insert(UQ_TEST_LOG, { "Pie for Billy", 6, nil, nil, nil, nil,
       { { "Chunk of Boar Meat: 0/1", "item", nil } },
       "Native description for Pie for Billy.",
@@ -7704,6 +8892,8 @@ rt.execute("""
     UnrealQuest:GetModule('QuestState'):Scan()
     UnrealQuest:GetModule('Config'):Set(
         'mapObjectiveDots', UQ_TEST_PATROL_DOTS_WERE_ENABLED)
+    UnrealQuest:GetModule('Config'):Set(
+        'mapObjectiveAreas', UQ_TEST_PATROL_AREAS_WERE_ENABLED)
     local pins = UnrealQuest:GetModule('WorldMapPins')
     pins.dirty = true
     pins:Refresh()
@@ -8567,17 +9757,18 @@ check("redrawing the same followed quest does not pulse its ring again",
 end)()"""))
 # Hovering an objective is a question about that quest, and a ring on its
 # turn-in answers it with ONE breath -- once per hover, not once per dot, and
-# one cycle rather than the arrival's three.
-check("hovering a followed quest's dot pulses the ring it already wears",
+# one cycle rather than the arrival's three. The followed quest here is
+# complete, so it draws no area: its numbered marker is the hover.
+check("hovering a followed quest's marker pulses the ring it already wears",
       rt.eval("""(function()
     local pins = UnrealQuest:GetModule('WorldMapPins')
     local ring = pins.followedTurnInPool[1]
     local followed = ring and ring.unrealQuestQuest
     if not followed then return false end
     local dot = nil
-    for index = 1, pins.areaVisibleCount do
-        local area = pins.areaPool[index]
-        if area.unrealQuestQuest == followed then dot = dot or area end
+    for index = 1, pins.visibleCount do
+        local marker = pins.pool[index]
+        if marker.unrealQuestQuest == followed then dot = dot or marker end
     end
     if not dot then return false end
     dot.scripts.OnEnter()
@@ -8594,6 +9785,7 @@ check("hovering a followed quest's dot pulses the ring it already wears",
     UQ_TEST_TICK(0.05, 40)
     local rested = ring.width == 38 and pins.followedRingPulseStart == nil
     dot.scripts.OnLeave()
+    UQ_TEST_TICK(0.05, 25)
     return grew and heldSteady and rested
 end)()"""))
 # A quest that is NOT followed has no ring of its own, so one is lent to it for
@@ -8654,6 +9846,7 @@ check("objective focus lends a turn-in ring and clearing focus removes it",
         and pins.followedRingPulseStart == nil
         and pins.followedTurnInPool[1].width == 38
 end)()"""))
+rt.execute("UnrealQuest:GetModule('WorldMapPins').objectiveDotsMode = true")
 check("crossing dots keeps a borrowed ring steady until the release grace expires",
       rt.eval("""(function()
     local pins = UnrealQuest:GetModule('WorldMapPins')
@@ -8663,8 +9856,17 @@ check("crossing dots keeps a borrowed ring steady until the release grace expire
         local dot = pins.areaPool[i]
         if dot.unrealQuestQuest == UQ_TEST_LENT_RING_QUEST then
             if first then second = dot else first = dot end
-        elseif dot.unrealQuestQuest == followed then
-            followedDot = dot
+        end
+    end
+    -- The fixture draws this quest as area cells, which release without the
+    -- grace; the frames stand in for dots here, so they are marked as dots
+    -- (the next rebuild re-marks every pooled frame).
+    if first then first.unrealQuestAreaCell = nil end
+    if second then second.unrealQuestAreaCell = nil end
+    -- The complete followed quest has no area; its numbered marker stands in.
+    for i = 1, pins.visibleCount do
+        if pins.pool[i].unrealQuestQuest == followed then
+            followedDot = followedDot or pins.pool[i]
         end
     end
     if not first or not second or not followedDot then return false end
@@ -8697,6 +9899,95 @@ check("crossing dots keeps a borrowed ring steady until the release grace expire
         and pins.followedRingPulseStart == nil
         and not UnrealQuest:GetModule('Driver').jobsByName['map.questfocus'].active
 end)()"""))
+check("leaving an area cell drops the focus dim after the short grace even with dots drawn",
+      rt.eval("""(function()
+    local pins = UnrealQuest:GetModule('WorldMapPins')
+    local cell
+    for i = 1, pins.areaVisibleCount do
+        local area = pins.areaPool[i]
+        if area.unrealQuestAreaCell and area.unrealQuestQuest then
+            cell = cell or area
+        end
+    end
+    if not cell then return false end
+    cell.scripts.OnEnter()
+    UQ_TEST_TICK(0.05, 5)
+    if pins.focusQuest ~= cell.unrealQuestQuest then return false end
+    cell.scripts.OnLeave()
+    UQ_TEST_TICK(0.05, 4)
+    return pins.focusQuest == nil and not pins:HasQuestFocus()
+end)()"""))
+check("crossing an area's cells keeps its POI circle hovered until the cursor leaves the area",
+      rt.eval("""(function()
+    local pins = UnrealQuest:GetModule('WorldMapPins')
+    local first, second
+    for i = 1, pins.areaVisibleCount do
+        local area = pins.areaPool[i]
+        local marker = area.unrealQuestAreaCell and area.unrealQuestMarkerPin
+        if marker and marker.unrealQuestHoverLayer then
+            if not first then
+                first = area
+            elseif not second and first.unrealQuestMarkerPin == marker then
+                second = area
+            end
+        end
+    end
+    if not first or not second then return false end
+    local marker = first.unrealQuestMarkerPin
+    first.scripts.OnEnter()
+    UQ_TEST_TICK(0.05, 5)
+    if not marker.unrealQuestQuestNumberHovered then return false end
+    -- The next cell's OnEnter arrives a frame after this OnLeave.
+    first.scripts.OnLeave()
+    UQ_TEST_TICK(0.03, 1)
+    if not marker.unrealQuestQuestNumberHovered then return false end
+    second.scripts.OnEnter()
+    UQ_TEST_TICK(0.05, 4)
+    if not marker.unrealQuestQuestNumberHovered then return false end
+    second.scripts.OnLeave()
+    UQ_TEST_TICK(0.05, 4)
+    return not marker.unrealQuestQuestNumberHovered
+        and not UnrealQuest:GetModule('Driver').jobsByName['map.numberhover'].active
+end)()"""))
+check("crossing the gap between two dots keeps the tooltip and POI circle up",
+      rt.eval("""(function()
+    local pins = UnrealQuest:GetModule('WorldMapPins')
+    local first, second
+    for i = 1, pins.areaVisibleCount do
+        local area = pins.areaPool[i]
+        local marker = area.unrealQuestMarkerPin
+        if marker and marker.unrealQuestHoverLayer and area.unrealQuestQuest then
+            if not first then
+                first = area
+            elseif not second and first.unrealQuestMarkerPin == marker then
+                second = area
+            end
+        end
+    end
+    if not first or not second then return false end
+    -- Whatever the fixture drew, both frames stand in for dots here (the next
+    -- rebuild re-marks every pooled frame).
+    first.unrealQuestAreaCell = nil
+    second.unrealQuestAreaCell = nil
+    local marker = first.unrealQuestMarkerPin
+    first.scripts.OnEnter()
+    UQ_TEST_TICK(0.05, 1)
+    first.scripts.OnLeave()
+    -- A gap of bare terrain: nothing receives the cursor for 0.4s.
+    UQ_TEST_TICK(0.05, 8)
+    if not marker.unrealQuestQuestNumberHovered or not WorldMapTooltip.shown then
+        return false
+    end
+    second.scripts.OnEnter()
+    UQ_TEST_TICK(0.05, 2)
+    if not marker.unrealQuestQuestNumberHovered or not WorldMapTooltip.shown then
+        return false
+    end
+    second.scripts.OnLeave()
+    UQ_TEST_TICK(0.05, 25)
+    return not marker.unrealQuestQuestNumberHovered and not WorldMapTooltip.shown
+end)()"""))
+rt.execute("UnrealQuest:GetModule('WorldMapPins').objectiveDotsMode = false")
 check("hiding the map layer cancels a pending hover without delayed effects",
       rt.eval("""(function()
     local pins = UnrealQuest:GetModule('WorldMapPins')
@@ -9076,6 +10367,71 @@ check("a filled gap adds no unconditional objective", rt.eval("""(function()
         end
     end
     return true
+end)()"""))
+check("a map resize repositions cached contour patches without rebuilding them",
+      rt.eval("""(function()
+    local contours = UnrealQuest:GetModule('AreaContours')
+    local entry = contours.groups[1]
+    local records = entry.patches
+    local texture = entry.textures[1]
+    local oldWidth = texture.width
+    WorldMapButton:SetWidth(1200)
+    contours:Reapply(true)
+    local resized = entry.patches == records
+        and math.abs(texture.width - oldWidth * 1.2) < 0.001
+    WorldMapButton:SetWidth(1000)
+    contours:Reapply(true)
+    return resized and math.abs(texture.width - oldWidth) < 0.001
+end)()"""))
+check("interior contour patches sample the profile's flat fill end",
+      rt.eval("""(function()
+    local contours = UnrealQuest:GetModule('AreaContours')
+    local fill = 255.5 / 256
+    for groupIndex = 1, contours.visibleCount do
+        local entry = contours.groups[groupIndex]
+        for patchIndex = 1, entry.visible do
+            local patch = entry.patches[patchIndex]
+            local texture = entry.textures[patchIndex]
+            if patch[5] == fill and patch[6] == fill then
+                return texture.path ~= nil and texture.texCoordArgs == 4
+                    and texture.texCoord[1] == fill and texture.texCoord[2] == fill
+                    and texture.texCoord[3] == 0.25 and texture.texCoord[4] == 0.75
+            end
+        end
+    end
+    return false
+end)()"""))
+# The geometry is built by the shared driver, off the frame that asked for it,
+# and cached by layout so a redraw of the same area costs no geometry at all.
+check("contour geometry is built off-frame and cached by layout", rt.eval("""(function()
+    local contours = UnrealQuest:GetModule('AreaContours')
+    local driver = UnrealQuest:GetModule('Driver')
+    local job = driver.jobsByName['map.contours']
+    local cached = 0
+    for _ in pairs(contours.patchCache) do cached = cached + 1 end
+    local pending = false
+    for index = 1, contours.visibleCount do
+        if contours.groups[index].pending then pending = true end
+    end
+    return job ~= nil and job.active == false and not pending
+        and cached > 0 and cached == contours.patchCacheCount
+        and table.getn(contours.buildQueue) == 0
+end)()"""))
+# Snatch and Grab (2206). The Defias Shipping Schedule (7675) has no source
+# in the bundled item record, despite the quest directing the player to the
+# Defias Dockmaster (6846). The data fix restores the ordinary item source, so
+# every map consumer gets the Westfall dot without a quest-specific renderer.
+check("an ordinary item source gap draws the Defias Dockmaster", rt.eval("""(function()
+    local db = UnrealQuest:GetModule('Database')
+    local locations = db:GetQuestLocations(2206, false, 12, 8)
+    if table.getn(locations) ~= 1 then return false end
+    local location = locations[1]
+    if location.sourceType ~= 'unit' or location.sourceId ~= 6846
+        or location.x ~= 48.1 or location.y ~= 87.3 then
+        return false
+    end
+    local areas = db:GetQuestAreaIds(2206, false)
+    return table.getn(areas) == 1 and areas[1] == 12
 end)()"""))
 # Frostmaw (quest 1136 / creature 4504). obj.I names both the Fresh Carcass
 # (5810) and Frostmaw's Mane (5811); only the Mane is an objective. The Carcass
@@ -9995,6 +11351,21 @@ check("projection: the marker never leaves the screen", rt.eval("""(function()
 end)()"""))
 
 # --- The target is the map's own area centre -----------------------------------
+check("area numbers use a real spawn in the densest contour cluster", rt.eval("""(function()
+    local target = UnrealQuest:GetModule('QuestTarget')
+    local locations = {
+        { x = 10.2, y = 20.2 },
+        { x = 11.4, y = 20.4 },
+        { x = 12.6, y = 20.6 },
+        { x = 80.1, y = 80.1 },
+    }
+    local components = target:BuildComponents(locations)
+    local primary = target:SelectPrimary(components)
+    return table.getn(components) == 2 and primary ~= nil
+        and primary.count == 3
+        and primary.x == 11.4 and primary.y == 20.4
+end)()"""))
+
 check("the waypoint target is the same point the map draws", rt.eval("""(function()
     local target = UnrealQuest:GetModule('QuestTarget')
     local state = UnrealQuest:GetModule('QuestState')
@@ -10252,15 +11623,18 @@ check("the language row sits in the detail pane's own top-right corner",
     local first = flags and flags.enUS
     local last = flags and flags.frFR
     if not first or not last then return 'missing flags' end
-    -- Four languages, 13 wide with a 2 gap, packed right-to-left from -6.
+    -- Four languages, 13 wide with a 2 gap, packed right-to-left from -6, and
+    -- the whole row 29 further left because this session's Quest Log is the
+    -- Dragonflight spread: its right page leaves the row too close to the
+    -- printed edge otherwise.
     return first:GetParent() == QuestLogFrame
         and first:IsShown() == true and last:IsShown() == true
         and first:GetWidth() == 13 and first:GetHeight() == 10
         and first.point[1] == 'TOPRIGHT'
         and first.point[2] == QuestLogDetailScrollFrame
         and first.point[3] == 'TOPRIGHT'
-        and first.point[4] == -6 - 3 * 15
-        and last.point[4] == -6
+        and first.point[4] == -6 - 3 * 15 - 29
+        and last.point[4] == -6 - 29
         and first.point[5] == -4 and last.point[5] == -4
         and first.unrealQuestIcon ~= nil
 end)()"""))
@@ -10319,6 +11693,13 @@ end)()"""))
 
 # --- Modern unrealUI quest-log following treatment -------------------------------
 rt.execute("""
+    -- unrealUI's modern log and this addon's standalone log are mutually
+    -- exclusive: the standalone one only ever runs in a session with no
+    -- unrealUI at all. Drop its flag as the host's panes appear, so the
+    -- Dragonflight-art nudges stop applying from here on -- otherwise this
+    -- harness would be asking for the flat surface while still claiming the
+    -- standalone window owns the frame.
+    QuestLogFrame.unrealQuestStandaloneQuestLog = nil
     UnrealUIQuestLogListPanel = CreateFrame('Frame',
         'UnrealUIQuestLogListPanel', QuestLogFrame)
     UnrealUIQuestLogDetailPanel = CreateFrame('Frame',
@@ -12302,34 +13683,371 @@ check("tracker window is shown", rt.eval("UnrealQuestTracker:IsShown() == true")
 check("tracker window owns no mouse",
       rt.eval("UnrealQuestTracker.mouseEnabled == false"),
       "the panel body must never swallow a click meant for what is underneath")
-
-check("the followed tracker quest uses only the quest-marker row", rt.eval("""(function()
-    local row = UnrealQuestTrackerRowquest1
-    return row ~= nil and row.unrealQuestFollowingLabel == nil
-        and row.unrealQuestFollowingArrow == nil
-        and row.unrealQuestQuestMark.path
-            == UnrealQuest.Client.FOLLOWING_QUEST_TEXTURE
+check("the world map owns a second tracker window above its artwork and dots", rt.eval("""(function()
+    local map = UnrealQuestMapTracker
+    if not map then return false end
+    local dot = UnrealQuestWorldMapPin1
+    return map:GetParent() == WorldMapFrame
+        and map:GetFrameStrata() == 'PARENT'
+        and map:GetFrameLevel() >= WorldMapFrame:GetFrameLevel() + 40
+        and map:GetFrameLevel() == math.max(120,
+            WorldMapButton:GetFrameLevel() + 20) + 19
+        and (dot == nil or map:GetFrameLevel() > dot:GetFrameLevel())
+        and map.point[1] == 'TOPRIGHT' and map.point[2] == WorldMapFrame
+        and map.point[3] == 'TOPRIGHT' and map.point[4] == -25
+        and map.point[5] == -82
+        and map.mouseEnabled == false
+end)()"""))
+check("the map tracker carries the same quest rows as the HUD tracker", rt.eval("""(function()
+    return UnrealQuestMapTrackerRowquest1 ~= nil
+        and UnrealQuestMapTrackerRowquest1:IsShown()
+        and UnrealQuestMapTrackerRowquest1.unrealQuestSubject
+            == UnrealQuestTrackerRowquest1.unrealQuestSubject
+end)()"""))
+rt.execute("""
+    local pins = UnrealQuest:GetModule('WorldMapPins')
+    UQ_TEST_QUEST_NUMBER_MARKER = pins.pool[1]
+    UQ_TEST_QUEST_NUMBER_MARKER.unrealQuestQuest =
+        UnrealQuestMapTrackerRowquest1.unrealQuestSubject
+    UQ_TEST_QUEST_NUMBER_MARKER.scripts.OnEnter()
+""")
+check("hovering a quest-number pin highlights its map-tracker quest", rt.eval("""(function()
+    return UnrealQuestMapTrackerRowquest1.unrealQuestHover:IsShown() == true
+        and UnrealQuestTrackerRowquest1.unrealQuestHover:IsShown() == true
+end)()"""))
+# The map focus is released on the next poll (the cursor usually leaves the
+# POI into its own area), but the tracker rows let go at once.
+rt.execute("UQ_TEST_QUEST_NUMBER_MARKER.scripts.OnLeave()")
+check("leaving a quest-number pin clears both tracker hovers immediately", rt.eval(
+    "UnrealQuestMapTrackerRowquest1.unrealQuestHover:IsShown() == false "
+    "and UnrealQuestTrackerRowquest1.unrealQuestHover:IsShown() == false"))
+rt.execute("""
+    local main = UnrealQuest:GetModule('MainQuest')
+    UQ_TEST_QUEST_NUMBER_PREVIOUS_FOLLOW = main:Get()
+    UQ_TEST_QUEST_NUMBER_MARKER.unrealQuestQuest =
+        UnrealQuestMapTrackerRowquest2.unrealQuestSubject
+    UQ_TEST_QUEST_NUMBER_CLICK_KEY =
+        UQ_TEST_QUEST_NUMBER_MARKER.unrealQuestQuest.titleKey
+    UQ_TEST_QUEST_NUMBER_MARKER.scripts.OnClick()
+""")
+check("clicking a quest-number pin follows that quest", rt.eval(
+    "UnrealQuest:GetModule('MainQuest'):Get() == UQ_TEST_QUEST_NUMBER_CLICK_KEY"))
+rt.execute("""
+    -- Clicking the already-followed pin must not toggle back to automatic.
+    UQ_TEST_QUEST_NUMBER_MARKER.unrealQuestQuest =
+        UnrealQuest:GetModule('MainQuest'):GetQuest()
+    UQ_TEST_QUEST_NUMBER_MARKER.scripts.OnClick()
+""")
+check("clicking the followed quest-number pin is idempotent", rt.eval(
+    "UnrealQuest:GetModule('MainQuest'):Get() == UQ_TEST_QUEST_NUMBER_CLICK_KEY"))
+rt.execute("""
+    UnrealQuest:GetModule('MainQuest'):Set(UQ_TEST_QUEST_NUMBER_PREVIOUS_FOLLOW)
+    local tracker = UnrealQuest:GetModule('TrackerFrame')
+    tracker.dirty = true
+    tracker:Refresh()
+""")
+check("the map tracker follows the map parent's visibility", rt.eval("""(function()
+    WorldMapFrame:Hide()
+    local hidden = UnrealQuestMapTracker:IsShown()
+        and not UnrealQuestMapTracker:IsVisible()
+        and UnrealQuestTracker:IsVisible()
+    WorldMapFrame:Show()
+    return hidden and UnrealQuestMapTracker:IsVisible()
 end)()"""))
 
-check("the followed quest title and objectives share one amber glow block", rt.eval("""(function()
-    local frame = UnrealQuestTracker
-    local rings = frame.unrealQuestFollowingRings
-    return frame.unrealQuestFollowingActive == true
-        and frame.unrealQuestFollowingBackground:IsShown() == true
-        and rings[1][1]:IsShown() == true and rings[2][1]:IsShown() == true
-        and rings[1][1].vertex[1] == UnrealQuest.colors.accent[1]
-        and rings[1][1].vertex[2] == UnrealQuest.colors.accent[2]
-        and rings[1][1].vertex[3] == UnrealQuest.colors.accent[3]
-        and math.abs(rings[1][1].vertex[4] - 0.95 * 0.55) < 0.0001
+# Map tracker drag: cursor-driven on the driver, never StartMoving -- the
+# window is a child of the 0.5-scale WorldMapFrame, whose edges mix spaces
+# (frames.scaled_frame_edge_coordinates_mixed_space).
+check("the map tracker has a Button drag handle on its title line", rt.eval("""(function()
+    local handle = UnrealQuestMapTrackerHandle
+    local box = UnrealQuestMapTrackerShowAllAreas
+    return handle ~= nil and handle:GetObjectType() == 'Button'
+        and handle:GetParent() == UnrealQuestMapTracker
+        and handle.dragTokens ~= nil and handle.dragTokens[1] == 'LeftButton'
+        and handle:GetFrameLevel() > UnrealQuestMapTracker:GetFrameLevel()
+        and box ~= nil and box:GetFrameLevel() > handle:GetFrameLevel()
+end)()"""), "the All areas checkbox must stay clickable above the handle")
+rt.execute("""
+    UQ_TEST_MAP_DRAG_SIZE = { WorldMapFrame:GetWidth(), WorldMapFrame:GetHeight() }
+    WorldMapFrame:SetWidth(1018)
+    WorldMapFrame:SetHeight(745)
+    UnrealQuestMapTracker.effectiveScale = 0.5
+    UnrealQuestMapTrackerHandle:SetWidth(150)
+    UQ_TEST_MAP_DRAG_MOVES = UnrealQuestMapTracker.startMovingCalls or 0
+    UQ_TEST_MOVE_CURSOR(800, 600)
+    UnrealQuestMapTrackerHandle:GetScript('OnDragStart')()
+    UQ_TEST_MAP_HANDLE_POINTS = table.getn(UnrealQuestMapTrackerHandle.points or {})
+    -- 100 screen pixels left and 60 down = 200 and 120 map units at 0.5.
+    UQ_TEST_MOVE_CURSOR(700, 540)
+    UnrealQuest:GetModule('TrackerFrame'):UpdateMapDrag()
+""")
+check("dragging the map tracker header moves it with the cursor in map units", rt.eval("""(function()
+    local map = UnrealQuestMapTracker
+    return map.point[1] == 'TOPRIGHT' and map.point[2] == WorldMapFrame
+        and map.point[3] == 'TOPRIGHT'
+        and map.point[4] == -225 and map.point[5] == -202
+        and (map.startMovingCalls or 0) == UQ_TEST_MAP_DRAG_MOVES
+end)()"""), "moves by cursor delta / effective scale, never StartMoving on the window")
+check("mid-drag the map handle is detached, moved natively and never re-anchored", rt.eval("""(function()
+    local handle = UnrealQuestMapTrackerHandle
+    return handle.point[2] == WorldMapFrame and handle.point[1] == 'TOPRIGHT'
+        and handle.point[4] == -25 + handle.unrealQuestRightInset
+        and handle.point[5] == -82
+        and handle.moving == true
+        and table.getn(handle.points) == UQ_TEST_MAP_HANDLE_POINTS
+end)()"""), "widgets.thumb_reposition_during_drag_breaks_drag: re-anchoring the dragged frame loses OnDragStop")
+rt.execute("""
+    -- Released without OnDragStop: only the handle's OnMouseUp arrives.
+    UnrealQuestMapTrackerHandle:GetScript('OnMouseUp')()
+    UQ_TEST_MAP_RELEASED_AT = { UnrealQuestMapTracker.point[4], UnrealQuestMapTracker.point[5] }
+    UQ_TEST_MOVE_CURSOR(300, 100)
+    UnrealQuest:GetModule('TrackerFrame'):UpdateMapDrag()
+""")
+check("releasing the mouse ends the map drag even without OnDragStop", rt.eval("""(function()
+    local tracker = UnrealQuest:GetModule('TrackerFrame')
+    local handle = UnrealQuestMapTrackerHandle
+    local map = UnrealQuestMapTracker
+    local job = UnrealQuest:GetModule('Driver').jobsByName['tracker.mapdrag']
+    local config = UnrealQuest:GetModule('Config')
+    return tracker.mapDrag == nil
+        and handle.moving == false
+        and handle.point[2] == map
+        and job ~= nil and job.active == false
+        and map.point[4] == UQ_TEST_MAP_RELEASED_AT[1]
+        and map.point[5] == UQ_TEST_MAP_RELEASED_AT[2]
+        and config:Get('mapTrackerX') == -225
+        and config:Get('mapTrackerY') == -202
+end)()"""), "the window must stop following the cursor the moment the button is released")
+rt.execute("""
+    UQ_TEST_MOVE_CURSOR(800, 600)
+    UnrealQuestMapTrackerHandle:GetScript('OnDragStart')()
+    UnrealQuestMapTrackerHandle:GetScript('OnClick')()
+""")
+check("the map handle's OnClick is a release route too", rt.eval(
+    "UnrealQuest:GetModule('TrackerFrame').mapDrag == nil "
+    "and UnrealQuestMapTrackerHandle.moving == false"))
+rt.execute("""
+    UQ_TEST_MOVE_CURSOR(800, 600)
+    UnrealQuestMapTrackerHandle:GetScript('OnDragStart')()
+    function IsMouseButtonDown(button) return false end
+    UnrealQuest.Client.ForgetSymbol('IsMouseButtonDown')
+    UQ_TEST_MOVE_CURSOR(600, 600)
+    UnrealQuest:GetModule('TrackerFrame'):UpdateMapDrag()
+    IsMouseButtonDown = nil
+    UnrealQuest.Client.ForgetSymbol('IsMouseButtonDown')
+""")
+check("a client reporting the button up ends a map drag no callback ended", rt.eval(
+    "UnrealQuest:GetModule('TrackerFrame').mapDrag == nil "
+    "and UnrealQuestMapTrackerHandle.moving == false"))
+rt.execute("""
+    UQ_TEST_MOVE_CURSOR(800, 600)
+    UnrealQuestMapTrackerHandle:GetScript('OnDragStart')()
+    UQ_TEST_MOVE_CURSOR(-5000, 5000)
+    UnrealQuestMapTrackerHandle:GetScript('OnDragStop')()
+    -- The mouse-up that follows OnDragStop must be a harmless no-op.
+    UnrealQuestMapTrackerHandle:GetScript('OnMouseUp')()
+""")
+check("a map tracker drop keeps it on the map and stores the offsets", rt.eval("""(function()
+    local map = UnrealQuestMapTracker
+    local config = UnrealQuest:GetModule('Config')
+    local minX = map:GetWidth() - 1018
+    return map.point[4] == minX and map.point[5] == 0
+        and config:Get('mapTrackerX') == minX and config:Get('mapTrackerY') == 0
+        and UnrealQuest:GetModule('TrackerFrame').mapDrag == nil
+end)()"""))
+check("the stored map tracker offsets are re-applied on the next placement", rt.eval("""(function()
+    local tracker = UnrealQuest:GetModule('TrackerFrame')
+    local map = UnrealQuestMapTracker
+    map:ClearAllPoints()
+    tracker:ApplyMapPosition()
+    return map.point[4] == map:GetWidth() - 1018 and map.point[5] == 0
+end)()"""))
+rt.execute("""
+    UQ_TEST_MOVE_CURSOR(800, 600)
+    UnrealQuestMapTrackerHandle:GetScript('OnDragStart')()
+    WorldMapFrame:Hide()
+    UnrealQuest:GetModule('TrackerFrame'):UpdateMapDrag()
+""")
+check("closing the map mid-drag ends the map tracker drag", rt.eval(
+    "UnrealQuest:GetModule('TrackerFrame').mapDrag == nil "
+    "and UnrealQuestMapTrackerHandle.moving == false "
+    "and UnrealQuestMapTrackerHandle.point[2] == UnrealQuestMapTracker"))
+rt.execute("""
+    WorldMapFrame:Show()
+    UnrealQuest:GetModule('TrackerFrame'):ResetPosition()
+""")
+check("tracker reset also puts the map tracker back at its default", rt.eval("""(function()
+    local map = UnrealQuestMapTracker
+    local config = UnrealQuest:GetModule('Config')
+    return map.point[4] == -25 and map.point[5] == -82
+        and config:Get('mapTrackerX') == -25 and config:Get('mapTrackerY') == -82
+end)()"""))
+rt.execute("""
+    UnrealQuestMapTracker.effectiveScale = nil
+    WorldMapFrame:SetWidth(UQ_TEST_MAP_DRAG_SIZE[1])
+    WorldMapFrame:SetHeight(UQ_TEST_MAP_DRAG_SIZE[2])
+    UQ_TEST_MOVE_CURSOR(-1, -1)
+""")
+
+# Map tracker pagination: capped at 40% of WorldMapFrame's height, the rest
+# paged behind "<  Page n/n  >" on its bottom row.
+rt.execute("""
+    UQ_TEST_MAP_HEIGHT = WorldMapFrame:GetHeight()
+    WorldMapFrame:SetHeight(250)
+    local tracker = UnrealQuest:GetModule('TrackerFrame')
+    tracker.mapPage = 1
+    tracker.dirty = true
+    tracker:Refresh()
+""")
+check("a map tracker taller than 40% of the map is paged", rt.eval("""(function()
+    local tracker = UnrealQuest:GetModule('TrackerFrame')
+    return tracker.mapPages > 1 and tracker.mapPage == 1
+        and UnrealQuestMapTracker:GetHeight() == 100
+        and UnrealQuestMapTrackerPager:IsShown() == true
+        and tracker.mapPager.text:GetText() == 'Page 1/' .. tracker.mapPages
+        and tracker.mapPager.previous.unrealQuestEnabled == false
+        and tracker.mapPager.next.unrealQuestEnabled == true
+        and UnrealQuestMapTrackerRowquest1:IsShown() == true
+end)()"""))
+check("the next arrow turns to page 2 and hides page 1's rows", rt.eval("""(function()
+    local tracker = UnrealQuest:GetModule('TrackerFrame')
+    UnrealQuestMapTrackerPagerNext.scripts.OnClick()
+    return tracker.mapPage == 2
+        and tracker.mapPager.text:GetText() == 'Page 2/' .. tracker.mapPages
+        and tracker.mapPager.previous.unrealQuestEnabled == true
+        and UnrealQuestMapTrackerRowquest1:IsShown() == false
+        and UnrealQuestTrackerRowquest1:IsShown() == true
+end)()"""))
+check("the previous arrow turns back to page 1", rt.eval("""(function()
+    local tracker = UnrealQuest:GetModule('TrackerFrame')
+    UnrealQuestMapTrackerPagerPrevious.scripts.OnClick()
+    return tracker.mapPage == 1 and UnrealQuestMapTrackerRowquest1:IsShown() == true
+end)()"""))
+rt.execute("""
+    WorldMapFrame:SetHeight(UQ_TEST_MAP_HEIGHT or 0)
+    local tracker = UnrealQuest:GetModule('TrackerFrame')
+    tracker.dirty = true
+    tracker:Refresh()
+""")
+
+# HUD tracker pagination: past 50% of the screen (UIParent) it pages the same
+# way, with the same "<  Page n/n  >" row on its bottom edge.
+rt.execute("""
+    UQ_TEST_SCREEN_HEIGHT = UIParent:GetHeight()
+    UQ_TEST_HUD_SAVED_HEIGHT = UnrealQuest:GetModule('Config'):Get('trackerHeight')
+    UnrealQuest:GetModule('Config'):Set('trackerHeight', 0)
+    UIParent:SetHeight(200)
+    local tracker = UnrealQuest:GetModule('TrackerFrame')
+    tracker.hudPage = 1
+    tracker.dirty = true
+    tracker:Refresh()
+""")
+check("a HUD tracker taller than 50% of the screen is paged", rt.eval("""(function()
+    local tracker = UnrealQuest:GetModule('TrackerFrame')
+    return tracker.hudPages > 1 and tracker.hudPage == 1
+        and UnrealQuestTracker:GetHeight() == 100
+        and UnrealQuestTrackerPager:IsShown() == true
+        and tracker.hudPager.text:GetText() == 'Page 1/' .. tracker.hudPages
+        and tracker.hudPager.previous.unrealQuestEnabled == false
+        and tracker.hudPager.next.unrealQuestEnabled == true
+        and UnrealQuestTrackerRowquest1:IsShown() == true
+end)()"""))
+check("the HUD page row fits between the window's edges and clear of the grip",
+      rt.eval("""(function()
+    local pagerWidth = UnrealQuestTrackerPager:GetWidth()
+    return pagerWidth <= UnrealQuestTracker:GetWidth() - 28
+end)()"""))
+check("the HUD next arrow turns to page 2 without touching the map's page",
+      rt.eval("""(function()
+    local tracker = UnrealQuest:GetModule('TrackerFrame')
+    local mapPage = tracker.mapPage
+    UnrealQuestTrackerPagerNext.scripts.OnClick()
+    return tracker.hudPage == 2 and tracker.mapPage == mapPage
+        and tracker.hudPager.text:GetText() == 'Page 2/' .. tracker.hudPages
+        and UnrealQuestTrackerRowquest1:IsShown() == false
+end)()"""))
+check("revealing a quest opens the HUD page that holds its row", rt.eval("""(function()
+    local tracker = UnrealQuest:GetModule('TrackerFrame')
+    -- The last quest listed sits on a later page than the first. Pooled rows
+    -- keep a stale subject when unused, so the quest comes from the lines.
+    local quest = nil
+    for _, line in ipairs(tracker.lines) do
+        if line.kind == 'quest' then quest = line.quest end
+    end
+    if not quest then return false end
+    local function row()
+        local index = 1
+        while getglobal('UnrealQuestTrackerRowquest' .. index) do
+            local candidate = getglobal('UnrealQuestTrackerRowquest' .. index)
+            if candidate:IsShown() and candidate.unrealQuestSubject == quest then
+                return candidate
+            end
+            index = index + 1
+        end
+        return nil
+    end
+    tracker.hudPage = 1
+    tracker.dirty = true
+    tracker:Refresh()
+    if row() then return false end
+    tracker:RevealQuest(quest)
+    return tracker.hudPage > 1 and row() ~= nil and tracker.hudRevealTitle == nil
+end)()"""))
+rt.execute("""
+    UIParent:SetHeight(UQ_TEST_SCREEN_HEIGHT or 768)
+    UnrealQuest:GetModule('Config'):Set('trackerHeight', UQ_TEST_HUD_SAVED_HEIGHT or 0)
+    local tracker = UnrealQuest:GetModule('TrackerFrame')
+    tracker.dirty = true
+    tracker:Refresh()
+""")
+check("back under 50% of the screen the HUD page row is hidden again", rt.eval("""(function()
+    local tracker = UnrealQuest:GetModule('TrackerFrame')
+    return tracker.hudPages == 1 and tracker.hudPage == 1
+        and UnrealQuestTrackerPager:IsShown() == false
+end)()"""))
+
+check("the followed tracker quest gets the active circle and dark glyph, no glow", rt.eval("""(function()
+    local client = UnrealQuest.Client
+    local function active(row)
+        local background = row and row.unrealQuestQuestNumberBackground
+        local number = row and row.unrealQuestQuestNumber
+        local coord = number and number.texCoord
+        return row ~= nil and row.unrealQuestQuestNumberValue == 1
+            and row.unrealQuestQuestNumberSelected == true
+            and number.path == client.WORLD_MAP_QUEST_POI_NUMBER_TEXTURE
+            and coord[1] == 6 / 256 and coord[2] == 26 / 256
+            and coord[3] == 6 / 256 and coord[4] == 26 / 256
+            and background:IsShown() == true
+            and background.path == client.WORLD_MAP_QUEST_POI_CIRCLE_TEXTURE
+            and background.texCoord[1] == 128 / 256
+            and background.texCoord[2] == 192 / 256
+            and row.unrealQuestQuestNumberGlow == nil
+    end
+    local row = UnrealQuestTrackerRowquest1
+    return row.unrealQuestFollowingLabel == nil
+        and row.unrealQuestFollowingArrow == nil
+        and active(row) and active(UnrealQuestMapTrackerRowquest1)
+end)()"""))
+
+check("both trackers use followed-quest.tga behind the followed row", rt.eval("""(function()
+    local hud = UnrealQuestTracker.unrealQuestFollowingBackground
+    local map = UnrealQuestMapTracker.unrealQuestFollowingBackground
+    local path = 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\followed-quest'
+    return UnrealQuestTracker.unrealQuestFollowingActive == true
+        and UnrealQuestMapTracker.unrealQuestFollowingActive == true
+        and hud:IsShown() == true and map:IsShown() == true
+        and hud.path == path and map.path == path
+        and hud.vertex[1] == 1 and hud.vertex[2] == 1 and hud.vertex[3] == 1
+        and map.vertex[1] == 1 and map.vertex[2] == 1 and map.vertex[3] == 1
+        and math.abs(hud.vertex[4] - 0.55) < 0.0001
+        and math.abs(map.vertex[4] - 0.4) < 0.0001
 end)()"""))
 
 rt.execute("UnrealQuest:GetModule('TrackerFrame'):ApplyBackgroundOpacity(0)")
-check("zero tracker opacity hides every following border and glow layer", rt.eval("""(function()
-    local frame = UnrealQuestTracker
-    return frame.unrealQuestFollowingBackground:IsShown() == false
-        and frame.unrealQuestFollowingRings[1][1]:IsShown() == false
-        and frame.unrealQuestFollowingRings[2][1]:IsShown() == false
-        and frame.unrealQuestFollowingRings[3][1]:IsShown() == false
+check("zero tracker opacity hides the HUD plaque and leaves the map's at 40%", rt.eval("""(function()
+    local map = UnrealQuestMapTracker.unrealQuestFollowingBackground
+    return UnrealQuestTracker.unrealQuestFollowingBackground:IsShown() == false
+        and map:IsShown() == true and math.abs(map.vertex[4] - 0.4) < 0.0001
 end)()"""))
 rt.execute("UnrealQuest:GetModule('TrackerFrame'):ApplyBackgroundOpacity(55)")
 
@@ -12390,12 +14108,11 @@ check("FitObjective falls back to a plain trim when there is no have/need counte
     return string.sub(trimmed, -3) == '...'
 end)()"""))
 
-# A complete quest says so with the bundled complete-quest icon on its row,
-# not by overwriting the title colour: the title keeps the same
-# level-difficulty colour a live quest gets, and its objectives are all
-# satisfied, so listing them -- or a separate "ready to turn in" line -- only
-# makes the window taller without adding information.
-check("a complete quest keeps its level colour, carries the complete icon, "
+# A complete quest keeps its log-order number and places the bundled checkmark
+# beside it, rather than replacing the number or overwriting the title colour.
+# Its objectives are all satisfied, so listing them -- or a separate "ready to
+# turn in" line -- only makes the window taller without adding information.
+check("a complete quest keeps its level colour and number plus complete icon, "
       "and has no objective lines below it",
       rt.eval("""(function()
     local questRow
@@ -12413,8 +14130,13 @@ check("a complete quest keeps its level colour, carries the complete icon, "
     if color == nil or color[1] ~= red or color[2] ~= green or color[3] ~= blue then
         return false
     end
+    local number = questRow.unrealQuestQuestNumber
     local mark = questRow.unrealQuestQuestMark
-    if mark == nil or mark:IsShown() ~= true or mark.path ~= 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\CompleteQuestIcon' then
+    if number == nil or number:IsShown() ~= true
+        or number.path ~= UnrealQuest.Client.WORLD_MAP_QUEST_POI_NUMBER_TEXTURE
+        or questRow.unrealQuestQuestNumberValue ~= 2
+        or mark == nil or mark:IsShown() ~= true
+        or mark.path ~= 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\CompleteQuestIcon' then
         return false
     end
     local shown = 0
@@ -12496,7 +14218,10 @@ check("a complete quest sinks past OTHER zones too, to the bottom of the window,
 # the player looted or killed something and the window has to say so where they
 # are already looking. The advance is noticed by the same progress mark that
 # drops the fold, so it costs no extra read of the log.
+# Stood in a zone with no quests: with the current-zone filter off, the zone
+# the player is in heads the window above any lift (checked further down).
 rt.execute("""
+    UQ_TEST_ZONE_NAME = 'Durotar'
     UQ_TEST_LOG[5][7] = { { "Blanchy watered", "item", 1 } }
     UnrealQuest:GetModule('QuestState'):RefreshObjectiveSlice()
     local tracker = UnrealQuest:GetModule('TrackerFrame')
@@ -12525,6 +14250,23 @@ rt.execute("SlashCmdList.UNREALQUEST('tracker recent')")
 check("switching it back on lifts the same quest again, without a second advance",
       rt.eval("""UnrealQuestDB.trackerRecentFirst == true
         and string.find(UnrealQuestTrackerRowquest1.fontString.text, 'Blanchy', 1, true) ~= nil"""))
+
+# Back in Elwynn Forest with the filter off, the current zone outranks the
+# lift: Kobold Camp Cleanup heads the window, the lifted Westfall quest follows,
+# and the complete Elwynn quest still sits in the tail.
+rt.execute("""
+    UQ_TEST_ZONE_NAME = 'Elwynn Forest'
+    local tracker = UnrealQuest:GetModule('TrackerFrame')
+    tracker.dirty = true
+    tracker:Refresh()
+""")
+check("with the zone filter off, the zone the player stands in heads the window "
+      "above a quest lifted elsewhere, and its complete quest stays in the tail",
+      rt.eval("""UnrealQuestDB.trackerCurrentZoneOnly ~= true
+        and UnrealQuestTrackerRowzone1.fontString.text == 'Elwynn Forest'
+        and UnrealQuestTrackerRowquest1.unrealQuestSubject.titleKey == 'koboldcampcleanup'
+        and string.find(UnrealQuestTrackerRowquest2.fontString.text, 'Blanchy', 1, true) ~= nil
+        and string.find(UnrealQuestTrackerRowquest3.fontString.text, 'Sharptalon', 1, true) ~= nil"""))
 
 # The lift is keyed by title and outlives a counter going back down, so the
 # quest has to actually leave the log for the blocks below to see the raw order
@@ -12557,6 +14299,26 @@ check("a quest that leaves the log takes its lift with it, and comes back where 
         and UnrealQuestTrackerRowzone2.fontString.text == 'Westfall'
         and string.find(UnrealQuestTrackerRowquest2.fontString.text, 'Blanchy', 1, true) ~= nil
 """))
+
+# Standing in Westfall, its quest moves above Elwynn Forest although the log
+# files Elwynn first.
+rt.execute("""
+    UQ_TEST_ZONE_NAME = 'Westfall'
+    local tracker = UnrealQuest:GetModule('TrackerFrame')
+    tracker.dirty = true
+    tracker:Refresh()
+""")
+check("with the zone filter off, the current zone's category moves to the top",
+      rt.eval("""UnrealQuestTrackerRowzone1.fontString.text == 'Westfall'
+        and string.find(UnrealQuestTrackerRowquest1.fontString.text, 'Blanchy', 1, true) ~= nil
+        and UnrealQuestTrackerRowzone2.fontString.text == 'Elwynn Forest'
+        and UnrealQuestTrackerRowquest2.unrealQuestSubject.titleKey == 'koboldcampcleanup'"""))
+rt.execute("""
+    UQ_TEST_ZONE_NAME = 'Elwynn Forest'
+    local tracker = UnrealQuest:GetModule('TrackerFrame')
+    tracker.dirty = true
+    tracker:Refresh()
+""")
 
 check("the native watch panel is hidden while the tracker is up",
       rt.eval("QuestWatchFrame:IsShown() == false"))
@@ -12604,6 +14366,23 @@ check("a tracker dropped past the top edge snaps flush with it", rt.eval("""(fun
     UnrealQuest:GetModule('TrackerFrame'):ApplyStoredPosition(true)
     return ok
 end)()"""), str(rt.eval("tostring(UnrealQuestDB.trackerY)")))
+check("a HUD tracker drop the client reports only through OnMouseUp still lets go", rt.eval("""(function()
+    local tracker = UnrealQuest:GetModule('TrackerFrame')
+    local window = UnrealQuestTracker
+    local saved = { UnrealQuestDB.trackerX, UnrealQuestDB.trackerY }
+    UnrealQuestTrackerHandle:GetScript('OnDragStart')()
+    window:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 200, -330)
+    UnrealQuestTrackerHandle:GetScript('OnMouseUp')()
+    local released = window.moving == false and tracker.dragging == false
+        and UnrealQuestDB.trackerX == 200 and UnrealQuestDB.trackerY == -330
+    -- A plain click (a mouse-up with no drag) never re-captures the position.
+    UnrealQuestDB.trackerX = 999
+    UnrealQuestTrackerHandle:GetScript('OnMouseUp')()
+    local clickIgnored = UnrealQuestDB.trackerX == 999
+    UnrealQuestDB.trackerX, UnrealQuestDB.trackerY = saved[1], saved[2]
+    tracker:ApplyStoredPosition(true)
+    return released and clickIgnored
+end)()"""))
 check("nothing with a backslash is ever persisted for the tracker",
       rt.eval("""(function()
     for key, value in pairs(UnrealQuestDB) do
@@ -12784,9 +14563,9 @@ rt.execute("""
 """)
 check("width clamps at the same ceiling /uq tracker width enforces (600)", rt.eval(
     "UnrealQuest:GetModule('Config'):Get('trackerWidth') == 600"))
-check("height clamps at its own ceiling so a wild drag cannot leave a window "
-      "taller than any screen",
-      rt.eval("UnrealQuest:GetModule('Config'):Get('trackerHeight') == 900"))
+check("height clamps at half the screen (UIParent 768 -> 384), where the window "
+      "starts paging, so a wild drag cannot open blank space below it",
+      rt.eval("UnrealQuest:GetModule('Config'):Get('trackerHeight') == 384"))
 rt.execute("UnrealQuestTrackerResizeGrip:GetScript('OnDragStop')()")
 check("releasing the mouse ends the resize: the job stops and the client is told "
       "to stop moving the grip",
@@ -12831,10 +14610,10 @@ check("a height ceiling taller than the quest log shrinks the window to its cont
     tracker.dirty = true
     tracker:Refresh()
     local natural = UnrealQuestTracker:GetHeight()
-    config:Set('trackerHeight', 640)
+    config:Set('trackerHeight', 360)
     tracker.dirty = true
     tracker:Refresh()
-    return UnrealQuestTracker:GetHeight() == natural and natural < 640
+    return UnrealQuestTracker:GetHeight() == natural and natural < 360
 end)()"""))
 check("the ceiling is still honoured exactly while the grip is being dragged, so the "
       "bottom edge never leaves the cursor",
@@ -12848,7 +14627,7 @@ check("the ceiling is still honoured exactly while the grip is being dragged, so
     tracker.resizeStartX = nil
     tracker.dirty = true
     tracker:Refresh()
-    return dragged == 640 and UnrealQuestTracker:GetHeight() < 640
+    return dragged == 360 and UnrealQuestTracker:GetHeight() < 360
 end)()"""))
 check("a height ceiling shorter than the quest log draws only what fits, and "
       "never past the ceiling",
@@ -12927,13 +14706,22 @@ rt.execute("""
 """)
 check("an addon-tracked quest has no accent rectangle", rt.eval(
     "UnrealQuestTrackerRowquest1.unrealQuestStripe == nil"))
-check("every quest row gets a swatch matching its map-dot colour", rt.eval("""(function()
+check("every quest row gets its matching map quest number", rt.eval("""(function()
     local row = UnrealQuestTrackerRowquest1
-    local mark = row.unrealQuestQuestMark
-    local red, green, blue = UnrealQuest.GetQuestColor(row.unrealQuestSubject)
-    local color = mark and mark.vertex
-    return mark ~= nil and mark:IsShown() == true and color ~= nil
-        and color[1] == red and color[2] == green and color[3] == blue
+    local background = row.unrealQuestQuestNumberBackground
+    local number = row.unrealQuestQuestNumber
+    local coord = number and number.texCoord
+    return number ~= nil and number:IsShown() == true
+        and number.path == UnrealQuest.Client.WORLD_MAP_QUEST_POI_NUMBER_TEXTURE
+        and row.unrealQuestQuestNumberValue == 1
+        and row.unrealQuestQuestNumberSelected == false
+        and coord[1] == 6 / 256 and coord[2] == 26 / 256
+        and coord[3] == 134 / 256 and coord[4] == 154 / 256
+        and background ~= nil and background:IsShown() == true
+        and background.path == UnrealQuest.Client.WORLD_MAP_QUEST_POI_CIRCLE_TEXTURE
+        and background.texCoord[1] == 0
+        and background.texCoord[2] == 64 / 256
+        and row.unrealQuestQuestNumberGlow == nil
 end)()"""))
 
 rt.execute("""
@@ -13450,8 +15238,16 @@ check("the window folds to its title bar", rt.eval("""(function()
     tracker:ToggleCollapsed()
     local folded = UnrealQuestTracker:GetHeight() == UnrealQuest.Client.TRACKER_HEADER_HEIGHT
         and UnrealQuestTrackerRowquest1:IsShown() == false
+        and UnrealQuestTrackerResizeGrip:IsShown() == false
     tracker:ToggleCollapsed()
     return folded and UnrealQuestTrackerRowquest1:IsShown() == true
+        and UnrealQuestTrackerResizeGrip:IsShown() == true
+end)()"""))
+
+check("the header title sits 3px below the header's centre line", rt.eval("""(function()
+    local point = UnrealQuestTracker.unrealQuestTitle.point
+    return point ~= nil and point[1] == 'LEFT' and point[3] == 'TOPLEFT'
+        and point[5] == -UnrealQuest.Client.TRACKER_HEADER_HEIGHT / 2 - 3
 end)()"""))
 
 check("the window grows with the quest log rather than to a fixed height",
@@ -13646,6 +15442,20 @@ check("no row or header text carries a drop shadow", rt.eval("""(function()
     return true
 end)()"""))
 
+check("the map tracker's text keeps a black drop shadow", rt.eval("""(function()
+    local targets = {
+        UnrealQuestMapTracker.unrealQuestTitle,
+        UnrealQuestMapTracker.unrealQuestCount,
+        UnrealQuestMapTrackerRowquest1 and UnrealQuestMapTrackerRowquest1.unrealQuestLabel,
+        UnrealQuestMapTrackerRowzone1 and UnrealQuestMapTrackerRowzone1.unrealQuestLabel,
+    }
+    for _, label in ipairs(targets) do
+        if not label or not label.shadowOffset then return false end
+        if label.shadowOffset[1] ~= 1 or label.shadowOffset[2] ~= -1 then return false end
+    end
+    return true
+end)()"""))
+
 check("quest and objective text may wrap while zone labels remain single-line",
       rt.eval("""UnrealQuestTrackerRowquest1.unrealQuestLabel.wordWrap == nil
         and UnrealQuestTrackerRowobjective1.unrealQuestLabel.wordWrap == nil
@@ -13812,9 +15622,9 @@ check("hovering a quest row shows an accent-tinted overlay that exactly covers t
     return hover.allPoints == row and shownOnEnter and hiddenOnLeave and tinted
 end)()"""))
 
-check("zone rows, objective rows and header buttons get no hover effect at all", rt.eval("""(function()
+check("zone rows, objective rows and the spyglass get no hover effect at all", rt.eval("""(function()
     local none = { UnrealQuestTrackerRowzone1, UnrealQuestTrackerRowobjective1,
-        UnrealQuestTrackerNpcFinder, UnrealQuestTrackerCollapse }
+        UnrealQuestTrackerNpcFinder }
     for _, widget in ipairs(none) do
         if widget.unrealQuestHover ~= nil then return false end
         if widget.highlight ~= nil then return false end
@@ -13833,7 +15643,7 @@ check("the tracker header's spyglass opens the NPC finder list", rt.eval("""(fun
     local iconPoint = icon.points and icon.points[1]
     if not iconPoint or iconPoint[1] ~= 'CENTER' or iconPoint[2] ~= button
         or iconPoint[3] ~= 'CENTER' or iconPoint[4] ~= 0 or iconPoint[5] ~= 0
-        or icon.width ~= 14.4 or icon.height ~= 14.4 then
+        or icon.width ~= 16 * 0.9 * 0.85 or icon.height ~= 16 * 0.9 * 0.85 then
         return false
     end
     UnrealQuest.Client.HideNpcFilterMenu()
@@ -13850,13 +15660,130 @@ check("the quest count sits immediately after the tracker title", rt.eval("""(fu
         and point[4] == 5 and point[5] == 0 and count.justifyH == 'LEFT'
 end)()"""))
 
-check("the tracker collapse glyph is vertically centred", rt.eval("""(function()
+check("the tracker fold button wears the plus/minus tree button, 45% smaller", rt.eval("""(function()
+    local path = 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\plus-minus-button'
     local button = UnrealQuestTrackerCollapse
-    local label = button and button.unrealQuestLabel
-    local point = label and label.point
-    return point ~= nil and point[1] == 'CENTER' and point[2] == button
-        and point[3] == 'CENTER' and point[4] == 0 and point[5] == -2
-        and label.justifyV == 'CENTER' and label.inherits == 'GameFontNormal'
+    local art = button and button.unrealQuestArt
+    local point = art and art.points and art.points[1]
+    if not art or art:GetTexture() ~= path or not point or point[1] ~= 'CENTER'
+        or point[2] ~= button or art.width ~= 10 or art.height ~= 10
+        or button.width ~= 16 or button.height ~= 16 then
+        return false
+    end
+    local wasFolded = button.unrealQuestFolded
+    local client = UnrealQuest.Client
+    local function face(left, top)
+        return art.texCoord[1] == left / 64 and art.texCoord[3] == top / 64
+    end
+    client.SetTrackerCollapsed(UnrealQuestTracker, false)
+    local minus = face(2, 24)
+    client.SetTrackerCollapsed(UnrealQuestTracker, true)
+    local plus = face(2, 0)
+    client.SetTrackerCollapsed(UnrealQuestTracker, wasFolded)
+    return minus and plus
+end)()"""))
+
+check("the fold button's hover glow shows and hides without touching the glyph", rt.eval("""(function()
+    local button = UnrealQuestTrackerCollapse
+    local glow = button and button.unrealQuestGlow
+    local glowPath = 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\128RedButton'
+    local glyph = button and button.unrealQuestArt
+    local beforeCoord = glyph and glyph.texCoord
+    if not glow or glow:GetTexture() ~= glowPath or glow.shown
+        or glow.layer ~= 'OVERLAY' then
+        return false
+    end
+    button.scripts.OnEnter()
+    local shown = glow.shown == true
+    button.scripts.OnLeave()
+    return shown and not glow.shown and glyph.texCoord == beforeCoord
+end)()"""))
+
+check("the fold button's hover glow is unrealUI's settings-menu bloom, inset 2 inside the glyph", rt.eval("""(function()
+    local button = UnrealQuestTrackerCollapse
+    local glow = button and button.unrealQuestGlow
+    local glyph = button and button.unrealQuestArt
+    local points = glow and glow.points
+    local topLeft, bottomRight = points and points[1], points and points[2]
+    if not glyph or not topLeft or not bottomRight or topLeft[1] ~= 'TOPLEFT'
+        or topLeft[2] ~= glyph or topLeft[3] ~= 'TOPLEFT'
+        or bottomRight[1] ~= 'BOTTOMRIGHT' or bottomRight[2] ~= glyph
+        or bottomRight[3] ~= 'BOTTOMRIGHT' then
+        return false
+    end
+    -- unrealUI insets its bloom 4 from a 14 toggle holding a 10 face, which
+    -- is 2 inside the face; its cell is 128RedButton's glow at 0.8 light.
+    local c = glow.texCoord
+    return topLeft[4] == 2 and topLeft[5] == -2
+        and bottomRight[4] == -2 and bottomRight[5] == 2
+        and c and c[1] == 15 / 512 and c[2] == 418 / 512
+        and c[3] == 424 / 2048 and c[4] == 490 / 2048
+end)()"""))
+
+check("both tracker copies draw the Forever header rails across the title line", rt.eval("""(function()
+    local path = 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\QuestTracker'
+    local height = UnrealQuest.Client.TRACKER_HEADER_HEIGHT
+    for _, window in ipairs({ UnrealQuestTracker, UnrealQuestMapTracker }) do
+        local art = window.unrealQuestHeaderArt
+        local first = art and art.points and art.points[1]
+        local second = art and art.points and art.points[2]
+        if not art or art:GetTexture() ~= path or not first or not second
+            or first[1] ~= 'TOPLEFT' or first[4] ~= 2 or first[5] ~= 0
+            or second[1] ~= 'BOTTOMRIGHT' or second[3] ~= 'TOPRIGHT'
+            or second[4] ~= -2 or second[5] ~= -height
+            or art.texCoord[1] ~= 2 / 512 or art.texCoord[4] ~= 38 / 512 then
+            return false
+        end
+    end
+    return height == 24 and UnrealQuestTracker.unrealQuestSeparator == nil
+        and UnrealQuestTracker.unrealQuestAccent == nil
+end)()"""))
+
+check("a zone row is a section bar whose fold mark follows the zone fold", rt.eval("""(function()
+    local path = 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\QuestTracker'
+    local row = UnrealQuestTrackerRowzone1
+    local bar = row and row.unrealQuestZoneBar
+    local fold = row and row.unrealQuestZoneFold
+    local top = bar and bar.points and bar.points[1]
+    local bottom = bar and bar.points and bar.points[2]
+    if not bar or not fold or bar:GetTexture() ~= path
+        or not top or top[1] ~= 'TOPLEFT' or top[2] ~= row or top[5] ~= 8
+        or not bottom or bottom[1] ~= 'BOTTOMRIGHT' or bottom[5] ~= 0
+        or fold.width ~= 8 or fold.height ~= 8
+        or row.unrealQuestLabelInsetRight ~= 12 or row.unrealQuestLabelInset ~= 4 then
+        return false
+    end
+    local before = fold.unrealQuestArtPiece
+    UnrealQuest.Client.SetTrackerZoneFolded(row, true)
+    local plus = fold.texCoord[1] == 84 / 512
+    UnrealQuest.Client.SetTrackerZoneFolded(row, false)
+    local minus = fold.texCoord[1] == 65 / 512
+    UnrealQuest.Client.SetTrackerZoneFolded(row, before == 'zoneExpand')
+    return plus and minus
+end)()"""))
+
+check("an objective row carries the nub while open, the check when done, nothing for a notice",
+      rt.eval("""(function()
+    local client = UnrealQuest.Client
+    local row = UnrealQuestTrackerRowobjective1
+    local bullet = row and row.unrealQuestBullet
+    local point = bullet and bullet.points and bullet.points[1]
+    if not bullet or not point or point[1] ~= 'TOPLEFT' or point[2] ~= row
+        or point[4] ~= -12 or bullet.width ~= 11 then
+        return false
+    end
+    local before = bullet.unrealQuestArtPiece
+    local wasShown = bullet.shown ~= false
+    client.SetTrackerRowObjectiveMark(row, 'done')
+    local done = bullet.shown == true and bullet.texCoord[1] == 125 / 512
+    client.SetTrackerRowObjectiveMark(row, 'open')
+    local open = bullet.shown == true and bullet.texCoord[1] == 103 / 512
+    client.SetTrackerRowObjectiveMark(row, nil)
+    local none = bullet.shown == false
+    if wasShown then
+        client.SetTrackerRowObjectiveMark(row, before == 'check' and 'done' or 'open')
+    end
+    return done and open and none
 end)()"""))
 
 print("  tracker: current-zone filter")
@@ -13950,6 +15877,45 @@ check("walking into the other zone swaps which quests are listed", rt.eval("""(f
     UQ_TEST_REAL_ZONE_NAME = 'Elwynn Forest'
     UQ_TEST_TRACKER_RESCAN()
     return blanchy == true and kobold == false
+end)()"""))
+
+# Opening the fullscreen map hides UIParent on this client. While it is open,
+# the two tracker copies follow the map's selected zone rather than the zone
+# the player is standing in; closing it restores the standing-zone filter.
+check("opening another zone's map refreshes both trackers for that zone", rt.eval("""(function()
+    local savedFile = UQ_TEST_MAP_FILE
+    local savedMapZone = UQ_TEST_MAP_ZONE_NAME
+    UQ_TEST_MAP_FILE = 'Westfall'
+    UQ_TEST_MAP_ZONE_NAME = 'Westfall'
+    UIParent:Hide()
+    local tracker = UnrealQuest:GetModule('TrackerFrame')
+    tracker:Refresh()
+
+    local hudWestfall = UQ_TEST_TRACKER_HAS('Blanchy')
+        and not UQ_TEST_TRACKER_HAS('Kobold')
+    local mapBlanchy, mapKobold = false, false
+    local index = 1
+    while getglobal('UnrealQuestMapTrackerRowquest' .. index) do
+        local row = getglobal('UnrealQuestMapTrackerRowquest' .. index)
+        local quest = row.unrealQuestSubject
+        if row:IsShown() and quest and type(quest.title) == 'string' then
+            if string.find(quest.title, 'Blanchy', 1, true) then mapBlanchy = true end
+            if string.find(quest.title, 'Kobold', 1, true) then mapKobold = true end
+        end
+        index = index + 1
+    end
+    local report = tracker:GetReport()
+    local viewed = report.currentZoneArea == 40
+        and report.currentZoneName == 'Westfall'
+        and report.currentZoneHow == 'viewedMap'
+
+    UIParent:Show()
+    UQ_TEST_MAP_FILE = savedFile
+    UQ_TEST_MAP_ZONE_NAME = savedMapZone
+    tracker:Refresh()
+    local restored = UQ_TEST_TRACKER_HAS('Kobold')
+        and not UQ_TEST_TRACKER_HAS('Blanchy')
+    return hudWestfall and mapBlanchy and not mapKobold and viewed and restored
 end)()"""))
 
 # GetZoneText is measured answering with a building rather than its zone, which
@@ -14676,11 +16642,15 @@ rt.execute("SlashCmdList.UNREALQUEST('tracker width 170')")
 check("/uq tracker off hides the window and gives the native panel back",
       rt.eval("""(function()
     SlashCmdList.UNREALQUEST('tracker off')
-    return UnrealQuestTracker:IsShown() == false and QuestWatchFrame:IsShown() == true
+    return UnrealQuestTracker:IsShown() == false
+        and UnrealQuestMapTracker:IsShown() == false
+        and QuestWatchFrame:IsShown() == true
 end)()"""))
 check("/uq tracker on brings it back", rt.eval("""(function()
     SlashCmdList.UNREALQUEST('tracker on')
-    return UnrealQuestTracker:IsShown() == true and QuestWatchFrame:IsShown() == false
+    return UnrealQuestTracker:IsShown() == true
+        and UnrealQuestMapTracker:IsShown() == true
+        and QuestWatchFrame:IsShown() == false
 end)()"""))
 check("tracking a quest does not flash the native watch panel back on screen",
       rt.eval("""(function()
@@ -14901,8 +16871,12 @@ check("the minimap consumes that same ambiguous candidate union",
     quest.matchMapCandidates = { 879, 906 }
     local pins = UnrealQuest:GetModule('MinimapPins')
     local yards = UnrealQuest:GetModule('Database'):GetZoneYards(17)
-    local targets = pins:BuildTargets(
-        17, yards[1], yards[2], UnrealQuest:GetModule('Config'))
+    -- Minimap dots follow the world map's Dots switch.
+    local config = UnrealQuest:GetModule('Config')
+    local oldDots = config:Get('mapObjectiveDots')
+    config:Set('mapObjectiveDots', true)
+    local targets = pins:BuildTargets(17, yards[1], yards[2], config)
+    config:Set('mapObjectiveDots', oldDots)
     quest.questId = oldId
     quest.matchConfidence = oldConfidence
     quest.matchMapCandidates = oldCandidates
@@ -15511,11 +17485,10 @@ rt.execute("UnrealQuestSettingsGeneralTab:GetScript('OnClick')()")
 check("returning to General restores only the original settings controls", rt.eval(
     "UnrealQuestSettingsTrackerCurrentZoneOnly:IsShown() "
     "and not UnrealQuestSettingsMobSearchInput:IsShown()"))
-# The objective-style radio: one control group, both hosts. Its rows' labels
-# are handed back as `.label`, which is exactly the field unrealUI's own page
-# code toggles, so the same widgets satisfy both windows' show/hide contracts.
+# The objective style: two independent checkboxes, both hosts.
 check("the widget name is derived from the setting key, with no hyphen in it",
-      rt.eval("getglobal('UnrealQuestSettingsMapObjectiveDotsOption1') ~= nil"))
+      rt.eval("getglobal('UnrealQuestSettingsMapObjectiveDots') ~= nil "
+              "and getglobal('UnrealQuestSettingsMapObjectiveAreas') ~= nil"))
 check("the page reports one tab and never registers a second",
       rt.eval("table.getn(UnrealUI.tabs) == 1"))
 check("the current-zone option reached the page",
@@ -15698,30 +17671,23 @@ rt.execute("UnrealQuestSettingsHideUnlearnedProfessionQuests:GetScript('OnClick'
 check("clicking the profession-quest option stores the opt-out",
       rt.eval("UnrealQuestDB.hideUnlearnedProfessionQuests == false"))
 rt.execute("UnrealQuestSettingsHideUnlearnedProfessionQuests:GetScript('OnClick')()")
-check("the radio row is built with a label unrealUI's page code can toggle",
-      rt.eval("getglobal('UnrealQuestSettingsMapObjectiveDotsOption1') ~= nil "
-              "and UnrealQuestSettingsMapObjectiveDotsOption1.label ~= nil"))
-# The earlier map section left the setting at false; re-synced explicitly
-# rather than assumed, so this check is about the sync reading the store, not
-# about whichever value a prior section happened to leave behind.
+# Dots and areas are two switches: either, both or neither can be on.
 rt.execute("""
     UnrealQuestDB.mapObjectiveDots = true
+    UnrealQuestDB.mapObjectiveAreas = false
     UnrealUI.tabs[1].refresh()
 """)
-check("it opens synced to the stored value",
-      rt.eval("UnrealQuest.Client.GetSettingsRadio(UnrealQuestSettingsMapObjectiveDotsOption1) == true"))
-rt.execute("UnrealQuestSettingsMapObjectiveDotsOption2:GetScript('OnClick')()")
-check("clicking a row stores the new value",
-      rt.eval("UnrealQuestDB.mapObjectiveDots == false "
-              "and UnrealQuest.Client.GetSettingsRadio(UnrealQuestSettingsMapObjectiveDotsOption2)"))
-check("the selected mark is shown, not a native checked texture",
-      rt.eval("UnrealQuestSettingsMapObjectiveDotsOption2.unrealQuestMark:IsShown() "
-              "and UnrealQuestSettingsMapObjectiveDotsOption2.highlight == nil"))
-# Built once, opened many times: the value has to be read back on open, not
-# only at build time.
-rt.execute("UnrealQuestDB.mapObjectiveDots = true; UnrealUI.tabs[1].refresh()")
-check("reopening the page reads the stored value back into the group",
-      rt.eval("UnrealQuest.Client.GetSettingsRadio(UnrealQuestSettingsMapObjectiveDotsOption1) == true"))
+rt.execute("UnrealQuestSettingsMapObjectiveAreas:GetScript('OnClick')()")
+check("ticking Areas keeps Dots on: both can be drawn",
+      rt.eval("UnrealQuestDB.mapObjectiveDots == true and UnrealQuestDB.mapObjectiveAreas == true"))
+rt.execute("UnrealQuestSettingsMapObjectiveDots:GetScript('OnClick')()")
+check("unticking Dots leaves Areas alone",
+      rt.eval("UnrealQuestDB.mapObjectiveDots == false and UnrealQuestDB.mapObjectiveAreas == true"))
+rt.execute("""
+    UnrealQuestDB.mapObjectiveDots = true
+    UnrealQuestDB.mapObjectiveAreas = false
+    UnrealUI.tabs[1].refresh()
+""")
 
 # unrealUI's own drag ticker updates the component's public `current` field.
 # The UnrealQuest shared-driver binding consumes that field without waiting for
@@ -15939,59 +17905,38 @@ check("the standalone minimap-dot slider keeps the requested bounds",
     return entry ~= nil and entry.key == 'minimapObjectiveDotScale'
         and entry.control.min == 50 and entry.control.max == 150
 end)()"""))
-# Same builder, so the same control -- and the value it carries is the one the
-# unrealUI-hosted copy last stored, because both read the same setting.
-check("the same radio group is built in the standalone window",
-      rt.eval("getglobal('UnrealQuestSettingsMapObjectiveDotsOption1') ~= nil "
-              "and UnrealQuestSettingsMapObjectiveDotsOption1.label ~= nil"))
-check("it opens on the stored value, not on a build-time default",
-      rt.eval("UnrealQuest.Client.GetSettingsRadio(UnrealQuestSettingsMapObjectiveDotsOption1) == true"))
-
-# The radio group: one setting, two mutually exclusive rows. The stored value
-# is the source of truth, so the checks are that a row's click writes it, that
-# the siblings clear, that a second click on the selected row is inert (a radio
-# cannot deselect itself and leave the group describing nothing), and that
-# reopening the page syncs from the store rather than from a build-time value.
-check("the objective-style radio builds one row per value", rt.eval("""(function()
-    local dots = getglobal('UnrealQuestSettingsMapObjectiveDotsOption1')
-    local areas = getglobal('UnrealQuestSettingsMapObjectiveDotsOption2')
-    return dots ~= nil and areas ~= nil
-        and dots.label ~= nil and areas.label ~= nil
-        and dots.label.text == 'Dots' and areas.label.text == 'Areas'
-end)()"""))
-# Opened against a value the earlier map section left behind, not against the
-# default, which is the whole point of the sync: the page must show what is
-# stored right now.
+# Same builder, so the same controls, opened on the stored values.
+check("the same two style checkboxes are built in the standalone window",
+      rt.eval("getglobal('UnrealQuestSettingsMapObjectiveDots') ~= nil "
+              "and UnrealQuestSettingsMapObjectiveDots.label ~= nil "
+              "and UnrealQuestSettingsMapObjectiveAreas.label ~= nil"))
 rt.execute("""
     UnrealQuestDB.mapObjectiveDots = false
+    UnrealQuestDB.mapObjectiveAreas = true
     UnrealQuest:GetModule('Settings').page.refresh()
 """)
-check("it opens on the stored value, with exactly one row selected", rt.eval("""(function()
+check("they open on the stored values", rt.eval("""(function()
     local Client = UnrealQuest.Client
-    return Client.GetSettingsRadio(UnrealQuestSettingsMapObjectiveDotsOption1) == false
-        and Client.GetSettingsRadio(UnrealQuestSettingsMapObjectiveDotsOption2) == true
+    return Client.GetSettingsCheckbox(UnrealQuestSettingsMapObjectiveDots) == false
+        and Client.GetSettingsCheckbox(UnrealQuestSettingsMapObjectiveAreas) == true
 end)()"""))
-rt.execute("UnrealQuestSettingsMapObjectiveDotsOption1:GetScript('OnClick')()")
-check("picking the other row stores it and clears the first", rt.eval("""(function()
+rt.execute("UnrealQuestSettingsMapObjectiveDots:GetScript('OnClick')()")
+check("both can be ticked at once", rt.eval("""(function()
     local Client = UnrealQuest.Client
-    return UnrealQuestDB.mapObjectiveDots == true
-        and Client.GetSettingsRadio(UnrealQuestSettingsMapObjectiveDotsOption1) == true
-        and Client.GetSettingsRadio(UnrealQuestSettingsMapObjectiveDotsOption2) == false
+    return UnrealQuestDB.mapObjectiveDots == true and UnrealQuestDB.mapObjectiveAreas == true
+        and Client.GetSettingsCheckbox(UnrealQuestSettingsMapObjectiveDots) == true
+        and Client.GetSettingsCheckbox(UnrealQuestSettingsMapObjectiveAreas) == true
 end)()"""))
-rt.execute("UnrealQuestSettingsMapObjectiveDotsOption1:GetScript('OnClick')()")
-check("clicking the selected row again cannot deselect it", rt.eval("""(function()
-    return UnrealQuestDB.mapObjectiveDots == true
-        and UnrealQuest.Client.GetSettingsRadio(UnrealQuestSettingsMapObjectiveDotsOption1) == true
+rt.execute("UnrealQuestSettingsMapObjectiveAreas:GetScript('OnClick')()")
+check("unticking Areas greys out Show all areas", rt.eval("""(function()
+    return UnrealQuestDB.mapObjectiveAreas == false
+        and UnrealQuestSettingsMapShowAllAreas.mouseEnabled == false
 end)()"""))
 rt.execute("""
     UnrealQuestDB.mapObjectiveDots = true
+    UnrealQuestDB.mapObjectiveAreas = false
     UnrealQuest:GetModule('Settings').page.refresh()
 """)
-check("reopening the page syncs the group from the store", rt.eval("""(function()
-    local Client = UnrealQuest.Client
-    return Client.GetSettingsRadio(UnrealQuestSettingsMapObjectiveDotsOption1) == true
-        and Client.GetSettingsRadio(UnrealQuestSettingsMapObjectiveDotsOption2) == false
-end)()"""))
 
 rt.execute("""
     local slider = UnrealQuest:GetModule('Settings').liveSliders[1].control
@@ -16004,6 +17949,9 @@ check("moving the standalone slider changes the saved opacity before release",
 check("moving the standalone slider changes only the tracker background in real time",
       rt.eval("UnrealQuestTracker.unrealQuestBackground.vertex[4] == 0.75 "
               "and UnrealQuestTracker:GetAlpha() == 1"))
+check("the map tracker keeps its fixed 40% background whatever the slider says",
+      rt.eval("UnrealQuestMapTracker.unrealQuestBackground.vertex[4] == 0.4 "
+              "and UnrealQuestMapTracker.unrealQuestFollowingOpacity == 40"))
 rt.execute("""
     local slider = UnrealQuest:GetModule('Settings').liveSliders[1].control
     slider.thumb:GetScript('OnDragStop')()
@@ -16036,22 +17984,6 @@ rt.execute("""
 check("the standalone minimap-dot slider resizes existing dots live",
       rt.eval("UnrealQuestDB.minimapObjectiveDotScale == 50 "
               "and UnrealQuest:GetModule('MinimapPins').objectivePool[1].width == 5.4"))
-# A value no row names leaves the group blank rather than picking one for the
-# player and writing that choice back.
-rt.execute("""
-    UnrealQuestDB.mapObjectiveDots = 'someOldValue'
-    UnrealQuest:GetModule('Settings').page.refresh()
-""")
-check("an unrecognised stored value selects nothing at all", rt.eval("""(function()
-    local Client = UnrealQuest.Client
-    return UnrealQuestDB.mapObjectiveDots == 'someOldValue'
-        and Client.GetSettingsRadio(UnrealQuestSettingsMapObjectiveDotsOption1) == false
-        and Client.GetSettingsRadio(UnrealQuestSettingsMapObjectiveDotsOption2) == false
-end)()"""))
-rt.execute("""
-    UnrealQuestDB.mapObjectiveDots = true
-    UnrealQuest:GetModule('Settings').page.refresh()
-""")
 
 # The drag is the tracker's measured five-factor recipe, not a new one.
 rt.execute("UnrealQuestSettingsHandle:GetScript('OnDragStart')()")
@@ -16090,9 +18022,9 @@ check("closing hides the page's own regions, not just the window", rt.eval("""(f
     return true
 end)()"""))
 # A composite's extra regions are not in the widget list; missing them would
-# leave a radio row's label floating over a closed window.
+# leave a checkbox's label floating over a closed window.
 check("closing also hides a composite control's label",
-      rt.eval("UnrealQuestSettingsMapObjectiveDotsOption1.label:IsShown() == false"))
+      rt.eval("UnrealQuestSettingsMapObjectiveDots.label:IsShown() == false"))
 
 # pfQuest history import -------------------------------------------------------
 #
@@ -16452,6 +18384,7 @@ rt.execute("""
     local oldOrdered = state.GetOrderedQuests
     local oldCollect = target.CollectLocations
     local oldDots = config:Get('mapObjectiveDots')
+    local oldAreas = config:Get('mapObjectiveAreas')
 
     local quests = {}
     local questIndex = 1
@@ -16490,6 +18423,7 @@ rt.execute("""
         return locations, 0
     end
     config:Set('mapObjectiveDots', true)
+    config:Set('mapObjectiveAreas', false)
     pins.dirty = true
     pins:Refresh()
     UQ_TEST_UNBOUNDED_WORLD_DOTS = pins.areaVisibleCount
@@ -16500,6 +18434,7 @@ rt.execute("""
     state.GetOrderedQuests = oldOrdered
     target.CollectLocations = oldCollect
     config:Set('mapObjectiveDots', oldDots)
+    config:Set('mapObjectiveAreas', oldAreas)
 
     local minimap = UnrealQuest:GetModule('MinimapPins')
     minimap.targets = {}

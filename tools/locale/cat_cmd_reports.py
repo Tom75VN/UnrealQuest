@@ -51,6 +51,12 @@ STRINGS = {
     "цели заданий на карте мира рисуются точками",
     "世界地图任务目标以圆点绘制",
 ),
+"CMD_MAP_STYLE_SET_BOTH": (
+    "world-map quest objectives drawn as dots and areas",
+    "objectifs de quête dessinés en points et en zones sur la carte",
+    "цели заданий на карте мира рисуются точками и областями",
+    "世界地图任务目标以圆点和区域绘制",
+),
 "CMD_MAP_STYLE_SET_AREAS": (
     "world-map quest objectives drawn as areas",
     "objectifs de quête dessinés en zones sur la carte",
@@ -128,10 +134,10 @@ STRINGS = {
     "маркеры заданий:     %s видимых / %s в пуле",
     "任务标记：           %s 可见 / %s 已缓存"),
 "CMD_MAP_QUEST_MARKERS_RETIRED": (
-    "quest markers:       retired; hover an area for the quest",
-    "marqueurs de quête : retirés ; survolez une zone pour la quête",
-    "маркеры заданий:     сняты; наведите на область, чтобы увидеть задание",
-    "任务标记：           已停用；将鼠标悬停在区域上查看任务"),
+    "quest numbers:       Areas presentation only",
+    "numéros de quête :   présentation Zones uniquement",
+    "номера заданий:      только в режиме областей",
+    "任务编号：           仅区域显示模式"),
 "CMD_MAP_VENDOR_PINS": (
     "quest vendor points: %s, %s on the map / %s on the minimap",
     "points marchands :   %s, %s sur la carte / %s sur la mini-carte",
@@ -141,12 +147,14 @@ STRINGS = {
 "CMD_MAP_BAGS": ("(bags: %s)", "(sacs : %s)", "(сумки: %s)", "（背包：%s）"),
 "CMD_MAP_BAGS_UNREADABLE": ("unreadable", "illisibles", "нечитаемо", "无法读取"),
 "CMD_MAP_OBJECTIVE_STYLE": (
-    "objective style:     %s (/uq map dots|areas)",
-    "style des objectifs : %s (/uq map dots|areas)",
-    "стиль целей:         %s (/uq map dots|areas)",
-    "目标样式：           %s（/uq map dots|areas）"),
+    "objective style:     %s (/uq map dots|areas|both)",
+    "style des objectifs : %s (/uq map dots|areas|both)",
+    "стиль целей:         %s (/uq map dots|areas|both)",
+    "目标样式：           %s（/uq map dots|areas|both）"),
 "CMD_MAP_STYLE_DOTS": ("dots", "points", "точки", "圆点"),
 "CMD_MAP_STYLE_AREAS": ("areas", "zones", "области", "区域"),
+"CMD_MAP_STYLE_BOTH": ("dots and areas", "points et zones", "точки и области", "圆点和区域"),
+"CMD_MAP_STYLE_NONE": ("none", "aucun", "нет", "无"),
 "CMD_MAP_OBJECTIVE_FRAMES": (
     "objective frames:    %s visible / %s pooled",
     "cadres d'objectif :  %s visibles / %s en réserve",
@@ -158,8 +166,8 @@ STRINGS = {
     "цвета карты:          синие цели / зелёные сдачи / золотые патрули",
     "地图颜色：            蓝色目标 / 绿色交任务 / 金色巡逻"),
 "CMD_MAP_COLOURS_MARKERS": (
-    " + yellow numbered markers", " + marqueurs numérotés jaunes",
-    " + жёлтые нумерованные маркеры", " + 黄色编号标记"),
+    " + textured quest numbers", " + numéros de quête texturés",
+    " + текстурированные номера заданий", " + 纹理任务编号"),
 "CMD_MAP_GIVER_MARKERS": (
     "giver \"!\" markers:   %s visible / %s pooled",
     "marqueurs \"!\" :      %s visibles / %s en réserve",
@@ -964,6 +972,11 @@ STRINGS = {
     "运行 /urp probe facing，原地转一整圈，然后 /urp probe facing stop"),
 
 # --- quest log dump / config -------------------------------------------------
+"CMD_GEAR_USAGE": (
+    "open a quest turn-in window that offers a choice of rewards first",
+    "ouvrez d'abord une fenetre de rendu de quete qui propose un choix de recompenses",
+    "сначала откройте окно сдачи задания с выбором награды",
+    "请先打开一个可选择奖励的交任务窗口"),
 "CMD_QUESTLOG_DUMP_USAGE": (
     "open the quest log and select a quest first",
     "ouvrez d'abord le journal de quêtes et sélectionnez une quête",

@@ -5,13 +5,11 @@ Resolves one quest to one point: the middle of the blue area the world map
 draws for it.
 
 This module exists to make a guarantee rather than to add a feature. The
-component reduction below -- raw spawn cloud to 2.5% cells, cells joined into
-disconnected components, each component represented by the occupied cell
-nearest its weighted centroid -- used to live inside Map/WorldMapPins.lua,
-where it decided where the tiles went. It moved here unchanged so that the HUD
-waypoint and the map tiles can never disagree about where a quest is: they are
-now the same computation over the same locations, not two implementations of
-"the middle of the area".
+component reduction below -- raw spawn cloud to Questline-style local
+clusters, each represented by the real spawn nearest its map-space centroid --
+lives here so that the HUD waypoint and the map's numbered POI can never
+disagree about where a quest is: they are the same computation over the same
+locations, not two implementations of "the middle of the area".
 
 That is a deliberate design constraint, not an implementation detail. The
 waypoint's whole promise is "walk towards the blue area", and a second,
@@ -19,7 +17,7 @@ independently-derived centre would eventually point somewhere the map does not.
 
 Which component wins when a quest has several disconnected clusters is
 SelectPrimary's decision, and it is the densest one -- the same one the
-(currently retired) numbered map marker sat on. Not the nearest: the choice is
+numbered map marker sits on. Not the nearest: the choice is
 stable as the player moves, so the waypoint does not swap targets underfoot.
 Changing that is a change to SelectPrimary alone, and both layers follow.
 
@@ -31,12 +29,13 @@ by the offline smoke test.
 local UQ = UnrealQuest
 local QuestTarget = UQ:NewModule("QuestTarget")
 
--- Kept identical to the values Map/WorldMapPins.lua rendered with. The tile
--- size equals the cell size so tiles sit edge to edge: probe 1.31.0 showed
--- overlapping translucent tiles compounding into visibly darker bands, and
--- 1.32.0 confirmed a non-overlapping grid is uniform.
+-- Interaction Buttons still use the measured 2.5-percent grid. Marker and
+-- waypoint selection instead follows the contour geometry: distances account
+-- for the map's roughly 3:2 aspect ratio and only points within 3.6 percent
+-- join one cluster.
 QuestTarget.CELL_PERCENT = 2.5
-QuestTarget.LINK_CELLS = 2
+QuestTarget.LINK_DISTANCE = 3.6
+QuestTarget.MAP_Y_SCALE = 2 / 3
 
 local function Database()
     return UQ:GetModule("Database")
@@ -54,90 +53,168 @@ local function CellKey(x, y)
     return tostring(x) .. ":" .. tostring(y)
 end
 
--- Reduces a raw spawn-point cloud to occupied cells, then joins nearby cells
--- into disconnected components. A component's point is the occupied cell
--- nearest its weighted centroid, never an arbitrary empty midpoint: the
--- centroid of a ring of spawns sits in the middle of the ring, where there is
--- nothing to do.
-function QuestTarget:BuildComponents(locations)
-    local cells = {}
-    local locationIndex = 1
-    local locationTotal = table.getn(locations)
-    while locationIndex <= locationTotal do
-        local location = locations[locationIndex]
-        local cellX = math.floor(location.x / self.CELL_PERCENT)
-        local cellY = math.floor(location.y / self.CELL_PERCENT)
-        local key = CellKey(cellX, cellY)
-        local cell = cells[key]
-        if not cell then
-            cell = { cellX = cellX, cellY = cellY, count = 0, sumX = 0, sumY = 0 }
-            cells[key] = cell
+local function PointOrder(a, b)
+    if a[1] == b[1] then return a[2] < b[2] end
+    return a[1] < b[1]
+end
+
+local function CellOrder(a, b)
+    if a.cellX == b.cellX then return a.cellY < b.cellY end
+    return a.cellX < b.cellX
+end
+
+local function PointBucket(point)
+    return math.floor(point[1] / QuestTarget.LINK_DISTANCE),
+        math.floor(point[2] * QuestTarget.MAP_Y_SCALE / QuestTarget.LINK_DISTANCE)
+end
+
+local function PointDistanceSquared(a, b)
+    local deltaX = a[1] - b[1]
+    local deltaY = (a[2] - b[2]) * QuestTarget.MAP_Y_SCALE
+    return deltaX * deltaX + deltaY * deltaY
+end
+
+local function UniquePoints(locations)
+    local points = {}
+    local seen = {}
+    local index = 1
+    local total = table.getn(locations or {})
+    while index <= total do
+        local location = locations[index]
+        local x = location and location.x
+        local y = location and location.y
+        if type(x) == "number" and type(y) == "number"
+            and x >= 0 and x <= 100 and y >= 0 and y <= 100 then
+            local key = tostring(x) .. ":" .. tostring(y)
+            if not seen[key] then
+                seen[key] = true
+                table.insert(points, { x, y })
+            end
         end
-        cell.count = cell.count + 1
-        cell.sumX = cell.sumX + location.x
-        cell.sumY = cell.sumY + location.y
-        locationIndex = locationIndex + 1
+        index = index + 1
+    end
+    table.sort(points, PointOrder)
+    return points
+end
+
+local function BuildPointClusters(points)
+    local buckets = {}
+    local index = 1
+    local total = table.getn(points)
+    while index <= total do
+        local bucketX, bucketY = PointBucket(points[index])
+        local key = CellKey(bucketX, bucketY)
+        buckets[key] = buckets[key] or {}
+        table.insert(buckets[key], index)
+        index = index + 1
     end
 
-    local components = {}
+    local clusters = {}
     local visited = {}
-    local seedKey, seed
-    for seedKey, seed in pairs(cells) do
-        if not visited[seedKey] then
-            local component = { cells = {}, count = 0, sumX = 0, sumY = 0 }
-            local queue = { seed }
+    local maximumDistance = QuestTarget.LINK_DISTANCE * QuestTarget.LINK_DISTANCE
+    index = 1
+    while index <= total do
+        if not visited[index] then
+            visited[index] = true
+            local queue = { index }
             local queueIndex = 1
-            visited[seedKey] = true
+            local group = {}
             while queueIndex <= table.getn(queue) do
-                local cell = queue[queueIndex]
-                table.insert(component.cells, cell)
-                component.count = component.count + cell.count
-                component.sumX = component.sumX + cell.sumX
-                component.sumY = component.sumY + cell.sumY
-
-                local offsetX = -self.LINK_CELLS
-                while offsetX <= self.LINK_CELLS do
-                    local offsetY = -self.LINK_CELLS
-                    while offsetY <= self.LINK_CELLS do
-                        if offsetX ~= 0 or offsetY ~= 0 then
-                            local neighborKey = CellKey(cell.cellX + offsetX, cell.cellY + offsetY)
-                            local neighbor = cells[neighborKey]
-                            if neighbor and not visited[neighborKey] then
-                                visited[neighborKey] = true
-                                table.insert(queue, neighbor)
+                local current = points[queue[queueIndex]]
+                local bucketX, bucketY = PointBucket(current)
+                table.insert(group, current)
+                local x = bucketX - 1
+                while x <= bucketX + 1 do
+                    local y = bucketY - 1
+                    while y <= bucketY + 1 do
+                        local candidates = buckets[CellKey(x, y)] or {}
+                        local candidateIndex = 1
+                        local candidateTotal = table.getn(candidates)
+                        while candidateIndex <= candidateTotal do
+                            local candidate = candidates[candidateIndex]
+                            if not visited[candidate]
+                                and PointDistanceSquared(current, points[candidate])
+                                    <= maximumDistance then
+                                visited[candidate] = true
+                                table.insert(queue, candidate)
                             end
+                            candidateIndex = candidateIndex + 1
                         end
-                        offsetY = offsetY + 1
+                        y = y + 1
                     end
-                    offsetX = offsetX + 1
+                    x = x + 1
                 end
                 queueIndex = queueIndex + 1
             end
-
-            local centerX = component.sumX / component.count
-            local centerY = component.sumY / component.count
-            local nearestDistance = nil
-            local cellIndex = 1
-            local cellTotal = table.getn(component.cells)
-            while cellIndex <= cellTotal do
-                local cell = component.cells[cellIndex]
-                -- Snap visual tiles to their grid centers. Using the raw spawn
-                -- average here would shift adjacent equal-size tiles into one
-                -- another and compound their alpha into dark bands.
-                cell.x = (cell.cellX + 0.5) * self.CELL_PERCENT
-                cell.y = (cell.cellY + 0.5) * self.CELL_PERCENT
-                local deltaX = cell.x - centerX
-                local deltaY = cell.y - centerY
-                local distance = deltaX * deltaX + deltaY * deltaY
-                if not nearestDistance or distance < nearestDistance then
-                    nearestDistance = distance
-                    component.x = cell.x
-                    component.y = cell.y
-                end
-                cellIndex = cellIndex + 1
-            end
-            table.insert(components, component)
+            table.sort(group, PointOrder)
+            table.insert(clusters, group)
         end
+        index = index + 1
+    end
+    return clusters
+end
+
+-- Uses the same anisotropic clustering as the free-size contour. A component's
+-- point is the REAL recorded spawn nearest its visual centroid, never an empty
+-- midpoint or the centre of a coarse interaction cell. The cells remain on the
+-- component only to place the invisible hover/click surface.
+function QuestTarget:BuildComponents(locations)
+    local components = {}
+    local clusters = BuildPointClusters(UniquePoints(locations))
+    local clusterIndex = 1
+    local clusterTotal = table.getn(clusters)
+    while clusterIndex <= clusterTotal do
+        local group = clusters[clusterIndex]
+        local component = { cells = {}, count = table.getn(group), sumX = 0, sumY = 0 }
+        local cells = {}
+        local pointIndex = 1
+        while pointIndex <= component.count do
+            local point = group[pointIndex]
+            component.sumX = component.sumX + point[1]
+            component.sumY = component.sumY + point[2]
+            local cellX = math.floor(point[1] / self.CELL_PERCENT)
+            local cellY = math.floor(point[2] / self.CELL_PERCENT)
+            local key = CellKey(cellX, cellY)
+            local cell = cells[key]
+            if not cell then
+                cell = { cellX = cellX, cellY = cellY, count = 0, sumX = 0, sumY = 0 }
+                cells[key] = cell
+                table.insert(component.cells, cell)
+            end
+            cell.count = cell.count + 1
+            cell.sumX = cell.sumX + point[1]
+            cell.sumY = cell.sumY + point[2]
+            pointIndex = pointIndex + 1
+        end
+
+        local center = {
+            component.sumX / component.count,
+            component.sumY / component.count,
+        }
+        local nearestDistance = nil
+        pointIndex = 1
+        while pointIndex <= component.count do
+            local point = group[pointIndex]
+            local distance = PointDistanceSquared(point, center)
+            if not nearestDistance or distance < nearestDistance then
+                nearestDistance = distance
+                component.x = point[1]
+                component.y = point[2]
+            end
+            pointIndex = pointIndex + 1
+        end
+
+        table.sort(component.cells, CellOrder)
+        local cellIndex = 1
+        local cellTotal = table.getn(component.cells)
+        while cellIndex <= cellTotal do
+            local cell = component.cells[cellIndex]
+            cell.x = (cell.cellX + 0.5) * self.CELL_PERCENT
+            cell.y = (cell.cellY + 0.5) * self.CELL_PERCENT
+            cellIndex = cellIndex + 1
+        end
+        table.insert(components, component)
+        clusterIndex = clusterIndex + 1
     end
     return components
 end

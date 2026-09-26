@@ -376,7 +376,10 @@ local function PanelQuest(surface)
     end
     local resolvePanel = Client[surface.panel]
     local panel = type(resolvePanel) == "function" and resolvePanel() or nil
-    if not panel or not Client.IsObjectShown(panel) then
+    -- Visible, not shown: the idle panel's scroll child keeps its own shown
+    -- flag while its parent is hidden, and would put a second flag row over
+    -- the live one (questgiver.flag_scroll_hide.v1).
+    if not panel or not Client.IsObjectVisible(panel) then
         return nil
     end
     -- Match:ResolveGiverQuestId answers for whichever panel is up: the offer
@@ -391,17 +394,33 @@ local function PanelQuest(surface)
     return { questId = questId, title = Client.GetQuestGiverTitle() }
 end
 
+-- Same tolerance as the Quest Log's: absorbs a resting offset that is not
+-- exactly zero.
+local FLAG_SCROLL_TOLERANCE = 1
+
 local function RefreshFlags(surface, quest)
     local flags = UQ:GetModule("QuestLanguageFlags")
     if not flags then
         return
     end
     local resolveAnchor = Client[surface.anchor]
+    local anchor = type(resolveAnchor) == "function" and resolveAnchor() or nil
+    -- The anchor IS the panel's scroll viewport. Like the Quest Log (see
+    -- DetailScrolledAwayFromTop in Quest/QuestLogButtons.lua), the row belongs
+    -- to the resting top only: past the first pixel of scroll it goes away and
+    -- returns at the top. An unmeasurable pane (nil) keeps its row.
+    local offset = Client.GetVerticalScrollOffset(anchor)
+    -- Diagnostic only, read by UnrealRuntimeProbe's questgiverflagscroll.
+    QuestGiverTranslation.diagFlagOffset = QuestGiverTranslation.diagFlagOffset or {}
+    QuestGiverTranslation.diagFlagOffset[surface.key] = offset or "nil"
+    if quest and offset ~= nil and offset > FLAG_SCROLL_TOLERANCE then
+        quest = nil
+    end
     flags:Refresh({
         key = surface.key,
         namePrefix = surface.namePrefix,
         quest = quest,
-        anchor = type(resolveAnchor) == "function" and resolveAnchor() or nil,
+        anchor = anchor,
         -- One placer for both, because both panels live inside the same
         -- QuestFrame and that is the frame Client.PlaceQuestGiverFlag parents
         -- to; only the anchor differs.

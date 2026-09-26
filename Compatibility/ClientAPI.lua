@@ -1706,6 +1706,16 @@ function Client.HideObject(object)
         return false
     end
     local ok = pcall(object.Hide, object)
+    local layers = object.unrealQuestLinkedLayers
+    local index = 1
+    local total = type(layers) == "table" and table.getn(layers) or 0
+    while index <= total do
+        local layer = layers[index]
+        if layer and type(layer.Hide) == "function" then
+            pcall(layer.Hide, layer)
+        end
+        index = index + 1
+    end
     return ok and true or false
 end
 
@@ -2090,6 +2100,147 @@ function Client.ReapplyWorldMapStrokeLayer()
     return true
 end
 
+-- Every quest-area patch, world map and minimap alike, is drawn at 80% of
+-- the opacity baked into media/AreaContourProfile*.tga. Applied as the vertex
+-- alpha, so it multiplies with the group's own alpha (flash, focus dimming)
+-- instead of fighting it.
+Client.AREA_CONTOUR_ALPHA = 0.8
+
+function Client.CreateWorldMapAreaGroup(index)
+    local canvas = Client.GetWorldMapCanvas()
+    local create = Resolve("CreateFrame")
+    if not canvas or not create or type(index) ~= "number" then
+        return nil
+    end
+    local ok, group = pcall(create, "Frame",
+        "UnrealQuestAreaContourGroup" .. tostring(index), canvas)
+    if not ok or not group then return nil end
+    if type(group.SetAllPoints) == "function" then
+        pcall(group.SetAllPoints, group, canvas)
+    end
+    local level = 1
+    if type(canvas.GetFrameLevel) == "function" and type(group.SetFrameLevel) == "function" then
+        local levelOk, canvasLevel = pcall(canvas.GetFrameLevel, canvas)
+        if levelOk and type(canvasLevel) == "number" then
+            level = canvasLevel + 1
+        end
+        pcall(group.SetFrameLevel, group, level)
+    end
+    group.unrealQuestBaseFrameLevel = level
+    if type(group.EnableMouse) == "function" then
+        pcall(group.EnableMouse, group, false)
+    end
+    if type(group.Show) == "function" then
+        pcall(group.Show, group)
+    end
+    return group
+end
+
+function Client.CreateWorldMapAreaPatch(group)
+    if not group or type(group.CreateTexture) ~= "function" then return nil end
+    local ok, texture = pcall(group.CreateTexture, group, nil, "ARTWORK")
+    if not ok then return nil end
+    return texture
+end
+
+function Client.PlaceWorldMapAreaPatch(group, texture, path,
+    left, top, right, bottom, u1, u2, v1, v2, red, green, blue)
+    if not group or not texture or type(path) ~= "string" then return false end
+    local width, height = Client.GetWorldMapCanvasSize()
+    if not width or not height or right <= left or bottom <= top then return false end
+    if type(texture.SetTexture) ~= "function"
+        or type(texture.SetTexCoord) ~= "function"
+        or type(texture.SetVertexColor) ~= "function"
+        or type(texture.ClearAllPoints) ~= "function"
+        or type(texture.SetPoint) ~= "function"
+        or type(texture.SetWidth) ~= "function"
+        or type(texture.SetHeight) ~= "function"
+        or type(texture.Show) ~= "function" then
+        return false
+    end
+    local textureOk = pcall(texture.SetTexture, texture, path)
+    texture.unrealQuestPath = textureOk and path or nil
+    local coordOk = pcall(texture.SetTexCoord, texture, u1, u2, v1, v2)
+    local colorOk = pcall(texture.SetVertexColor, texture,
+        red or 1, green or 1, blue or 1, Client.AREA_CONTOUR_ALPHA)
+    pcall(texture.ClearAllPoints, texture)
+    local pointOk = pcall(texture.SetPoint, texture,
+        "TOPLEFT", group, "TOPLEFT", left * width, -top * height)
+    local widthOk = pcall(texture.SetWidth, texture, math.max(0.1, (right - left) * width))
+    local heightOk = pcall(texture.SetHeight, texture, math.max(0.1, (bottom - top) * height))
+    local showOk = pcall(texture.Show, texture)
+    return textureOk and coordOk and colorOk and pointOk
+        and widthOk and heightOk and showOk and true or false
+end
+
+-- Batched form of Client.PlaceWorldMapAreaPatch for a whole contour group: the
+-- same calls in the same order, but the canvas size is read once and the pass
+-- is one pcall instead of eight per patch, and a texture already holding
+-- `path` is not handed it again. Records are { left, top, right, bottom,
+-- u1, u2, v1, v2 } in canvas fractions. Returns how many leading patches were
+-- placed; the caller falls back to the single-patch path from there.
+function Client.PlaceWorldMapAreaPatches(group, textures, records, count, path,
+    red, green, blue)
+    local width, height = Client.GetWorldMapCanvasSize()
+    if not group or not width or not height or type(path) ~= "string" then
+        return 0
+    end
+    local placed = 0
+    pcall(function()
+        local index = 1
+        while index <= count do
+            local texture = textures[index]
+            local record = records[index]
+            if not texture or record[3] <= record[1] or record[4] <= record[2] then
+                return
+            end
+            if texture.unrealQuestPath ~= path then
+                texture:SetTexture(path)
+                texture.unrealQuestPath = path
+            end
+            texture:SetTexCoord(record[5], record[6], record[7], record[8])
+            texture:SetVertexColor(red or 1, green or 1, blue or 1, Client.AREA_CONTOUR_ALPHA)
+            texture:ClearAllPoints()
+            texture:SetPoint("TOPLEFT", group, "TOPLEFT",
+                record[1] * width, -record[2] * height)
+            texture:SetWidth(math.max(0.1, (record[3] - record[1]) * width))
+            texture:SetHeight(math.max(0.1, (record[4] - record[2]) * height))
+            texture:Show()
+            placed = index
+            index = index + 1
+        end
+    end)
+    return placed
+end
+
+-- A hover restyle: only the strip and the tint change, never a position.
+function Client.RestyleWorldMapAreaPatches(textures, count, path, red, green, blue)
+    return pcall(function()
+        local index = 1
+        while index <= count do
+            local texture = textures[index]
+            if texture then
+                if texture.unrealQuestPath ~= path then
+                    texture:SetTexture(path)
+                    texture.unrealQuestPath = path
+                end
+                texture:SetVertexColor(red or 1, green or 1, blue or 1, Client.AREA_CONTOUR_ALPHA)
+            end
+            index = index + 1
+        end
+    end) and true or false
+end
+
+function Client.ReapplyWorldMapAreaGroup(group)
+    local canvas = Client.GetWorldMapCanvas()
+    if not group or not canvas then return false end
+    if type(group.SetAllPoints) == "function" then
+        pcall(group.SetAllPoints, group, canvas)
+    end
+    if type(group.Show) ~= "function" then return false end
+    return pcall(group.Show, group) and true or false
+end
+
 local function ReadObjectMethod(object, methodName)
     local method = object and object[methodName]
     if type(method) ~= "function" then
@@ -2198,6 +2349,13 @@ function Client.PositionWorldMapPin(frame, x, y)
     end
     frame.unrealQuestMapX = x
     frame.unrealQuestMapY = y
+    local layers = frame.unrealQuestLinkedLayers
+    local layerIndex = 1
+    local layerTotal = type(layers) == "table" and table.getn(layers) or 0
+    while layerIndex <= layerTotal do
+        Client.PositionWorldMapPin(layers[layerIndex], x, y)
+        layerIndex = layerIndex + 1
+    end
     return true
 end
 
@@ -2271,6 +2429,13 @@ local function ReapplyOneWorldMapPin(frame, canvas, width, height)
         frame:Hide()
     else
         frame:Show()
+    end
+    local layers = frame.unrealQuestLinkedLayers
+    local layerIndex = 1
+    local layerTotal = type(layers) == "table" and table.getn(layers) or 0
+    while layerIndex <= layerTotal do
+        ReapplyOneWorldMapPin(layers[layerIndex], canvas, width, height)
+        layerIndex = layerIndex + 1
     end
 end
 
@@ -2715,6 +2880,72 @@ function Client.HideMapTooltip(frame)
     return true
 end
 
+-- Whether the map tooltip is still showing for `frame`: another hover can take
+-- it over without any Hide of ours running.
+function Client.IsMapTooltipOwnedBy(frame)
+    local tooltip = ResolveMapTooltip()
+    if not tooltip or not frame or type(tooltip.IsOwned) ~= "function" then
+        return false
+    end
+    local ok, owned = pcall(tooltip.IsOwned, tooltip, frame)
+    if not ok or not owned then
+        return false
+    end
+    if type(tooltip.IsShown) == "function" then
+        local shownOk, shown = pcall(tooltip.IsShown, tooltip)
+        if shownOk and not shown then
+            return false
+        end
+    end
+    return true
+end
+
+-- Moves the map tooltip next to the cursor: above and right of it, flipped
+-- left in the right half of the screen and below it in the top half, so it
+-- never runs off an edge. The cursor comes from GetCursorPosition, already
+-- confirmed for hit testing (api.getcursorposition_usable_for_hit_testing),
+-- divided by the TOOLTIP's own effective scale, and the tooltip is anchored
+-- to UIParent's bottom-left -- the recipe the entity tooltip's cursor follow
+-- uses (Client.ContinueEntityTooltipCursorFollow). Re-anchoring the fullscreen
+-- map's own tooltip this way has no runtime record yet: the capability is
+-- declared unverified and the tooltip simply stays on its owner if any step
+-- here fails.
+function Client.FollowMapTooltipCursor()
+    local gap = 18
+    local tooltip = ResolveMapTooltip()
+    local getCursor = Resolve("GetCursorPosition")
+    local parent = ResolveObject("UIParent")
+    if not tooltip or not getCursor or not parent
+        or type(tooltip.GetEffectiveScale) ~= "function"
+        or type(tooltip.ClearAllPoints) ~= "function"
+        or type(tooltip.SetPoint) ~= "function"
+        or type(parent.GetEffectiveScale) ~= "function"
+        or type(parent.GetWidth) ~= "function"
+        or type(parent.GetHeight) ~= "function" then
+        return false
+    end
+    local ok, cursorX, cursorY, scale, parentScale, parentWidth, parentHeight =
+        pcall(function()
+            local x, y = getCursor()
+            return x, y, tooltip:GetEffectiveScale(), parent:GetEffectiveScale(),
+                parent:GetWidth(), parent:GetHeight()
+        end)
+    if not ok or type(cursorX) ~= "number" or type(cursorY) ~= "number"
+        or type(scale) ~= "number" or scale <= 0
+        or type(parentScale) ~= "number" or type(parentWidth) ~= "number"
+        or type(parentHeight) ~= "number" then
+        return false
+    end
+    local right = cursorX > parentWidth * parentScale / 2
+    local top = cursorY > parentHeight * parentScale / 2
+    local x = cursorX / scale + (right and -gap or gap)
+    local y = cursorY / scale + (top and -gap or gap)
+    local point = (top and "TOP" or "BOTTOM") .. (right and "RIGHT" or "LEFT")
+    pcall(tooltip.ClearAllPoints, tooltip)
+    local placed = pcall(tooltip.SetPoint, tooltip, point, parent, "BOTTOMLEFT", x, y)
+    return placed and true or false
+end
+
 -- A plain-GameTooltip twin of Client.ShowMapTooltip, for content anchored
 -- anywhere OTHER than the fullscreen map's own canvas (the quest tracker
 -- window, in particular). Deliberately does NOT go through
@@ -2840,6 +3071,7 @@ local GIVER_MENU_WIDTH = 220
 local GIVER_MENU_PADDING = 6
 local GIVER_MENU_LEVEL_BOOST = 30
 local GIVER_MENU_CATCHER_LEVEL_BOOST = 20
+local MAP_TRACKER_PIN_LEVEL_BOOST = 19
 local giverMenuFrame = nil
 local giverMenuRows = {}
 local giverMenuCatcher = nil
@@ -4023,9 +4255,192 @@ Client.LOW_LEVEL_QUEST_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\icons\\
 Client.ACTIVE_QUEST_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\ActiveQuestIcon"
 Client.COMPLETE_QUEST_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\CompleteQuestIcon"
 Client.MINIMAP_OBJECTIVE_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\QuestDot"
+Client.WORLD_MAP_AREA_CONTOUR_TEXTURE =
+    "Interface\\AddOns\\unrealQuest\\media\\AreaContourProfile"
+Client.WORLD_MAP_AREA_CONTOUR_NEUTRAL_TEXTURE =
+    "Interface\\AddOns\\unrealQuest\\media\\AreaContourProfileNeutral"
+-- Quest POI badges, shared by the world-map quest-area markers and the tracker
+-- rows (tools/make_quest_poi_markers.py builds both textures; questpoi-v2.tga
+-- is questpoi.tga with its main and hover circles redrawn): questpoi-v2.tga
+-- holds the main, hover and active circles and then the soft glow drawn below
+-- the followed quest's active circle, one per 64x64 cell; QuestPOINumbers.tga
+-- the glyphs 1-25 in 32x32 cells (rows 0-3 dark for the active circle, rows
+-- 4-7 gold for main and hover).
+Client.WORLD_MAP_QUEST_POI_CIRCLE_TEXTURE =
+    "Interface\\AddOns\\unrealQuest\\media\\questpoi-v2"
+Client.WORLD_MAP_QUEST_POI_NUMBER_TEXTURE =
+    "Interface\\AddOns\\unrealQuest\\media\\QuestPOINumbers"
+Client.WORLD_MAP_QUEST_POI_SIZE = 24
+-- The glow cell fades to nothing at its edge; 1.6x the circle leaves a tight
+-- rim around it, and 0.75 vertex alpha keeps that rim from washing out the
+-- map around the badge.
+Client.QUEST_POI_GLOW_SCALE = 1.6
+Client.QUEST_POI_GLOW_ALPHA = 0.75
 Client.FOLLOWED_QUEST_DOT_BORDER_TEXTURE =
     "Interface\\AddOns\\unrealQuest\\media\\FollowedQuestDotBorder"
 Client.FOLLOWED_QUEST_CIRCLE_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\quest-circle"
+
+-- One local table: this chunk sits at the Lua 200-locals limit.
+local QuestPOI = { MAIN = 0, HOVER = 1, ACTIVE = 2, GLOW = 3 }
+
+function QuestPOI.SetTexture(texture, path, left, right, top, bottom)
+    if not texture or type(texture.SetTexture) ~= "function"
+        or type(texture.SetTexCoord) ~= "function" then
+        return false
+    end
+    local textureOk = pcall(texture.SetTexture, texture, path)
+    local coordOk = pcall(texture.SetTexCoord, texture, left, right, top, bottom)
+    if type(texture.SetVertexColor) == "function" then
+        pcall(texture.SetVertexColor, texture, 1, 1, 1, 1)
+    end
+    return textureOk and coordOk and true or false
+end
+
+function QuestPOI.SetCircle(texture, state)
+    return QuestPOI.SetTexture(texture, Client.WORLD_MAP_QUEST_POI_CIRCLE_TEXTURE,
+        state * 64 / 256, (state + 1) * 64 / 256, 0, 1)
+end
+
+-- `region` is how many texels of the 32px glyph cell the badge shows: equal
+-- to the badge size draws the glyph 1:1, larger shrinks it.
+function QuestPOI.SetGlyph(texture, number, active, region)
+    if type(number) ~= "number" or number < 1 or number > 25
+        or number ~= math.floor(number) then
+        return false
+    end
+    local index = number - 1
+    local row = math.floor(index / 8)
+    local column = index - row * 8
+    if not active then row = row + 4 end
+    local inset = (32 - region) / 2
+    return QuestPOI.SetTexture(texture, Client.WORLD_MAP_QUEST_POI_NUMBER_TEXTURE,
+        (column * 32 + inset) / 256, ((column + 1) * 32 - inset) / 256,
+        (row * 32 + inset) / 256, ((row + 1) * 32 - inset) / 256)
+end
+
+function QuestPOI.SetGlow(texture)
+    local placed = QuestPOI.SetCircle(texture, QuestPOI.GLOW)
+    if placed and type(texture.SetVertexColor) == "function" then
+        pcall(texture.SetVertexColor, texture, 1, 1, 1, Client.QUEST_POI_GLOW_ALPHA)
+    end
+    return placed
+end
+
+-- Layer order, bottom to top: glow (marker level -2), circle or hover circle
+-- (-1; only one of them is ever shown), then the interactive marker itself,
+-- whose own texture is the number. The mouse-owning frame must be the top
+-- one: with the number on a mouse-disabled layer above the marker, the
+-- circle took neither hover nor click in game (2026-09-26), while the proven
+-- pattern -- decorative mouse-disabled Buttons BELOW the interactive one, as
+-- the followed turn-in ring and the dot rims -- leaves the marker the hit.
+--
+-- Every state change is a Show or Hide of a whole layer. A texcoord change on
+-- a map child that is already drawn did not reach the screen in game (the
+-- hover cell never appeared), while showing a hidden linked layer does.
+function QuestPOI.ShowMapLayer(layer, shown)
+    if not layer then
+        return false
+    end
+    if shown then
+        layer.unrealQuestSuppressed = nil
+        if type(layer.unrealQuestMapX) == "number" then
+            Client.ReapplyWorldMapPin(layer)
+        end
+    else
+        layer.unrealQuestSuppressed = true
+        Client.HideObject(layer)
+    end
+    return true
+end
+
+-- The glow under the followed quest's active circle and under any hovered
+-- circle; the hover circle replaces the main circle while hovered and never
+-- the active one.
+function QuestPOI.ApplyMapLayers(frame)
+    local selected = frame.unrealQuestQuestNumberSelected
+    local hovered = frame.unrealQuestQuestNumberHovered and not selected
+    QuestPOI.ShowMapLayer(frame.unrealQuestGlowLayer, selected or hovered)
+    QuestPOI.ShowMapLayer(frame.unrealQuestCircleLayer, not hovered)
+    QuestPOI.ShowMapLayer(frame.unrealQuestHoverLayer, hovered)
+    return true
+end
+
+function QuestPOI.CreateMapLayer(frame, name, size, levelOffset)
+    local layer = Client.CreateWorldMapPin(name, 1, 1, 1)
+    if not layer then
+        return nil
+    end
+    Client.SetWorldMapPinMouseEnabled(layer, false)
+    Client.SetWorldMapPinSize(layer, size, size)
+    local level = 122
+    if type(frame.GetFrameLevel) == "function" then
+        local ok, value = pcall(frame.GetFrameLevel, frame)
+        if ok and type(value) == "number" then level = value end
+    end
+    if type(layer.SetFrameLevel) == "function" then
+        pcall(layer.SetFrameLevel, layer, level + levelOffset)
+    end
+    layer.unrealQuestSuppressed = true
+    Client.HideObject(layer)
+    return layer
+end
+
+function Client.PrepareWorldMapQuestNumber(frame, index)
+    if not frame then
+        return false
+    end
+    if frame.unrealQuestCircleLayer and frame.unrealQuestHoverLayer
+        and frame.unrealQuestGlowLayer then
+        return true
+    end
+    local size = Client.WORLD_MAP_QUEST_POI_SIZE
+    local glowLayer = QuestPOI.CreateMapLayer(frame,
+        "QuestNumberGlow" .. tostring(index), size * Client.QUEST_POI_GLOW_SCALE, -2)
+    local circleLayer = QuestPOI.CreateMapLayer(frame,
+        "QuestNumberCircle" .. tostring(index), size, -1)
+    local hoverLayer = QuestPOI.CreateMapLayer(frame,
+        "QuestNumberHover" .. tostring(index), size, -1)
+    if not glowLayer or not circleLayer or not hoverLayer then
+        Client.HideObject(glowLayer)
+        Client.HideObject(circleLayer)
+        Client.HideObject(hoverLayer)
+        return false
+    end
+    frame.unrealQuestGlowLayer = glowLayer
+    frame.unrealQuestCircleLayer = circleLayer
+    frame.unrealQuestHoverLayer = hoverLayer
+    frame.unrealQuestLinkedLayers = { glowLayer, circleLayer, hoverLayer }
+    return QuestPOI.SetGlow(glowLayer.unrealQuestTexture)
+        and QuestPOI.SetCircle(hoverLayer.unrealQuestTexture, QuestPOI.HOVER)
+end
+
+function Client.SetWorldMapQuestNumberHover(frame, hovered)
+    if not frame or not frame.unrealQuestHoverLayer then
+        return false
+    end
+    frame.unrealQuestQuestNumberHovered = hovered and true or nil
+    return QuestPOI.ApplyMapLayers(frame)
+end
+
+function Client.SetWorldMapQuestNumber(frame, number, selected)
+    if not frame or not Client.PrepareWorldMapQuestNumber(
+        frame, frame.unrealQuestPoolIndex or number) then
+        return false
+    end
+    frame.unrealQuestQuestNumberSelected = selected and true or false
+    frame.unrealQuestQuestNumberHovered = nil
+    if not QuestPOI.SetCircle(frame.unrealQuestCircleLayer.unrealQuestTexture,
+            selected and QuestPOI.ACTIVE or QuestPOI.MAIN)
+        or not QuestPOI.SetGlyph(frame.unrealQuestTexture,
+            number, selected, Client.WORLD_MAP_QUEST_POI_SIZE) then
+        return false
+    end
+    QuestPOI.ApplyMapLayers(frame)
+    if frame.unrealQuestLabel and type(frame.unrealQuestLabel.Hide) == "function" then
+        pcall(frame.unrealQuestLabel.Hide, frame.unrealQuestLabel)
+    end
+    return true
+end
 
 function Client.SetWorldMapPinTexture(frame, path)
     local texture = frame and frame.unrealQuestTexture
@@ -4112,6 +4527,13 @@ function Client.SetWorldMapPinAlpha(frame, alpha)
         return false
     end
     frame.unrealQuestAlpha = alpha
+    local layers = frame.unrealQuestLinkedLayers
+    local index = 1
+    local total = type(layers) == "table" and table.getn(layers) or 0
+    while index <= total do
+        Client.SetWorldMapPinAlpha(layers[index], alpha)
+        index = index + 1
+    end
     return true
 end
 
@@ -4577,6 +4999,82 @@ function Client.CreateMinimapPin(index, size, red, green, blue)
         end
     end
     return frame
+end
+
+-- The minimap's quest-area layer (Map/MinimapAreas.lua): one mouse-disabled
+-- Frame child of Minimap holding flat texture patches, the same patches the
+-- world map's contours are built from. It is registered with the player-arrow
+-- lever like every minimap pin, one level below the pin band (the gold rims'
+-- level), so the dots and icons draw over the areas and the lever moves it
+-- with them. Nothing clips a child of Minimap on this client
+-- (minimap.addon_children_render_unclipped): the layer clips every patch to
+-- the minimap circle itself before handing it here.
+function Client.CreateMinimapAreaGroup()
+    local map = Client.GetMinimap()
+    local create = Resolve("CreateFrame")
+    if not map or not create then
+        return nil
+    end
+    local ok, group = pcall(create, "Frame", "UnrealQuestMinimapAreas", map)
+    if not ok or not group then
+        return nil
+    end
+    if type(group.SetAllPoints) == "function" then
+        pcall(group.SetAllPoints, group, map)
+    end
+    if type(group.EnableMouse) == "function" then
+        pcall(group.EnableMouse, group, false)
+    end
+    if type(group.SetFrameLevel) == "function" then
+        group.unrealQuestLevelBoost = -1
+        minimapArrow.Apply(group)
+        minimapArrow.count = minimapArrow.count + 1
+        minimapArrow.pins[minimapArrow.count] = group
+    end
+    if type(group.Show) == "function" then
+        pcall(group.Show, group)
+    end
+    return group
+end
+
+function Client.CreateMinimapAreaPatch(group)
+    if not group or type(group.CreateTexture) ~= "function" then
+        return nil
+    end
+    local ok, texture = pcall(group.CreateTexture, group, nil, "BACKGROUND")
+    if not ok then
+        return nil
+    end
+    return texture
+end
+
+-- One flat patch at a pixel offset from the minimap's centre: `left`/`top`
+-- are its top-left corner (y up), `width`/`height` its size. The strip, texel
+-- cell and tint are written only when they differ from what the texture
+-- already carries, because this runs for every visible patch on each minimap
+-- refresh while the player moves.
+function Client.PlaceMinimapAreaPatch(texture, path, left, top, width, height,
+    u1, u2, v1, v2, red, green, blue)
+    local map = Client.GetMinimap()
+    if not map or not texture or type(path) ~= "string"
+        or type(texture.SetPoint) ~= "function" then
+        return false
+    end
+    local styleKey = path .. "|" .. tostring(u1) .. "|" .. tostring(v1)
+        .. "|" .. tostring(red) .. "|" .. tostring(green) .. "|" .. tostring(blue)
+    if texture.unrealQuestStyleKey ~= styleKey then
+        texture.unrealQuestStyleKey = styleKey
+        pcall(texture.SetTexture, texture, path)
+        pcall(texture.SetTexCoord, texture, u1, u2, v1, v2)
+        pcall(texture.SetVertexColor, texture, red or 1, green or 1, blue or 1,
+            Client.AREA_CONTOUR_ALPHA)
+    end
+    pcall(texture.ClearAllPoints, texture)
+    local pointOk = pcall(texture.SetPoint, texture, "TOPLEFT", map, "CENTER", left, top)
+    local widthOk = pcall(texture.SetWidth, texture, math.max(0.1, width))
+    local heightOk = pcall(texture.SetHeight, texture, math.max(0.1, height))
+    local showOk = pcall(texture.Show, texture)
+    return pointOk and widthOk and heightOk and showOk and true or false
 end
 
 -- Places a pin at a pixel offset from the minimap's centre. The caller has
@@ -5259,6 +5757,18 @@ function Client.IsObjectShown(object)
     return ok and value and true or false
 end
 
+-- IsShown is the frame's own flag; IsVisible also requires every parent shown.
+-- questgiver.flag_scroll_hide.v1 (BEHAVIOR_PARTIALLY_TESTED, 2026-09-19): with
+-- the offer panel up, QuestRewardScrollFrame answered IsVisible false while
+-- its scroll child still answered IsShown true.
+function Client.IsObjectVisible(object)
+    if not object or type(object.IsVisible) ~= "function" then
+        return false
+    end
+    local ok, value = pcall(object.IsVisible, object)
+    return ok and value and true or false
+end
+
 -- WorldFrame inspection -----------------------------------------------------
 --
 -- Read-only. Every function here observes and none writes, because what they
@@ -5623,16 +6133,94 @@ end
 --     failure), so text uses stock font-object templates through
 --     CreateFontString's inherits argument and never sets a font by path.
 --
-local TRACKER_HEADER_HEIGHT = 20
+local TRACKER_HEADER_HEIGHT = 24
 local TRACKER_BUTTON_SIZE = 16
-local TRACKER_HEADER_BUTTONS = 2
-local TRACKER_NPC_FINDER_ICON_SIZE = TRACKER_BUTTON_SIZE * 0.9
+-- 0.9 of the button, then 15% smaller again (user request 2026-09-27).
+local TRACKER_NPC_FINDER_ICON_SIZE = TRACKER_BUTTON_SIZE * 0.9 * 0.85
 -- The tracker uses its dedicated find-NPC icon, shipped with the addon so it
 -- remains available independently of the client's icon library.
 -- Keep the path extensionless: this client silently draws nothing when an
 -- addon texture path includes the ".tga" suffix.
 local TRACKER_NPC_FINDER_ICON_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\search-icon"
-local TRACKER_ACCENT_WIDTH = 2
+-- The WoW Forever objective tracker chrome, drawn identically standalone and
+-- under every unrealUI theme: header rails, the zone section bar with its -/+
+-- fold mark, and the objective nub and check. media/QuestTracker.tga is built
+-- by tools/make_quest_tracker_art.py from the Forever sheet (FileDataID
+-- 8268353) as a 512x512 RLE type-10 TGA, the form of
+-- textures.rle_512_tga_atlas_four_arg_supported. The header's fold button
+-- wears Blizzard's plus/minus tree control (buttons/plus-minus-button, user
+-- request 2026-09-27, copied byte-for-byte from unrealUI's modern-wow media):
+-- a literal "+" while the body is folded away and "-" while it is shown,
+-- replacing the settings-menu dropdown faces this used before. Pieces are
+-- { x, y, w, h } in atlas pixels, from QuestTracker unless a fifth field
+-- names another sheet; each sheet's own pixel span is `sheetSize`, since
+-- plusMinus is a 64x64 canvas rather than the 512x512 the others share.
+-- One table: this file's main chunk is at the 200-local limit.
+local TrackerArt = {
+    size = 512,
+    sheets = {
+        tracker = "Interface\\AddOns\\unrealQuest\\media\\QuestTracker",
+        settings = "Interface\\AddOns\\unrealQuest\\media\\setting-ui",
+        plusMinus = "Interface\\AddOns\\unrealQuest\\media\\plus-minus-button",
+    },
+    -- Only sheets that are not the 512x512 default need an entry here.
+    sheetSize = {
+        plusMinus = 64,
+    },
+    pieces = {
+        header = { 2, 2, 276, 36 },
+        zone = { 2, 40, 274, 25 },
+        zoneCollapse = { 65, 67, 17, 17 },
+        zoneExpand = { 84, 67, 17, 17 },
+        nub = { 103, 67, 20, 20 },
+        check = { 125, 67, 20, 20 },
+        -- Left column of buttons/plus-minus-button's 64x64 sheet: plus over
+        -- minus, each a 20x22 cell (media/QUEST-TRACKER-ATTRIBUTION.md). The
+        -- right column (pushed) is not wired: a pressed face needs
+        -- OnMouseDown/OnMouseUp, which have no runtime record on this client
+        -- (see SettingsList.PAGER_CELLS for the same refusal).
+        plusNormal = { 2, 0, 20, 22, "plusMinus" },
+        minusNormal = { 2, 24, 20, 22, "plusMinus" },
+    },
+    headerInset = 2,
+    -- The fold button's click area, and its art centred inside it. The art is
+    -- square, as unrealUI's game-settings menu draws this same glyph
+    -- (modules/gamesettings.lua gs.TOGGLE_FACE_SIZE, user request
+    -- 2026-09-27): the 20x22 cell is squeezed to a square face there, and a
+    -- wider box here read as a flattened bar next to the spyglass.
+    buttonWidth = 16,
+    buttonHeight = 16,
+    buttonArtSize = 10,
+    buttonInset = 4,
+    zoneLabelInset = 4,
+    zoneFoldSize = 8,
+    -- The section bar starts this far above its row, so the darker part of
+    -- its shadow sits behind the zone name rather than below it.
+    zoneShadowRise = 8,
+    -- The title and count sit this far below the header's centre line.
+    titleDrop = 3,
+    bulletSize = 11,
+    -- The bullet sits in the objective indent, centred under the quest badge.
+    bulletX = -12,
+    -- The fold button's hover: the 128RedButton bloom unrealUI's
+    -- game-settings menu puts over this same +/- toggle (user request
+    -- 2026-09-27; unrealUI modules/modernwow.lua mw.RedButtonGlow with
+    -- core/media.lua M.modernWow.button128Red). Same cell of the same file
+    -- (media/128RedButton, already shipped for the quest log's red buttons),
+    -- drawn ADD on OVERLAY over the untinted glyph at 0.8 vertex light. ADD
+    -- works on the updated client (rendering.setblendmode_add_inert,
+    -- superseded 2026-08-28) and unrealUI's settings menu draws it that way;
+    -- the call is pcall'd, so an older build keeps a plain BLEND bloom.
+    -- Shown and hidden with the button's OnEnter/OnLeave, never SetAlpha
+    -- (rendering.texture_setalpha_darkens_not_translucent). There the bloom is
+    -- inset 4 from a 14 toggle holding a 10 face -- 2 inside the face -- so
+    -- here it is inset `foldHoverMargin` from the glyph itself. Table fields,
+    -- not file-scope locals: this file's main chunk is at the 200-local limit.
+    foldHoverTexture = "Interface\\AddOns\\unrealQuest\\media\\128RedButton",
+    foldHoverCell = { 15 / 512, 418 / 512, 424 / 2048, 490 / 2048 },
+    foldHoverMargin = -2,
+    foldHoverIntensity = 0.8,
+}
 local TRACKER_PADDING = 6
 local TRACKER_BAR_HEIGHT = 2
 -- How far a quest row's title is pushed right to clear the round quest dot
@@ -5644,6 +6232,8 @@ local TRACKER_QUEST_MARK_INSET = 13
 -- is also its width) and as the bounding dimension a non-square mark texture
 -- is fit into without being stretched off its own aspect ratio.
 local TRACKER_QUEST_MARK_SIZE = 10
+local TRACKER_QUEST_NUMBER_SIZE = 16
+local TRACKER_QUEST_NUMBER_INSET = TRACKER_QUEST_NUMBER_SIZE + 3
 -- Native pixel size of media/CompleteQuestIcon.tga. SetAllPoints-style
 -- textures on this client stretch to whatever box they are given -- fine for
 -- the round dot, which is square, but this asset is a tall narrow checkmark:
@@ -5770,6 +6360,44 @@ local function CreateSolid(parent, layer, red, green, blue, alpha)
     end
     if type(texture.SetVertexColor) == "function" then
         pcall(texture.SetVertexColor, texture, red or 1, green or 1, blue or 1, alpha or 1)
+    end
+    return texture
+end
+
+-- Points `texture` at one TrackerArt piece, or hides it for an unknown one.
+function TrackerArt.Apply(texture, name)
+    local piece = TrackerArt.pieces[name]
+    if not texture or not piece or type(texture.SetTexCoord) ~= "function" then
+        return Client.HideObject(texture)
+    end
+    local sheet = piece[5] or "tracker"
+    local size = TrackerArt.sheetSize[sheet] or TrackerArt.size
+    if texture.unrealQuestArtPiece ~= name then
+        pcall(texture.SetTexture, texture, TrackerArt.sheets[sheet])
+        pcall(texture.SetTexCoord, texture, piece[1] / size, (piece[1] + piece[3]) / size,
+            piece[2] / size, (piece[2] + piece[4]) / size)
+        texture.unrealQuestArtPiece = name
+    end
+    return Client.ShowObject(texture)
+end
+
+-- The fold button's glyph: plus while the body is folded away, minus while
+-- it is shown. The sheet carries no separate hover cell (rest and pushed
+-- only, and the pushed column is unwired per the note above), so hover is a
+-- second texture handled entirely by the button's own OnEnter/OnLeave
+-- (see the fold button's creation in CreateTrackerFrame-shaped code below).
+function TrackerArt.PaintFold(button)
+    local face = button.unrealQuestFolded and "plusNormal" or "minusNormal"
+    return TrackerArt.Apply(button.unrealQuestArt, face)
+end
+
+function TrackerArt.Create(parent, layer, name, hidden)
+    local texture = CreateSolid(parent, layer, 1, 1, 1, 1)
+    if texture then
+        TrackerArt.Apply(texture, name)
+        if hidden then
+            pcall(texture.Hide, texture)
+        end
     end
     return texture
 end
@@ -5904,6 +6532,21 @@ local function StripShadow(fontString)
     pcall(fontString.SetShadowOffset, fontString, 0, 0)
 end
 
+-- The map copy of the tracker keeps a black drop shadow on its text, over the
+-- busy map artwork; the HUD copy is shadowless like every other panel here.
+function TrackerArt.ShadeText(fontString, shaded)
+    if not shaded then
+        return StripShadow(fontString)
+    end
+    if not fontString or type(fontString.SetShadowOffset) ~= "function" then
+        return
+    end
+    pcall(fontString.SetShadowOffset, fontString, 1, -1)
+    if type(fontString.SetShadowColor) == "function" then
+        pcall(fontString.SetShadowColor, fontString, 0, 0, 0, 1)
+    end
+end
+
 -- Entity-objective progress is deliberately rendered in an owned tooltip, not
 -- appended into GameTooltip. `tooltip.added_lines_do_not_relayout`
 -- (USER_CONFIRMED_INGAME, 2026-08-26) established that Lua-added lines can
@@ -5958,10 +6601,11 @@ function Client.SetEntityTooltipFadeHold(seconds)
 end
 
 -- Host integration, not a client API assumption: whether unrealUI is hosting
--- with its Dragonflight-styled `modern-wow` theme, whose Quest Log page art
--- needs some of this addon's placements nudged. Resolved on every call so a
--- late-initialising host or a theme switch is picked up; false when the host
--- or its theme accessor is absent.
+-- with its Dragonflight-styled `modern-wow` theme. Kept as the legacy answer
+-- only -- what this addon actually needs to know is whether the Quest Log's
+-- Dragonflight page art is drawn, which is no longer the same question (see
+-- Client.UsesModernWowQuestLog). Resolved on every call so a late-initialising
+-- host is picked up; false when the host or its theme accessor is absent.
 function Client.IsUnrealUIModernWowTheme()
     local host = ResolveObject("UnrealUI")
     if not host or type(host.GetActiveThemeStyle) ~= "function" then
@@ -5971,14 +6615,61 @@ function Client.IsUnrealUIModernWowTheme()
     return ok and style == "modern-wow" or false
 end
 
+-- Host integration: whether unrealUI is hosting with its flat, dark `modern`
+-- theme (not `modern-wow`). The experience and reputation reward rows keep
+-- their stock colours there and go dark red on parchment everywhere else (by
+-- request); false when the host or its theme accessor is absent.
+function Client.IsUnrealUIFlatModernTheme()
+    local host = ResolveObject("UnrealUI")
+    if not host or type(host.GetActiveThemeStyle) ~= "function" then
+        return false
+    end
+    local ok, style = pcall(host.GetActiveThemeStyle)
+    return ok and style == "modern" or false
+end
+
+-- Whether the Quest Log this addon is decorating is drawn with the Dragonflight
+-- page art -- two pages, a recessed scroll channel and drawn button beds -- which
+-- is what several placements in this addon need to know about.
+--
+-- Three ways that can be true, and none of them is a theme name:
+--
+--   * unrealUI made that design an independent module of its own
+--     (modules/questlogdesign.lua) and draws it under its `classic-wow` theme
+--     as well, whenever the player selects the Quest Log as one of that theme's
+--     Modern WoW modules -- so the host publishes a design flag, and the theme
+--     read answered "flat" on a window that was in fact wearing the page art;
+--   * an older unrealUI without that flag, where the theme read is still the
+--     best available answer;
+--   * no unrealUI at all, where this addon's own standalone Quest Log draws the
+--     same art from the same measurements.
+--
+-- Resolved per call, like the theme read it replaces, so a host that
+-- initialises late is picked up on the next refresh.
+function Client.UsesModernWowQuestLog()
+    local host = ResolveObject("UnrealUI")
+    if not host then
+        local frame = ResolveObject("QuestLogFrame")
+        return frame and frame.unrealQuestStandaloneQuestLog == true or false
+    end
+    if type(host.ModernWowQuestLogActive) == "function" then
+        local ok, active = pcall(host.ModernWowQuestLogActive)
+        if ok then
+            return active and true or false
+        end
+    end
+    return Client.IsUnrealUIModernWowTheme()
+end
+
 -- Host integration: the quest log's action buttons wear their textured skins
 -- (Client.SetQuestLogButtonSkin) on a UI unrealUI does not theme at all, and
--- under its modern-wow theme; every other unrealUI theme keeps the flat look.
+-- wherever the host draws its Dragonflight page art; a flat unrealUI Quest Log
+-- keeps the flat look.
 function Client.UsesQuestLogTexturedButtons()
     if not ResolveObject("UnrealUI") then
         return true
     end
-    return Client.IsUnrealUIModernWowTheme()
+    return Client.UsesModernWowQuestLog()
 end
 
 function Client.GetEntityTooltipStyle()
@@ -6975,11 +7666,11 @@ function Client.SetSolidColor(texture, red, green, blue, alpha)
 end
 
 -- Applies the player's percentage setting to the tracker background and to
--- every border line drawn in the panel's own chrome colour -- the four outer
--- edges and the rule under the header -- without changing the frame's alpha
--- (which would also dim its text and controls). The lines fade with the
--- background because a fully opaque outline around an invisible panel reads as
--- a stray rectangle drawn on the world.
+-- the four outer border edges without changing the frame's alpha (which would
+-- also dim its text and controls). The edges fade with the background because
+-- a fully opaque outline around an invisible panel reads as a stray rectangle
+-- drawn on the world. The header and zone art is chrome, like the text, and
+-- stays opaque.
 function Client.SetTrackerBackgroundOpacity(frame, percent)
     if not frame or type(percent) ~= "number" then
         return false
@@ -6992,8 +7683,6 @@ function Client.SetTrackerBackgroundOpacity(frame, percent)
     local scale = percent / 100
     SetFlatBorderColor(frame, FLAT_BORDER[1], FLAT_BORDER[2], FLAT_BORDER[3],
         FLAT_BORDER[4] * scale)
-    Client.SetSolidColor(frame.unrealQuestSeparator,
-        FLAT_BORDER[1], FLAT_BORDER[2], FLAT_BORDER[3], FLAT_BORDER[4] * scale)
     if type(Client.SetTrackerFollowingOpacity) == "function" then
         Client.SetTrackerFollowingOpacity(frame, percent)
     end
@@ -8052,40 +8741,172 @@ function Client.SetModernQuestLogPanelLayout()
     return false
 end
 
--- Extended native quest log -------------------------------------------------
+-- Standalone Dragonflight quest log -----------------------------------------
 --
--- Extended QuestLog 3.6.1 (Copyright 2006 Daniel Rehn) established the
--- two-page parchment geometry used here. Only its artwork and layout are
--- retained: native QuestLogTitleButtonTemplate rows, the client's own
--- QuestLog_Update and UnrealQuest's existing presentation modules keep all
--- behavior on the same stock widgets.
+-- The two-page Quest Log this addon installs when unrealUI is NOT loaded.
+--
+-- It is the same interface unrealUI draws for its Modern WoW Quest Log
+-- (unrealUI/modules/questlogdesign.lua, one module that serves both of its
+-- themes), reproduced here on the client's own widgets so the window looks the
+-- same with or without that addon installed: the imported two-page spread, the
+-- quest list down the left page, the selected quest's detail pane on the right,
+-- the native scroll bars sunk into the channel the art recesses for them, the
+-- three stock quest actions in the beds the art draws for them, and the stock
+-- book portrait inside its gold ring.
+--
+-- The artwork is the geometry authority. Every proportional number below was
+-- measured off these exact canvases (media/QuestLog/ATTRIBUTION.md) and is
+-- recomputed from the window's live size, so the seam, the button beds, the
+-- channel and the ring stay where the art puts them.
+--
+-- What this replaces: the Extended QuestLog 3.6.1 parchment layout
+-- (Copyright 2006 Daniel Rehn) that this section drew until 0.3.6. Its eight
+-- textures are no longer shipped. What it keeps from that work, because the
+-- lessons are this client's and not EQL3's: rows anchored individually to the
+-- frame rather than chained to each other
+-- (questlog.eql3_chained_rows_leave_the_page), the measured row pitch, the row
+-- count fitted to the page, and the reward money/spacer tail that the native
+-- detail refresh keeps rewriting.
+--
+-- What is deliberately NOT ported from unrealUI's version: its count boxes
+-- (this keeps the client's own count line), its parchment ink colours (the
+-- client's own quest text is already dark, because it was authored for
+-- parchment), and its collapse-glyph cells (the native +/- art stays). Those
+-- need a shared style layer this addon does not have and does not want.
+--
+-- Native quest data, row templates, scrolling, selection, the quest actions
+-- and detail population all stay with the client; UnrealQuest's level,
+-- translation, tracking, reward and action-button modules keep decorating the
+-- same stock widgets they always did.
 
--- One table rather than a dozen file-scope locals: this file sits close to
+-- One table rather than a few dozen file-scope locals: this file sits close to
 -- Lua's 200-local limit for a main chunk.
-local EXTENDED_QUEST_LOG = {
-    width = 704,
-    height = 512,
-    listWidth = 300,
-    listHeight = 411,
-    listTop = 74,
-    rowLeft = 19,
-    rowTop = 75,
-    -- EQL3's own page budget, kept as an upper bound only: the count actually
-    -- installed is measured against the list page by ResolveExtendedQuestLogRows.
+local STANDALONE_QUEST_LOG = {
+    textureRoot = "Interface\\AddOns\\unrealQuest\\media\\QuestLog\\",
+    pageLeft = "QuestLogPageLeft",
+    pageRight = "QuestLogPageRight",
+    redButton = "QuestLogRedButton",
+    -- The window the measurements below were taken at. The layout follows the
+    -- live size; this is what the window is set to.
+    width = 676,
+    height = 440,
+    -- The seam between the two source canvases, and the transparent padding
+    -- each one carries on its right and bottom edges, cropped away.
+    split = 896 / (896 + 298),
+    leftTexCoord = { 0, 1, 0, 823 / 896 },
+    rightTexCoord = { 0, 298 / 448, 0, 823 / 896 },
+    -- The quest list on the left page, and the rows down it. Row 1 sits at the
+    -- pane's own origin, so both share these offsets.
+    listLeft = 20,
+    listTop = 72,
+    -- 322 units of page on unrealUI's layout, plus the 19 that this addon's
+    -- shorter quest rows free up at the bottom of the pane. The list scroll bar
+    -- is compensated by the same 19 so it stays where the art draws its gutter.
+    listHeight = 341,
+    listGrow = 19,
     maxRows = 27,
     minRows = 6,
     defaultRowHeight = 16,
     minRowHeight = 8,
     maxRowHeight = 48,
-    textureRoot = "Interface\\AddOns\\unrealQuest\\media\\QuestLog\\",
+    -- The details pane: moved off the list pane's right edge onto the second
+    -- page, and shortened so it ends inside the page while its scroll child
+    -- keeps the native content extent. Collapsing the child to the pane height
+    -- clipped the native money row (questrewardlayout.live_geometry.v3).
+    detailOffsetX = 30,
+    detailHeight = 340,
+    detailChildHeight = 376,
+    -- Scroll bars. The stock templates hang a bar outside its pane, which on
+    -- this art puts it past the page's printed edge, so the offset is negative:
+    -- the gutter belongs on the parchment.
+    scrollBarX = -10,
+    scrollBarInsetY = 16,
+    listBarNudgeX = 13,
+    listBarExtendBottom = 11,
+    listBarUpArrowY = 2,
+    listBarDownArrowY = -14,
+    detailBarNudgeX = -2,
+    detailBarDownArrowY = -2,
+    -- The three button beds drawn along the bottom of the left page, in bed
+    -- order. `x` and `width` are fractions of that page's width; `bottom` and
+    -- `height` are fractions of the window. The third bed is genuinely
+    -- narrower than the other two -- that is the art, not a measurement slip.
+    buttonCell = {
+        { x = 22 / 507, width = 112 / 507 },
+        { x = 144 / 507, width = 111 / 507 },
+        { x = 265 / 507, width = 71 / 507 },
+    },
+    buttonBottom = 15 / 440,
+    buttonHeight = 14 / 440,
+    buttonWidthGrow = 4,
+    buttonHeightGrow = 4,
+    buttonOffsetX = -2,
+    buttonOffsetY = -2,
+    -- The recessed channel down the right piece, which is the one scroll gutter
+    -- in the spread: the left page runs parchment all the way to the seam. Left
+    -- and right are fractions of the right piece's visible width; top and
+    -- bottom are fractions of the window height.
+    scrollChannel = {
+        left = 247 / 298,
+        right = 285 / 298,
+        top = 161 / 823,
+        bottom = 763 / 823,
+    },
+    -- The gold ring in the left page's top-left corner. The art is a frame for
+    -- an icon it does not draw, so the client's own book portrait goes inside
+    -- it: `inset` trims the ring rect so the icon sits within the rim, `x`/`y`
+    -- nudge its centre and `grow` adds pixels around it.
+    portraitRing = {
+        left = 8 / 896,
+        right = 122 / 896,
+        top = 4 / 823,
+        bottom = 118 / 823,
+    },
+    bookIcon = {
+        path = "Interface\\QuestFrame\\UI-QuestLog-BookIcon",
+        inset = 0.08,
+        x = 2,
+        y = -2,
+        grow = 4,
+    },
+    -- Clearance between the ring and the first control beside it, the gap that
+    -- control keeps above the list page, and the header strip's own inset for
+    -- the window title and close button.
+    ringGap = 6,
+    collapseGap = 6,
+    collapseWidth = 60,
+    countGap = 8,
+    closeSize = 17,
+    closeRight = 10,
+    closeTop = 16,
+    titleTop = 10,
+    emptyTextTop = 100,
     -- How many rows the left page ended up holding. nil until the one-shot
     -- layout has run.
     rows = nil,
 }
 
+-- The octagonal close cells: a 5x3 grid of 34x38 cells on a 256x128 canvas,
+-- the first at (2,2), stepping 38 across and 40 down. Column 2 is the close
+-- glyph (normal, disabled, pushed); the hover glow is a cell of its own rather
+-- than a re-lit resting face.
+do
+    local function cell(column, row)
+        local left = 2 + 38 * column
+        local top = 2 + 40 * row
+        return { left / 256, (left + 34) / 256, top / 128, (top + 38) / 128 }
+    end
+    STANDALONE_QUEST_LOG.closeCell = {
+        normal = cell(1, 0),
+        disabled = cell(1, 1),
+        pushed = cell(1, 2),
+        highlight = cell(3, 0),
+    }
+end
+
 -- Read for the capability note; never persisted.
-function Client.GetExtendedClassicQuestLogRows()
-    return EXTENDED_QUEST_LOG.rows
+function Client.GetStandaloneQuestLogRows()
+    return STANDALONE_QUEST_LOG.rows
 end
 
 -- nil means unrealUI has not finished publishing its active theme yet. Theme
@@ -8094,6 +8915,12 @@ end
 function Client.GetUnrealUIQuestLogMode()
     if ResolveObject("UnrealUIQuestLogListPanel")
         and ResolveObject("UnrealUIQuestLogDetailPanel") then
+        -- The host builds the same two panes for its flat Modern Quest Log and
+        -- for the Dragonflight one; only its design flag tells them apart, and
+        -- the Dragonflight one is reachable from `classic-wow` too.
+        if Client.UsesModernWowQuestLog() then
+            return "modern-wow"
+        end
         return "modern"
     end
 
@@ -8111,7 +8938,7 @@ function Client.GetUnrealUIQuestLogMode()
     return native and "classic" or "modern"
 end
 
-local function SetExtendedQuestLogAnchor(object, point, relative,
+local function SetStandaloneAnchor(object, point, relative,
     relativePoint, x, y)
     if not object or type(object.ClearAllPoints) ~= "function"
         or type(object.SetPoint) ~= "function" then
@@ -8122,7 +8949,25 @@ local function SetExtendedQuestLogAnchor(object, point, relative,
         relativePoint, x, y) and true or false
 end
 
-local function AttachExtendedQuestLogMoney(frame, label, scrollChild,
+-- Both ends of one object, which SetStandaloneAnchor cannot express: it clears
+-- every point, and a scroll bar that has to track a pane whose height changes
+-- needs two.
+function STANDALONE_QUEST_LOG.SetSpan(object,
+    point1, relative1, relativePoint1, x1, y1,
+    point2, relative2, relativePoint2, x2, y2)
+    if not object or type(object.ClearAllPoints) ~= "function"
+        or type(object.SetPoint) ~= "function" then
+        return false
+    end
+    pcall(object.ClearAllPoints, object)
+    local first = pcall(object.SetPoint, object, point1, relative1,
+        relativePoint1, x1, y1)
+    local second = pcall(object.SetPoint, object, point2, relative2,
+        relativePoint2, x2, y2)
+    return first and second and true or false
+end
+
+local function AttachStandaloneMoney(frame, label, scrollChild,
     point, relativePoint, x, y)
     if not frame or not label or not scrollChild
         or type(frame.SetParent) ~= "function" then
@@ -8131,7 +8976,7 @@ local function AttachExtendedQuestLogMoney(frame, label, scrollChild,
     if not pcall(frame.SetParent, frame, scrollChild) then
         return false
     end
-    return SetExtendedQuestLogAnchor(frame, point, label, relativePoint,
+    return SetStandaloneAnchor(frame, point, label, relativePoint,
         x or 0, y or 0)
 end
 
@@ -8139,7 +8984,7 @@ end
 -- but starts their two-column layout again below QuestLogItemReceiveText. The
 -- money tail therefore follows the left item of the final guaranteed-reward
 -- row, not simply the last numbered item (which may be in the right column).
-local function ResolveExtendedQuestLogMoneyAnchor(rewardText)
+local function ResolveStandaloneMoneyAnchor(rewardText)
     local choices, rewards = Client.GetQuestLogRewardCounts()
     if rewards > 0 then
         local finalRowReward = rewards
@@ -8161,7 +9006,7 @@ local function ResolveExtendedQuestLogMoneyAnchor(rewardText)
     return rewardText, "QuestLogItemReceiveText"
 end
 
-local function ExtendedQuestLogAnchorMatches(object, point, relative,
+local function StandaloneAnchorMatches(object, point, relative,
     relativeName, relativePoint)
     if not object or type(object.GetPoint) ~= "function" then
         return false
@@ -8182,7 +9027,7 @@ local function ExtendedQuestLogAnchorMatches(object, point, relative,
         and actualRelative == relativeName
 end
 
-local function ExtendedQuestLogParentMatches(object, parent, parentName)
+local function StandaloneParentMatches(object, parent, parentName)
     if not object or type(object.GetParent) ~= "function" then
         return false
     end
@@ -8196,8 +9041,94 @@ local function ExtendedQuestLogParentMatches(object, parent, parentName)
     return type(actualParent) == "string" and actualParent == parentName
 end
 
-local function CreateExtendedQuestLogTexture(parent, name, layer,
-    width, height, point, x, y)
+-- The window's live size, which every proportional measurement is taken from.
+-- Falls back to the authored size while the frame reports none.
+function STANDALONE_QUEST_LOG.Size(frame)
+    local width = Client.GetObjectWidth(frame)
+    local height = Client.GetObjectHeight(frame)
+    if type(width) ~= "number" or width <= 0 then
+        width = STANDALONE_QUEST_LOG.width
+    end
+    if type(height) ~= "number" or height <= 0 then
+        height = STANDALONE_QUEST_LOG.height
+    end
+    return width, height
+end
+
+-- Where one of the three drawn button beds lands: left and bottom as offsets
+-- from the window's BOTTOMLEFT, plus the size the control takes inside it.
+function STANDALONE_QUEST_LOG.ButtonRect(frame, index)
+    local cell = STANDALONE_QUEST_LOG.buttonCell[index]
+    if not cell then
+        return nil
+    end
+    local width, height = STANDALONE_QUEST_LOG.Size(frame)
+    local page = width * STANDALONE_QUEST_LOG.split
+    return cell.x * page + STANDALONE_QUEST_LOG.buttonOffsetX,
+        STANDALONE_QUEST_LOG.buttonBottom * height
+            + STANDALONE_QUEST_LOG.buttonOffsetY,
+        cell.width * page + STANDALONE_QUEST_LOG.buttonWidthGrow,
+        STANDALONE_QUEST_LOG.buttonHeight * height
+            + STANDALONE_QUEST_LOG.buttonHeightGrow
+end
+
+-- Where the recessed scroll channel lands: left and width from the window's
+-- LEFT edge, top as a NEGATIVE offset from its TOP edge, so the result drops
+-- straight into a SetPoint against TOPLEFT.
+function STANDALONE_QUEST_LOG.ChannelRect(frame)
+    local channel = STANDALONE_QUEST_LOG.scrollChannel
+    local width, height = STANDALONE_QUEST_LOG.Size(frame)
+    -- The channel is on the RIGHT piece, so its fractions are of that piece and
+    -- are offset by the seam rather than taken from the whole window.
+    local page = width * STANDALONE_QUEST_LOG.split
+    local rightWidth = width - page
+    return page + channel.left * rightWidth,
+        -(channel.top * height),
+        (channel.right - channel.left) * rightWidth,
+        (channel.bottom - channel.top) * height
+end
+
+-- Where the gold portrait ring lands, same contract as the channel above.
+function STANDALONE_QUEST_LOG.RingRect(frame)
+    local ring = STANDALONE_QUEST_LOG.portraitRing
+    local width, height = STANDALONE_QUEST_LOG.Size(frame)
+    local page = width * STANDALONE_QUEST_LOG.split
+    return ring.left * page, -(ring.top * height),
+        (ring.right - ring.left) * page, (ring.bottom - ring.top) * height
+end
+
+-- The chrome the page art is drawn on: an addon-owned frame parented to the
+-- window and deliberately one frame level BELOW it, which is what keeps every
+-- native row, label, scroll bar and button of the window visible and clickable
+-- above the art. It never takes the mouse either.
+function STANDALONE_QUEST_LOG.CreateChrome(frame)
+    local create = Resolve("CreateFrame")
+    if not create then
+        return nil
+    end
+    local ok, chrome = pcall(create, "Frame", nil, frame)
+    if not ok or not chrome then
+        return nil
+    end
+    if type(chrome.SetAllPoints) == "function" then
+        pcall(chrome.SetAllPoints, chrome, frame)
+    end
+    if type(frame.GetFrameLevel) == "function"
+        and type(chrome.SetFrameLevel) == "function" then
+        local levelOk, level = pcall(frame.GetFrameLevel, frame)
+        if levelOk and type(level) == "number" and level > 1 then
+            pcall(chrome.SetFrameLevel, chrome, level - 1)
+        end
+    end
+    if type(chrome.EnableMouse) == "function" then
+        pcall(chrome.EnableMouse, chrome, false)
+    end
+    return chrome
+end
+
+-- One texture on the chrome. Only the four-argument SetTexCoord form is used;
+-- the eight-argument rotated form distorted its first live use here.
+function STANDALONE_QUEST_LOG.CreateTexture(parent, layer, path, coords)
     if not parent or type(parent.CreateTexture) ~= "function" then
         return nil
     end
@@ -8206,66 +9137,344 @@ local function CreateExtendedQuestLogTexture(parent, name, layer,
     if not ok or not texture or type(texture.SetTexture) ~= "function" then
         return nil
     end
-    if not pcall(texture.SetTexture, texture,
-        EXTENDED_QUEST_LOG.textureRoot .. name) then
+    if not pcall(texture.SetTexture, texture, path) then
         return nil
     end
-    Client.SetObjectSize(texture, width, height)
-    if type(texture.ClearAllPoints) == "function" then
-        pcall(texture.ClearAllPoints, texture)
-    end
-    if type(texture.SetPoint) ~= "function"
-        or not pcall(texture.SetPoint, texture, point, parent, point, x, y) then
-        return nil
+    if coords and type(texture.SetTexCoord) == "function" then
+        if not pcall(texture.SetTexCoord, texture,
+            coords[1], coords[2], coords[3], coords[4]) then
+            return nil
+        end
     end
     return texture
 end
 
--- The row pitch is measured, never assumed. EQL3 chained its 27 rows with a
--- one-pixel overlap because a Vanilla QuestLogTitleButtonTemplate row is
--- exactly 16 pixels tall; this client owns its own Quest Log FrameXML, so the
--- template height is read back from the live row instead. QUESTLOG_QUEST_HEIGHT
--- is the second choice because it is what the native QuestLog_Update feeds to
--- FauxScrollFrame_Update as the scroll step, so it is the client's own idea of
--- a row.
-local function ResolveExtendedQuestLogRowPitch(firstRow)
+-- Hides the window's own artwork, so the imported pages are what the player
+-- sees instead of the client's parchment behind them.
+--
+-- Two mechanisms, because neither is reliable alone here. DisableDrawLayer is
+-- documented but not runtime-verified, and disabling a layer measurably failed
+-- to remove stock artwork on another frame of this client
+-- (character.reputation_native_click_and_border_layer_noop, RUNTIME_FAILURE_
+-- CONFIRMED), so the regions are also hidden one by one. The walk is the
+-- authoritative inventory: Frame:GetNumRegions always returns 0 here, so it is
+-- never gated on a count.
+--
+-- Walked regions come back as fresh wrappers that carry readers without every
+-- writer (see the note above Client.ResolveWritableWidget), so each write is
+-- pcall'd and a refusal simply leaves that region alone. GetTexture is a
+-- reader, and it is how this addon's own art is told apart from the client's --
+-- never by identity, which a wrapper cannot answer.
+--
+-- Called again on every show: this client's Quest Log recreates its artwork
+-- when the window opens (frames.stock_singletons_structure_nonvanilla). The
+-- imported pages are regions of the chrome frame, not of the window, so no
+-- amount of re-stripping here can reach them.
+function STANDALONE_QUEST_LOG.StripWindowArt(frame)
+    if not frame then
+        return false
+    end
+    if type(frame.DisableDrawLayer) == "function" then
+        pcall(frame.DisableDrawLayer, frame, "BACKGROUND")
+    end
+    local regions = Client.GetRegionList(frame)
+    if not regions then
+        return false
+    end
+    local index = 1
+    while index <= table.getn(regions) do
+        local region = regions[index]
+        if region and Client.GetObjectType(region) == "Texture" then
+            local mine = false
+            if type(region.GetTexture) == "function" then
+                local ok, path = pcall(region.GetTexture, region)
+                if ok and type(path) == "string"
+                    and string.find(path, "unrealQuest", 1, true) then
+                    mine = true
+                end
+            end
+            if not mine then
+                if type(region.SetTexture) == "function" then
+                    pcall(region.SetTexture, region, nil)
+                end
+                if type(region.SetAlpha) == "function" then
+                    pcall(region.SetAlpha, region, 0)
+                end
+                Client.HideObject(region)
+            end
+        end
+        index = index + 1
+    end
+    return true
+end
+
+-- Reasserts what a native show can undo: the recreated window artwork, and the
+-- page layout that artwork sits behind. Runs on the shared driver alongside the
+-- reward-layout observer, and does its work only on a hidden-to-shown
+-- transition rather than on every tick.
+function Client.RefreshStandaloneQuestLogArt()
+    local frame = ResolveObject("QuestLogFrame")
+    if not frame or frame.unrealQuestStandaloneQuestLog ~= true then
+        return false
+    end
+    local shown = Client.IsObjectShown(frame) and true or false
+    local was = STANDALONE_QUEST_LOG.wasShown
+    STANDALONE_QUEST_LOG.wasShown = shown
+    if not shown or was then
+        return false
+    end
+    STANDALONE_QUEST_LOG.StripWindowArt(frame)
+    STANDALONE_QUEST_LOG.PlacePages(frame, frame.unrealQuestStandaloneQuestLogArt)
+    STANDALONE_QUEST_LOG.PlaceListScrollBar(
+        ResolveObject("QuestLogListScrollFrame"))
+    STANDALONE_QUEST_LOG.PlaceDetailScrollBar(frame)
+    return true
+end
+
+-- The stock book portrait, fitted inside the ring the art draws for it.
+function STANDALONE_QUEST_LOG.PlaceBook(frame, book)
+    if not book then
+        return false
+    end
+    local left, top, ringWidth, ringHeight = STANDALONE_QUEST_LOG.RingRect(frame)
+    local token = STANDALONE_QUEST_LOG.bookIcon
+    local inset = token.inset
+    Client.SetObjectSize(book,
+        ringWidth * (1 - 2 * inset) + token.grow,
+        ringHeight * (1 - 2 * inset) + token.grow)
+    return SetStandaloneAnchor(book, "CENTER", frame, "TOPLEFT",
+        left + ringWidth / 2 + token.x,
+        top - ringHeight / 2 + token.y)
+end
+
+-- Both pages, laid out from the window's live size so the seam stays where the
+-- art draws it. Called again after anything resizes the window.
+function STANDALONE_QUEST_LOG.PlacePages(frame, art)
+    if not art or not art.left or not art.right then
+        return false
+    end
+    local width, height = STANDALONE_QUEST_LOG.Size(frame)
+    local leftWidth = width * STANDALONE_QUEST_LOG.split
+
+    Client.SetObjectSize(art.left, leftWidth, height)
+    Client.SetObjectSize(art.right, width - leftWidth, height)
+    local placed = SetStandaloneAnchor(art.left, "TOPLEFT", frame,
+        "TOPLEFT", 0, 0)
+        and SetStandaloneAnchor(art.right, "TOPRIGHT", frame,
+            "TOPRIGHT", 0, 0)
+    STANDALONE_QUEST_LOG.PlaceBook(frame, art.book)
+    return placed
+end
+
+-- The quest list's bar, inside the gutter the left page leaves for it. Both
+-- ends track the pane, and the two arrows are nudged to the positions the art
+-- reads correctly at.
+--
+-- WORKING_SOURCE: Vanilla's UIPanelScrollBarTemplate hangs ScrollUpButton
+-- BOTTOM to the bar's TOP and ScrollDownButton TOP to its BOTTOM with no
+-- offset. No runtime record confirms those anchors here, and GetPoint is never
+-- read back for them because this client inverts its Y.
+function STANDALONE_QUEST_LOG.PlaceListScrollBar(listScroll)
+    local bar = ResolveObject("QuestLogListScrollFrameScrollBar")
+    if not listScroll or not bar then
+        return false
+    end
+    local token = STANDALONE_QUEST_LOG
+    local x = token.scrollBarX + token.listBarNudgeX
+    -- The pane grew by listGrow, so the bar's bottom inset gives that back.
+    local bottom = token.scrollBarInsetY
+        - (token.listBarExtendBottom - token.listGrow)
+    local placed = STANDALONE_QUEST_LOG.SetSpan(bar,
+        "TOPLEFT", listScroll, "TOPRIGHT", x, -token.scrollBarInsetY,
+        "BOTTOMLEFT", listScroll, "BOTTOMRIGHT", x, bottom)
+
+    local up = ResolveObject("QuestLogListScrollFrameScrollBarScrollUpButton")
+    if up then
+        SetStandaloneAnchor(up, "BOTTOM", bar, "TOP", 0, token.listBarUpArrowY)
+    end
+    local down = ResolveObject("QuestLogListScrollFrameScrollBarScrollDownButton")
+    if down then
+        SetStandaloneAnchor(down, "TOP", bar, "BOTTOM", 0,
+            token.listBarDownArrowY + token.listBarExtendBottom)
+    end
+    return placed
+end
+
+-- The details pane's bar, centred in the recessed channel. Placed against the
+-- window and the measured art rather than against its own pane: the pane's
+-- right edge is a native width this addon does not own, and it is not what the
+-- channel lines up with. The bar keeps its own width, because the art draws a
+-- lit bevel down each side of the channel that it must not cover.
+function STANDALONE_QUEST_LOG.PlaceDetailScrollBar(frame)
+    local bar = ResolveObject("QuestLogDetailScrollFrameScrollBar")
+    if not frame or not bar then
+        return false
+    end
+    local left, top, width, height = STANDALONE_QUEST_LOG.ChannelRect(frame)
+    local barWidth = Client.GetObjectWidth(bar)
+    if type(barWidth) ~= "number" or barWidth < 0 then
+        barWidth = 0
+    end
+    local x = left + (width - barWidth) / 2 + STANDALONE_QUEST_LOG.detailBarNudgeX
+    local placed = STANDALONE_QUEST_LOG.SetSpan(bar,
+        "TOPLEFT", frame, "TOPLEFT", x, top,
+        "BOTTOMLEFT", frame, "TOPLEFT", x, top - height)
+
+    local down = ResolveObject("QuestLogDetailScrollFrameScrollBarScrollDownButton")
+    if down then
+        SetStandaloneAnchor(down, "TOP", bar, "BOTTOM", 0,
+            STANDALONE_QUEST_LOG.detailBarDownArrowY)
+    end
+    return placed
+end
+
+-- One state slot of the window's close button, on the octagonal atlas. All four
+-- slots take the same file and differ only by cell, so the client's own button
+-- state machine keeps driving the press, the hover and the disabled face.
+function STANDALONE_QUEST_LOG.SetCloseFace(button, setter, getter, cell)
+    if not button or type(button[setter]) ~= "function" or not cell then
+        return false
+    end
+    if not pcall(button[setter], button,
+        STANDALONE_QUEST_LOG.textureRoot .. STANDALONE_QUEST_LOG.redButton) then
+        return false
+    end
+    local ok, texture = pcall(button[getter], button)
+    if not ok or not texture or type(texture.SetTexCoord) ~= "function" then
+        return false
+    end
+    pcall(texture.SetTexCoord, texture, cell[1], cell[2], cell[3], cell[4])
+    if type(texture.SetAlpha) == "function" then
+        pcall(texture.SetAlpha, texture, 1)
+    end
+    Client.ShowObject(texture)
+    return true
+end
+
+-- The header strip's own controls: the close button on the imported red cell,
+-- the window title, the collapse-all control clear of the ring, and the
+-- client's count line on that same row. The collapse control keeps its native
+-- glyph; only where it sits changes.
+function STANDALONE_QUEST_LOG.PlaceHeader(frame)
+    local token = STANDALONE_QUEST_LOG
+    local close = ResolveObject("QuestLogFrameCloseButton")
+    if close then
+        Client.SetObjectSize(close, token.closeSize, token.closeSize)
+        SetStandaloneAnchor(close, "TOPRIGHT", frame, "TOPRIGHT",
+            -token.closeRight, -token.closeTop)
+        local cells = token.closeCell
+        STANDALONE_QUEST_LOG.SetCloseFace(close, "SetNormalTexture",
+            "GetNormalTexture", cells.normal)
+        STANDALONE_QUEST_LOG.SetCloseFace(close, "SetPushedTexture",
+            "GetPushedTexture", cells.pushed)
+        STANDALONE_QUEST_LOG.SetCloseFace(close, "SetDisabledTexture",
+            "GetDisabledTexture", cells.disabled)
+        STANDALONE_QUEST_LOG.SetCloseFace(close, "SetHighlightTexture",
+            "GetHighlightTexture", cells.highlight)
+    end
+
+    local title = ResolveObject("QuestLogTitleText")
+    if title then
+        SetStandaloneAnchor(title, "TOP", frame, "TOP", 0, -token.titleTop)
+    end
+
+    -- Measured off the live ring rather than hardcoded: the ring is a fraction
+    -- of the window, and the controls beside it follow whatever it measures.
+    local ringLeft, _, ringWidth = STANDALONE_QUEST_LOG.RingRect(frame)
+    local column = ringLeft + ringWidth + token.ringGap
+    local collapse = ResolveObject("QuestLogCollapseAllButton")
+    if collapse then
+        SetStandaloneAnchor(collapse, "BOTTOMLEFT", frame, "TOPLEFT",
+            column, -token.listTop + token.collapseGap)
+    end
+
+    local count = ResolveObject("QuestLogQuestCount")
+    if count then
+        local collapseWidth = Client.GetObjectWidth(collapse)
+        if type(collapseWidth) ~= "number" or collapseWidth <= 0 then
+            collapseWidth = token.collapseWidth
+        end
+        SetStandaloneAnchor(count, "BOTTOMLEFT", frame, "TOPLEFT",
+            column + collapseWidth + token.countGap,
+            -token.listTop + token.collapseGap)
+    end
+
+    local empty = ResolveObject("QuestLogNoQuestsText")
+    if empty then
+        SetStandaloneAnchor(empty, "TOP", frame, "TOP", 0, -token.emptyTextTop)
+    end
+    return true
+end
+
+-- The three stock quest actions, each in the bed the art draws for it:
+-- Abandon, Share, Exit. The buttons keep their own click handling, enabled
+-- state and labels; UnrealQuest's own textured skin
+-- (Client.SetQuestLogButtonSkin, applied by Quest/QuestLogButtons.lua) is what
+-- gives them the matching red face.
+function STANDALONE_QUEST_LOG.PlaceActions(frame)
+    local buttons = {
+        ResolveObject("QuestLogFrameAbandonButton"),
+        ResolveObject("QuestFramePushQuestButton"),
+        ResolveObject("QuestFrameExitButton"),
+    }
+    local index = 1
+    while index <= 3 do
+        local button = buttons[index]
+        if button then
+            local left, bottom, width, height = STANDALONE_QUEST_LOG.ButtonRect(frame, index)
+            if left then
+                Client.SetObjectSize(button, width, height)
+                SetStandaloneAnchor(button, "BOTTOMLEFT", frame, "BOTTOMLEFT",
+                    left, bottom)
+            end
+        end
+        index = index + 1
+    end
+    return true
+end
+
+-- The row pitch is measured, never assumed. A Vanilla QuestLogTitleButtonTemplate
+-- row is exactly 16 pixels tall; this client owns its own Quest Log FrameXML,
+-- and this addon's own row work can change that height, so it is read back from
+-- the live row instead. QUESTLOG_QUEST_HEIGHT is the second choice because it is
+-- what the native QuestLog_Update feeds to FauxScrollFrame_Update as the scroll
+-- step, so it is the client's own idea of a row.
+function STANDALONE_QUEST_LOG.RowPitch(firstRow)
     local height = Client.GetObjectHeight(firstRow)
     if type(height) ~= "number"
-        or height < EXTENDED_QUEST_LOG.minRowHeight
-        or height > EXTENDED_QUEST_LOG.maxRowHeight then
+        or height < STANDALONE_QUEST_LOG.minRowHeight
+        or height > STANDALONE_QUEST_LOG.maxRowHeight then
         height = nil
     end
     if not height then
         local ok, stock = pcall(getglobal, "QUESTLOG_QUEST_HEIGHT")
         if ok and type(stock) == "number"
-            and stock >= EXTENDED_QUEST_LOG.minRowHeight
-            and stock <= EXTENDED_QUEST_LOG.maxRowHeight then
+            and stock >= STANDALONE_QUEST_LOG.minRowHeight
+            and stock <= STANDALONE_QUEST_LOG.maxRowHeight then
             height = stock
         end
     end
-    return height or EXTENDED_QUEST_LOG.defaultRowHeight
+    return height or STANDALONE_QUEST_LOG.defaultRowHeight
 end
 
--- How many rows the left page can hold without the tail spilling past the list
--- pane onto the footer buttons. Everything beyond this count is what the
--- native FauxScrollFrame scrolls: QuestLog_Update reads QUESTS_DISPLAYED for
--- both, so the drawn block and the scroll extent stay the same number.
-local function ResolveExtendedQuestLogRows(pitch)
-    local available = EXTENDED_QUEST_LOG.listTop
-        + EXTENDED_QUEST_LOG.listHeight - EXTENDED_QUEST_LOG.rowTop
-    local rows = math.floor(available / pitch)
-    if rows > EXTENDED_QUEST_LOG.maxRows then
-        rows = EXTENDED_QUEST_LOG.maxRows
+-- How many rows the list page can hold without the tail spilling past the pane
+-- onto the button beds. Everything beyond this count is what the native
+-- FauxScrollFrame scrolls: QuestLog_Update reads QUESTS_DISPLAYED for both, so
+-- the drawn block and the scroll extent stay the same number.
+function STANDALONE_QUEST_LOG.RowCount(pitch)
+    local rows = math.floor(STANDALONE_QUEST_LOG.listHeight / pitch)
+    if rows > STANDALONE_QUEST_LOG.maxRows then
+        rows = STANDALONE_QUEST_LOG.maxRows
     end
-    if rows < EXTENDED_QUEST_LOG.minRows then
-        rows = EXTENDED_QUEST_LOG.minRows
+    if rows < STANDALONE_QUEST_LOG.minRows then
+        rows = STANDALONE_QUEST_LOG.minRows
     end
     return rows
 end
 
 -- Returns nil while the native frame set is not available, false after a
 -- concrete preparation failure, and true once the one-shot layout is live.
-function Client.ApplyExtendedClassicQuestLog()
+function Client.ApplyStandaloneQuestLog()
     local frame = ResolveObject("QuestLogFrame")
     local listScroll = ResolveObject("QuestLogListScrollFrame")
     local detail = ResolveObject("QuestLogDetailScrollFrame")
@@ -8278,58 +9487,71 @@ function Client.ApplyExtendedClassicQuestLog()
         or not rewardMoney or not rewardText or not rewardSpacer then
         return nil
     end
-    if frame.unrealQuestExtendedClassic ~= nil then
-        return frame.unrealQuestExtendedClassic and true or false
+    if frame.unrealQuestStandaloneQuestLog ~= nil then
+        return frame.unrealQuestStandaloneQuestLog and true or false
     end
 
     -- One attempt only. A partially created Texture cannot be destroyed on
-    -- this client, so retrying would stack another parchment set every poll.
-    frame.unrealQuestExtendedClassic = false
+    -- this client, so retrying would stack another page set every poll.
+    frame.unrealQuestStandaloneQuestLog = false
 
-    local rewardAnchor = ResolveExtendedQuestLogMoneyAnchor(rewardText)
+    -- Strip first, add second: a later walk cannot tell an addon texture from a
+    -- stock one by identity, so the window's own art comes off before anything
+    -- of this addon's is put on it.
+    STANDALONE_QUEST_LOG.StripWindowArt(frame)
 
-    local textureSpecs = {
-        { "EQL3_TopLeft", "ARTWORK", 256, 256, "TOPLEFT", 0, 0 },
-        { "EQL3_TopSwitchOn", "ARTWORK", 128, 256, "TOPLEFT", 256, 0 },
-        { "EQL3_TopMiddle", "ARTWORK", 256, 256, "TOPLEFT", 384, 0 },
-        { "EQL3_TopRight", "ARTWORK", 64, 256, "TOPLEFT", 640, 0 },
-        { "EQL3_BottomLeft", "ARTWORK", 256, 256, "BOTTOMLEFT", 0, 0 },
-        { "EQL3_BottomSwitchOn", "ARTWORK", 128, 256, "BOTTOMLEFT", 256, 0 },
-        { "EQL3_BottomMiddle", "ARTWORK", 256, 256, "BOTTOMLEFT", 384, 0 },
-        { "EQL3_BottomRight", "ARTWORK", 64, 256, "BOTTOMLEFT", 640, 0 },
-    }
-    local textures = {}
-    local textureIndex = 1
-    while textureIndex <= table.getn(textureSpecs) do
-        local spec = textureSpecs[textureIndex]
-        local texture = CreateExtendedQuestLogTexture(frame,
-            spec[1], spec[2], spec[3], spec[4], spec[5], spec[6], spec[7])
-        if not texture then
-            frame.unrealQuestExtendedClassicTextures = textures
-            return false
-        end
-        table.insert(textures, texture)
-        textureIndex = textureIndex + 1
+    local chrome = STANDALONE_QUEST_LOG.CreateChrome(frame)
+    if not chrome then
+        return false
     end
-    frame.unrealQuestExtendedClassicTextures = textures
+    local root = STANDALONE_QUEST_LOG.textureRoot
+    local art = {
+        chrome = chrome,
+        left = STANDALONE_QUEST_LOG.CreateTexture(chrome, "BACKGROUND",
+            root .. STANDALONE_QUEST_LOG.pageLeft,
+            STANDALONE_QUEST_LOG.leftTexCoord),
+        right = STANDALONE_QUEST_LOG.CreateTexture(chrome, "BACKGROUND",
+            root .. STANDALONE_QUEST_LOG.pageRight,
+            STANDALONE_QUEST_LOG.rightTexCoord),
+    }
+    frame.unrealQuestStandaloneQuestLogArt = art
+    if not art.left or not art.right then
+        return false
+    end
+    -- Above the pages on the same chrome, so it is still below every native
+    -- widget of the window.
+    art.book = STANDALONE_QUEST_LOG.CreateTexture(chrome, "ARTWORK",
+        STANDALONE_QUEST_LOG.bookIcon.path)
 
-    Client.SetObjectSize(frame, EXTENDED_QUEST_LOG.width, EXTENDED_QUEST_LOG.height)
-    Client.SetObjectSize(listScroll, EXTENDED_QUEST_LOG.listWidth,
-        EXTENDED_QUEST_LOG.listHeight)
-    Client.SetObjectSize(detail, 300, 413)
-    Client.SetObjectSize(detailChild, 300, 413)
-    if not SetExtendedQuestLogAnchor(listScroll, "TOPLEFT", frame,
-        "TOPLEFT", 20, -EXTENDED_QUEST_LOG.listTop)
-        or not SetExtendedQuestLogAnchor(detail, "TOPLEFT", frame,
-            "TOPLEFT", 350, -72)
+    Client.SetObjectSize(frame, STANDALONE_QUEST_LOG.width,
+        STANDALONE_QUEST_LOG.height)
+    if not STANDALONE_QUEST_LOG.PlacePages(frame, art) then
+        return false
+    end
+
+    -- The panes. Neither width is set: the native ones are what the rows and
+    -- the reward block were laid out against, and the art leaves slack for
+    -- them on both pages.
+    Client.SetObjectSize(listScroll, nil, STANDALONE_QUEST_LOG.listHeight)
+    Client.SetObjectSize(detail, nil, STANDALONE_QUEST_LOG.detailHeight)
+    Client.SetObjectSize(detailChild, nil,
+        STANDALONE_QUEST_LOG.detailChildHeight)
+    local rewardAnchor = ResolveStandaloneMoneyAnchor(rewardText)
+    if not SetStandaloneAnchor(listScroll, "TOPLEFT", frame, "TOPLEFT",
+        STANDALONE_QUEST_LOG.listLeft, -STANDALONE_QUEST_LOG.listTop)
+        -- One hop to the list pane, not a chain: the details page starts a
+        -- fixed gap past whatever the list pane measures, so a different native
+        -- list width moves with it instead of drifting into the seam.
+        or not SetStandaloneAnchor(detail, "TOPLEFT", listScroll, "TOPRIGHT",
+            STANDALONE_QUEST_LOG.detailOffsetX, 0)
         -- Keep the money on its own line after the full guaranteed-item block
-        -- and make that complete 28-pixel line part of the scroll extent.
-        -- Probe questrewardlayout.live_geometry.v1 measured the inline parent
-        -- and anchor working, but the native spacer still ended too early: 7
-        -- of 12 live money states were clipped by the detail pane.
-        or not AttachExtendedQuestLogMoney(rewardMoney, rewardAnchor,
+        -- and make that complete line part of the scroll extent. Probe
+        -- questrewardlayout.live_geometry.v1 measured the inline parent and
+        -- anchor working, but the native spacer still ended too early: 7 of 12
+        -- live money states were clipped by the detail pane.
+        or not AttachStandaloneMoney(rewardMoney, rewardAnchor,
             detailChild, "TOPLEFT", "BOTTOMLEFT", 0, -2)
-        or not SetExtendedQuestLogAnchor(rewardSpacer, "TOP", rewardMoney,
+        or not SetStandaloneAnchor(rewardSpacer, "TOP", rewardMoney,
             "BOTTOM", 0, 0) then
         return false
     end
@@ -8337,7 +9559,7 @@ function Client.ApplyExtendedClassicQuestLog()
     local requiredMoney = ResolveObject("QuestLogRequiredMoneyFrame")
     local requiredText = ResolveObject("QuestLogRequiredMoneyText")
     if requiredMoney and requiredText then
-        AttachExtendedQuestLogMoney(requiredMoney, requiredText,
+        AttachStandaloneMoney(requiredMoney, requiredText,
             detailChild, "LEFT", "RIGHT", 10, 0)
     end
 
@@ -8346,16 +9568,16 @@ function Client.ApplyExtendedClassicQuestLog()
     -- native QuestLog_Update fills them when QUESTS_DISPLAYED is raised.
     --
     -- Each row takes its own offset from the frame instead of being chained
-    -- onto the row above it. EQL3 chained its 27 rows with a one-pixel nudge,
+    -- onto the row above it. EQL3 chained its rows with a one-pixel nudge,
     -- which only lands where the row template is Vanilla's 16 pixels and the
     -- client applies that offset upwards; knowledge record
     -- questlog.eql3_chained_rows_leave_the_page is the USER_CONFIRMED_INGAME
     -- report that it does not hold here -- the tail of a long quest list drew
-    -- over the footer buttons and off the parchment. An absolute offset per
-    -- row cannot accumulate an error, and the count is measured against the
-    -- page, so the block ends inside the list pane whatever a row measures.
-    local pitch = ResolveExtendedQuestLogRowPitch(firstRow)
-    local rows = ResolveExtendedQuestLogRows(pitch)
+    -- over the footer buttons and off the page. An absolute offset per row
+    -- cannot accumulate an error, and the count is measured against the page,
+    -- so the block ends inside the list pane whatever a row measures.
+    local pitch = STANDALONE_QUEST_LOG.RowPitch(firstRow)
+    local rows = STANDALONE_QUEST_LOG.RowCount(pitch)
     local createFrame = Resolve("CreateFrame")
     local rowIndex = 1
     while rowIndex <= rows do
@@ -8375,9 +9597,9 @@ function Client.ApplyExtendedClassicQuestLog()
         if type(row.SetID) == "function" then
             pcall(row.SetID, row, rowIndex)
         end
-        if not SetExtendedQuestLogAnchor(row, "TOPLEFT", frame, "TOPLEFT",
-            EXTENDED_QUEST_LOG.rowLeft,
-            -(EXTENDED_QUEST_LOG.rowTop + (rowIndex - 1) * pitch)) then
+        if not SetStandaloneAnchor(row, "TOPLEFT", frame, "TOPLEFT",
+            STANDALONE_QUEST_LOG.listLeft,
+            -(STANDALONE_QUEST_LOG.listTop + (rowIndex - 1) * pitch)) then
             return false
         end
         rowIndex = rowIndex + 1
@@ -8389,47 +9611,24 @@ function Client.ApplyExtendedClassicQuestLog()
     -- FauxScrollFrame_Update call inside QuestLog_Update treats as the visible
     -- window, so the scroll bar appears exactly when the log outgrows the page.
     QUESTS_DISPLAYED = rows
-    EXTENDED_QUEST_LOG.rows = rows
+    STANDALONE_QUEST_LOG.rows = rows
 
-    local close = ResolveObject("QuestLogFrameCloseButton")
-    if close then
-        SetExtendedQuestLogAnchor(close, "TOPRIGHT", frame, "TOPRIGHT", -20, -8)
-    end
+    -- The native scroll bars keep their own gold atlas and their own state
+    -- machine; only where they sit changes, because the art draws a gutter on
+    -- the list page and a recessed channel on the details page for exactly
+    -- these two bars.
+    STANDALONE_QUEST_LOG.PlaceListScrollBar(listScroll)
+    STANDALONE_QUEST_LOG.PlaceDetailScrollBar(frame)
+    STANDALONE_QUEST_LOG.PlaceHeader(frame)
+    STANDALONE_QUEST_LOG.PlaceActions(frame)
 
-    -- Keep the three stock quest actions in the parchment footer shown by the
-    -- EQL3 reference: Abandon at the left, Share and Exit paired at the right.
-    -- The 411/413-pixel scroll panes end 27 pixels above the frame bottom, so
-    -- this 21-pixel row owns that reserved strip instead of covering quest
-    -- rows or reward details.
-    local abandon = ResolveObject("QuestLogFrameAbandonButton")
-    local push = ResolveObject("QuestFramePushQuestButton")
-    local exit = ResolveObject("QuestFrameExitButton")
-    if abandon then
-        Client.SetObjectSize(abandon, 125, 21)
-        SetExtendedQuestLogAnchor(abandon, "BOTTOMLEFT", frame,
-            "BOTTOMLEFT", 16, 5)
-    end
-    if exit then
-        Client.SetObjectSize(exit, nil, 21)
-        SetExtendedQuestLogAnchor(exit, "BOTTOMRIGHT", frame,
-            "BOTTOMRIGHT", -30, 5)
-    end
-    if push then
-        Client.SetObjectSize(push, 123, 21)
-        if exit then
-            SetExtendedQuestLogAnchor(push, "BOTTOMRIGHT", exit,
-                "BOTTOMLEFT", -4, 0)
-        else
-            SetExtendedQuestLogAnchor(push, "BOTTOMRIGHT", frame,
-                "BOTTOMRIGHT", -30, 5)
-        end
-    end
     local windows = ResolveObject("UIPanelWindows")
     if windows and type(windows.QuestLogFrame) == "table" then
         windows.QuestLogFrame.area = "doublewide"
     end
 
-    frame.unrealQuestExtendedClassic = true
+    frame.unrealQuestStandaloneQuestLog = true
+    STANDALONE_QUEST_LOG.wasShown = Client.IsObjectShown(frame) and true or false
     Client.RefreshQuestLog()
     return true
 end
@@ -8439,14 +9638,14 @@ end
 -- observer calls this while the log is open; stable anchors are read-only, and
 -- only a native rewrite reasserts the measured reward tail. Never replace or
 -- invoke the native refresh.
-function Client.RefreshExtendedClassicQuestLogRewards()
+function Client.RefreshStandaloneQuestLogRewards()
     local frame = ResolveObject("QuestLogFrame")
     local detail = ResolveObject("QuestLogDetailScrollFrame")
     local detailChild = ResolveObject("QuestLogDetailScrollChildFrame")
     local rewardText = ResolveObject("QuestLogItemReceiveText")
     local rewardMoney = ResolveObject("QuestLogMoneyFrame")
     local rewardSpacer = ResolveObject("QuestLogSpacerFrame")
-    if not frame or frame.unrealQuestExtendedClassic ~= true
+    if not frame or frame.unrealQuestStandaloneQuestLog ~= true
         or not detail or not detailChild or not rewardText
         or not rewardMoney or not rewardSpacer
         or not Client.IsObjectShown(frame)
@@ -8461,18 +9660,18 @@ function Client.RefreshExtendedClassicQuestLogRewards()
         return false
     end
     local rewardAnchor, rewardAnchorName =
-        ResolveExtendedQuestLogMoneyAnchor(rewardText)
-    if ExtendedQuestLogParentMatches(rewardMoney, detailChild,
+        ResolveStandaloneMoneyAnchor(rewardText)
+    if StandaloneParentMatches(rewardMoney, detailChild,
             "QuestLogDetailScrollChildFrame")
-        and ExtendedQuestLogAnchorMatches(rewardMoney, "TOPLEFT", rewardAnchor,
+        and StandaloneAnchorMatches(rewardMoney, "TOPLEFT", rewardAnchor,
             rewardAnchorName, "BOTTOMLEFT")
-        and ExtendedQuestLogAnchorMatches(rewardSpacer, "TOP", rewardMoney,
+        and StandaloneAnchorMatches(rewardSpacer, "TOP", rewardMoney,
             "QuestLogMoneyFrame", "BOTTOM") then
         return true
     end
-    if not AttachExtendedQuestLogMoney(rewardMoney, rewardAnchor,
+    if not AttachStandaloneMoney(rewardMoney, rewardAnchor,
         detailChild, "TOPLEFT", "BOTTOMLEFT", 0, -2)
-        or not SetExtendedQuestLogAnchor(rewardSpacer, "TOP", rewardMoney,
+        or not SetStandaloneAnchor(rewardSpacer, "TOP", rewardMoney,
             "BOTTOM", 0, 0) then
         return false
     end
@@ -8493,7 +9692,7 @@ end
 -- QuestLogMoneyFrame -> QuestLogSpacerFrame, and every one of those anchors is
 -- rewritten on each selection. Inserting a row between two of them would be
 -- undone by the next native refresh (and would fight the money/spacer anchors
--- Quest/ExtendedQuestLog.lua re-asserts on its own poll). Anchoring below the
+-- Quest/StandaloneQuestLog.lua re-asserts on its own poll). Anchoring below the
 -- last SHOWN member of that chain instead survives the refresh, because the
 -- rows are re-placed from the same chain on every poll.
 --
@@ -8591,7 +9790,7 @@ QuestLogRewardRows.surfaces = {
 
 -- The item buttons are laid out two to a row, so the block's bottom edge is
 -- the LEFT button of the final row -- index minus one when the count is even.
--- This is the same arithmetic ResolveExtendedQuestLogMoneyAnchor above uses to
+-- This is the same arithmetic ResolveStandaloneMoneyAnchor above uses to
 -- put the coin row under the items, for the same reason.
 function QuestLogRewardRows.FinalRowItem(count, offset)
     if count <= 0 then
@@ -8625,13 +9824,18 @@ end
 -- layout rather than by assuming an order that differs per surface and per
 -- client.
 --
--- Every shown member of the block is a candidate: the money frame and each
--- item button, choices and guaranteed rewards alike. GetBottom is documented
--- on Region by this client (OFFICIAL_CLIENT_DOCUMENTATION) and all candidates
--- are siblings inside the same scroll child, so the comparison stays in one
--- coordinate space. Nil-tolerant throughout: a candidate that cannot be
--- measured is skipped, and if none can be, the caller falls back to the
--- assumed chain rather than to nothing.
+-- Every shown member of the block is a candidate: the money frame and every
+-- named reward button in the preallocated chain. The whole chain is scanned,
+-- rather than only GetNumQuest*Choices/Rewards, because a learned spell uses
+-- another Quest*Item button without being included in either item count. This
+-- is the same button that made the experience row overlap "You will learn:"
+-- on both the quest log and quest-giver window (user confirmed 2026-09-23).
+-- GetBottom is documented on Region by this client
+-- (OFFICIAL_CLIENT_DOCUMENTATION) and all candidates are siblings inside the
+-- same scroll child, so the comparison stays in one coordinate space.
+-- Nil-tolerant throughout: a candidate that cannot be measured is skipped,
+-- and if none can be, the caller falls back to the assumed chain rather than
+-- to nothing.
 function QuestLogRewardRows.LowestRewardWidget(surface)
     local candidates = {}
     local isItemButton = {}
@@ -8646,18 +9850,8 @@ function QuestLogRewardRows.LowestRewardWidget(surface)
         table.insert(isItemButton, false)
     end
 
-    local choices, rewards
-    if surface.counts == "giver" then
-        choices, rewards = Client.GetQuestGiverRewardCounts()
-    else
-        choices, rewards = Client.GetQuestLogRewardCounts()
-    end
-    local total = choices + rewards
-    if total > QuestLogRewardRows.maxItemButtons then
-        total = QuestLogRewardRows.maxItemButtons
-    end
     local index = 1
-    while index <= total do
+    while index <= QuestLogRewardRows.maxItemButtons do
         local item = ResolveObject(surface.item .. tostring(index))
         if item and Client.IsObjectShown(item) then
             table.insert(candidates, item)
@@ -8957,11 +10151,15 @@ end
 --
 -- The row copies unrealUI's status overlay coins by request: per denomination
 -- a number followed by a 12px coin, sized to the rendered number, 1px apart.
--- The coin is a slice of the shared Interface\MoneyFrame\UI-MoneyIcons atlas,
--- the path knowledge record textures.separate_coin_paths_not_rendered
--- (USER_CONFIRMED_INGAME) found rendering where the three separate
--- UI-GoldIcon/SilverIcon/CopperIcon paths stay blank. A zero denomination is
--- left out, as the native money frame does.
+-- Since 2026-09-20 that overlay draws unrealUI's own coin art rather than the
+-- stock Interface\MoneyFrame\UI-MoneyIcons atlas, so the same three files are
+-- imported here under media/ and each coin fills its own texture -- there is
+-- no atlas slice left to apply. The knowledge record
+-- textures.separate_coin_paths_not_rendered is about the *stock*
+-- UI-GoldIcon/SilverIcon/CopperIcon paths being blank on this client; addon
+-- TGAs referenced without their extension are the confirmed working form used
+-- by every other file in media/. A zero denomination is left out, as the
+-- native money frame does.
 --
 -- The native frame is hidden AND held at alpha 0: FrameXML shows it again on
 -- every selection, and the alpha keeps that one poll interval invisible
@@ -8970,24 +10168,31 @@ end
 -- it for the scroll extent.
 --
 -- The guaranteed reward items start directly under the same label, so the
--- first of them is moved under the coin line. Only an item still anchored to
--- the label (or already to the coin line) is touched; the native refresh puts
--- it back on the next selection and the next poll repeats the move. GetPoint
--- reports the relative widget by NAME and inverts Y here (see
--- ExtendedQuestLogAnchorMatches), so only the name and X are read back.
+-- first of them is pushed down past the coin line. It stays anchored to the
+-- label with a larger offset and never to the coin line itself: an item button
+-- hung from that addon frame stopped following the detail scroll, and every
+-- GetTop/GetBottom read of it shifted with the offset, which also misplaced
+-- the experience rows measured from it (questrewarditem.scroll_follow.v1).
+-- Only an item anchored to the label (or to the coin line, from an older
+-- build) is touched; the native refresh restores its own offset on the next
+-- selection and the next poll repeats the move. GetPoint reports the relative
+-- widget by NAME and its Y sign is unreliable here (see
+-- StandaloneAnchorMatches), so the offset is compared by magnitude.
 QuestLogRewardRows.moneyLabel = "QuestLogItemReceiveText"
 QuestLogRewardRows.moneyGap = 2
 QuestLogRewardRows.moneyItemGap = 5
-QuestLogRewardRows.coinTexture = "Interface\\MoneyFrame\\UI-MoneyIcons"
 QuestLogRewardRows.coinHeight = 14
 QuestLogRewardRows.coinIconSize = 12
 QuestLogRewardRows.coinGap = 1
 -- The numbers are full white on every denomination, by request; the coin art
 -- alone says which is which.
 QuestLogRewardRows.coins = {
-    { copper = 10000, left = 0.00, right = 0.25, r = 1, g = 1, b = 1 },
-    { copper = 100, left = 0.25, right = 0.50, r = 1, g = 1, b = 1 },
-    { copper = 1, left = 0.50, right = 0.75, r = 1, g = 1, b = 1 },
+    { copper = 10000, r = 1, g = 1, b = 1,
+      texture = "Interface\\AddOns\\unrealQuest\\media\\coin-gold" },
+    { copper = 100, r = 1, g = 1, b = 1,
+      texture = "Interface\\AddOns\\unrealQuest\\media\\coin-silver" },
+    { copper = 1, r = 1, g = 1, b = 1,
+      texture = "Interface\\AddOns\\unrealQuest\\media\\coin-copper" },
 }
 
 -- No drop shadow on the coin numbers, by request, whatever unrealUI theme is
@@ -9047,9 +10252,9 @@ function QuestLogRewardRows.BindShadowFreeFont(label, index)
     return pcall(label.SetFontObject, label, font) and true or false
 end
 
--- A holder frame per denomination: the coin at its right edge, raised 2px
--- because the art sits low in its atlas slice, and the number right-aligned
--- against the coin and lowered back onto the text baseline.
+-- A holder frame per denomination: the coin centred at its right edge -- it
+-- fills its own texture, so it needs no raise -- and the number right-aligned
+-- against it on the text baseline.
 function QuestLogRewardRows.CreateMoneyRow(dock, name)
     local createFrame = Resolve("CreateFrame")
     if not createFrame then
@@ -9075,9 +10280,8 @@ function QuestLogRewardRows.CreateMoneyRow(dock, name)
         if iconOk and icon then
             Client.SetObjectSize(icon, QuestLogRewardRows.coinIconSize,
                 QuestLogRewardRows.coinIconSize)
-            pcall(icon.SetPoint, icon, "RIGHT", holder, "RIGHT", 0, 2)
-            pcall(icon.SetTexture, icon, QuestLogRewardRows.coinTexture)
-            pcall(icon.SetTexCoord, icon, spec.left, spec.right, 0, 1)
+            pcall(icon.SetPoint, icon, "RIGHT", holder, "RIGHT", 0, 0)
+            pcall(icon.SetTexture, icon, spec.texture)
         end
         local labelOk, label = pcall(holder.CreateFontString, holder, nil,
             "OVERLAY", "GameFontNormalSmall")
@@ -9085,7 +10289,7 @@ function QuestLogRewardRows.CreateMoneyRow(dock, name)
             return nil
         end
         if iconOk and icon then
-            pcall(label.SetPoint, label, "RIGHT", icon, "LEFT", -1, -2)
+            pcall(label.SetPoint, label, "RIGHT", icon, "LEFT", -1, 0)
         else
             pcall(label.SetPoint, label, "RIGHT", holder, "RIGHT", 0, 0)
         end
@@ -9121,7 +10325,7 @@ function QuestLogRewardRows.LayoutMoneyRow(row, copper)
             end
             width = math.ceil(width) + 1 + QuestLogRewardRows.coinIconSize
             Client.SetObjectSize(holder, width, QuestLogRewardRows.coinHeight)
-            SetExtendedQuestLogAnchor(holder, "TOPLEFT", row, "TOPLEFT", x, 0)
+            SetStandaloneAnchor(holder, "TOPLEFT", row, "TOPLEFT", x, 0)
             Client.ShowObject(holder)
             x = x + width + QuestLogRewardRows.coinGap
         else
@@ -9142,7 +10346,8 @@ function QuestLogRewardRows.PlaceMoneyItems(label, row, below)
     if not item or type(item.GetPoint) ~= "function" then
         return false
     end
-    local ok, point, relative, relativePoint, x = pcall(item.GetPoint, item, 1)
+    local ok, point, relative, relativePoint, x, y =
+        pcall(item.GetPoint, item, 1)
     if not ok then
         return false
     end
@@ -9151,18 +10356,22 @@ function QuestLogRewardRows.PlaceMoneyItems(label, row, below)
         relativeName = Client.GetObjectName(relative)
     end
     local rowName = QuestLogRewardRows.surfaces.log.moneyRow
-    local target, targetName = label, QuestLogRewardRows.moneyLabel
-    if below then
-        target, targetName = row, rowName
-    end
-    if relativeName == targetName
-        or (relativeName ~= rowName
-            and relativeName ~= QuestLogRewardRows.moneyLabel) then
+    if relativeName ~= rowName
+        and relativeName ~= QuestLogRewardRows.moneyLabel then
         return false
     end
-    return SetExtendedQuestLogAnchor(item, point or "TOPLEFT", target,
+    local offset = QuestLogRewardRows.moneyItemGap
+    if below then
+        offset = offset + QuestLogRewardRows.moneyGap
+            + QuestLogRewardRows.coinHeight
+    end
+    if relativeName == QuestLogRewardRows.moneyLabel and type(y) == "number"
+        and math.abs(math.abs(y) - offset) < 0.5 then
+        return false
+    end
+    return SetStandaloneAnchor(item, point or "TOPLEFT", label,
         relativePoint or "BOTTOMLEFT", type(x) == "number" and x or 0,
-        -QuestLogRewardRows.moneyItemGap)
+        -offset)
 end
 
 -- replace=false hands the native frame back untouched; replace=true hides it
@@ -9225,9 +10434,9 @@ function Client.SetQuestLogRewardMoney(replace, copper)
     if QuestLogRewardRows.LayoutMoneyRow(row, copper) then
         changed = true
     end
-    if not ExtendedQuestLogAnchorMatches(row, "TOPLEFT", label,
+    if not StandaloneAnchorMatches(row, "TOPLEFT", label,
         QuestLogRewardRows.moneyLabel, "BOTTOMLEFT") then
-        SetExtendedQuestLogAnchor(row, "TOPLEFT", label, "BOTTOMLEFT",
+        SetStandaloneAnchor(row, "TOPLEFT", label, "BOTTOMLEFT",
             0, -QuestLogRewardRows.moneyGap)
         changed = true
     end
@@ -9520,9 +10729,326 @@ function Client.SetQuestRewardItemQualityColors(enabled)
     return painted
 end
 
-function Client.IsExtendedClassicQuestLogShown()
+-- Gear advisor: tooltip text, talent trees and marks on reward buttons -------
+--
+-- Item stats come from tooltip TEXT, read through a private GameTooltipTemplate
+-- scanner owned by WorldFrame with ANCHOR_NONE: the construction that read an
+-- equipped item's lines on this client (bags.equipped_bag_type_via_tooltip,
+-- FOCUSED_RUNTIME_PROBE -- SetInventoryItem, NumLines, <name>TextLeftN:GetText).
+-- A reward is read with GameTooltip:SetQuestItem (documented, and what the
+-- stock reward button's own hover does), never through GetQuestItemLink, which
+-- returned nil for a visible choice reward here
+-- (quest.reward_item_link_nil_after_tooltip_population).
+--
+-- GearAdvisor.tga is a 2x2 atlas of 64px cells: yellow arrow top-left, green
+-- top-right, coin bottom-left, red bottom-right. Static cells use the
+-- four-argument SetTexCoord form this client draws correctly for atlases (the
+-- travelling case in textures.minimap_mail_256x512_atlas_settexcoord_travels
+-- is an animated flipbook). The downward arrow is the red cell with top and
+-- bottom swapped, the vertical flip unrealUI's professions border ships.
+local QuestRewardGear = {
+    scannerName = "UnrealQuestGearScan",
+    texture = "Interface\\AddOns\\unrealQuest\\media\\GearAdvisor",
+    cells = {
+        best = { 0.5, 1, 0, 0.5 },
+        second = { 0, 0.5, 0, 0.5 },
+        worse = { 0.5, 1, 1, 0.5 },
+    },
+    -- The coin's own 32x27 box inside its cell, so it can be drawn small.
+    coinCell = { 16 / 128, 48 / 128, 81 / 128, 108 / 128 },
+    coinAspect = 27 / 32,
+    -- Sizes as a share of the icon (the stock icon is 39px), after the
+    -- reference layout the user supplied: the arrow flush in the icon's
+    -- bottom-right corner at about half its height, a small coin in the
+    -- top-right corner of the name plate.
+    arrowShare = 0.55,
+    coinShare = 0.36,
+    coinInset = 5,
+    fallbackIcon = 39,
+    maxButtons = 10,
+}
+
+function QuestRewardGear.Scanner()
+    if QuestRewardGear.scanner then
+        return QuestRewardGear.scanner
+    end
+    local create = Resolve("CreateFrame")
+    if not create then
+        return nil
+    end
+    local ok, tooltip = pcall(create, "GameTooltip", QuestRewardGear.scannerName,
+        nil, "GameTooltipTemplate")
+    if not ok or not tooltip then
+        return nil
+    end
+    QuestRewardGear.scanner = tooltip
+    return tooltip
+end
+
+-- The scanner's rows as { text } or { left, right }. Colour is not needed.
+function QuestRewardGear.ReadLines(count)
+    local lines = {}
+    local row = 1
+    while row <= count do
+        local left = Client.GetObjectText(ResolveObject(QuestRewardGear.scannerName
+            .. "TextLeft" .. tostring(row)))
+        if left then
+            local right = ResolveObject(QuestRewardGear.scannerName .. "TextRight" .. tostring(row))
+            local rightText = Client.IsObjectShown(right) and Client.GetObjectText(right) or nil
+            if rightText then
+                table.insert(lines, { left = left, right = rightText })
+            else
+                table.insert(lines, { text = left })
+            end
+        end
+        row = row + 1
+    end
+    return lines
+end
+
+-- Lines of one scanner pass, or nil when the tooltip could not be built.
+-- `setter` returning false (SetInventoryItem's hasItem) is an empty slot.
+function QuestRewardGear.Scan(setter, a, b)
+    local tooltip = QuestRewardGear.Scanner()
+    local owner = ResolveObject("WorldFrame")
+    if not tooltip or not owner or type(tooltip[setter]) ~= "function" then
+        return nil
+    end
+    if type(tooltip.ClearLines) == "function" then
+        pcall(tooltip.ClearLines, tooltip)
+    end
+    if not pcall(tooltip.SetOwner, tooltip, owner, "ANCHOR_NONE") then
+        return nil
+    end
+    local ok, result = pcall(tooltip[setter], tooltip, a, b)
+    local countOk, count = pcall(tooltip.NumLines, tooltip)
+    local lines = nil
+    if ok and result ~= false and countOk and type(count) == "number" then
+        lines = QuestRewardGear.ReadLines(count)
+    elseif ok and result == false then
+        lines = {}
+    end
+    pcall(tooltip.Hide, tooltip)
+    return lines
+end
+
+-- name, quality, usable for one reward on the open quest-giver window.
+-- isUsable is documented true/false once the item is cached; the stock panel
+-- tints an unusable reward red from the same value.
+function Client.GetQuestGiverItemDetails(rewardType, index)
+    local ok, name, _, _, quality, usable =
+        Call2("GetQuestItemInfo", rewardType, index)
+    if not ok or type(name) ~= "string" or name == "" then
+        return nil
+    end
+    return name, type(quality) == "number" and quality or nil,
+        usable == true or usable == 1
+end
+
+-- The reward's tooltip rows ({ text } or { left, right }), or nil.
+function Client.GetQuestGiverItemTooltipLines(rewardType, index)
+    local lines = QuestRewardGear.Scan("SetQuestItem", rewardType, index)
+    if lines and table.getn(lines) == 0 then
+        return nil
+    end
+    return lines
+end
+
+-- The equipped item's link in a paper-doll slot ("HeadSlot"), false for an
+-- empty slot, nil when it cannot be read. This client answers an empty gear
+-- slot with an "item:0" link rather than nil
+-- (bags.equipped_bag_type_via_tooltip, slots 17 and 19).
+function Client.GetEquippedItemLink(slotName)
+    local ok, slotId = Call1("GetInventorySlotInfo", slotName)
+    if not ok or type(slotId) ~= "number" then
+        return nil
+    end
+    local linkOk, link = Call2("GetInventoryItemLink", "player", slotId)
+    if not linkOk then
+        return nil
+    end
+    if type(link) ~= "string" or link == "" or string.find(link, "item:0[^%d]")
+        or string.find(link, "item:0$") then
+        return false
+    end
+    return link
+end
+
+-- The equipped item's tooltip rows, an empty table for an empty slot, or nil
+-- when the slot cannot be read.
+function Client.GetEquippedItemTooltipLines(slotName)
+    local link = Client.GetEquippedItemLink(slotName)
+    if link == false then
+        return {}
+    end
+    local ok, slotId = Call1("GetInventorySlotInfo", slotName)
+    if not ok or type(slotId) ~= "number" then
+        return nil
+    end
+    return QuestRewardGear.Scan("SetInventoryItem", "player", slotId)
+end
+
+-- { { background, points }, ... } for the player's talent trees. The
+-- background file name ("MageFire") names the tree in every language, and the
+-- tab order is not Vanilla's here (Fire came before Arcane), so the tree is
+-- identified by it rather than by index (talent.tab_info_background_textures,
+-- FOCUSED_RUNTIME_PROBE: four returns, background is the fourth).
+function Client.GetTalentTrees()
+    local trees = {}
+    local ok, count = Call0("GetNumTalentTabs")
+    if not ok or type(count) ~= "number" then
+        count = 3
+    end
+    local index = 1
+    while index <= count and index <= 5 do
+        local infoOk, _, _, points, background = Call1("GetTalentTabInfo", index)
+        if infoOk and type(background) == "string" and background ~= "" then
+            table.insert(trees, { background = background,
+                points = type(points) == "number" and points or 0 })
+        end
+        index = index + 1
+    end
+    return trees
+end
+
+function Client.IsQuestGiverCompletionShown()
+    return Client.IsObjectVisible(
+        ResolveObject(QuestLogRewardRows.surfaces.complete.dock))
+end
+
+-- The name a completion-window reward button shows, or nil when it is hidden.
+-- The native string recorded by Quest/QuestGiverTranslation.lua wins over the
+-- translated one on screen, as in Client.SetQuestRewardItemQualityColors.
+function Client.GetQuestRewardButtonText(index)
+    local name = QuestLogRewardRows.surfaces.complete.item .. tostring(index)
+    if not Client.IsObjectShown(ResolveObject(name)) then
+        return nil
+    end
+    local region = ResolveObject(name .. "Name")
+    local text = region and region.unrealQuestGiverNativeText
+    if type(text) ~= "string" or text == "" then
+        text = Client.GetObjectText(region)
+    end
+    return text
+end
+
+function QuestRewardGear.Texture(frame)
+    local ok, texture = pcall(frame.CreateTexture, frame, nil, "OVERLAY")
+    if not ok or not texture then
+        return nil
+    end
+    pcall(texture.SetTexture, texture, QuestRewardGear.texture)
+    return texture
+end
+
+-- The mark frame over one button's icon: a child of the button a few levels
+-- up, so it scrolls and hides with it. Anchored to <button>IconTexture when
+-- that region exists (the name unrealUI's quest styling also resolves), else
+-- to the button's left square, where the stock template draws the icon.
+function QuestRewardGear.Mark(index)
+    local name = QuestLogRewardRows.surfaces.complete.item .. tostring(index)
+    local button = ResolveObject(name)
+    if not button then
+        return nil
+    end
+    if button.unrealQuestGearMark then
+        return button.unrealQuestGearMark
+    end
+    local create = Resolve("CreateFrame")
+    if not create then
+        return nil
+    end
+    local ok, frame = pcall(create, "Frame", "UnrealQuestGearMark" .. tostring(index), button)
+    if not ok or not frame then
+        return nil
+    end
+    local levelOk, level = pcall(button.GetFrameLevel, button)
+    if levelOk and type(level) == "number" then
+        pcall(frame.SetFrameLevel, frame, level + 3)
+    end
+    local icon = ResolveObject(name .. "IconTexture")
+    local size = Client.GetObjectHeight(icon)
+    if icon and type(size) == "number" and size > 0 then
+        pcall(frame.SetPoint, frame, "TOPLEFT", icon, "TOPLEFT", 0, 0)
+    else
+        size = Client.GetObjectHeight(button)
+        if type(size) ~= "number" or size <= 0 or size > QuestRewardGear.fallbackIcon then
+            size = QuestRewardGear.fallbackIcon
+        end
+        pcall(frame.SetPoint, frame, "TOPLEFT", button, "TOPLEFT", 0, 0)
+    end
+    pcall(frame.SetWidth, frame, size)
+    pcall(frame.SetHeight, frame, size)
+
+    local arrow = QuestRewardGear.Texture(frame)
+    local coin = QuestRewardGear.Texture(frame)
+    if not arrow or not coin then
+        return nil
+    end
+    -- The arrow cells carry about a pixel of transparent margin on the right,
+    -- so the +1 puts the drawn arrow flush with the icon's edge.
+    local arrowSize = math.floor(size * QuestRewardGear.arrowShare + 0.5)
+    pcall(arrow.SetWidth, arrow, arrowSize)
+    pcall(arrow.SetHeight, arrow, arrowSize)
+    pcall(arrow.SetPoint, arrow, "BOTTOMRIGHT", frame, "BOTTOMRIGHT", 1, 0)
+    -- The coin belongs to the whole reward, so it sits on the button's
+    -- name-plate corner rather than on the icon.
+    local coinWidth = math.floor(size * QuestRewardGear.coinShare + 0.5)
+    local inset = QuestRewardGear.coinInset
+    pcall(coin.SetWidth, coin, coinWidth)
+    pcall(coin.SetHeight, coin, math.floor(coinWidth * QuestRewardGear.coinAspect + 0.5))
+    pcall(coin.SetPoint, coin, "TOPRIGHT", button, "TOPRIGHT", -inset, -inset)
+    local cell = QuestRewardGear.coinCell
+    pcall(coin.SetTexCoord, coin, cell[1], cell[2], cell[3], cell[4])
+    frame.unrealQuestArrow = arrow
+    frame.unrealQuestCoin = coin
+    button.unrealQuestGearMark = frame
+    return frame
+end
+
+-- arrow: "best", "second", "worse" or nil; coin: true for the best resale.
+-- Nothing to draw hides the button's mark without creating one.
+function Client.SetQuestRewardGearMark(index, arrow, coin)
+    local cell = arrow and QuestRewardGear.cells[arrow] or nil
+    local button = ResolveObject(QuestLogRewardRows.surfaces.complete.item .. tostring(index))
+    local mark = button and button.unrealQuestGearMark
+    if not cell and not coin then
+        if mark then
+            Client.HideObject(mark)
+        end
+        return true
+    end
+    mark = mark or QuestRewardGear.Mark(index)
+    if not mark then
+        return false
+    end
+    local texture = mark.unrealQuestArrow
+    if cell then
+        pcall(texture.SetTexCoord, texture, cell[1], cell[2], cell[3], cell[4])
+        Client.ShowObject(texture)
+    else
+        Client.HideObject(texture)
+    end
+    if coin then
+        Client.ShowObject(mark.unrealQuestCoin)
+    else
+        Client.HideObject(mark.unrealQuestCoin)
+    end
+    Client.ShowObject(mark)
+    return true
+end
+
+function Client.ClearQuestRewardGearMarks()
+    local index = 1
+    while index <= QuestRewardGear.maxButtons do
+        Client.SetQuestRewardGearMark(index, nil, false)
+        index = index + 1
+    end
+end
+
+function Client.IsStandaloneQuestLogShown()
     local frame = ResolveObject("QuestLogFrame")
-    return frame and frame.unrealQuestExtendedClassic == true
+    return frame and frame.unrealQuestStandaloneQuestLog == true
         and Client.IsObjectShown(frame) or false
 end
 
@@ -10007,19 +11533,19 @@ function Client.AttachModernQuestLogRewards(scrollChild)
     local rewardAmount, requiredAmount = Client.GetQuestLogMoneyAmounts()
     if rewardMoney and rewardText then
         local rewardAnchor, rewardAnchorName =
-            ResolveExtendedQuestLogMoneyAnchor(rewardText)
-        local parentMatches = ExtendedQuestLogParentMatches(rewardMoney,
+            ResolveStandaloneMoneyAnchor(rewardText)
+        local parentMatches = StandaloneParentMatches(rewardMoney,
             scrollChild, "QuestLogDetailScrollChildFrame")
-        local anchorMatches = ExtendedQuestLogAnchorMatches(rewardMoney,
+        local anchorMatches = StandaloneAnchorMatches(rewardMoney,
             "TOPLEFT", rewardAnchor, rewardAnchorName, "BOTTOMLEFT")
         if rewardMoney.unrealQuestModernRewardAnchor ~= rewardAnchor
             or not parentMatches or not anchorMatches then
             local placed = false
             if parentMatches then
-                placed = SetExtendedQuestLogAnchor(rewardMoney, "TOPLEFT",
+                placed = SetStandaloneAnchor(rewardMoney, "TOPLEFT",
                     rewardAnchor, "BOTTOMLEFT", 0, -2)
             else
-                placed = AttachExtendedQuestLogMoney(rewardMoney, rewardAnchor,
+                placed = AttachStandaloneMoney(rewardMoney, rewardAnchor,
                     scrollChild, "TOPLEFT", "BOTTOMLEFT", 0, -2)
             end
             if placed then
@@ -10041,9 +11567,9 @@ function Client.AttachModernQuestLogRewards(scrollChild)
         end
 
         if rewardSpacer and (rewardSpacer.unrealQuestModernMoneyAnchor ~= rewardMoney
-            or not ExtendedQuestLogAnchorMatches(rewardSpacer, "TOP", rewardMoney,
+            or not StandaloneAnchorMatches(rewardSpacer, "TOP", rewardMoney,
                 "QuestLogMoneyFrame", "BOTTOM")) then
-            if SetExtendedQuestLogAnchor(rewardSpacer, "TOP", rewardMoney,
+            if SetStandaloneAnchor(rewardSpacer, "TOP", rewardMoney,
                 "BOTTOM", 0, 0) then
                 rewardSpacer.unrealQuestModernMoneyAnchor = rewardMoney
                 changed = true
@@ -10054,18 +11580,18 @@ function Client.AttachModernQuestLogRewards(scrollChild)
     local requiredMoney = ResolveObject("QuestLogRequiredMoneyFrame")
     local requiredText = ResolveObject("QuestLogRequiredMoneyText")
     if requiredMoney and requiredText then
-        local parentMatches = ExtendedQuestLogParentMatches(requiredMoney,
+        local parentMatches = StandaloneParentMatches(requiredMoney,
             scrollChild, "QuestLogDetailScrollChildFrame")
-        local anchorMatches = ExtendedQuestLogAnchorMatches(requiredMoney,
+        local anchorMatches = StandaloneAnchorMatches(requiredMoney,
             "LEFT", requiredText, "QuestLogRequiredMoneyText", "RIGHT")
         if requiredMoney.unrealQuestModernRequiredAnchor ~= requiredText
             or not parentMatches or not anchorMatches then
             local placed = false
             if parentMatches then
-                placed = SetExtendedQuestLogAnchor(requiredMoney, "LEFT",
+                placed = SetStandaloneAnchor(requiredMoney, "LEFT",
                     requiredText, "RIGHT", 10, 0)
             else
-                placed = AttachExtendedQuestLogMoney(requiredMoney, requiredText,
+                placed = AttachStandaloneMoney(requiredMoney, requiredText,
                     scrollChild, "LEFT", "RIGHT", 10, 0)
             end
             if placed then
@@ -10254,7 +11780,15 @@ end
 -- the top" are different answers, and a caller that hides on scroll must not
 -- hide a surface it never measured.
 function Client.GetQuestLogDetailScrollOffset()
-    local scroll = ResolveObject("QuestLogDetailScrollFrame")
+    return Client.GetVerticalScrollOffset(ResolveObject("QuestLogDetailScrollFrame"))
+end
+
+-- The same read on any captured ScrollFrame. The quest-giver's offer and
+-- turn-in viewports (QuestDetailScrollFrame, QuestRewardScrollFrame) use it to
+-- hide their flag row on scroll exactly as the log does.
+-- questgiver.flag_scroll_hide.v1 (BEHAVIOR_PARTIALLY_TESTED, 2026-09-19)
+-- measured it on QuestDetailScrollFrame: 0 at the top, 103 at the bottom.
+function Client.GetVerticalScrollOffset(scroll)
     if not scroll or type(scroll.GetVerticalScroll) ~= "function" then
         return nil
     end
@@ -10527,9 +12061,9 @@ local function SetTrackerChildLayer(frame, parent)
     end
 end
 
-function Client.CreateTrackerWindow(name)
+function Client.CreateTrackerWindow(name, parentName, mapOwned)
     local create = Resolve("CreateFrame")
-    local parent = ResolveObject("UIParent")
+    local parent = ResolveObject(parentName or "UIParent")
     if not create or not parent or type(name) ~= "string" then
         return nil
     end
@@ -10538,15 +12072,31 @@ function Client.CreateTrackerWindow(name)
         return nil
     end
 
-    -- BACKGROUND: the tracker is persistent HUD furniture, so unit frames must
-    -- win whenever the player places it underneath them. LOW was sufficient
-    -- for stock panels but shared a draw band with unit-frame layouts, where
-    -- the tracker's raised row levels let its text paint over the unit frame.
+    -- The ordinary tracker is persistent HUD furniture, so unit frames must
+    -- win whenever the player places it underneath them. The map copy is a
+    -- child of WorldMapFrame and stays in that parent's band, raised far
+    -- enough to clear the map artwork and every custom pin and objective dot.
+    -- Pins start at PinFloorLevel (at least 120, far above WorldMapFrame + 40)
+    -- and their largest stacked boost (a raised pin under a flash) is +18, so
+    -- the window sits at the floor + 19: above every dot and pin, still below
+    -- the giver menu's click catcher (+20) and panel (+30).
     if type(frame.SetFrameStrata) == "function" then
-        pcall(frame.SetFrameStrata, frame, "BACKGROUND")
+        pcall(frame.SetFrameStrata, frame, mapOwned and "PARENT" or "BACKGROUND")
     end
     if type(frame.SetFrameLevel) == "function" then
-        pcall(frame.SetFrameLevel, frame, 0)
+        local level = 0
+        if mapOwned and type(parent.GetFrameLevel) == "function" then
+            local levelOk, parentLevel = pcall(parent.GetFrameLevel, parent)
+            if levelOk and type(parentLevel) == "number" then
+                level = parentLevel + 40
+            end
+            local pinLevel = PinFloorLevel(Client.GetWorldMapCanvas())
+                + MAP_TRACKER_PIN_LEVEL_BOOST
+            if pinLevel > level then
+                level = pinLevel
+            end
+        end
+        pcall(frame.SetFrameLevel, frame, level)
     end
     -- The window itself owns no mouse. Only the drag handle, the header
     -- buttons and the rows do, so the empty parts of the panel never swallow a
@@ -10563,64 +12113,42 @@ function Client.CreateTrackerWindow(name)
     frame.unrealQuestBackground = background
     BuildFlatBorder(frame)
 
-    -- The followed quest is framed as one block (title plus every visible
-    -- objective), matching the reference tracker: a warm translucent fill, a
-    -- crisp amber one-pixel line and two progressively softer outer rings.
-    -- These are window-owned textures rather than a child frame so they stay
-    -- below the pooled row Buttons and can never intercept a quest click.
+    -- The followed quest row uses the authored followed-quest plaque. It stays
+    -- window-owned so it remains below the pooled row Button and cannot take
+    -- the mouse from it.
     local followingBackground = CreateSolid(frame, "ARTWORK",
-        UQ.colors.accent[1], UQ.colors.accent[2], UQ.colors.accent[3], 0)
+        1, 1, 1, 0)
     if followingBackground then
+        if type(followingBackground.SetTexture) == "function" then
+            pcall(followingBackground.SetTexture, followingBackground,
+                QUEST_LOG_FOLLOWING_PLAQUE_TEXTURE)
+        end
         pcall(followingBackground.Hide, followingBackground)
     end
     frame.unrealQuestFollowingBackground = followingBackground
     frame.unrealQuestFollowingRings = {}
-    local ringIndex = 1
-    while ringIndex <= 3 do
-        local ring = {}
-        local edgeIndex = 1
-        while edgeIndex <= 4 do
-            local edge = CreateSolid(frame, "ARTWORK",
-                UQ.colors.accent[1], UQ.colors.accent[2], UQ.colors.accent[3], 0)
-            if edge then
-                pcall(edge.Hide, edge)
-            end
-            ring[edgeIndex] = edge
-            edgeIndex = edgeIndex + 1
-        end
-        frame.unrealQuestFollowingRings[ringIndex] = ring
-        ringIndex = ringIndex + 1
-    end
 
-    -- Header: the accent stripe, the title, the counter, and the two buttons
-    -- laid out from the right edge inwards.
-    local accent = CreateSolid(frame, "ARTWORK",
-        UQ.colors.accent[1], UQ.colors.accent[2], UQ.colors.accent[3], 1)
-    if accent then
-        pcall(accent.SetPoint, accent, "TOPLEFT", frame, "TOPLEFT", 0, 0)
-        pcall(accent.SetWidth, accent, TRACKER_ACCENT_WIDTH)
-        pcall(accent.SetHeight, accent, TRACKER_HEADER_HEIGHT)
+    -- Header: the Forever header rails, the title, the counter, and the two
+    -- buttons laid out from the right edge inwards.
+    local headerArt = TrackerArt.Create(frame, "ARTWORK", "header")
+    if headerArt then
+        pcall(headerArt.SetPoint, headerArt, "TOPLEFT", frame, "TOPLEFT",
+            TrackerArt.headerInset, 0)
+        pcall(headerArt.SetPoint, headerArt, "BOTTOMRIGHT", frame, "TOPRIGHT",
+            -TrackerArt.headerInset, -TRACKER_HEADER_HEIGHT)
     end
-    frame.unrealQuestAccent = accent
-
-    local separator = CreateSolid(frame, "ARTWORK",
-        FLAT_BORDER[1], FLAT_BORDER[2], FLAT_BORDER[3], 1)
-    if separator then
-        pcall(separator.SetPoint, separator, "TOPLEFT", frame, "TOPLEFT", 0, -TRACKER_HEADER_HEIGHT)
-        pcall(separator.SetPoint, separator, "TOPRIGHT", frame, "TOPRIGHT", 0, -TRACKER_HEADER_HEIGHT)
-        pcall(separator.SetHeight, separator, 1)
-    end
-    frame.unrealQuestSeparator = separator
+    frame.unrealQuestHeaderArt = headerArt
 
     if type(frame.CreateFontString) == "function" then
         local titleOk, title = pcall(frame.CreateFontString, frame, nil, "OVERLAY", "GameFontNormal")
         if titleOk and title then
-            pcall(title.SetPoint, title, "TOPLEFT", frame, "TOPLEFT",
-                TRACKER_ACCENT_WIDTH + TRACKER_PADDING, -TRACKER_PADDING + 1)
+            pcall(title.SetPoint, title, "LEFT", frame, "TOPLEFT",
+                TRACKER_PADDING + TrackerArt.headerInset,
+                -TRACKER_HEADER_HEIGHT / 2 - TrackerArt.titleDrop)
             pcall(title.SetJustifyH, title, "LEFT")
             pcall(title.SetTextColor, title, UQ.colors.accent[1], UQ.colors.accent[2],
                 UQ.colors.accent[3])
-            StripShadow(title)
+            TrackerArt.ShadeText(title, mapOwned)
             frame.unrealQuestTitle = title
         end
         local countOk, count = pcall(frame.CreateFontString, frame, nil, "OVERLAY",
@@ -10629,43 +12157,79 @@ function Client.CreateTrackerWindow(name)
             if title then
                 pcall(count.SetPoint, count, "LEFT", title, "RIGHT", 5, 0)
             else
-                pcall(count.SetPoint, count, "TOPLEFT", frame, "TOPLEFT",
-                    TRACKER_ACCENT_WIDTH + TRACKER_PADDING, -TRACKER_PADDING - 1)
+                pcall(count.SetPoint, count, "LEFT", frame, "TOPLEFT",
+                    TRACKER_PADDING + TrackerArt.headerInset,
+                -TRACKER_HEADER_HEIGHT / 2 - TrackerArt.titleDrop)
             end
             pcall(count.SetJustifyH, count, "LEFT")
             pcall(count.SetTextColor, count, 0.55, 0.55, 0.55)
-            StripShadow(count)
+            TrackerArt.ShadeText(count, mapOwned)
             frame.unrealQuestCount = count
         end
     end
 
-    local collapse = CreateLabelledButton(frame, name .. "Collapse", TRACKER_BUTTON_SIZE, "-",
-        "GameFontNormal")
+    -- The fold button wears the plus/minus tree control (TrackerArt.PaintFold);
+    -- the hover glow behind it is a second texture shown and hidden by
+    -- OnEnter/OnLeave, not a face swap -- the sheet has no hover cell of its
+    -- own (see TrackerArt.pieces.plusNormal/minusNormal above).
+    local collapse = CreateSizedButton(frame, name .. "Collapse",
+        TrackerArt.buttonWidth, TrackerArt.buttonHeight, "")
     if collapse then
         SetTrackerChildLayer(collapse, frame)
-        pcall(collapse.SetPoint, collapse, "TOPRIGHT", frame, "TOPRIGHT", -2, -2)
-        local label = collapse.unrealQuestLabel
-        if label then
-            if type(label.ClearAllPoints) == "function" then
-                pcall(label.ClearAllPoints, label)
-            end
-            if type(label.SetPoint) == "function" then
-                pcall(label.SetPoint, label, "CENTER", collapse, "CENTER", 0, -2)
-            end
-            if type(label.SetJustifyV) == "function" then
-                pcall(label.SetJustifyV, label, "CENTER")
-            end
+        pcall(collapse.SetPoint, collapse, "RIGHT", frame, "TOPRIGHT",
+            -TrackerArt.buttonInset, -TRACKER_HEADER_HEIGHT / 2)
+
+        local bed = TrackerArt.Create(collapse, "ARTWORK", "minusNormal")
+        if bed then
+            pcall(bed.SetPoint, bed, "CENTER", collapse, "CENTER", 0, 0)
+            pcall(bed.SetWidth, bed, TrackerArt.buttonArtSize)
+            pcall(bed.SetHeight, bed, TrackerArt.buttonArtSize)
         end
+        collapse.unrealQuestArt = bed
+
+        -- OVERLAY, so it lights the glyph rather than sitting behind it, as
+        -- unrealUI's settings menu draws it (TrackerArt.foldHoverTexture).
+        local glowOk, glow = pcall(collapse.CreateTexture, collapse, nil, "OVERLAY")
+        if glowOk and glow then
+            pcall(glow.SetTexture, glow, TrackerArt.foldHoverTexture)
+            pcall(glow.SetBlendMode, glow, "ADD")
+            local cell = TrackerArt.foldHoverCell
+            pcall(glow.SetTexCoord, glow, cell[1], cell[2], cell[3], cell[4])
+            local margin = TrackerArt.foldHoverMargin
+            local region = bed or collapse
+            pcall(glow.SetPoint, glow, "TOPLEFT", region, "TOPLEFT", -margin, margin)
+            pcall(glow.SetPoint, glow, "BOTTOMRIGHT", region, "BOTTOMRIGHT", margin, -margin)
+            local shade = TrackerArt.foldHoverIntensity
+            pcall(glow.SetVertexColor, glow, shade, shade, shade, 1)
+            pcall(glow.Hide, glow)
+        end
+        collapse.unrealQuestGlow = glow
+        collapse.unrealQuestFolded = false
+        Client.SetObjectScript(collapse, "OnEnter", function()
+            if collapse.unrealQuestGlow then
+                pcall(collapse.unrealQuestGlow.Show, collapse.unrealQuestGlow)
+            end
+        end)
+        Client.SetObjectScript(collapse, "OnLeave", function()
+            if collapse.unrealQuestGlow then
+                pcall(collapse.unrealQuestGlow.Hide, collapse.unrealQuestGlow)
+            end
+        end)
     end
     frame.unrealQuestCollapse = collapse
 
     -- A compact spyglass button opens the NPC finder list from the tracker,
-    -- rather than adding another button beside the map.
-    local npcFinder = CreateLabelledButton(frame, name .. "NpcFinder", TRACKER_BUTTON_SIZE, "")
+    -- rather than adding another button beside the map. Not on the map's own
+    -- tracker: that slot holds the "Show all areas" toggle instead
+    -- (Client.CreateTrackerAreaToggle).
+    local npcFinder = nil
+    if not mapOwned then
+        npcFinder = CreateLabelledButton(frame, name .. "NpcFinder", TRACKER_BUTTON_SIZE, "")
+    end
     if npcFinder then
         SetTrackerChildLayer(npcFinder, frame)
-        pcall(npcFinder.SetPoint, npcFinder, "TOPRIGHT", frame, "TOPRIGHT",
-            -(2 + TRACKER_BUTTON_SIZE), -2)
+        pcall(npcFinder.SetPoint, npcFinder, "RIGHT", frame, "TOPRIGHT",
+            -(TrackerArt.buttonInset + TrackerArt.buttonWidth + 2), -TRACKER_HEADER_HEIGHT / 2)
         if type(npcFinder.CreateTexture) == "function" then
             local iconOk, icon = pcall(npcFinder.CreateTexture, npcFinder, nil, "OVERLAY")
             if iconOk and icon then
@@ -10682,11 +12246,18 @@ function Client.CreateTrackerWindow(name)
     frame.unrealQuestNpcFinder = npcFinder
 
     frame.unrealQuestRows = { zone = {}, quest = {}, objective = {} }
+    frame.unrealQuestMapOwned = mapOwned and true or false
+    frame.unrealQuestParent = parent
+    frame.unrealQuestRowNamePrefix = mapOwned
+        and "UnrealQuestMapTrackerRow" or "UnrealQuestTrackerRow"
+    -- The map copy's default place; Quest/TrackerFrame.lua re-anchors it to
+    -- the player's dragged offsets (mapTrackerX/mapTrackerY) right after.
+    if mapOwned and type(frame.SetPoint) == "function" then
+        pcall(frame.SetPoint, frame, "TOPRIGHT", parent, "TOPRIGHT", -25, -82)
+    end
     pcall(frame.Hide, frame)
     return frame
 end
-
-local TRACKER_FOLLOWING_RING_ALPHA = { 0.95, 0.32, 0.12 }
 
 local function PlaceFollowingTexture(texture, frame, left, right, top, bottom)
     if not texture then
@@ -10699,36 +12270,8 @@ local function PlaceFollowingTexture(texture, frame, left, right, top, bottom)
     pcall(texture.SetPoint, texture, "BOTTOMRIGHT", frame, "TOPRIGHT", right, -bottom)
 end
 
-local function PlaceFollowingEdge(edge, frame, side, left, right, top, bottom)
-    if not edge then
-        return
-    end
-    if type(edge.ClearAllPoints) == "function" then
-        pcall(edge.ClearAllPoints, edge)
-    end
-    if side == 1 then
-        pcall(edge.SetPoint, edge, "TOPLEFT", frame, "TOPLEFT", left, -top)
-        pcall(edge.SetPoint, edge, "TOPRIGHT", frame, "TOPRIGHT", right, -top)
-        pcall(edge.SetHeight, edge, 1)
-    elseif side == 2 then
-        pcall(edge.SetPoint, edge, "BOTTOMLEFT", frame, "TOPLEFT", left, -bottom)
-        pcall(edge.SetPoint, edge, "BOTTOMRIGHT", frame, "TOPRIGHT", right, -bottom)
-        pcall(edge.SetHeight, edge, 1)
-    elseif side == 3 then
-        pcall(edge.SetPoint, edge, "TOPLEFT", frame, "TOPLEFT", left, -top)
-        pcall(edge.SetPoint, edge, "BOTTOMLEFT", frame, "TOPLEFT", left, -bottom)
-        pcall(edge.SetWidth, edge, 1)
-    else
-        pcall(edge.SetPoint, edge, "TOPRIGHT", frame, "TOPRIGHT", right, -top)
-        pcall(edge.SetPoint, edge, "BOTTOMRIGHT", frame, "TOPRIGHT", right, -bottom)
-        pcall(edge.SetWidth, edge, 1)
-    end
-end
-
--- Recolours the existing following block without rebuilding any rows. The
--- tracker opacity slider calls this live; at zero every glow layer and the
--- inner line are hidden, exactly like the requested invisible-background
--- state, while the quest label and arrow remain useful.
+-- Applies the tracker opacity to the authored followed plaque without
+-- rebuilding any rows.
 function Client.SetTrackerFollowingOpacity(frame, percent)
     if not frame or type(percent) ~= "number" then
         return false
@@ -10744,33 +12287,13 @@ function Client.SetTrackerFollowingOpacity(frame, percent)
 
     local background = frame.unrealQuestFollowingBackground
     if background then
-        Client.SetSolidColor(background, UQ.colors.accent[1], UQ.colors.accent[2],
-            UQ.colors.accent[3], 0.14 * scale)
+        Client.SetSolidColor(background, 1, 1, 1, scale)
         if active then Client.ShowObject(background) else Client.HideObject(background) end
-    end
-
-    local rings = frame.unrealQuestFollowingRings or {}
-    local ringIndex = 1
-    while ringIndex <= 3 do
-        local ring = rings[ringIndex] or {}
-        local alpha = TRACKER_FOLLOWING_RING_ALPHA[ringIndex] * scale
-        local edgeIndex = 1
-        while edgeIndex <= 4 do
-            local edge = ring[edgeIndex]
-            if edge then
-                Client.SetSolidColor(edge, UQ.colors.accent[1], UQ.colors.accent[2],
-                    UQ.colors.accent[3], alpha)
-                if active then Client.ShowObject(edge) else Client.HideObject(edge) end
-            end
-            edgeIndex = edgeIndex + 1
-        end
-        ringIndex = ringIndex + 1
     end
     return true
 end
 
--- Positions the following chrome around one complete visible quest block.
--- `top` and `bottom` are offsets down from the tracker window's top edge.
+-- Positions the followed-quest plaque behind one visible quest row.
 function Client.SetTrackerFollowingBlock(frame, top, bottom, percent)
     if not frame then
         return false
@@ -10787,21 +12310,6 @@ function Client.SetTrackerFollowingBlock(frame, top, bottom, percent)
     local right = -4
     PlaceFollowingTexture(frame.unrealQuestFollowingBackground, frame,
         left, right, top, bottom)
-
-    local rings = frame.unrealQuestFollowingRings or {}
-    local ringIndex = 1
-    while ringIndex <= 3 do
-        local expansion = ringIndex - 1
-        local ring = rings[ringIndex] or {}
-        local edgeIndex = 1
-        while edgeIndex <= 4 do
-            PlaceFollowingEdge(ring[edgeIndex], frame, edgeIndex,
-                left - expansion, right + expansion,
-                top - expansion, bottom + expansion)
-            edgeIndex = edgeIndex + 1
-        end
-        ringIndex = ringIndex + 1
-    end
 
     return Client.SetTrackerFollowingOpacity(frame,
         type(percent) == "number" and percent
@@ -10835,11 +12343,59 @@ function Client.SetTrackerHeaderButtons(frame, onNpcFinder, onCollapse)
     return true
 end
 
-function Client.SetTrackerCollapseLabel(frame, text)
-    return Client.SetButtonLabel(frame and frame.unrealQuestCollapse, text)
+-- The header button shows the plus glyph while the body is folded away, minus
+-- while it is shown.
+function Client.SetTrackerCollapsed(frame, collapsed)
+    local collapse = frame and frame.unrealQuestCollapse
+    if not collapse then
+        return false
+    end
+    collapse.unrealQuestFolded = collapsed and true or false
+    return TrackerArt.PaintFold(collapse)
 end
 
 -- The drag handle ---------------------------------------------------------------
+
+-- Lays the handle over `window`'s title line: its left edge to the header
+-- buttons. Also how a detached handle (below) is given back after a drag.
+function Client.AttachTrackerHandle(handle, window)
+    if not handle or not window or type(handle.SetPoint) ~= "function" then
+        return false
+    end
+    if type(handle.ClearAllPoints) == "function" then
+        pcall(handle.ClearAllPoints, handle)
+    end
+    pcall(handle.SetPoint, handle, "TOPLEFT", window, "TOPLEFT", 0, 0)
+    pcall(handle.SetPoint, handle, "TOPRIGHT", window, "TOPRIGHT",
+        handle.unrealQuestRightInset or 0, 0)
+    Client.SetObjectSize(handle, nil, TRACKER_HEADER_HEIGHT)
+    return true
+end
+
+-- Cuts the handle loose from the window it covers for the length of a drag
+-- that moves that window by SetPoint every tick. Re-anchoring what the client
+-- is dragging makes it drop the drag, and with it OnDragStop
+-- (widgets.thumb_reposition_during_drag_breaks_drag, RUNTIME_FAILURE_CONFIRMED)
+-- -- the drag that never let go of the cursor. unrealUI's mover ends the same
+-- way: the drag input sits still in a fixed space and only the visible frame
+-- moves. Here the handle is pinned to `relativeName`'s TOPRIGHT exactly where
+-- it already is, from the window's TOPRIGHT offsets (x, y) and the handle's
+-- own width -- explicit offsets only, never edge coordinates, which mix
+-- spaces under the scaled world map (frames.scaled_frame_edge_coordinates_mixed_space).
+function Client.DetachTrackerHandle(handle, relativeName, x, y)
+    local relative = ResolveObject(relativeName)
+    local width = Client.GetObjectWidth(handle)
+    if not handle or not relative or type(x) ~= "number" or type(y) ~= "number"
+        or not width or width <= 0 or type(handle.SetPoint) ~= "function" then
+        return false
+    end
+    if type(handle.ClearAllPoints) == "function" then
+        pcall(handle.ClearAllPoints, handle)
+    end
+    Client.SetObjectSize(handle, width, TRACKER_HEADER_HEIGHT)
+    return pcall(handle.SetPoint, handle, "TOPRIGHT", relative, "TOPRIGHT",
+        x + (handle.unrealQuestRightInset or 0), y) and true or false
+end
 
 function Client.CreateTrackerHandle(window, name)
     local create = Resolve("CreateFrame")
@@ -10854,12 +12410,9 @@ function Client.CreateTrackerHandle(window, name)
     end
     SetTrackerChildLayer(handle, window)
     -- Covers the header strip only, so the rows below keep their own clicks.
-    if type(handle.SetPoint) == "function" then
-        pcall(handle.SetPoint, handle, "TOPLEFT", window, "TOPLEFT", 0, 0)
-        pcall(handle.SetPoint, handle, "TOPRIGHT", window, "TOPRIGHT",
-            -(TRACKER_BUTTON_SIZE * TRACKER_HEADER_BUTTONS), 0)
-    end
-    Client.SetObjectSize(handle, nil, TRACKER_HEADER_HEIGHT)
+    handle.unrealQuestRightInset =
+        -(TrackerArt.buttonInset + TrackerArt.buttonWidth + 2 + TRACKER_BUTTON_SIZE)
+    Client.AttachTrackerHandle(handle, window)
     -- SetTrackerChildLayer raises it by frame level, never by strata: raising
     -- the handle's strata is one of the recorded failed drag approaches.
     if type(handle.EnableMouse) == "function" then
@@ -10997,6 +12550,45 @@ function Client.GetObjectCorner(object)
     return left, bottom
 end
 
+-- The cursor in `object`'s own units: GetCursorPosition divided by the
+-- object's effective scale (api.getcursorposition_usable_for_hit_testing,
+-- USER_CONFIRMED_INGAME). For a scale-1 child that is also its parent's
+-- units, the space its anchor offsets are given in
+-- (frames.own_scale_resizes_about_anchor_in_parent_space), so a cursor delta
+-- read here moves the object one for one. Only deltas are meaningful: edge
+-- coordinates of a scaled frame mix spaces
+-- (frames.scaled_frame_edge_coordinates_mixed_space), so never compare the
+-- result with GetLeft/GetTop of a child of WorldMapFrame. nil when unread.
+function Client.GetCursorInObjectUnits(object)
+    local okCursor, cursorX, cursorY = Call0("GetCursorPosition")
+    if not okCursor or type(cursorX) ~= "number" or type(cursorY) ~= "number" then
+        return nil
+    end
+    local scale = ReadObjectMethod(object, "GetEffectiveScale")
+    if type(scale) ~= "number" or scale <= 0 then
+        return nil
+    end
+    return cursorX / scale, cursorY / scale
+end
+
+-- Whether the left mouse button is still held: true or false when the client
+-- answers, nil when it cannot. IsMouseButtonDown has no record on this client
+-- at all -- not documented, never probed, and unrealUI's mover found it absent
+-- from the documented globals -- so it is only a best-effort extra release
+-- check for a drag, never the mechanism: nil must be read as "unknown", and a
+-- drag still ends through its handle's OnMouseUp/OnClick/OnDragStop.
+function Client.IsLeftMouseButtonHeld()
+    local isDown = Resolve("IsMouseButtonDown")
+    if type(isDown) ~= "function" then
+        return nil
+    end
+    local ok, down = pcall(isDown, "LeftButton")
+    if not ok then
+        return nil
+    end
+    return (down and down ~= 0) and true or false
+end
+
 -- Uses the confirmed GetCursorPosition/effective-scale rectangle test rather
 -- than Frame:IsMouseOver, which has no runtime record on this client.
 function Client.IsCursorInsideObject(object)
@@ -11066,7 +12658,8 @@ function Client.GetTrackerRow(window, kind, index)
     if not create then
         return nil
     end
-    local name = "UnrealQuestTrackerRow" .. kind .. tostring(index)
+    local name = (window.unrealQuestRowNamePrefix or "UnrealQuestTrackerRow")
+        .. kind .. tostring(index)
     local ok, button = pcall(create, "Button", name, window)
     if not ok or not button then
         return nil
@@ -11084,7 +12677,8 @@ function Client.GetTrackerRow(window, kind, index)
         if labelOk and label then
             -- Wide enough to clear the round quest dot drawn below at the
             -- row's own left edge, so a title never overlaps it.
-            local labelInset = kind == "quest" and TRACKER_QUEST_MARK_INSET or 0
+            local labelInset = kind == "quest" and TRACKER_QUEST_MARK_INSET
+                or kind == "zone" and TrackerArt.zoneLabelInset or 0
             pcall(label.SetPoint, label, "LEFT", button, "LEFT", labelInset, 0)
             pcall(label.SetJustifyH, label, "LEFT")
             -- Quest titles and objective text deliberately retain the
@@ -11095,18 +12689,47 @@ function Client.GetTrackerRow(window, kind, index)
             if kind == "zone" and type(label.SetWordWrap) == "function" then
                 pcall(label.SetWordWrap, label, false)
             end
-            StripShadow(label)
+            TrackerArt.ShadeText(label, window.unrealQuestMapOwned)
             button.unrealQuestLabel = label
             button.unrealQuestLabelInset = labelInset
         end
     end
-    -- Every quest gets a small colour swatch that matches its objective dots
-    -- on both maps. It identifies the quest without adding a tracked-state
-    -- accent rectangle to the row. It is drawn with the very same round dot
-    -- asset the maps draw an objective with (Client.MINIMAP_OBJECTIVE_TEXTURE),
-    -- tinted the same way, so the tracker and the two maps agree about shape
-    -- as well as colour rather than pairing a square here with a dot there.
+    -- Every quest gets the same numbered POI badge as its world-map area: the
+    -- circle (ARTWORK) below the glyph (OVERLAY). Unlike the map, no glow is
+    -- drawn under the followed quest's circle; the active circle and its plaque
+    -- already mark it. The separate questMark remains for the complete-status
+    -- check beside the number and as a defensive fallback if a number cannot
+    -- be drawn.
     if kind == "quest" then
+        local questNumberBackground = CreateSolid(button, "ARTWORK", 1, 1, 1, 1)
+        if questNumberBackground then
+            if type(questNumberBackground.SetTexture) == "function" then
+                pcall(questNumberBackground.SetTexture, questNumberBackground,
+                    Client.WORLD_MAP_QUEST_POI_CIRCLE_TEXTURE)
+            end
+            pcall(questNumberBackground.SetPoint, questNumberBackground,
+                "LEFT", button, "LEFT", 0, 0)
+            pcall(questNumberBackground.SetWidth, questNumberBackground,
+                TRACKER_QUEST_NUMBER_SIZE)
+            pcall(questNumberBackground.SetHeight, questNumberBackground,
+                TRACKER_QUEST_NUMBER_SIZE)
+            pcall(questNumberBackground.Hide, questNumberBackground)
+        end
+        button.unrealQuestQuestNumberBackground = questNumberBackground
+
+        local questNumber = CreateSolid(button, "OVERLAY", 1, 1, 1, 1)
+        if questNumber then
+            if type(questNumber.SetTexture) == "function" then
+                pcall(questNumber.SetTexture, questNumber,
+                    Client.WORLD_MAP_QUEST_POI_NUMBER_TEXTURE)
+            end
+            pcall(questNumber.SetPoint, questNumber, "LEFT", button, "LEFT", 0, 0)
+            pcall(questNumber.SetWidth, questNumber, TRACKER_QUEST_NUMBER_SIZE)
+            pcall(questNumber.SetHeight, questNumber, TRACKER_QUEST_NUMBER_SIZE)
+            pcall(questNumber.Hide, questNumber)
+        end
+        button.unrealQuestQuestNumber = questNumber
+
         local questMark = CreateSolid(button, "OVERLAY", 1, 1, 1, 1)
         if questMark then
             if type(questMark.SetTexture) == "function" then
@@ -11119,6 +12742,32 @@ function Client.GetTrackerRow(window, kind, index)
         end
         button.unrealQuestQuestMark = questMark
 
+    end
+    -- A zone is a Forever section header: the bar under its name and the
+    -- -/+ fold mark at its right end (Client.SetTrackerZoneFolded).
+    if kind == "zone" then
+        local bar = TrackerArt.Create(button, "BACKGROUND", "zone")
+        if bar then
+            pcall(bar.SetPoint, bar, "TOPLEFT", button, "TOPLEFT", 0, TrackerArt.zoneShadowRise)
+            pcall(bar.SetPoint, bar, "BOTTOMRIGHT", button, "BOTTOMRIGHT", 0, 0)
+        end
+        button.unrealQuestZoneBar = bar
+        local fold = TrackerArt.Create(button, "ARTWORK", "zoneCollapse")
+        if fold then
+            pcall(fold.SetPoint, fold, "RIGHT", button, "RIGHT", -2, 1)
+            pcall(fold.SetWidth, fold, TrackerArt.zoneFoldSize)
+            pcall(fold.SetHeight, fold, TrackerArt.zoneFoldSize)
+        end
+        button.unrealQuestZoneFold = fold
+        button.unrealQuestLabelInsetRight = TrackerArt.zoneFoldSize + 4
+    elseif kind == "objective" then
+        local bullet = TrackerArt.Create(button, "ARTWORK", "nub", true)
+        if bullet then
+            pcall(bullet.SetPoint, bullet, "TOPLEFT", button, "TOPLEFT", TrackerArt.bulletX, -1)
+            pcall(bullet.SetWidth, bullet, TrackerArt.bulletSize)
+            pcall(bullet.SetHeight, bullet, TrackerArt.bulletSize)
+        end
+        button.unrealQuestBullet = bullet
     end
     local track = CreateSolid(button, "ARTWORK", 1, 1, 1, 0.12)
     if track then
@@ -11217,7 +12866,7 @@ function Client.PlaceTrackerRow(row, window, indent, top, width, height)
     local label = row.unrealQuestLabel
     if label and type(label.SetWidth) == "function" then
         local textWidth = rowWidth - (row.unrealQuestLabelInset or 0)
-            - (row.unrealQuestFollowingInsetRight or 0)
+            - (row.unrealQuestLabelInsetRight or 0)
         if textWidth < 1 then
             textWidth = 1
         end
@@ -11250,8 +12899,41 @@ function Client.SetTrackerRowFollowing(row, following)
     if not row then
         return false
     end
-    row.unrealQuestFollowingInsetRight = 0
+    row.unrealQuestLabelInsetRight = 0
     return true
+end
+
+-- A zone row's fold mark: - while its quests are listed, + while folded.
+function Client.SetTrackerZoneFolded(row, folded)
+    return TrackerArt.Apply(row and row.unrealQuestZoneFold,
+        folded and "zoneExpand" or "zoneCollapse")
+end
+
+-- An objective row's bullet: the nub while open, the check once finished,
+-- nothing for a subjectless notice row. An open bullet handed a colour instead
+-- draws the maps' own objective dot (MINIMAP_OBJECTIVE_TEXTURE) in that
+-- colour, so in dot mode the row matches its quest's dots on the map. The
+-- cached piece name is dropped then, so the next Apply re-points the sheet;
+-- the tint is reset on every call because rows are pooled by index.
+function Client.SetTrackerRowObjectiveMark(row, state, red, green, blue)
+    local bullet = row and row.unrealQuestBullet
+    if bullet and state == "open" and red and type(bullet.SetTexture) == "function" then
+        pcall(bullet.SetTexture, bullet, Client.MINIMAP_OBJECTIVE_TEXTURE)
+        pcall(bullet.SetTexCoord, bullet, 0, 1, 0, 1)
+        bullet.unrealQuestArtPiece = nil
+        Client.SetSolidColor(bullet, red, green, blue, 1)
+        return Client.ShowObject(bullet)
+    end
+    local piece = nil
+    if state == "done" then
+        piece = "check"
+    elseif state == "open" then
+        piece = "nub"
+    end
+    if bullet then
+        Client.SetSolidColor(bullet, 1, 1, 1, 1)
+    end
+    return TrackerArt.Apply(bullet, piece)
 end
 
 -- FontString:GetStringWidth is documented by this client and measures the
@@ -11309,6 +12991,84 @@ local function SetTrackerRowLabelInset(row, inset)
     row.unrealQuestLabelInset = inset
 end
 
+-- Draws the same numbered POI badge as the quest-area marker, reduced to fit
+-- the compact tracker row: the glyph shows 20 of its 32 texels, so it shrinks
+-- with the circle. The number is the quest's position in QuestState's
+-- unfiltered log order, so filtering, complete-last ordering and recent-first
+-- ordering never make the tracker disagree with the map. A complete quest
+-- retains the small checkmark beside the number. The followed quest (behind
+-- its authored plaque) gets the active circle and dark glyph, without a glow.
+function Client.SetTrackerRowQuestNumber(row, number, selected, complete)
+    local numberBackground = row and row.unrealQuestQuestNumberBackground
+    local numberMark = row and row.unrealQuestQuestNumber
+    local statusMark = row and row.unrealQuestQuestMark
+    if not numberBackground or not numberMark
+        or not QuestPOI.SetCircle(numberBackground,
+            selected and QuestPOI.ACTIVE or QuestPOI.MAIN)
+        or not QuestPOI.SetGlyph(numberMark, number, selected, 20) then
+        if row then
+            row.unrealQuestQuestNumberValue = nil
+            row.unrealQuestQuestNumberSelected = nil
+        end
+        return false
+    end
+
+    if type(numberMark.SetWidth) == "function" and type(numberMark.SetHeight) == "function" then
+        pcall(numberMark.SetWidth, numberMark, TRACKER_QUEST_NUMBER_SIZE)
+        pcall(numberMark.SetHeight, numberMark, TRACKER_QUEST_NUMBER_SIZE)
+    end
+    if type(numberBackground.SetWidth) == "function"
+        and type(numberBackground.SetHeight) == "function" then
+        pcall(numberBackground.SetWidth, numberBackground, TRACKER_QUEST_NUMBER_SIZE)
+        pcall(numberBackground.SetHeight, numberBackground, TRACKER_QUEST_NUMBER_SIZE)
+    end
+    if numberMark.unrealQuestMarkX ~= 0 and type(numberMark.ClearAllPoints) == "function"
+        and type(numberMark.SetPoint) == "function" then
+        pcall(numberMark.ClearAllPoints, numberMark)
+        pcall(numberMark.SetPoint, numberMark, "LEFT", row, "LEFT", 0, 0)
+        numberMark.unrealQuestMarkX = 0
+    end
+    Client.ShowObject(numberMark)
+    Client.ShowObject(numberBackground)
+
+    local inset = TRACKER_QUEST_NUMBER_INSET
+    if statusMark and complete then
+        if type(statusMark.SetTexture) == "function" then
+            pcall(statusMark.SetTexture, statusMark, Client.COMPLETE_QUEST_TEXTURE)
+        end
+        if type(statusMark.SetTexCoord) == "function" then
+            pcall(statusMark.SetTexCoord, statusMark, 0, 1, 0, 1)
+        end
+        local statusX = TRACKER_QUEST_NUMBER_SIZE + 1
+        if statusMark.unrealQuestMarkX ~= statusX
+            and type(statusMark.ClearAllPoints) == "function"
+            and type(statusMark.SetPoint) == "function" then
+            pcall(statusMark.ClearAllPoints, statusMark)
+            pcall(statusMark.SetPoint, statusMark, "LEFT", row, "LEFT", statusX, 0)
+            statusMark.unrealQuestMarkX = statusX
+        end
+        if type(statusMark.SetWidth) == "function" and type(statusMark.SetHeight) == "function" then
+            pcall(statusMark.SetHeight, statusMark, TRACKER_QUEST_MARK_SIZE)
+            pcall(statusMark.SetWidth, statusMark,
+                TRACKER_QUEST_MARK_SIZE
+                    * (TRACKER_COMPLETE_ICON_WIDTH / TRACKER_COMPLETE_ICON_HEIGHT))
+        end
+        Client.SetSolidColor(statusMark, 1, 1, 1, 1)
+        Client.ShowObject(statusMark)
+        inset = statusX
+            + TRACKER_QUEST_MARK_SIZE
+                * (TRACKER_COMPLETE_ICON_WIDTH / TRACKER_COMPLETE_ICON_HEIGHT)
+            + 3
+    elseif statusMark then
+        Client.HideObject(statusMark)
+    end
+
+    SetTrackerRowLabelInset(row, inset)
+    row.unrealQuestQuestNumberValue = number
+    row.unrealQuestQuestNumberSelected = selected and true or false
+    return true
+end
+
 -- red nil hides the mark entirely, pulling the title left onto the row edge
 -- so the row reads as one clean line rather than a title indented past an
 -- empty gap. `texture` swaps the mark's own image: a live quest keeps the
@@ -11325,6 +13085,10 @@ function Client.SetTrackerRowQuestMark(row, red, green, blue, texture)
     if not mark then
         return false
     end
+    Client.HideObject(row.unrealQuestQuestNumber)
+    Client.HideObject(row.unrealQuestQuestNumberBackground)
+    row.unrealQuestQuestNumberValue = nil
+    row.unrealQuestQuestNumberSelected = nil
     if not red then
         SetTrackerRowLabelInset(row, 0)
         return Client.HideObject(mark)
@@ -11336,6 +13100,9 @@ function Client.SetTrackerRowQuestMark(row, red, green, blue, texture)
     end
     if type(mark.SetTexture) == "function" then
         pcall(mark.SetTexture, mark, texture or Client.MINIMAP_OBJECTIVE_TEXTURE)
+    end
+    if type(mark.SetTexCoord) == "function" then
+        pcall(mark.SetTexCoord, mark, 0, 1, 0, 1)
     end
     -- The complete icon is re-anchored 1px right of the dot's own LEFT point
     -- to align with it: the icon's narrower box (below) leaves its checkmark
@@ -12113,6 +13880,339 @@ function Client.SetSettingsTabSelected(button, selected)
     return true
 end
 
+-- One table for this section's constants and helpers: this file's main chunk
+-- is at Lua's 200-local limit, and a table costs a single slot.
+local SettingsList = {}
+
+-- Table list rows --------------------------------------------------------------
+--
+-- One line of a result table, drawn the way WoW Forever draws its own simple
+-- lists (PlayerTitleButtonTemplate, Blizzard_UIPanels_Game/Camelot/
+-- PaperDollFrame.xml:166 and PaperDollFrame.lua:3230): no button chrome, a
+-- plain row whose every second line carries a faint (0.9, 0.9, 1) stripe at
+-- 0.1 alpha, a highlight while hovered and a highlight bar on the selected
+-- line. Forever's highlight bars are FriendsFrame textures with no runtime
+-- record here, so both are drawn as solids on this layer's material contract:
+-- blue for hover (its HighlightBar-Blue), the accent for the selected line.
+--
+-- Returned as a control table rather than the Button: a host that dresses
+-- every settings Button (unrealUI's Game Settings window) leaves it alone,
+-- and both hosts still show and hide it through `uuiParts`.
+SettingsList.LIST_ROW_STRIPE = { 0.9, 0.9, 1.0, 0.10 }
+SettingsList.LIST_ROW_HOVER = { 0.35, 0.55, 1.0, 0.16 }
+SettingsList.LIST_ROW_SELECTED_ALPHA = 0.16
+SettingsList.LIST_ROW_TEXT_INSET = 6
+-- This client centres a FontString's glyphs within its line height rather than
+-- their cap height, so a label anchored to the row's middle reads high; the
+-- same fixed correction the styled buttons apply (unrealUI's
+-- U.BUTTON_LABEL_OFFSET_Y), plus 4 more by user request (2026-09-23) after
+-- seeing the rows in game.
+SettingsList.LIST_ROW_TEXT_DROP = -6
+
+function Client.CreateSettingsListRow(parent, name, offsetX, offsetY, width, height,
+    striped, onClick)
+    local create = Resolve("CreateFrame")
+    if not create or not parent or type(name) ~= "string" then
+        return nil
+    end
+    local ok, button = pcall(create, "Button", name, parent)
+    if not ok or not button then
+        return nil
+    end
+    Client.SetObjectSize(button, width, height)
+    pcall(button.SetPoint, button, "TOPLEFT", parent, "TOPLEFT",
+        type(offsetX) == "number" and offsetX or 0,
+        type(offsetY) == "number" and offsetY or 0)
+    if type(button.EnableMouse) == "function" then
+        pcall(button.EnableMouse, button, true)
+    end
+    if type(button.RegisterForClicks) == "function" then
+        pcall(button.RegisterForClicks, button, "LeftButtonUp")
+    end
+
+    local row = { button = button, uuiParts = { button }, selected = false }
+
+    if striped then
+        local stripe = CreateSolid(button, "BACKGROUND", SettingsList.LIST_ROW_STRIPE[1],
+            SettingsList.LIST_ROW_STRIPE[2], SettingsList.LIST_ROW_STRIPE[3], SettingsList.LIST_ROW_STRIPE[4])
+        if stripe then
+            pcall(stripe.SetAllPoints, stripe, button)
+        end
+        row.stripe = stripe
+    end
+
+    local accent = UQ.colors.accent
+    row.selectedBar = CreateSolid(button, "BORDER", accent[1], accent[2],
+        accent[3], SettingsList.LIST_ROW_SELECTED_ALPHA)
+    if row.selectedBar then
+        pcall(row.selectedBar.SetAllPoints, row.selectedBar, button)
+        pcall(row.selectedBar.Hide, row.selectedBar)
+    end
+    row.hover = CreateSolid(button, "ARTWORK", SettingsList.LIST_ROW_HOVER[1],
+        SettingsList.LIST_ROW_HOVER[2], SettingsList.LIST_ROW_HOVER[3], SettingsList.LIST_ROW_HOVER[4])
+    if row.hover then
+        pcall(row.hover.SetAllPoints, row.hover, button)
+        pcall(row.hover.Hide, row.hover)
+    end
+
+    local function Text(justify)
+        if type(button.CreateFontString) ~= "function" then
+            return nil
+        end
+        local made, text = pcall(button.CreateFontString, button, nil, "OVERLAY",
+            "GameFontHighlightSmall")
+        if not made or not text then
+            return nil
+        end
+        pcall(text.SetJustifyH, text, justify)
+        pcall(text.SetJustifyV, text, "MIDDLE")
+        StripShadow(text)
+        return text
+    end
+    -- The action on the right is sized to itself; the name takes the rest.
+    row.action = Text("RIGHT")
+    if row.action then
+        pcall(row.action.SetPoint, row.action, "RIGHT", button, "RIGHT",
+            -SettingsList.LIST_ROW_TEXT_INSET, SettingsList.LIST_ROW_TEXT_DROP)
+    end
+    row.name = Text("LEFT")
+    -- The same fields a settings button carries, so anything reading a line
+    -- by its widget name finds its text and selected state where it always did.
+    button.unrealQuestLabel = row.name
+    button.unrealQuestActive = false
+    if row.name then
+        pcall(row.name.SetPoint, row.name, "LEFT", button, "LEFT",
+            SettingsList.LIST_ROW_TEXT_INSET, SettingsList.LIST_ROW_TEXT_DROP)
+        if row.action then
+            pcall(row.name.SetPoint, row.name, "RIGHT", row.action, "LEFT",
+                -SettingsList.LIST_ROW_TEXT_INSET, 0)
+        else
+            pcall(row.name.SetPoint, row.name, "RIGHT", button, "RIGHT",
+                -SettingsList.LIST_ROW_TEXT_INSET, SettingsList.LIST_ROW_TEXT_DROP)
+        end
+    end
+
+    Client.SetObjectScript(button, "OnEnter", function()
+        if row.hover then
+            pcall(row.hover.Show, row.hover)
+        end
+    end)
+    Client.SetObjectScript(button, "OnLeave", function()
+        if row.hover then
+            pcall(row.hover.Hide, row.hover)
+        end
+    end)
+    if type(onClick) == "function" then
+        Client.SetObjectScript(button, "OnClick", function()
+            onClick()
+        end)
+    end
+    return row
+end
+
+-- Writes one line: the entry on the left, the action on the right, and the
+-- selected state (name and action in the accent, the accent bar behind them).
+function Client.SetSettingsListRow(row, text, action, selected)
+    if not row then
+        return false
+    end
+    row.selected = selected and true or false
+    row.button.unrealQuestActive = row.selected
+    if row.name then
+        pcall(row.name.SetText, row.name, type(text) == "string" and text or "")
+        if row.selected then
+            pcall(row.name.SetTextColor, row.name, UQ.colors.accent[1],
+                UQ.colors.accent[2], UQ.colors.accent[3])
+        else
+            pcall(row.name.SetTextColor, row.name, 1, 1, 1)
+        end
+    end
+    if row.action then
+        pcall(row.action.SetText, row.action,
+            type(action) == "string" and action or "")
+        if row.selected then
+            pcall(row.action.SetTextColor, row.action, UQ.colors.accent[1],
+                UQ.colors.accent[2], UQ.colors.accent[3])
+        else
+            pcall(row.action.SetTextColor, row.action, 0.6, 0.6, 0.6)
+        end
+    end
+    if row.selectedBar then
+        if row.selected then
+            pcall(row.selectedBar.Show, row.selectedBar)
+        else
+            pcall(row.selectedBar.Hide, row.selectedBar)
+        end
+    end
+    return true
+end
+
+-- Pagination ---------------------------------------------------------------------
+--
+-- "<  2 / 5  >" under a result table, in place of two text buttons. Forever's
+-- PagingControlsHorizontalTemplate (Blizzard_PagedContent/
+-- Blizzard_PagingControls.xml:54) is the shape: previous, the page text, next.
+-- Its own arrows are the stock UI-SpellbookIcon-*Page files, which have no
+-- runtime record on this client, so the arrows are the settings UI's stepper
+-- instead -- common-dropdown-c-button beds carrying common-dropdown-icon-back
+-- / -next, from Blizzard's settings-UI atlas (FileDataID 5412379, 512x512,
+-- shipped as media/setting-ui, the same RLE 32-bit 512 TGA format as
+-- media/128RedButton). These are the steppers the game's settings dropdowns
+-- wear, so the pager reads as part of the settings window. Cell rectangles
+-- are the atlas members' own texels.
+--
+-- States are rest, hover and disabled. There is no pressed face: that would
+-- need OnMouseDown / OnMouseUp, which have no runtime record here.
+SettingsList.PAGER_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\setting-ui"
+SettingsList.PAGER_SHEET = 512
+SettingsList.PAGER_CELLS = {
+    normal       = { 431, 509,   1,  79 },
+    hover        = {   1,  79, 345, 423 },
+    disabled     = { 321, 399,  85, 163 },
+    back         = { 393, 427, 183, 217 },
+    backDisabled = { 429, 463, 183, 217 },
+    next         = { 465, 499, 183, 217 },
+    nextDisabled = { 393, 427, 237, 271 },
+}
+-- The stepper's hit area, its bed (the member carries its own soft shadow, so
+-- it is drawn larger than the button and centred on it), and its icon.
+SettingsList.PAGER_ARROW_WIDTH = 20
+SettingsList.PAGER_ARROW_HEIGHT = 19
+SettingsList.PAGER_BED_SIZE = 29
+SettingsList.PAGER_ICON_SIZE = 13
+SettingsList.PAGER_TEXT_WIDTH = 64
+
+function SettingsList.PagerCell(texture, cell)
+    if texture and cell and type(texture.SetTexCoord) == "function" then
+        pcall(texture.SetTexCoord, texture,
+            cell[1] / SettingsList.PAGER_SHEET, cell[2] / SettingsList.PAGER_SHEET,
+            cell[3] / SettingsList.PAGER_SHEET, cell[4] / SettingsList.PAGER_SHEET)
+    end
+end
+
+function SettingsList.PaintPagerArrow(arrow)
+    local enabled = arrow.unrealQuestEnabled
+    local bed = SettingsList.PAGER_CELLS.normal
+    if not enabled then
+        -- A disabled arrow takes no mouse, so no OnLeave will clear this.
+        arrow.unrealQuestOver = false
+        bed = SettingsList.PAGER_CELLS.disabled
+    elseif arrow.unrealQuestOver then
+        bed = SettingsList.PAGER_CELLS.hover
+    end
+    SettingsList.PagerCell(arrow.unrealQuestBed, bed)
+    SettingsList.PagerCell(arrow.unrealQuestIcon,
+        SettingsList.PAGER_CELLS[arrow.unrealQuestIconKey .. (enabled and "" or "Disabled")])
+    if type(arrow.EnableMouse) == "function" then
+        pcall(arrow.EnableMouse, arrow, enabled and true or false)
+    end
+end
+
+function SettingsList.CreatePagerArrow(parent, name, iconKey, onClick)
+    local create = Resolve("CreateFrame")
+    local ok, arrow = pcall(create, "Button", name, parent)
+    if not ok or not arrow then
+        return nil
+    end
+    Client.SetObjectSize(arrow, SettingsList.PAGER_ARROW_WIDTH, SettingsList.PAGER_ARROW_HEIGHT)
+    if type(arrow.RegisterForClicks) == "function" then
+        pcall(arrow.RegisterForClicks, arrow, "LeftButtonUp")
+    end
+    local function Piece(layer, size)
+        local made, texture = pcall(arrow.CreateTexture, arrow, nil, layer)
+        if not made or not texture then
+            return nil
+        end
+        pcall(texture.SetTexture, texture, SettingsList.PAGER_TEXTURE)
+        pcall(texture.SetWidth, texture, size)
+        pcall(texture.SetHeight, texture, size)
+        pcall(texture.SetPoint, texture, "CENTER", arrow, "CENTER", 0, 0)
+        return texture
+    end
+    arrow.unrealQuestBed = Piece("BACKGROUND", SettingsList.PAGER_BED_SIZE)
+    arrow.unrealQuestIcon = Piece("ARTWORK", SettingsList.PAGER_ICON_SIZE)
+    arrow.unrealQuestIconKey = iconKey
+    arrow.unrealQuestEnabled = true
+    arrow.unrealQuestOver = false
+    Client.SetObjectScript(arrow, "OnEnter", function()
+        arrow.unrealQuestOver = true
+        SettingsList.PaintPagerArrow(arrow)
+    end)
+    Client.SetObjectScript(arrow, "OnLeave", function()
+        arrow.unrealQuestOver = false
+        SettingsList.PaintPagerArrow(arrow)
+    end)
+    Client.SetObjectScript(arrow, "OnClick", function()
+        if arrow.unrealQuestEnabled and type(onClick) == "function" then
+            onClick()
+        end
+    end)
+    SettingsList.PaintPagerArrow(arrow)
+    return arrow
+end
+
+-- `width` is the row the pager is centred in. Returned as a control table so
+-- a host that dresses every settings Button leaves the arrows alone.
+function Client.CreateSettingsPager(parent, name, offsetX, offsetY, width, height,
+    onPrevious, onNext)
+    local create = Resolve("CreateFrame")
+    if not create or not parent or type(name) ~= "string" then
+        return nil
+    end
+    local ok, frame = pcall(create, "Frame", name, parent)
+    if not ok or not frame then
+        return nil
+    end
+    Client.SetObjectSize(frame, width, height)
+    pcall(frame.SetPoint, frame, "TOPLEFT", parent, "TOPLEFT",
+        type(offsetX) == "number" and offsetX or 0,
+        type(offsetY) == "number" and offsetY or 0)
+
+    local pager = { frame = frame, uuiParts = { frame } }
+    local textOk, text = pcall(frame.CreateFontString, frame, nil, "OVERLAY",
+        "GameFontHighlight")
+    if textOk and text then
+        pcall(text.SetWidth, text, SettingsList.PAGER_TEXT_WIDTH)
+        pcall(text.SetJustifyH, text, "CENTER")
+        -- The client's glyph-centring correction, as on the list rows.
+        pcall(text.SetPoint, text, "CENTER", frame, "CENTER", 0, -2)
+        StripShadow(text)
+        pager.text = text
+    end
+    pager.previous = SettingsList.CreatePagerArrow(frame, name .. "Previous", "back", onPrevious)
+    pager.next = SettingsList.CreatePagerArrow(frame, name .. "Next", "next", onNext)
+    if pager.previous then
+        pcall(pager.previous.SetPoint, pager.previous, "CENTER", frame, "CENTER",
+            -(SettingsList.PAGER_TEXT_WIDTH / 2 + SettingsList.PAGER_ARROW_WIDTH / 2), 0)
+    end
+    if pager.next then
+        pcall(pager.next.SetPoint, pager.next, "CENTER", frame, "CENTER",
+            SettingsList.PAGER_TEXT_WIDTH / 2 + SettingsList.PAGER_ARROW_WIDTH / 2, 0)
+    end
+    return pager
+end
+
+function Client.SetSettingsPager(pager, page, pages)
+    if not pager then
+        return false
+    end
+    page = type(page) == "number" and page or 1
+    pages = type(pages) == "number" and pages or 1
+    if pager.text then
+        pcall(pager.text.SetText, pager.text,
+            tostring(page) .. " / " .. tostring(pages))
+    end
+    if pager.previous then
+        pager.previous.unrealQuestEnabled = page > 1
+        SettingsList.PaintPagerArrow(pager.previous)
+    end
+    if pager.next then
+        pager.next.unrealQuestEnabled = page < pages
+        SettingsList.PaintPagerArrow(pager.next)
+    end
+    return true
+end
+
 -- Minimal scriptless native text input, matching focused probe
 -- widgets.editbox_minimal_search.v1 (SUPPORTED / BEHAVIOR_VERIFIED). The
 -- EditBox itself receives no SetScript calls and is never focused
@@ -12385,6 +14485,31 @@ function Client.SetSettingsCheckbox(box, checked)
     return Client.HideObject(mark)
 end
 
+-- Greys out a checkbox that does not apply right now: no mouse, dimmed label.
+-- The same EnableMouse and SetTextColor calls the toggle is built with, and
+-- the dim grey is the note line's (CreateSettingsBody).
+function Client.SetSettingsCheckboxEnabled(box, enabled)
+    if not box then
+        return false
+    end
+    enabled = enabled and true or false
+    if type(box.EnableMouse) == "function" then
+        pcall(box.EnableMouse, box, enabled)
+    end
+    local label = box.label
+    if label and type(label.SetTextColor) == "function" then
+        if enabled then
+            pcall(label.SetTextColor, label, 1, 1, 1)
+        else
+            pcall(label.SetTextColor, label, 0.70, 0.70, 0.70)
+        end
+    end
+    if box.unrealQuestMark and type(box.unrealQuestMark.SetAlpha) == "function" then
+        pcall(box.unrealQuestMark.SetAlpha, box.unrealQuestMark, enabled and 1 or 0.4)
+    end
+    return true
+end
+
 function Client.GetSettingsCheckbox(box)
     if not box then
         return false
@@ -12481,6 +14606,248 @@ function Client.CreateSettingsCheckbox(parent, name, text, offsetX, offsetY, wid
                 onChange(box.unrealQuestChecked)
             end
         end)
+end
+
+-- Map tracker "Show all areas" toggle ---------------------------------------
+--
+-- The Modern WoW settings checkbox (unrealUI's M.foreverWow.control.checkbox:
+-- box and tick from one 64x64 sheet, drawn 15.6x15), on the map tracker's
+-- title line, right-aligned against the collapse button: [box] [label] [-].
+-- The label is the short "All areas" key, because the line also carries the
+-- title and the count in a fixed 220px. media/checkbox-modern.tga is that
+-- sheet copied byte-for-byte, so the control is the same with or without
+-- unrealUI (media/CHECKBOX-ATTRIBUTION.md).
+--
+-- The box is a plain Button with an owned bed texture and an owned tick,
+-- which is what unrealUI draws too; Client.SetSettingsCheckbox shows and
+-- hides the tick through the same unrealQuestMark field every toggle uses.
+local ModernCheckbox = {
+    texture = "Interface\\AddOns\\unrealQuest\\media\\checkbox-modern",
+    width = 15.6, height = 15, gap = 4,
+    box = { 1 / 64, 31 / 64, 1 / 64, 30 / 64 },
+    tick = { 1 / 64, 31 / 64, 32 / 64, 61 / 64 },
+}
+
+function Client.CreateTrackerAreaToggle(frame, text, onChange)
+    local create = Resolve("CreateFrame")
+    if not create or not frame or type(frame.GetName) ~= "function" then
+        return nil
+    end
+    local nameOk, name = pcall(frame.GetName, frame)
+    if not nameOk or type(name) ~= "string" then
+        return nil
+    end
+    local ok, box = pcall(create, "Button", name .. "ShowAllAreas", frame)
+    if not ok or not box then
+        return nil
+    end
+    SetTrackerChildLayer(box, frame)
+    -- One above the drag handle, which spans the title line under it: the
+    -- checkbox must keep its click, the rest of the title line drags.
+    local boxLevel = ReadObjectMethod(box, "GetFrameLevel")
+    if type(boxLevel) == "number" and type(box.SetFrameLevel) == "function" then
+        pcall(box.SetFrameLevel, box, boxLevel + 1)
+    end
+    Client.SetObjectSize(box, ModernCheckbox.width, ModernCheckbox.height)
+    if type(box.EnableMouse) == "function" then
+        pcall(box.EnableMouse, box, true)
+    end
+    if type(box.RegisterForClicks) == "function" then
+        pcall(box.RegisterForClicks, box, "LeftButtonUp")
+    end
+
+    local faces = { { "ARTWORK", ModernCheckbox.box }, { "OVERLAY", ModernCheckbox.tick } }
+    local index = 1
+    while index <= 2 do
+        local texture = CreateSolid(box, faces[index][1], 1, 1, 1, 1)
+        if texture then
+            local cell = faces[index][2]
+            pcall(texture.SetTexture, texture, ModernCheckbox.texture)
+            pcall(texture.SetTexCoord, texture, cell[1], cell[2], cell[3], cell[4])
+            pcall(texture.SetAllPoints, texture, box)
+        end
+        faces[index] = texture
+        index = index + 1
+    end
+    box.unrealQuestMark = faces[2]
+    Client.SetSettingsCheckbox(box, false)
+
+    if type(frame.CreateFontString) == "function" then
+        local labelOk, label = pcall(frame.CreateFontString, frame, nil, "OVERLAY",
+            "GameFontHighlightSmall")
+        if labelOk and label then
+            pcall(label.SetJustifyH, label, "LEFT")
+            pcall(label.SetText, label, type(text) == "string" and text or "")
+            pcall(label.SetTextColor, label, 0.85, 0.85, 0.85)
+            TrackerArt.ShadeText(label, true)
+            local collapse = frame.unrealQuestCollapse
+            if collapse then
+                pcall(label.SetPoint, label, "RIGHT", collapse, "LEFT",
+                    -ModernCheckbox.gap, 0)
+            else
+                pcall(label.SetPoint, label, "RIGHT", frame, "TOPRIGHT",
+                    -(2 + TRACKER_BUTTON_SIZE + ModernCheckbox.gap),
+                    -TRACKER_HEADER_HEIGHT / 2)
+            end
+            pcall(label.Hide, label)
+            box.label = label
+            pcall(box.SetPoint, box, "RIGHT", label, "LEFT", -ModernCheckbox.gap, 0)
+        end
+    end
+    if not box.label then
+        pcall(box.SetPoint, box, "RIGHT", frame, "TOPRIGHT",
+            -(2 + TRACKER_BUTTON_SIZE + ModernCheckbox.gap), -TRACKER_HEADER_HEIGHT / 2)
+    end
+
+    Client.SetObjectScript(box, "OnClick", function()
+        Client.SetSettingsCheckbox(box, not box.unrealQuestChecked)
+        if type(onChange) == "function" then
+            onChange(box.unrealQuestChecked)
+        end
+    end)
+    -- Blizzard's box has no hover art of its own; the label brightens instead.
+    Client.SetObjectScript(box, "OnEnter", function()
+        if box.label then pcall(box.label.SetTextColor, box.label, 1, 1, 1) end
+    end)
+    Client.SetObjectScript(box, "OnLeave", function()
+        if box.label then pcall(box.label.SetTextColor, box.label, 0.85, 0.85, 0.85) end
+    end)
+    pcall(box.Hide, box)
+    return box
+end
+
+function Client.SetTrackerAreaToggle(box, visible, checked)
+    if not box then
+        return false
+    end
+    Client.SetSettingsCheckbox(box, checked)
+    if visible then
+        Client.ShowObject(box.label)
+        return Client.ShowObject(box)
+    end
+    Client.HideObject(box.label)
+    return Client.HideObject(box)
+end
+
+-- The trackers' page row ----------------------------------------------------------
+--
+-- "<  Page 2/3  >" along the bottom edge of a tracker window, shown only while
+-- its content is split into pages. The arrows are the settings pager's own
+-- (SettingsList.CreatePagerArrow): the stepper beds and back/next icons from
+-- Blizzard's modern settings-UI atlas, media/setting-ui, with the same rest,
+-- hover and disabled faces.
+Client.TRACKER_PAGER_HEIGHT = 22
+-- MIN_TEXT_WIDTH: the page text never gets narrower than this, however narrow
+-- the window. One table rather than separate locals: this file's main chunk
+-- sits at Lua's 200-local limit.
+local TrackerPager = { TEXT_WIDTH = 96, MIN_TEXT_WIDTH = 40 }
+
+-- The height of the frame a tracker window was created in: WorldMapFrame for
+-- the map copy, UIParent for the HUD one. GetHeight on WorldMapFrame is
+-- measured (1018x745 at scale 0.5,
+-- frames.scaled_frame_edge_coordinates_mixed_space), and so is UIParent's
+-- (1834.67x768 at scale 1, frames.getpoint_y_same_sign_as_setpoint). A child
+-- shares its parent's coordinate space, so the number is directly comparable
+-- with the tracker's own height. Edge coordinates are deliberately not used.
+function Client.GetTrackerParentHeight(frame)
+    return Client.GetObjectHeight(frame and frame.unrealQuestParent)
+end
+
+-- Sizes the page row for a `textWidth` wide label and re-seats both arrows
+-- beside it. Skipped when the width has not changed since the last call.
+function TrackerPager.Layout(pager, textWidth)
+    if pager.textWidth == textWidth then
+        return
+    end
+    pager.textWidth = textWidth
+    Client.SetObjectSize(pager.frame, textWidth
+        + SettingsList.PAGER_ARROW_WIDTH * 2, Client.TRACKER_PAGER_HEIGHT)
+    if pager.text then
+        pcall(pager.text.SetWidth, pager.text, textWidth)
+    end
+    local offset = textWidth / 2 + SettingsList.PAGER_ARROW_WIDTH / 2
+    if pager.previous then
+        pcall(pager.previous.ClearAllPoints, pager.previous)
+        pcall(pager.previous.SetPoint, pager.previous, "CENTER", pager.frame, "CENTER", -offset, 0)
+    end
+    if pager.next then
+        pcall(pager.next.ClearAllPoints, pager.next)
+        pcall(pager.next.SetPoint, pager.next, "CENTER", pager.frame, "CENTER", offset, 0)
+    end
+end
+
+function Client.CreateTrackerPager(frame, onPrevious, onNext)
+    local create = Resolve("CreateFrame")
+    if not create or not frame or type(frame.GetName) ~= "function" then
+        return nil
+    end
+    local nameOk, name = pcall(frame.GetName, frame)
+    if not nameOk or type(name) ~= "string" then
+        return nil
+    end
+    local ok, row = pcall(create, "Frame", name .. "Pager", frame)
+    if not ok or not row then
+        return nil
+    end
+    SetTrackerChildLayer(row, frame)
+    pcall(row.SetPoint, row, "BOTTOM", frame, "BOTTOM", 0, 2)
+
+    local pager = { frame = row }
+    if type(row.CreateFontString) == "function" then
+        local textOk, text = pcall(row.CreateFontString, row, nil, "OVERLAY",
+            "GameFontHighlightSmall")
+        if textOk and text then
+            pcall(text.SetJustifyH, text, "CENTER")
+            pcall(text.SetPoint, text, "CENTER", row, "CENTER", 0, 0)
+            pcall(text.SetTextColor, text, 0.85, 0.85, 0.85)
+            TrackerArt.ShadeText(text, true)
+            pager.text = text
+        end
+    end
+    pager.previous = SettingsList.CreatePagerArrow(row, name .. "PagerPrevious", "back", onPrevious)
+    pager.next = SettingsList.CreatePagerArrow(row, name .. "PagerNext", "next", onNext)
+    TrackerPager.Layout(pager, TrackerPager.TEXT_WIDTH)
+    pcall(row.Hide, row)
+    return pager
+end
+
+-- Shows the page row with `text` between the arrows, or hides it when there
+-- is only one page. An arrow at either end of the range is drawn disabled.
+-- `maxWidth`, when given, is the widest the whole row may be: the HUD window
+-- can be resized narrower than the row's natural width, so its label shrinks
+-- to keep both arrows inside the window.
+function Client.SetTrackerPager(pager, page, pages, text, maxWidth)
+    if not pager then
+        return false
+    end
+    page = type(page) == "number" and page or 1
+    pages = type(pages) == "number" and pages or 1
+    if pages <= 1 then
+        return Client.HideObject(pager.frame)
+    end
+    local textWidth = TrackerPager.TEXT_WIDTH
+    if type(maxWidth) == "number" then
+        local fitted = math.floor(maxWidth - SettingsList.PAGER_ARROW_WIDTH * 2)
+        if fitted < textWidth then
+            textWidth = fitted
+        end
+        if textWidth < TrackerPager.MIN_TEXT_WIDTH then
+            textWidth = TrackerPager.MIN_TEXT_WIDTH
+        end
+    end
+    TrackerPager.Layout(pager, textWidth)
+    if pager.text then
+        pcall(pager.text.SetText, pager.text, type(text) == "string" and text or "")
+    end
+    if pager.previous then
+        pager.previous.unrealQuestEnabled = page > 1
+        SettingsList.PaintPagerArrow(pager.previous)
+    end
+    if pager.next then
+        pager.next.unrealQuestEnabled = page < pages
+        SettingsList.PaintPagerArrow(pager.next)
+    end
+    return Client.ShowObject(pager.frame)
 end
 
 -- Radio buttons ----------------------------------------------------------------
@@ -14453,23 +16820,33 @@ UQ:DeclareCapability("cameraProjection", "missing",
     .. "database; the documented Camera category is setters only. The HUD waypoint projects the target "
     .. "through the player's facing instead, and cannot track free-look camera rotation")
 
-UQ:DeclareCapability("playerFacing", "documented",
+UQ:DeclareCapability("playerFacing", "verified",
     "GetPlayerFacing() is documented on the updated client as returning the CHARACTER's rotation in "
-    .. "radians (client update notes 2026-08-28). DOCUMENTED, NOT VERIFIED, and it must not be promoted "
-    .. "without a probe: nothing has yet recorded its zero axis, its rotation direction or its wrap "
-    .. "point. The addon assumes its own convention (0 = north, increasing towards west) and then "
-    .. "CHECKS that assumption at runtime against the movement estimator -- see "
-    .. "playerFacingConvention. The preceding build had no facing by any route (probe 1.37.0 group "
-    .. "`facing`, 2026-08-22: every candidate global nil, Minimap has no Model child, and the Model "
-    .. "type itself has no GetFacing), which is why the movement fallback stays")
+    .. "radians (client update notes 2026-08-28), and probe 1.58.1 group `facing` (2026-09-25, "
+    .. "input.player_facing_range_wrap_confirmed) measured it directly: 60 live samples over 12.2s "
+    .. "while turning on the spot, all numeric, all in [0, 2*pi), with a clean wrap at the 0/2*pi "
+    .. "boundary and no stale or static readings. Existence, return count/type/range and wrap point "
+    .. "are therefore VERIFIED. Its zero axis and rotation direction were a separate question -- see "
+    .. "playerFacingConvention, now also verified by a follow-up walking run. The preceding build had "
+    .. "no facing by any route (probe "
+    .. "1.37.0 group `facing`, 2026-08-22: every candidate global nil, Minimap has no Model child, and "
+    .. "the Model type itself has no GetFacing), which is why the movement fallback stays")
 
-UQ:DeclareCapability("playerFacingConvention", "unverified",
-    "which radian convention GetPlayerFacing() reports in. The addon does not guess and then hope: "
-    .. "PlayerHeading votes each movement fix against both sign hypotheses in eighth-turn buckets and "
-    .. "adopts the winner once it leads by a clear margin, so a client that measures rotation the other "
-    .. "way round or from a different zero axis is corrected rather than pointed backwards. Until a "
-    .. "vote settles, the identity convention is assumed -- and /uq waypoint prints which of the two is "
-    .. "in force, so the settled answer can be read back and turned into a probe result")
+UQ:DeclareCapability("playerFacingConvention", "verified",
+    "which radian convention GetPlayerFacing() reports in -- zero axis and rotation direction, not "
+    .. "whether the getter itself works (see playerFacing, also verified). Probe 1.58.1's `facing` "
+    .. "group repeated 2026-09-25 with the player WALKING a straight line in The Barrens instead of "
+    .. "turning: GetPlayerFacing held a constant 4.38555 rad throughout (physically correct -- facing "
+    .. "does not change while walking straight) while GetPlayerMapPosition deltas gave a movement "
+    .. "bearing of 116.87 degrees clockwise from north. Converting the raw value under this addon's "
+    .. "assumed identity convention (0 = north, increasing towards west) gives 108.73 degrees, 8.1 "
+    .. "degrees from the measured bearing -- every other convention tried (raw-as-compass, standard "
+    .. "math CCW-from-east, CW-from-east) was 44-134 degrees off. See "
+    .. "input.player_facing_convention_identity_confirmed. PlayerHeading's runtime vote (eighth-turn "
+    .. "buckets against the movement estimator) remains in place as an ongoing cross-check rather than "
+    .. "a one-time gate -- it costs nothing and catches a convention that drifts session to session -- "
+    .. "but the identity assumption itself is no longer unverified. Camera independence (character "
+    .. "facing vs camera yaw during free-look) is the one piece this run did not test")
 
 UQ:DeclareCapability("playerHeadingFromMovement", "verified",
     "measured 2026-08-22: GetPlayerMapPosition tracks a walking player. It was the ONLY direction "

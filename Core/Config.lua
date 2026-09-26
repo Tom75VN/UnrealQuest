@@ -132,6 +132,11 @@ local defaults = {
     -- rarer one. Off restores whatever colour the buttons carried.
     questRewardItemColors = true,
 
+    -- Arrows over the choose-one rewards on the completion window (best and
+    -- second-best upgrade, or worse than what is worn) and a coin on the one
+    -- that sells for the most. See Quest/GearAdvisor.lua.
+    questRewardGearAdvisor = true,
+
     restoreTracking = true,
     -- Seasonal quests are hidden by default: the client cannot report which
     -- world events are running, so they would otherwise show all year.
@@ -151,15 +156,21 @@ local defaults = {
     -- an available hand-in.
     showInProgressTurnIns = true,
 
-    -- How the world map draws quest objectives. true (the default) is one dot
-    -- per spawn point, in the same style the minimap already uses -- exact
-    -- positions, which is also the presentation the two map layers then share.
-    -- false swaps that for the blue area: the spawn cloud reduced to 2.5%
-    -- cells and painted edge to edge, which says "somewhere in here" instead.
-    -- Both presentations are drawn by the same pooled frames in
-    -- Map/WorldMapPins.lua and carry the same colours and the same hover
-    -- tooltip; nothing else about the map layer changes with this setting.
+    -- How the world map draws quest objectives: two independent switches, so
+    -- either, both or neither can be on, and both are on by default. Dots are
+    -- one dot per spawn point, in the same style the minimap uses -- exact
+    -- positions. Areas are the blue contour around the spawn cloud with the
+    -- numbered POI circles, which says "somewhere in here" instead. Both are
+    -- drawn by Map/WorldMapPins.lua in one pass. Until 0.3.5 these were one
+    -- boolean (mapObjectiveDots false meant areas); the migration below
+    -- carries that choice over.
     mapObjectiveDots = true,
+    mapObjectiveAreas = true,
+
+    -- Areas presentation only. false (the default) keeps just the followed
+    -- quest's area on the map and shows any other quest's area while its
+    -- numbered marker is hovered; true keeps every in-progress area drawn.
+    mapShowAllAreas = false,
 
     -- Percentage of the 9px world-map objective dot. 100 is 10% smaller than
     -- the former 10px default; the settings slider allows 50-150.
@@ -351,7 +362,8 @@ local defaults = {
     -- A maximum window height in pixels, or 0 for no ceiling. The corner grip
     -- writes a real height on its first drag, /uq tracker height sets it
     -- directly, and /uq tracker reset returns it to 0. Rows below a shorter
-    -- ceiling are not drawn; enlarging the window reveals them again.
+    -- ceiling are not drawn; enlarging the window reveals them again. At or
+    -- past half the screen height the window pages instead (TrackerFrame).
     trackerHeight = 0,
 
     -- "all", "tracked" or "none". "tracked" shows objectives only under the
@@ -405,6 +417,12 @@ local defaults = {
     trackerRelativePoint = "TOPRIGHT",
     trackerX = -20,
     trackerY = -240,
+
+    -- The world map's own tracker copy: its TOPRIGHT offset from
+    -- WorldMapFrame's TOPRIGHT, in the map frame's units, set by dragging its
+    -- header. Always map-relative, so it follows the map wherever it opens.
+    mapTrackerX = -25,
+    mapTrackerY = -82,
 
     -- Settings window ---------------------------------------------------------
     --
@@ -637,6 +655,18 @@ function Config:OnInit()
             UnrealQuestDB.trackerWidth = defaults.trackerWidth
         end
         UnrealQuestDB.trackerWidthDefaultVersion = TRACKER_WIDTH_DEFAULT_VERSION
+    end
+
+    -- Dots and areas became two switches. Before, mapObjectiveDots == false
+    -- WAS the areas choice. Areas now default on anyway, but the choice is
+    -- still carried over explicitly, exactly once, gated by its own counter
+    -- so a later choice is never undone.
+    if type(UnrealQuestDB.mapObjectiveStyleVersion) ~= "number"
+        or UnrealQuestDB.mapObjectiveStyleVersion < 1 then
+        if UnrealQuestDB.mapObjectiveDots == false then
+            UnrealQuestDB.mapObjectiveAreas = true
+        end
+        UnrealQuestDB.mapObjectiveStyleVersion = 1
     end
 
     -- The alert's single on/off switch became one key per rank. A player who

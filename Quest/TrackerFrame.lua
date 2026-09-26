@@ -43,7 +43,11 @@ accelerators, never the mechanism.
     Client.GetFrameAnchor, which undoes this client's inverted GetPoint Y and
     its name-string relative frame, and is stored as a point name plus two
     numbers -- never a path, per the SavedVariables backslash hazard.
+  * The world map's copy moves by its header too, but cursor-driven rather
+    than through StartMoving -- see "The map copy" below ResetPosition.
   * Drag the bottom-right corner to resize the window in both axes.
+  * Past half the screen height the list is paged; the arrows on the bottom
+    row turn the page (TurnHudPage), as on the map copy.
   * Left click a quest: follows it. Clicking a manually followed quest returns
     following to the nearest node; clicking the automatic nearest quest does
     nothing because following always has one target.
@@ -89,8 +93,28 @@ local Client = UQ.Client
 local TrackerFrame = UQ:NewModule("TrackerFrame")
 
 local WINDOW_NAME = "UnrealQuestTracker"
+local MAP_WINDOW_NAME = "UnrealQuestMapTracker"
 local HANDLE_NAME = "UnrealQuestTrackerHandle"
+local MAP_HANDLE_NAME = "UnrealQuestMapTrackerHandle"
+local MAP_TRACKER_DEFAULT_X = -25
+local MAP_TRACKER_DEFAULT_Y = -82
 local GRIP_NAME = "UnrealQuestTrackerResizeGrip"
+local MAP_TRACKER_WIDTH = 220
+local MAP_TRACKER_MAX_HEIGHT = 520
+-- The map copy never grows past this share of WorldMapFrame's height; content
+-- taller than that is split into pages turned by the arrows on its bottom row.
+-- MAP_TRACKER_MAX_HEIGHT is the ceiling only when the map's height is unread.
+local MAP_TRACKER_PAGE_FRACTION = 0.4
+-- The HUD window's share of the screen (its parent, UIParent) past which its
+-- content is paged the same way. A shorter saved resize height still wins:
+-- below this share the window keeps drawing only the rows that fit.
+local HUD_TRACKER_PAGE_FRACTION = 0.5
+-- The HUD pager keeps clear of the resize grip in the bottom-right corner,
+-- and by the same amount on the left so it stays centred.
+local HUD_PAGER_SIDE_CLEARANCE = 14
+-- The map copy's background opacity, in percent. Fixed rather than read from
+-- trackerBackgroundOpacity: the map artwork behind it needs a steady backing.
+local MAP_TRACKER_OPACITY = 40
 
 local RESIZE_MIN_WIDTH = 110
 local RESIZE_MAX_WIDTH = 600
@@ -101,8 +125,9 @@ local COLLAPSED_QUESTS = "trackerCollapsedQuests"
 local COLLAPSED_ZONES = "trackerCollapsedZones"
 local HIDDEN_QUESTS = "trackerHiddenQuests"
 
-local ZONE_ROW_HEIGHT = 13
-local QUEST_ROW_HEIGHT = 13
+-- Tall enough for the zone name above the section bar drawn under it.
+local ZONE_ROW_HEIGHT = 18
+local QUEST_ROW_HEIGHT = 16
 local WRAPPED_ROW_TEXT_PADDING = 2
 -- 2px taller than the text itself needs: an objective row's progress bar is
 -- bottom-anchored (Compatibility/ClientAPI.lua's track/fill textures), so the
@@ -152,7 +177,11 @@ local OBJECTIVE_CHAR_WIDTH = 5.4
 -- mix, rather than relying on that tuning to be exact.
 local FIT_SAFETY_CHARS = 1
 
-local COLOR_ZONE = { 0.45, 0.45, 0.45 }
+-- The category name (zone/subzone) reads in full white.
+local COLOR_ZONE = { 1, 1, 1 }
+-- The empty-filter notice keeps the former muted grey: it is a remark, not a
+-- category name.
+local COLOR_ZONE_EMPTY = { 0.45, 0.45, 0.45 }
 local COLOR_OBJECTIVE = { 0.78, 0.78, 0.78 }
 local COLOR_OBJECTIVE_DONE = { 0.35, 0.68, 0.35 }
 local COLOR_COMPLETE = { 1, 1, 1 }
@@ -188,6 +217,20 @@ TrackerFrame.resizeStartX = nil
 TrackerFrame.resizeStartY = nil
 TrackerFrame.resizeStartWidth = nil
 TrackerFrame.resizeStartHeight = nil
+TrackerFrame.mapHandle = nil
+-- Set while the map copy's header is dragged: the cursor and the offsets the
+-- drag started from, and the offsets it has reached.
+TrackerFrame.mapDrag = nil
+TrackerFrame.mapDrags = 0
+TrackerFrame.mapPager = nil
+TrackerFrame.mapPage = 1
+TrackerFrame.mapPages = 1
+TrackerFrame.hudPager = nil
+TrackerFrame.hudPage = 1
+TrackerFrame.hudPages = 1
+-- Set by RevealQuest: the HUD's next paged redraw opens the page that holds
+-- this quest's row, then forgets it.
+TrackerFrame.hudRevealTitle = nil
 
 local function Config()
     return UQ:GetModule("Config")
@@ -449,9 +492,10 @@ end
 
 -- The current-zone filter ------------------------------------------------------
 --
--- `trackerCurrentZoneOnly` narrows the window to the quests the player can
--- actually work on where they are standing. That is asked in two ways, in
--- order of confidence:
+-- `trackerCurrentZoneOnly` narrows the window to quests the player can work on
+-- in the relevant zone: the zone they are standing in while the map is
+-- closed, or the individual zone currently open on the fullscreen map. That
+-- is asked in two ways, in order of confidence:
 --
 --   * when the zone's map can answer, its objective dot or tile, turn-in
 --     marker or vendor pin decides (Map/QuestZonePresence.lua);
@@ -571,6 +615,11 @@ local PROVEN_ZONE_ROUTES = {
     standing = true,
     standingSpan = true,
     parent = true,
+    -- GetViewedZone accepts only a named individual-zone view. Unlike the
+    -- indoor recovery routes below, it never derives this from where the
+    -- player is standing, so an empty result is a real answer about the map
+    -- the player deliberately opened.
+    viewedMap = true,
     -- The client told us the player is inside an instance, or the bundled
     -- instance table named the area. Either way the place is identified, so an
     -- empty result is an answer about the dungeon and not about a guess.
@@ -583,14 +632,33 @@ local PROVEN_ZONE_ROUTES = {
 -- independently: an unresolvable area only costs the map question, an
 -- unresolvable instance map only costs the provenance question, and an unnamed
 -- zone disables the filter entirely.
-local function CurrentZone()
-    if not Setting("trackerCurrentZoneOnly") then
-        return nil
-    end
+--
+-- Ungated: the filter reaches it through CurrentZone below, and with the filter
+-- off BuildLines still asks it which zone's quests to list first.
+local function ResolveZone()
     local mapContext = MapContext()
     if not mapContext then
         return nil
     end
+
+    -- The fullscreen map hides the game UI on this client. While it owns the
+    -- screen, both tracker windows answer the map the player is browsing, not
+    -- the zone their character is standing in. GetViewedZone is deliberately
+    -- used here rather than GetCurrentZoneView: the latter refuses a foreign
+    -- zone because the player has no projectable position on it. On a
+    -- continent/world view there is no current zone, so fall through to the
+    -- standing-zone answer instead of filtering on a guess.
+    if Client.IsGameUIHidden() == true then
+        local viewedAreaId, report = mapContext:GetViewedZone()
+        local viewedName = report and report.mapZoneName
+        if type(viewedAreaId) == "number" and type(viewedName) == "string"
+            and viewedName ~= "" then
+            TrackerFrame.currentZoneName = viewedName
+            TrackerFrame.currentZoneHow = "viewedMap"
+            return UQ.NameKey(viewedName), viewedAreaId, "viewedMap", nil
+        end
+    end
+
     local name, areaId, how = mapContext:GetStandingZone()
     TrackerFrame.currentZoneName = name
     TrackerFrame.currentZoneHow = how
@@ -602,6 +670,14 @@ local function CurrentZone()
         instanceMap = mapContext:GetInstanceMapForArea(areaId)
     end
     return UQ.NameKey(name), areaId, how, instanceMap
+end
+
+-- The zone the filter narrows to, or nil when the filter is off.
+local function CurrentZone()
+    if not Setting("trackerCurrentZoneOnly") then
+        return nil
+    end
+    return ResolveZone()
 end
 
 -- True for a quest that has no drawable work in the current zone, falling back
@@ -883,6 +959,51 @@ local function FloatRecentFirst(quests)
     return lifted
 end
 
+-- With the current-zone filter off, the quests filed under the current zone's
+-- quest-log header -- or under a subzone of it, by the same parent walk the
+-- filter's header half uses -- move to the top of the list they are in,
+-- everything else keeping its order. "Current" is the zone ResolveZone
+-- answers: the zone being viewed while the fullscreen map is open, which is
+-- when the map's tracker is on screen, and the zone the player stands in
+-- otherwise, which is when the HUD tracker is.
+--
+-- Applied to each half of OrderQuestsCompleteLast separately, so the current
+-- zone heads the window and also heads the complete tail, but a complete quest
+-- still never rises above work left to do. It runs after the recent-first
+-- lift: a quest advanced elsewhere stays above the rest of its own half, just
+-- not above the zone the player is in or looking at.
+local function FloatCurrentZoneFirst(quests, zoneKey)
+    if not zoneKey then
+        return quests
+    end
+    local lifted = {}
+    local rest = {}
+    local index = 1
+    local total = table.getn(quests)
+    while index <= total do
+        local quest = quests[index]
+        local zone = quest.zone
+        local questZoneKey = type(zone) == "string" and zone ~= "" and UQ.NameKey(zone)
+        if questZoneKey and (questZoneKey == zoneKey
+            or HeaderParentKey(zone, questZoneKey) == zoneKey) then
+            table.insert(lifted, quest)
+        else
+            table.insert(rest, quest)
+        end
+        index = index + 1
+    end
+    if table.getn(lifted) == 0 then
+        return quests
+    end
+    index = 1
+    total = table.getn(rest)
+    while index <= total do
+        table.insert(lifted, rest[index])
+        index = index + 1
+    end
+    return lifted
+end
+
 -- Stable partition that moves every complete quest after every quest still in
 -- progress, so the window reads as "what is left to do" first and "ready to
 -- turn in" last. The partition is global: a complete quest sinks to the very
@@ -900,7 +1021,10 @@ end
 --
 -- Removing quests from the middle cannot break the contiguity of the ones that
 -- remain, so the incomplete half keeps the log's own zone runs untouched.
-local function OrderQuestsCompleteLast(quests, groupByZone, recentFirst)
+--
+-- `topZoneKey`, when given, floats that zone to the head of each half; see
+-- FloatCurrentZoneFirst above.
+local function OrderQuestsCompleteLast(quests, groupByZone, recentFirst, topZoneKey)
     local total = table.getn(quests)
     local ordered = {}
     local complete = {}
@@ -921,6 +1045,8 @@ local function OrderQuestsCompleteLast(quests, groupByZone, recentFirst)
     if recentFirst then
         ordered = FloatRecentFirst(ordered)
     end
+    ordered = FloatCurrentZoneFirst(ordered, topZoneKey)
+    complete = FloatCurrentZoneFirst(complete, topZoneKey)
 
     local completeCount = table.getn(complete)
     if not groupByZone then
@@ -986,7 +1112,25 @@ function TrackerFrame:BuildLines()
     local mapKept = 0
     local quests = state:GetOrderedQuests()
     NoteProgressPass(quests)
-    quests = OrderQuestsCompleteLast(quests, groupByZone, recentFirst)
+    -- The map numbers quests before any view filter or display ordering is
+    -- applied. Preserve that same index here so complete-last, recent-first,
+    -- hidden quests and a foreign-zone map can move rows without renumbering
+    -- the quest they identify.
+    local questNumbers = {}
+    local numberIndex = 1
+    local numberTotal = table.getn(quests)
+    while numberIndex <= numberTotal do
+        local numberedQuest = quests[numberIndex]
+        if numberedQuest and numberedQuest.titleKey then
+            questNumbers[numberedQuest.titleKey] = numberIndex
+        end
+        numberIndex = numberIndex + 1
+    end
+    local topZoneKey = nil
+    if not currentZoneKey then
+        topZoneKey = ResolveZone()
+    end
+    quests = OrderQuestsCompleteLast(quests, groupByZone, recentFirst, topZoneKey)
     local total = table.getn(quests)
 
     -- The zone filter is decided in full before a single row is written, so
@@ -1100,11 +1244,11 @@ function TrackerFrame:BuildLines()
                 key = quest.title,
                 tracked = tracked,
                 following = mainQuest and mainQuest:IsMain(quest.titleKey) or false,
+                questNumber = questNumbers[quest.titleKey],
             }
-            -- The dot identifies a quest against its objective dots on both
-            -- maps. A complete quest has none left to match, so it swaps to
-            -- the bundled complete-quest icon instead of the coloured dot
-            -- (Client.SetTrackerRowQuestMark).
+            -- These remain the fallback for a malformed/out-of-range number.
+            -- The normal path draws the shared POI number and, for a complete
+            -- quest, keeps this bundled icon as a small status mark beside it.
             if quest.isComplete == 1 then
                 line.questRed, line.questGreen, line.questBlue = 1, 1, 1
                 line.questTexture = Client.COMPLETE_QUEST_TEXTURE
@@ -1172,7 +1316,7 @@ function TrackerFrame:BuildLines()
     -- bar, so it needs no widget pool of its own.
     if zoneFilterEmpty and visibleTotal == 0 then
         AddLine(lines, "objective", UQ.L("TRACKER_ZONE_EMPTY"),
-            COLOR_ZONE[1], COLOR_ZONE[2], COLOR_ZONE[3])
+            COLOR_ZONE_EMPTY[1], COLOR_ZONE_EMPTY[2], COLOR_ZONE_EMPTY[3])
     end
 
     self.currentZoneArea = currentAreaId
@@ -1232,8 +1376,11 @@ local function HeightThroughLine(lines, stopIndex, window, width)
                 local indent = kind == "quest" and QUEST_INDENT or OBJECTIVE_INDENT
                 if kind == "quest" then
                     Client.SetTrackerRowFollowing(row, line.following)
-                    Client.SetTrackerRowQuestMark(row,
-                        line.questRed, line.questGreen, line.questBlue, line.questTexture)
+                    if not Client.SetTrackerRowQuestNumber(row, line.questNumber,
+                        line.following and true or false, line.quest and line.quest.isComplete == 1) then
+                        Client.SetTrackerRowQuestMark(row,
+                            line.questRed, line.questGreen, line.questBlue, line.questTexture)
+                    end
                 end
                 Client.PlaceTrackerRow(row, window, indent, top, width, height)
                 Client.SetTrackerRowText(row, line.text, line.red, line.green, line.blue)
@@ -1326,6 +1473,10 @@ local function BuildQuestTooltipLines(quest)
             r = 0.6, g = 0.6, b = 0.6 })
         shortcutIndex = shortcutIndex + 1
     end
+    if not Setting("trackerCurrentZoneOnly") then
+        table.insert(lines, { text = UQ.L("TRACKER_HINT_MAP_CLICK"),
+            r = 0.6, g = 0.6, b = 0.6 })
+    end
 
     return lines
 end
@@ -1403,13 +1554,22 @@ local function OnQuestRowClick(row, first)
         Client.OpenQuestLog()
         return
     end
-    -- Plain left-click owns following only. Keeping Quest Log opening on Alt
+    -- Plain left-click owns following. Keeping Quest Log opening on Alt
     -- prevents the follow gesture from also covering the screen with a panel.
     if UQ:IsFeatureEnabled("mainQuestWaypoint") then
         local clicks = UQ:GetModule("QuestClicks")
         if clicks then
             clicks:Select(quest, "trackerWindow")
         end
+    end
+    -- With the current-zone filter off, the tracker lists quests from every
+    -- zone, so a click made over the fullscreen map also takes the map to the
+    -- quest's zone -- the same Ctrl+click reveal. With the filter on, the list
+    -- already follows the viewed map (CurrentZone above). Nothing is opened
+    -- when the map is closed: the plain click must not cover the screen
+    -- during play.
+    if not Setting("trackerCurrentZoneOnly") and Client.IsGameUIHidden() == true then
+        RevealQuestOnMap(quest)
     end
 end
 
@@ -1422,6 +1582,11 @@ local function OnQuestRowEnter(row)
     if minimapPins then
         minimapPins:SetHoveredQuest(quest)
     end
+    -- The world map shows the quest as if its POI circle were hovered.
+    local worldMapPins = UQ:GetModule("WorldMapPins")
+    if worldMapPins then
+        worldMapPins:SetExternalQuestHover(quest)
+    end
     Client.ShowGameTooltip(row, BuildQuestTooltipLines(quest), "ANCHOR_RIGHT")
 end
 
@@ -1429,6 +1594,10 @@ local function OnQuestRowLeave(row)
     local minimapPins = UQ:GetModule("MinimapPins")
     if minimapPins then
         minimapPins:SetHoveredQuest(nil)
+    end
+    local worldMapPins = UQ:GetModule("WorldMapPins")
+    if worldMapPins then
+        worldMapPins:SetExternalQuestHover(nil)
     end
     Client.HideGameTooltip(row)
 end
@@ -1444,22 +1613,230 @@ local function OnZoneRowClick(row)
     TrackerFrame:Refresh()
 end
 
-function TrackerFrame:Redraw(lines, questCount, completed)
-    local window = self.window
+local function SameQuest(first, second)
+    if first == second then
+        return true
+    end
+    return first and second and first.titleKey and second.titleKey
+        and first.titleKey == second.titleKey
+end
+
+-- Map objectives and the two tracker copies are views of the same quest.
+-- Keep the external hover separate from a row's
+-- own OnEnter extension: the pin already owns the map tooltip, so replaying
+-- the row handler would open a second tooltip and alter the minimap too.
+local function RefreshWindowQuestHover(window, quest)
+    local pools = window and window.unrealQuestRows
+    local rows = pools and pools.quest
+    local matched = false
+    local index = 1
+    local total = table.getn(rows or {})
+    while index <= total do
+        local row = rows[index]
+        local hover = row and row.unrealQuestHover
+        if hover then
+            if quest and SameQuest(row.unrealQuestSubject, quest) then
+                Client.ShowObject(hover)
+                matched = true
+            else
+                Client.HideObject(hover)
+            end
+        end
+        index = index + 1
+    end
+    return matched
+end
+
+function TrackerFrame:RefreshMapQuestHover()
+    local hudMatched = RefreshWindowQuestHover(self.window, self.mapHoveredQuest)
+    local mapMatched = RefreshWindowQuestHover(self.mapWindow, self.mapHoveredQuest)
+    return hudMatched or mapMatched
+end
+
+function TrackerFrame:SetMapHoveredQuest(quest, owner)
+    self.mapHoveredQuest = quest
+    self.mapHoverOwner = quest and owner or nil
+    return self:RefreshMapQuestHover()
+end
+
+function TrackerFrame:ClearMapHoveredQuest(owner)
+    -- Adjacent pins can deliver the new OnEnter before the old OnLeave.  The
+    -- old pin must not erase the newer row highlight in that ordering.
+    if owner and self.mapHoverOwner and owner ~= self.mapHoverOwner then
+        return false
+    end
+    self.mapHoveredQuest = nil
+    self.mapHoverOwner = nil
+    self:RefreshMapQuestHover()
+    return true
+end
+
+-- The vertical space drawn above a row, given the kind drawn just before it
+-- (nil at the top of the window or of a map page).
+local function GapBefore(kind, previousKind)
+    if kind == "quest" and (previousKind == "quest" or previousKind == "objective") then
+        return QUEST_GROUP_GAP
+    elseif kind == "zone" and previousKind ~= nil then
+        return ZONE_GROUP_GAP
+    elseif kind == "objective" and previousKind == "objective" then
+        return OBJECTIVE_ROW_GAP
+    end
+    return 0
+end
+
+-- `fraction` of the height of the frame the window was created in, or nil when
+-- that height cannot be read or leaves no room for a single row and the pager.
+local function ParentShareHeight(window, fraction)
+    local parentHeight = Client.GetTrackerParentHeight(window)
+    if type(parentHeight) == "number" and parentHeight > 0 then
+        local height = math.floor(parentHeight * fraction)
+        if height > ROW_AREA_CHROME + Client.TRACKER_PAGER_HEIGHT then
+            return height
+        end
+    end
+    return nil
+end
+
+-- The map copy's height ceiling: its share of the map window, or the fixed
+-- ceiling when the map's height cannot be read.
+local function MapPageHeight(window)
+    return ParentShareHeight(window, MAP_TRACKER_PAGE_FRACTION) or MAP_TRACKER_MAX_HEIGHT
+end
+
+-- The HUD window's page height: its share of the screen, or the resize
+-- ceiling when UIParent's height cannot be read.
+local function HudPageHeight(window)
+    return ParentShareHeight(window, HUD_TRACKER_PAGE_FRACTION) or RESIZE_MAX_HEIGHT
+end
+
+-- Splits the rows RedrawWindow already placed and measured into pages that fit
+-- above the page row, then shows only the current page. Pure positioning: every
+-- text and height was settled by the first pass. A zone header left as the
+-- last row of a page moves to the next one with the quest it introduces.
+-- `revealTitle`, when given and listed, overrides `wantedPage` with the page
+-- holding that quest's row.
+-- Returns the page count, the page shown, and the followed row's plaque edges.
+local function PaginateRows(window, placed, width, pageHeight, wantedPage, revealTitle)
+    local start = Client.TRACKER_HEADER_HEIGHT + BODY_PADDING
+    local limit = pageHeight - BODY_PADDING - Client.TRACKER_PAGER_HEIGHT
+    local page = 1
+    local bottom = start
+    local previousKind = nil
+    local count = table.getn(placed)
+    local index = 1
+    while index <= count do
+        local entry = placed[index]
+        local top = bottom + GapBefore(entry.kind, previousKind)
+        if previousKind ~= nil and top + entry.height > limit then
+            page = page + 1
+            top = start
+            local before = placed[index - 1]
+            if before and before.kind == "zone" and not before.first then
+                before.page = page
+                before.top = start
+                before.first = true
+                top = start + before.height + GapBefore(entry.kind, "zone")
+            end
+        end
+        entry.first = top == start
+        entry.page = page
+        entry.top = top
+        bottom = top + entry.height
+        previousKind = entry.kind
+        index = index + 1
+    end
+
+    local shown = wantedPage
+    if revealTitle then
+        index = 1
+        while index <= count do
+            local entry = placed[index]
+            if entry.kind == "quest" and entry.title == revealTitle then
+                shown = entry.page
+                break
+            end
+            index = index + 1
+        end
+    end
+    if type(shown) ~= "number" or shown < 1 then
+        shown = 1
+    elseif shown > page then
+        shown = page
+    end
+
+    local followingTop = nil
+    local followingBottom = nil
+    index = 1
+    while index <= count do
+        local entry = placed[index]
+        if entry.page == shown then
+            Client.PlaceTrackerRow(entry.row, window, entry.indent, entry.top, width, entry.height)
+            if entry.following then
+                followingTop = entry.top - 2
+                followingBottom = entry.top + entry.height + 2
+            end
+        else
+            Client.HideObject(entry.row)
+        end
+        index = index + 1
+    end
+    return page, shown, followingTop, followingBottom
+end
+
+function TrackerFrame:TurnMapPage(delta)
+    local page = (self.mapPage or 1) + delta
+    if page < 1 or page > (self.mapPages or 1) then
+        return false
+    end
+    self.mapPage = page
+    if self.mapWindow and self.lines then
+        self:RedrawWindow(self.mapWindow, self.lines,
+            self.lastQuestCount or 0, self.lastCompleted or 0, true)
+    end
+    return true
+end
+
+function TrackerFrame:TurnHudPage(delta)
+    local page = (self.hudPage or 1) + delta
+    if page < 1 or page > (self.hudPages or 1) then
+        return false
+    end
+    self.hudPage = page
+    if self.window and self.lines then
+        self:RedrawWindow(self.window, self.lines,
+            self.lastQuestCount or 0, self.lastCompleted or 0, false)
+    end
+    return true
+end
+
+function TrackerFrame:RedrawWindow(window, lines, questCount, completed, mapOwned)
     if not window then
         return
     end
 
-    local width = Setting("trackerWidth")
+    local width = mapOwned and MAP_TRACKER_WIDTH or Setting("trackerWidth")
     if type(width) ~= "number" or width < 110 then
         width = 170
     end
 
-    local targetHeight = Setting("trackerHeight")
-    if type(targetHeight) ~= "number" or targetHeight <= ROW_AREA_CHROME then
-        targetHeight = nil
+    -- The map copy always pages at its share of the map. The HUD one pages at
+    -- its share of the screen unless a shorter saved resize height caps it
+    -- first, in which case rows past that height are simply not drawn.
+    local targetHeight
+    local paged = false
+    if mapOwned then
+        targetHeight = MapPageHeight(window)
+        paged = true
+    else
+        local pageHeight = HudPageHeight(window)
+        targetHeight = Setting("trackerHeight")
+        if type(targetHeight) ~= "number" or targetHeight <= ROW_AREA_CHROME
+            or targetHeight >= pageHeight then
+            targetHeight = pageHeight
+            paged = true
+        end
     end
-    local resizing = self.resizeStartX and true or false
+    local resizing = not mapOwned and self.resizeStartX and true or false
 
     local total = table.getn(lines)
     self.totalLines = total
@@ -1467,11 +1844,20 @@ function TrackerFrame:Redraw(lines, questCount, completed)
     local collapsed = Setting("trackerCollapsed") and true or false
     if collapsed then
         targetHeight = nil
+        paged = false
     end
 
     Client.SetTrackerTitle(window, "UnrealQuest")
     Client.SetTrackerCount(window, completed .. "/" .. questCount)
-    Client.SetTrackerCollapseLabel(window, collapsed and "+" or "-")
+    Client.SetTrackerCollapsed(window, collapsed)
+    -- A folded window is a title bar only; there is nothing to resize.
+    if not mapOwned and self.grip then
+        if collapsed then
+            Client.HideObject(self.grip)
+        else
+            Client.ShowObject(self.grip)
+        end
+    end
 
     local top = Client.TRACKER_HEADER_HEIGHT + BODY_PADDING
     local used = { zone = 1, quest = 1, objective = 1 }
@@ -1480,36 +1866,35 @@ function TrackerFrame:Redraw(lines, questCount, completed)
     -- reused the last followed quest's block and left its gold glow visible.
     local followingTop = nil
     local followingBottom = nil
-    local followingKey = nil
+    local dotColors = Setting("mapObjectiveDots") and true or false
     -- Tracks what was drawn immediately before, so a gap can be inserted
     -- between one quest's block and the next without also pushing a quest
     -- away from the zone header that just introduced it.
     local previousKind = nil
+    -- A paged window lays out every row, then pages them (PaginateRows)
+    -- instead of stopping at its height ceiling.
+    local placed = {}
 
     local index = 1
     while not collapsed and index <= total do
         local line = lines[index]
         local kind = line.kind
-        if kind == "quest" and (previousKind == "quest" or previousKind == "objective") then
-            top = top + QUEST_GROUP_GAP
-        elseif kind == "zone" and previousKind ~= nil then
-            top = top + ZONE_GROUP_GAP
-        elseif kind == "objective" and previousKind == "objective" then
-            top = top + OBJECTIVE_ROW_GAP
-        end
+        top = top + GapBefore(kind, previousKind)
         local slot = used[kind] or 1
         local row = Client.GetTrackerRow(window, kind, slot)
         if row then
             local indent = RowIndent(kind)
             local height = RowHeight(kind)
-            -- The dot is set before the row is placed, not with the rest of
-            -- the quest-row wiring below: hiding it also collapses the label's
-            -- left inset, and PlaceTrackerRow is what turns that inset into
-            -- the label width the Fit() calls below measure against.
+            -- The number is set before the row is placed: it decides the
+            -- label's left inset, and PlaceTrackerRow is what turns that inset
+            -- into the label width the Fit() calls below measure against.
             if kind == "quest" then
                 Client.SetTrackerRowFollowing(row, line.following)
-                Client.SetTrackerRowQuestMark(row,
-                    line.questRed, line.questGreen, line.questBlue, line.questTexture)
+                if not Client.SetTrackerRowQuestNumber(row, line.questNumber,
+                    line.following and true or false, line.quest and line.quest.isComplete == 1) then
+                    Client.SetTrackerRowQuestMark(row,
+                        line.questRed, line.questGreen, line.questBlue, line.questTexture)
+                end
             end
             Client.PlaceTrackerRow(row, window, indent, top, width, height)
 
@@ -1533,15 +1918,20 @@ function TrackerFrame:Redraw(lines, questCount, completed)
 
             -- There is no scrolling: stop once this complete, dynamically
             -- measured row would pass the resized bottom edge.
-            if targetHeight and top + height > targetHeight - BODY_PADDING then
+            if not paged and targetHeight and top + height > targetHeight - BODY_PADDING then
                 Client.HideObject(row)
                 break
             end
             used[kind] = slot + 1
+            if paged then
+                table.insert(placed, { row = row, kind = kind, indent = indent,
+                    height = height, following = line.following,
+                    title = line.quest and line.quest.title })
+            end
 
             if line.following then
                 followingTop = top - 2
-                followingKey = line.quest and line.quest.titleKey
+                followingBottom = top + height + 2
             end
 
             if kind == "quest" then
@@ -1560,12 +1950,22 @@ function TrackerFrame:Redraw(lines, questCount, completed)
             elseif kind == "zone" then
                 row.unrealQuestSubject = line.key
                 Client.SetTrackerRowProgress(row, nil)
+                Client.SetTrackerZoneFolded(row, IsFolded(COLLAPSED_ZONES, line.key or ""))
                 if not row.unrealQuestBound then
                     row.unrealQuestBound = true
                     Client.SetTrackerRowClick(row, function() OnZoneRowClick(row) end)
                 end
             else
                 row.unrealQuestSubject = nil
+                -- In dot mode an open objective wears its quest's map-dot
+                -- colour, so the row and its dots on the map read as one.
+                local dotRed, dotGreen, dotBlue = nil, nil, nil
+                if dotColors and line.quest and not line.progressDone then
+                    dotRed, dotGreen, dotBlue = UQ.GetQuestColor(line.quest)
+                end
+                Client.SetTrackerRowObjectiveMark(row,
+                    line.quest and (line.progressDone and "done" or "open") or nil,
+                    dotRed, dotGreen, dotBlue)
                 if line.progressDone then
                     Client.SetTrackerRowProgress(row, line.progress,
                         COLOR_OBJECTIVE_DONE[1], COLOR_OBJECTIVE_DONE[2], COLOR_OBJECTIVE_DONE[3])
@@ -1576,10 +1976,6 @@ function TrackerFrame:Redraw(lines, questCount, completed)
             end
 
             top = top + height
-            if followingTop and followingKey and line.quest
-                and line.quest.titleKey == followingKey then
-                followingBottom = top + 2
-            end
             previousKind = kind
         else
             -- The pool refused to grow. Stop rather than spin: every later row
@@ -1592,8 +1988,36 @@ function TrackerFrame:Redraw(lines, questCount, completed)
     Client.HideTrackerRows(window, "zone", used.zone)
     Client.HideTrackerRows(window, "quest", used.quest)
     Client.HideTrackerRows(window, "objective", used.objective)
+
+    local pages = 1
+    local page = mapOwned and self.mapPage or self.hudPage
+    if paged and top + BODY_PADDING > targetHeight then
+        pages, page, followingTop, followingBottom =
+            PaginateRows(window, placed, width, targetHeight, page,
+                not mapOwned and self.hudRevealTitle or nil)
+    end
+    if pages <= 1 then
+        page = 1
+    end
+    local pageText = UQ.L("TRACKER_MAP_PAGE", page, pages)
+    if mapOwned then
+        self.mapPage = page
+        self.mapPages = pages
+        Client.SetTrackerPager(self.mapPager, page, pages, pageText)
+    else
+        self.hudPage = page
+        self.hudPages = pages
+        self.hudRevealTitle = nil
+        Client.SetTrackerPager(self.hudPager, page, pages, pageText,
+            width - HUD_PAGER_SIDE_CLEARANCE * 2)
+    end
+
     Client.SetTrackerFollowingBlock(window, followingTop, followingBottom,
-        Setting("trackerBackgroundOpacity") or 55)
+        mapOwned and MAP_TRACKER_OPACITY or Setting("trackerBackgroundOpacity") or 55)
+
+    if mapOwned then
+        self:RefreshMapQuestHover()
+    end
 
     local height = Client.TRACKER_HEADER_HEIGHT
     if collapsed then
@@ -1609,7 +2033,32 @@ function TrackerFrame:Redraw(lines, questCount, completed)
         end
     end
     Client.SetObjectSize(window, width, height)
+end
+
+function TrackerFrame:Redraw(lines, questCount, completed)
+    -- Kept for turning the map copy's page without rebuilding the lines.
+    self.lastQuestCount = questCount
+    self.lastCompleted = completed
+    self:RedrawWindow(self.window, lines, questCount, completed, false)
+    self:RedrawWindow(self.mapWindow, lines, questCount, completed, true)
     self.redraws = self.redraws + 1
+end
+
+-- The map tracker's "Show all areas" toggle: shown only while the world map
+-- draws areas, and checked from the setting, which the options page can also
+-- change. Touches the widget only when either answer changes.
+function TrackerFrame:SyncAreaToggle()
+    if not self.areaToggle then
+        return
+    end
+    local visible = Setting("mapObjectiveAreas") and true or false
+    local checked = Setting("mapShowAllAreas") and true or false
+    local key = tostring(visible) .. "|" .. tostring(checked)
+    if key == self.areaToggleKey then
+        return
+    end
+    self.areaToggleKey = key
+    Client.SetTrackerAreaToggle(self.areaToggle, visible, checked)
 end
 
 -- Rebuilds the line list and redraws only when the rendered content changes.
@@ -1620,22 +2069,27 @@ function TrackerFrame:Refresh()
     end
     if not Setting("trackerEnabled") then
         Client.HideObject(window)
+        Client.HideObject(self.mapWindow)
         return
     end
 
     self:CheckPositionOnScreen()
+    self:SyncAreaToggle()
 
     local lines, questCount, completed = self:BuildLines()
     local parts = { tostring(questCount), tostring(completed),
         Setting("trackerCollapsed") and "1" or "0", tostring(Setting("trackerWidth")),
-        tostring(Setting("trackerHeight")) }
+        tostring(Setting("trackerHeight")),
+        tostring(Client.GetTrackerParentHeight(window)),
+        tostring(Client.GetTrackerParentHeight(self.mapWindow)),
+        Setting("mapObjectiveDots") and "1" or "0" }
     local index = 1
     local total = table.getn(lines)
     while index <= total do
         local line = lines[index]
         table.insert(parts, line.kind .. ":" .. tostring(line.text)
             .. ":" .. tostring(line.tracked) .. ":" .. tostring(line.progress)
-            .. ":" .. tostring(line.following))
+            .. ":" .. tostring(line.following) .. ":" .. tostring(line.questNumber))
         index = index + 1
     end
     local signature = table.concat(parts, "|")
@@ -1648,12 +2102,15 @@ function TrackerFrame:Refresh()
     self.lines = lines
     self:Redraw(lines, questCount, completed)
     Client.ShowObject(window)
+    Client.ShowObject(self.mapWindow)
 end
 
 -- Refreshes after Tracker clears the quest and zone folds for a newly tracked
 -- quest. A saved height is a ceiling, so grow it through the quest's final
--- objective before redrawing; both a Track action and a newly accepted quest
--- reach this method through Tracker:Track.
+-- objective before redrawing; past the HUD's page height the ceiling is
+-- dropped instead and the window pages, opening on the quest's page. Both a
+-- Track action and a newly accepted quest reach this method through
+-- Tracker:Track.
 function TrackerFrame:RevealQuest(quest)
     if not quest or not quest.title then
         return false
@@ -1685,7 +2142,7 @@ function TrackerFrame:RevealQuest(quest)
         if requiredHeight > targetHeight then
             local config = Config()
             if config then
-                if requiredHeight > RESIZE_MAX_HEIGHT then
+                if requiredHeight >= HudPageHeight(self.window) then
                     config:Set("trackerHeight", 0)
                 else
                     config:Set("trackerHeight", requiredHeight)
@@ -1694,6 +2151,7 @@ function TrackerFrame:RevealQuest(quest)
         end
     end
 
+    self.hudRevealTitle = quest.title
     self.dirty = true
     self:Refresh()
     return true
@@ -1788,8 +2246,179 @@ function TrackerFrame:ResetPosition()
     Store("trackerX", -20)
     Store("trackerY", -240)
     Store("trackerHeight", 0)
+    Store("mapTrackerX", MAP_TRACKER_DEFAULT_X)
+    Store("mapTrackerY", MAP_TRACKER_DEFAULT_Y)
     self.dirty = true
     self:ApplyStoredPosition()
+    self:ApplyMapPosition()
+end
+
+-- The map copy ------------------------------------------------------------------
+--
+-- Dragged by its header, but not with StartMoving: the window is a child of
+-- WorldMapFrame, which runs at scale 0.5 and whose edge coordinates mix two
+-- spaces (frames.scaled_frame_edge_coordinates_mixed_space), so neither the
+-- anchor StartMoving would leave nor GetFrameAnchor's edge measurement can be
+-- trusted there. Instead the cursor's movement since the drag began, read in
+-- the window's own units (Client.GetCursorInObjectUnits), is added to the
+-- TOPRIGHT offsets the drag started from and applied on the shared driver.
+-- The offsets are the only thing stored and the only thing ever read back, so
+-- what the player sees mid-drag is exactly what comes back next time.
+--
+-- Releasing the mouse must end the drag, always. A first version moved the
+-- window with its handle still riding on it, so every tick re-anchored the
+-- frame the client was dragging; the client then drops the drag and its
+-- OnDragStop (widgets.thumb_reposition_during_drag_breaks_drag), and the
+-- window kept following the cursor after release (user report 2026-09-27).
+-- unrealUI's mover hit the same thing more than once. The shape now is its
+-- fix: for the length of the drag the handle is detached from the window
+-- (Client.DetachTrackerHandle) and moved natively under the cursor by the
+-- verified StartMoving recipe, and nothing ever re-anchors it; only the
+-- visible window moves by SetPoint. The release then has every route there
+-- is, and StopMapDrag is idempotent so receiving several is harmless:
+--   * the handle's OnDragStop, OnMouseUp and OnClick;
+--   * the map closing (the window no longer visible) on the driver tick;
+--   * IsMouseButtonDown reporting the button up, where the client has it
+--     (Client.IsLeftMouseButtonHeld -- unrecorded, so best effort only).
+
+-- Keeps the title line on the map: the window's full width inside its left
+-- and right edges, its header inside its top and bottom. Map and window share
+-- one space (the window is a scale-1 child), and only GetWidth/GetHeight are
+-- read, which are sign- and scale-safe. Unread sizes leave the offsets alone.
+local function ClampMapOffsets(window, x, y)
+    local map = window and window.unrealQuestParent
+    local mapWidth = Client.GetObjectWidth(map)
+    local mapHeight = Client.GetObjectHeight(map)
+    local width = Client.GetObjectWidth(window) or 0
+    if mapWidth and mapWidth > width then
+        if x > 0 then
+            x = 0
+        elseif x < width - mapWidth then
+            x = width - mapWidth
+        end
+    end
+    if mapHeight and mapHeight > Client.TRACKER_HEADER_HEIGHT then
+        if y > 0 then
+            y = 0
+        elseif y < Client.TRACKER_HEADER_HEIGHT - mapHeight then
+            y = Client.TRACKER_HEADER_HEIGHT - mapHeight
+        end
+    end
+    return x, y
+end
+
+-- Places the map copy at (x, y), or at its stored offsets. Never stores:
+-- only a finished drag does, so a placement made before the map has been
+-- laid out cannot overwrite a good position (the HUD copy's reload lesson).
+function TrackerFrame:ApplyMapPosition(x, y)
+    local window = self.mapWindow
+    if not window then
+        return false
+    end
+    if type(x) ~= "number" or type(y) ~= "number" then
+        x = Setting("mapTrackerX")
+        y = Setting("mapTrackerY")
+    end
+    if type(x) ~= "number" or type(y) ~= "number" then
+        x, y = MAP_TRACKER_DEFAULT_X, MAP_TRACKER_DEFAULT_Y
+    end
+    return Client.SetFrameAnchor(window, "TOPRIGHT", "WorldMapFrame", "TOPRIGHT", x, y) and true
+        or false
+end
+
+function TrackerFrame:StartMapDrag()
+    local window = self.mapWindow
+    local handle = self.mapHandle
+    if not window or not handle then
+        return false
+    end
+    -- A drag still open from a lost release is closed before a new one.
+    self:StopMapDrag()
+    local cursorX, cursorY = Client.GetCursorInObjectUnits(window)
+    if not cursorX then
+        return false
+    end
+    local x = Setting("mapTrackerX")
+    local y = Setting("mapTrackerY")
+    if type(x) ~= "number" or type(y) ~= "number" then
+        x, y = MAP_TRACKER_DEFAULT_X, MAP_TRACKER_DEFAULT_Y
+    end
+    self.mapDrag = { cursorX = cursorX, cursorY = cursorY,
+        startX = x, startY = y, x = x, y = y }
+    self.mapDrags = self.mapDrags + 1
+    -- Pinned where it is, then carried by the client's own move. If either
+    -- is refused the drag still runs: every release route below the handle's
+    -- own callbacks still ends it.
+    if Client.DetachTrackerHandle(handle, "WorldMapFrame", x, y) then
+        self.mapDrag.detached = true
+        self.mapDrag.moving = Client.StartFrameDrag(handle)
+    end
+    local driver = UQ:GetModule("Driver")
+    if driver then
+        driver:Schedule("tracker.mapdrag", 0.02, function() TrackerFrame:UpdateMapDrag() end)
+    end
+    return true
+end
+
+function TrackerFrame:UpdateMapDrag()
+    local drag = self.mapDrag
+    local window = self.mapWindow
+    if not drag or not window then
+        return
+    end
+    -- The map closed under the drag, or the client says the button is up:
+    -- either way no release callback is coming, so the drag ends here with
+    -- the last place it reached.
+    if not Client.IsObjectVisible(window) or Client.IsLeftMouseButtonHeld() == false then
+        self:StopMapDrag()
+        return
+    end
+    self:FollowMapDragCursor(drag)
+end
+
+-- Moves the window to where the cursor has taken the drag. Only ever moves;
+-- never decides that the drag is over, so StopMapDrag can call it too.
+function TrackerFrame:FollowMapDragCursor(drag)
+    local window = self.mapWindow
+    local cursorX, cursorY = Client.GetCursorInObjectUnits(window)
+    if not cursorX then
+        return
+    end
+    local x, y = ClampMapOffsets(window,
+        drag.startX + (cursorX - drag.cursorX), drag.startY + (cursorY - drag.cursorY))
+    if x == drag.x and y == drag.y then
+        return
+    end
+    drag.x = x
+    drag.y = y
+    self:ApplyMapPosition(x, y)
+end
+
+function TrackerFrame:StopMapDrag()
+    local driver = UQ:GetModule("Driver")
+    if driver then
+        driver:Unschedule("tracker.mapdrag")
+    end
+    local drag = self.mapDrag
+    if not drag then
+        return
+    end
+    -- Cleared first, so nothing below can re-enter a drag that is ending.
+    self.mapDrag = nil
+    -- The release point itself, not the last tick's: a release on OnMouseUp
+    -- can come up to one tick after the cursor last moved the window.
+    if Client.IsObjectVisible(self.mapWindow) then
+        self:FollowMapDragCursor(drag)
+    end
+    local handle = self.mapHandle
+    if drag.moving then
+        Client.StopFrameDrag(handle)
+    end
+    if drag.detached then
+        Client.AttachTrackerHandle(handle, self.mapWindow)
+    end
+    Store("mapTrackerX", drag.x)
+    Store("mapTrackerY", drag.y)
 end
 
 function TrackerFrame:StartResize()
@@ -1893,11 +2522,17 @@ function TrackerFrame:ApplyResize()
         width = RESIZE_MAX_WIDTH
     end
 
+    -- No taller than the HUD's page height: past it the window pages rather
+    -- than grows, so dragging further would only open blank space.
+    local maxHeight = HudPageHeight(self.window)
+    if maxHeight > RESIZE_MAX_HEIGHT then
+        maxHeight = RESIZE_MAX_HEIGHT
+    end
     local height = self.resizeStartHeight - (gripY - self.resizeStartY)
     if height < RESIZE_MIN_HEIGHT then
         height = RESIZE_MIN_HEIGHT
-    elseif height > RESIZE_MAX_HEIGHT then
-        height = RESIZE_MAX_HEIGHT
+    elseif height > maxHeight then
+        height = maxHeight
     end
 
     config:Set("trackerWidth", width)
@@ -1918,6 +2553,7 @@ function TrackerFrame:SetShown(shown)
         self:Refresh()
     else
         Client.HideObject(self.window)
+        Client.HideObject(self.mapWindow)
     end
     self:ApplyNativeWatchVisibility()
     return true
@@ -1982,6 +2618,8 @@ function TrackerFrame:GetReport()
         hideUnstarted = Setting("trackerHideUnstartedQuests") and true or false,
         hideNativeWatch = Setting("trackerHideNativeWatch") and true or false,
         lines = self.totalLines,
+        page = self.hudPage,
+        pages = self.hudPages,
         redraws = self.redraws,
         clicks = self.clicks,
         drags = self.drags,
@@ -1990,6 +2628,9 @@ function TrackerFrame:GetReport()
         point = Setting("trackerPoint"),
         x = Setting("trackerX"),
         y = Setting("trackerY"),
+        mapDrags = self.mapDrags,
+        mapX = Setting("mapTrackerX"),
+        mapY = Setting("mapTrackerY"),
     }
 end
 
@@ -2002,6 +2643,12 @@ function TrackerFrame:OnInit()
         return
     end
     self.window = window
+
+    local mapWindow = Client.CreateTrackerWindow(
+        MAP_WINDOW_NAME, "WorldMapFrame", true)
+    if mapWindow then
+        self.mapWindow = mapWindow
+    end
     self:ApplyBackgroundOpacity()
 
     local handle = Client.CreateTrackerHandle(window, HANDLE_NAME)
@@ -2018,11 +2665,20 @@ function TrackerFrame:OnInit()
                 UQ:Warn(UQ.L("TRACKER_WARN_DRAG_FAILED"))
             end
         end)
-        Client.SetObjectScript(handle, "OnDragStop", function()
+        -- OnMouseUp is a second release route, as on the map copy: a drop the
+        -- client does not report through OnDragStop must still let go of the
+        -- window. Gated on `dragging`, so a plain click on the header, or the
+        -- mouse-up that follows OnDragStop, does nothing.
+        local function release()
+            if not TrackerFrame.dragging then
+                return
+            end
             Client.StopFrameDrag(window)
             TrackerFrame.dragging = false
             TrackerFrame:CapturePosition()
-        end)
+        end
+        Client.SetObjectScript(handle, "OnDragStop", release)
+        Client.SetObjectScript(handle, "OnMouseUp", release)
     else
         UQ:Warn(UQ.L("TRACKER_WARN_NO_HANDLE"))
     end
@@ -2056,6 +2712,52 @@ function TrackerFrame:OnInit()
             end
         end,
         function() TrackerFrame:ToggleCollapsed() end)
+    self.hudPager = Client.CreateTrackerPager(window,
+        function() TrackerFrame:TurnHudPage(-1) end,
+        function() TrackerFrame:TurnHudPage(1) end)
+
+    if mapWindow then
+        -- Created before the "Show all areas" toggle, which is raised above
+        -- it (Client.CreateTrackerAreaToggle) so the title line drags
+        -- everywhere except on that checkbox.
+        local mapHandle = Client.CreateTrackerHandle(mapWindow, MAP_HANDLE_NAME)
+        if mapHandle then
+            self.mapHandle = mapHandle
+            Client.SetObjectScript(mapHandle, "OnDragStart", function()
+                if not TrackerFrame:StartMapDrag() then
+                    TrackerFrame.dragFailures = TrackerFrame.dragFailures + 1
+                    UQ:Warn(UQ.L("TRACKER_WARN_DRAG_FAILED"))
+                end
+            end)
+            -- Every release route the handle has (see "The map copy"):
+            -- StopMapDrag is idempotent, so the second and third are no-ops.
+            local function release()
+                TrackerFrame:StopMapDrag()
+            end
+            Client.SetObjectScript(mapHandle, "OnDragStop", release)
+            Client.SetObjectScript(mapHandle, "OnMouseUp", release)
+            Client.SetObjectScript(mapHandle, "OnClick", release)
+        end
+        self:ApplyMapPosition()
+
+        -- No NPC finder here: its place on the title line holds the "Show
+        -- all areas" toggle instead. It writes the setting the options page
+        -- does; the world map's view signature carries it, so the map rebuilds
+        -- on its next refresh.
+        Client.SetTrackerHeaderButtons(mapWindow, nil,
+            function() TrackerFrame:ToggleCollapsed() end)
+        self.areaToggle = Client.CreateTrackerAreaToggle(mapWindow,
+            UQ.L("TRACKER_MAP_ALL_AREAS"),
+            function(checked)
+                local config = UQ:GetModule("Config")
+                if config then
+                    config:Set("mapShowAllAreas", checked and true or false)
+                end
+            end)
+        self.mapPager = Client.CreateTrackerPager(mapWindow,
+            function() TrackerFrame:TurnMapPage(-1) end,
+            function() TrackerFrame:TurnMapPage(1) end)
+    end
 
     if not self:ApplyStoredPosition(true) then
         self:ResetPosition()
@@ -2064,12 +2766,17 @@ end
 
 -- Changes only the background texture, so the tracker text, progress bars and
 -- controls stay fully opaque. Called directly by the settings slider while it
--- moves; no redraw is needed because the texture already exists.
+-- moves; no redraw is needed because the texture already exists. The slider
+-- drives the HUD window only; the map copy keeps MAP_TRACKER_OPACITY.
 function TrackerFrame:ApplyBackgroundOpacity(percent)
     if type(percent) ~= "number" then
         percent = Setting("trackerBackgroundOpacity")
     end
-    return Client.SetTrackerBackgroundOpacity(self.window, percent or 55)
+    local applied = Client.SetTrackerBackgroundOpacity(self.window, percent or 55)
+    if self.mapWindow then
+        Client.SetTrackerBackgroundOpacity(self.mapWindow, MAP_TRACKER_OPACITY)
+    end
+    return applied
 end
 
 function TrackerFrame:OnEnable()

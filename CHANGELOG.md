@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.0
+
+- Reworked quest tracker windows
+- Reworked quest area mode, now works on Retail
+- Added quest numbers to the map and quest tracker windows
+- Quest tracker windows now display on the map
+- Can now display dots and/or areas on the map and minimap
+- Item rewards now show an icon for the best-value item to sell and better gear to wear
+
 ## 0.3.5
 
 - Added loot and drop rate to boss tooltips on the map.

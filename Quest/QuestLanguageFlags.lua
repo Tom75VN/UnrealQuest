@@ -152,12 +152,14 @@ local function EnsureButtons(row, namePrefix, parent)
                 ShowTooltip(row, button)
             end)
             Client.SetObjectScript(button, "OnEnter", function()
+                button.unrealQuestHovered = true
                 if not button.unrealQuestSelected then
                     Client.SetFlagButtonShade(button, FLAG_SHADE_HOVER, false)
                 end
                 ShowTooltip(row, button)
             end)
             Client.SetObjectScript(button, "OnLeave", function()
+                button.unrealQuestHovered = nil
                 if not button.unrealQuestSelected then
                     Client.SetFlagButtonShade(button, FLAG_SHADE_IDLE, false)
                 end
@@ -187,6 +189,7 @@ local function HideRow(row)
             -- A row can be taken away while the cursor is still on one of its
             -- flags -- the log pane hides it on scroll -- and a hidden button
             -- gets no OnLeave. Owner-guarded, so it only ever closes its own.
+            button.unrealQuestHovered = nil
             Client.HideGameTooltip(button)
             Client.HideObject(button)
         end
@@ -278,8 +281,15 @@ function Flags:Refresh(spec)
         if spec.place and spec.place(button, anchor, offsetX, insetY) then
             local selected = button.unrealQuestLanguage == current
             button.unrealQuestSelected = selected
-            Client.SetFlagButtonShade(button,
-                selected and FLAG_SHADE_SELECTED or FLAG_SHADE_IDLE, selected)
+            -- Every poll repaints the row, so the hover shade has to be
+            -- repainted too or it lasts only until the next pass.
+            local shade = FLAG_SHADE_IDLE
+            if selected then
+                shade = FLAG_SHADE_SELECTED
+            elseif button.unrealQuestHovered then
+                shade = FLAG_SHADE_HOVER
+            end
+            Client.SetFlagButtonShade(button, shade, selected)
             Client.ShowObject(button)
             placed = placed + 1
         else

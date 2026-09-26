@@ -336,6 +336,10 @@ end
 -- hidden. Cleared by Project below, the only path that shows any of them. The
 -- world map layer carries the same guard for the same measured reason.
 function MinimapPins:HideAll()
+    local areas = UQ:GetModule("MinimapAreas")
+    if areas then
+        areas:HideAll()
+    end
     if self.poolsHidden then
         return
     end
@@ -769,6 +773,19 @@ function MinimapPins:IsTargetFollowed(target, mainQuest)
     return type(target.quest) == "table" and mainQuest:IsMain(target.quest.titleKey)
 end
 
+-- Whether `quest`'s area should show on the minimap as hovered: its tracker
+-- row is hovered, or a minimap pin carrying it holds the focus. Asked by
+-- Map/MinimapAreas.lua for every quest it could draw.
+function MinimapPins:IsQuestAreaHovered(quest)
+    if not quest then
+        return false
+    end
+    if self.hoverQuestKey and self.hoverQuestKey == QuestKey(quest) then
+        return true
+    end
+    return self.focusActive and self:FocusIncludesQuest(quest) and true or false
+end
+
 -- Called by the tracker row's existing hover handlers. This state is
 -- deliberately transient: it is never saved and changes no map content, only
 -- the presentation of objective dots already selected for the minimap scene.
@@ -983,12 +1000,16 @@ function MinimapPins:BuildTargets(areaId, widthYards, heightYards, config)
     -- retains the raw positions rather than rebuilding that shape or choosing
     -- a representative centre. Completed quests use their existing turn-in
     -- "?" and therefore contribute no objective dots.
+    -- The minimap follows the world map's two switches: dots only while
+    -- mapObjectiveDots is on, areas (Map/MinimapAreas.lua) only while
+    -- mapObjectiveAreas is.
+    local dotsOn = not config or config:Get("mapObjectiveDots") and true or false
     local questIndex = 1
     local questTotal = table.getn(quests)
     local objectiveSeen = {}
     while questIndex <= questTotal do
         local quest = quests[questIndex]
-        if quest.isComplete ~= 1 then
+        if quest.isComplete ~= 1 and dotsOn then
             local questRed, questGreen, questBlue = UQ.GetQuestColor(quest)
             local locations = worldMap:CollectQuestLocations(
                 quest, areaId, false, config)
@@ -1057,6 +1078,11 @@ function MinimapPins:BuildTargets(areaId, widthYards, heightYards, config)
             questIds = entry.questIds,
         })
         giverIndex = giverIndex + 1
+    end
+
+    local areas = UQ:GetModule("MinimapAreas")
+    if areas then
+        areas:Rebuild(quests, areaId, widthYards, heightYards, config)
     end
 
     self.rebuildCount = self.rebuildCount + 1
@@ -1248,6 +1274,13 @@ function MinimapPins:Project(playerX, playerY, widthYards, heightYards, span, wi
     self.poolsHidden = false
     self.clampedCount = clamped
     self.pinFailures = failures
+
+    local areas = UQ:GetModule("MinimapAreas")
+    if areas then
+        local config = UQ:GetModule("Config")
+        areas:Project(playerYardX, playerYardY, pixelsPerYard, shortest / 2, self,
+            mainQuest, config and config:Get("mapShowAllAreas") and true or false)
+    end
 end
 
 -- Refresh -------------------------------------------------------------------
@@ -1432,12 +1465,16 @@ function MinimapPins:Refresh()
     local showLowLevel = config and config:Get("showLowLevelQuests") and true or false
     local eligibility = UQ:GetModule("QuestEligibility")
     local professionSignature = eligibility and eligibility:ProfessionSignature() or ""
+    local objectiveStyle = tostring(config and config:Get("mapObjectiveDots"))
+        .. "|" .. tostring(config and config:Get("mapObjectiveAreas"))
     if self.dirty or self.lastAreaId ~= areaId or self.lastShowLowLevel ~= showLowLevel
-        or self.lastProfessionSignature ~= professionSignature then
+        or self.lastProfessionSignature ~= professionSignature
+        or self.lastObjectiveStyle ~= objectiveStyle then
         self.targets = self:BuildTargets(areaId, yards[1], yards[2], config)
         self.lastAreaId = areaId
         self.lastShowLowLevel = showLowLevel
         self.lastProfessionSignature = professionSignature
+        self.lastObjectiveStyle = objectiveStyle
         self.dirty = false
     end
 

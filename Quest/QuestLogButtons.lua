@@ -2,11 +2,11 @@
 UnrealQuest / Quest/QuestLogButtons.lua
 
 Action buttons in the quest log detail pane, for whichever quest is currently
-selected there. Both surfaces -- the native/classic log (standalone, or
-unrealUI's Classic WoW theme, extended onto the two EQL3 parchment pages by
-Quest/ExtendedQuestLog.lua) and unrealUI's modern two-pane log -- carry Show,
-Track/Untrack and Following, and mark the followed quest in the list with the
-gold plaque and its quest marker.
+selected there. Every surface carries Show, Track/Untrack and Following, and
+marks the followed quest in the list with the gold plaque and its quest marker:
+the native/classic log (unrealUI's Classic WoW theme, or standalone, where
+Quest/StandaloneQuestLog.lua rebuilds it as the two-page Dragonflight spread),
+and unrealUI's own modern two-pane log.
 
   * Show           -- the same "take me there" gesture as Ctrl+click on the
                        tracker window: opens the fullscreen map and flashes
@@ -387,14 +387,15 @@ end
 -- Client.PlaceQuestLogFlag.
 local FLAG_ROW_KEY = "questlog"
 local FLAG_NAME_PREFIX = "UnrealQuestLogLanguageFlag"
--- Under unrealUI's modern-wow theme the right page's art leaves the row too
+-- On unrealUI's Dragonflight Quest Log the right page's art leaves the row too
 -- close to the page edge, so the whole row sits this far further left there.
 local MODERN_WOW_FLAG_SHIFT_X = 29
 
--- Client.PlaceQuestLogFlag with the host-theme nudge applied. The theme is
--- read per placement, so switching themes moves the row on its next refresh.
+-- Client.PlaceQuestLogFlag with the host-design nudge applied. The design is
+-- read per placement, so a host that initialises late still moves the row on
+-- its next refresh.
 local function PlaceQuestLogFlag(button, anchor, offsetX, offsetY)
-    if Client.IsUnrealUIModernWowTheme() then
+    if Client.UsesModernWowQuestLog() then
         offsetX = offsetX - MODERN_WOW_FLAG_SHIFT_X
     end
     return Client.PlaceQuestLogFlag(button, anchor, offsetX, offsetY)
@@ -562,11 +563,11 @@ function QuestLogButtons:Refresh()
     end
 
     if modern then
-        local modernWow = Client.IsUnrealUIModernWowTheme()
+        local modernWow = Client.UsesModernWowQuestLog()
         local dock = Client.GetNamedObject(DOCK_NAME)
         -- The 1px accent rule above the action row belongs to uUI's Modern
-        -- look; the modern-wow page art draws its own edge, so it is hidden
-        -- there. Read per poll so a theme switch follows.
+        -- look; the Dragonflight page art draws its own edge, so it is hidden
+        -- there. Read per poll so a late host still follows.
         local modernAnchor = Client.GetNamedObject(MODERN_ANCHOR_NAME)
         if dock and modernAnchor then
             Client.SetModernQuestLogActionRule(dock, modernAnchor,

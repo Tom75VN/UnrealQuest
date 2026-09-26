@@ -376,7 +376,8 @@ function QuestVendorPins:GetWorldPin(index)
     if pin then
         self.worldPool[index] = pin
         Client.SetWorldMapPinSize(pin, WORLD_PIN_SIZE, WORLD_PIN_SIZE)
-        Client.RaiseWorldMapPin(pin, 6)
+        -- Above every quest mark (Map/WorldMapPins.lua, QUEST_NUMBER_LEVEL_BOOST).
+        Client.RaiseWorldMapPin(pin, 7)
         Client.SetWorldMapPinHandlers(pin,
             function()
                 QuestVendorPins.minimapHoverPin = pin
@@ -527,7 +528,8 @@ function QuestVendorPins:SetWorldFocusDim(dimmed)
     local index = 1
     while index <= self.worldVisible do
         local pin = self.worldPool[index]
-        if pin then
+        -- A pin the map's pulse owns is left to it; it restores the alpha.
+        if pin and not pin.unrealQuestFlashActive then
             Client.SetWorldMapPinAlpha(pin, WorldFocusAlpha(pin.unrealQuestVendorTarget))
         end
         index = index + 1
@@ -550,6 +552,31 @@ function QuestVendorPins:SetMinimapFocusDim(dimmed)
     end
 end
 
+-- The drawn world-map vendor pins that sell something `questId` needs, for
+-- the map's reveal flash and tracker-hover pulse. Returns how many were added.
+function QuestVendorPins:AppendFlashTargets(targets, questId)
+    local added = 0
+    local index = 1
+    while index <= (self.worldVisible or 0) do
+        local pin = self.worldPool[index]
+        local target = pin and pin.unrealQuestVendorTarget
+        local entries = target and target.entries
+        local entryIndex = 1
+        local entryTotal = type(entries) == "table" and table.getn(entries) or 0
+        while entryIndex <= entryTotal do
+            local quest = entries[entryIndex].quest
+            if quest and quest.questId == questId and Client.IsObjectShown(pin) then
+                table.insert(targets, pin)
+                added = added + 1
+                entryIndex = entryTotal
+            end
+            entryIndex = entryIndex + 1
+        end
+        index = index + 1
+    end
+    return added
+end
+
 function QuestVendorPins:DrawWorldMap()
     local visible = 0
     local index = 1
@@ -559,8 +586,13 @@ function QuestVendorPins:DrawWorldMap()
         local pin = self:GetWorldPin(visible + 1)
         if pin then
             pin.unrealQuestVendorTarget = target
-            Client.SetWorldMapPinAlpha(pin, WorldFocusAlpha(target))
-            Client.SetWorldMapPinSize(pin, WORLD_PIN_SIZE, WORLD_PIN_SIZE)
+            -- While the map's pulse owns the pin (Map/WorldMapPins.lua,
+            -- FlashQuest and the tracker-hover pulse), its alpha and size are
+            -- the pulse's; it hands both back when it ends.
+            if not pin.unrealQuestFlashActive then
+                Client.SetWorldMapPinAlpha(pin, WorldFocusAlpha(target))
+                Client.SetWorldMapPinSize(pin, WORLD_PIN_SIZE, WORLD_PIN_SIZE)
+            end
             if type(target.icon) == "string" then
                 Client.SetWorldMapPinTexture(pin, Client.NPC_SERVICE_ICON_ROOT .. target.icon)
             else

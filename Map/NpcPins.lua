@@ -1253,7 +1253,8 @@ function NpcPins:GetWorldPin(index)
     if pin then
         self.worldPool[index] = pin
         Client.SetWorldMapPinSize(pin, WORLD_PIN_SIZE, WORLD_PIN_SIZE)
-        Client.RaiseWorldMapPin(pin, 6)
+        -- Above every quest mark (Map/WorldMapPins.lua, QUEST_NUMBER_LEVEL_BOOST).
+        Client.RaiseWorldMapPin(pin, 7)
         local onClick = function(first)
             if Client.ResolveClickButton(first) == "RightButton" then
                 if REVIEW_REMOVAL_ENABLED then

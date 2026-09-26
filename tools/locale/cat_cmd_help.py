@@ -43,10 +43,10 @@ STRINGS = {
     "/uq map       当前地图标识与世界地图标记状态",
 ),
 "CMD_HELP_MAP_STYLE": (
-    "/uq map dots|areas  draw quest objectives as dots or as shaded areas",
-    "/uq map dots|areas  dessiner les objectifs en points ou en zones ombrées",
-    "/uq map dots|areas  рисовать цели точками или закрашенными областями",
-    "/uq map dots|areas  以圆点或阴影区域绘制任务目标",
+    "/uq map dots|areas|both  draw quest objectives as dots, shaded areas or both",
+    "/uq map dots|areas|both  dessiner les objectifs en points, en zones ombrées ou les deux",
+    "/uq map dots|areas|both  рисовать цели точками, областями или и тем и другим",
+    "/uq map dots|areas|both  以圆点、阴影区域或两者绘制任务目标",
 ),
 "CMD_HELP_MAP_VENDORS": (
     "/uq map vendors on|off  show where quest items you have to buy are sold",
@@ -275,6 +275,12 @@ STRINGS = {
     u"/uq announce on|off           activer ou désactiver l'annonce en groupe",
     u"/uq announce on|off           включить или выключить отчёт в чат группы",
     u"/uq announce on|off           开启或关闭小队频道播报",
+),
+"CMD_HELP_GEAR": (
+    "/uq gear                  how the open turn-in window's rewards were ranked",
+    "/uq gear                  comment les recompenses de la fenetre de rendu ont ete classees",
+    "/uq gear                  как оценены награды в открытом окне сдачи задания",
+    "/uq gear                  当前交任务窗口中奖励的评估方式",
 ),
 "CMD_HELP_MARKS": (
     "/uq marks                 quest marks over creatures in the world",

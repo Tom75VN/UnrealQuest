@@ -48,6 +48,12 @@ STRINGS.update({
 "TOOLTIP_REQUIRED": ("Required:", "Requis :", "Требуется:", "需求："),
 
 # --- tracker window ----------------------------------------------------------
+# The map tracker header's "Show all areas" switch. Shorter than
+# SETTINGS_MAP_SHOW_ALL_AREAS: it shares the 220px title line with the title,
+# the count and the collapse button.
+"TRACKER_MAP_ALL_AREAS": ("All areas", "Toutes zones", "Все области", "全部区域"),
+# The map tracker's page row, between its two arrows: current page, page count.
+"TRACKER_MAP_PAGE": ("Page %s/%s", "Page %s/%s", "Страница %s/%s", "第 %s/%s 页"),
 "TRACKER_HINT_LEFT_CLICK": (
     "Left-Click: follow quest",
     "Clic gauche : suivre la quête",
@@ -71,6 +77,12 @@ STRINGS.update({
     "Ctrl+clic : afficher sur la carte",
     "Ctrl+ЛКМ: показать на карте",
     "Ctrl+左键：在地图上显示",
+),
+"TRACKER_HINT_MAP_CLICK": (
+    "Left-Click with the map open: also open its zone",
+    "Clic gauche carte ouverte : ouvrir aussi sa zone",
+    "ЛКМ при открытой карте: также открыть её зону",
+    "地图打开时左键：同时打开其区域",
 ),
 "TRACKER_HINT_RIGHT_CLICK": (
     "Right-Click: fold objectives",
@@ -412,17 +424,6 @@ STRINGS.update({
     "подсветить там нечего",
     "“%s”：其目标位于 %s -- 这不是当前地图显示的区域，因此无法在此高亮",
 ),
-"REVEAL_NOTHING_KNOWN": (
-    "no map marker for '%s' is currently rendered, and the bundled data records no "
-    "location for it either (hidden from the map, or simply not one this addon's data covers)",
-    "aucun marqueur n'est actuellement affiché pour '%s', et les données fournies "
-    "n'indiquent aucun emplacement pour elle (masquée de la carte, ou simplement "
-    "absente des données de cet addon)",
-    "для «%s» сейчас не отрисован ни один маркер, и во встроенных данных для него "
-    "тоже нет местоположения (скрыто с карты либо просто не покрыто данными аддона)",
-    "当前没有为“%s”绘制任何地图标记，随附数据中也没有它的位置（已从地图隐藏，"
-    "或本插件的数据未收录）",
-),
 
 # --- HUD waypoint ------------------------------------------------------------
 "WAYPOINT_DISTANCE_YARDS": ("%s yd", "%s m", "%s м", "%s 码"),
@@ -565,13 +566,16 @@ STRINGS.update({
 ),
 "SETTINGS_HEADING_WORLD_MAP": ("World map", "Carte du monde", "Карта мира", "世界地图"),
 "SETTINGS_MAP_OBJECTIVE_STYLE": (
-    "Quest objectives are shown as:",
-    "Les objectifs de quête sont affichés en :",
-    "Цели заданий показываются как:",
-    "任务目标显示为：",
+    "Show quest objectives as:",
+    "Afficher les objectifs de quête en :",
+    "Показывать цели заданий как:",
+    "任务目标显示方式：",
 ),
 "SETTINGS_MAP_STYLE_DOTS": ("Dots", "Points", "Точки", "圆点"),
 "SETTINGS_MAP_STYLE_AREAS": ("Areas", "Zones", "Области", "区域"),
+"SETTINGS_MAP_SHOW_ALL_AREAS": (
+    "Show all areas", "Afficher toutes les zones",
+    "Показывать все области", "显示所有区域"),
 "SETTINGS_MAP_DOT_SIZE": (
     "World map dot size", "Taille des points sur la carte",
     "Размер точек на карте мира", "世界地图圆点大小"),
@@ -1080,6 +1084,12 @@ STRINGS.update({
     "Noms des recompenses en couleurs de qualite",
     "Цвет качества у названий наград",
     "奖励名称按品质着色",
+),
+"SETTINGS_REWARD_GEAR_ADVISOR": (
+    "Mark quest rewards: best upgrade to wear, best to sell",
+    "Marquer les recompenses : meilleure a porter, meilleure a revendre",
+    "Отмечать награды: лучшая для экипировки и самая дорогая",
+    "标记任务奖励：最佳可穿戴升级与最高售价",
 ),
 "SETTINGS_TOOLTIP_RESPAWN": (
     u"Respawn timers in tooltips",

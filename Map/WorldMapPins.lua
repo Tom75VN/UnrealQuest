@@ -10,16 +10,19 @@ Scope is intentionally narrow and evidence-bounded:
   * only while GetPlayerMapPosition confirms that area is the selected view;
   * no child-area transforms, continent projection, minimap or waypoint arrow.
 
-Nearby objective locations are merged into translucent blue areas; a completed
-quest uses green. Area tiles are pooled and refreshed on the shared driver.
+Nearby objective locations are merged into rounded contour areas; a completed
+quest uses green. Invisible pooled Buttons over the original 2.5-percent cells
+keep the proven hover and click surface while mouse-disabled texture groups
+draw the visible shape underneath them.
 
-TWO PRESENTATIONS, ONE SCENE. The `mapObjectiveDots` setting decides which is
-drawn, and it DEFAULTS TO THE DOTS: one dot per raw still-needed spawn point, in the
-minimap's own style, so both map layers show the player the same shape. Turning
-it off restores the areas above -- the same quests and hover tooltip, a region
-instead of positions. Dots use stable per-quest colours; areas keep their
-blue/in-progress and green/complete state colours. It is a presentation switch and nothing more: the same pooled frames
-carry both shapes (see ApplyObjectiveStyle), so hovering, the turn-in link,
+TWO PRESENTATIONS, ONE SCENE. `mapObjectiveDots` and `mapObjectiveAreas` are
+independent: either, both or neither is drawn, and the default is the DOTS
+alone: one dot per raw still-needed spawn point, in the minimap's own style, so
+both map layers show the player the same shape. The areas above are the same
+quests and hover tooltip, a region instead of positions; with both on, the
+dots sit one level above the area's hit cells, so a dot keeps its own hover. Dots use stable per-quest colours; areas keep their
+blue/in-progress and green/complete state colours. It is a presentation switch and nothing more: the same pooled Buttons
+carry interaction in both modes (see ApplyObjectiveStyle), so hovering, the turn-in link,
 Ctrl+click flashing and /uq map's counters are identical either way, and no
 other layer -- givers, turn-ins, the minimap, the waypoint -- can tell which
 one is on screen.
@@ -33,9 +36,10 @@ the quest was accepted, on top of the quest's own turn-in NPC, and read as a
 second quest area for a step the player could not yet take.
 
 Hovering a quest area shows that quest's own tooltip: title, level, status and
-live objective progress read from the player's quest log. Confirmed working in
-game on 2026-08-22, which is also what retired the numbered markers -- see
-MARKER_RENDER_ENABLED below.
+live objective progress read from the player's quest log. Each area also wears
+the quest's log-order number on a red-and-gold POI circle (gold number); hover
+brightens the circle and the followed quest uses the yellow active circle with
+a dark number. Dots omit those badges.
 
 Two quests that need the same creature draw their dots on the same spawn
 coordinates, so those dots stack and only the top one can be hovered. One
@@ -91,9 +95,11 @@ one quest at that point is ready to hand in, the pin swaps to the bundled
 CompleteQuestIcon. In-progress markers are opt-out through
 showInProgressTurnIns.
 
-Clicking an objective dot/tile or a "?" hands that quest to the same
-QuestClicks selection path as the tracker and quest-log Following button, so
-the navigator changes without a second definition of following. A shared "?"
+Clicking an objective dot/tile, its numbered POI, or a "?" hands that quest to
+the same QuestClicks selection path as the tracker and quest-log Following
+button, so the navigator changes without a second definition of following.
+The numbered POI keeps that action idempotent because it is a direct
+"follow this quest" control rather than the tracker's toggle. A shared "?"
 chooses the first ready quest it carries, or the first quest-log entry when
 none is ready; every carried quest has the same turn-in coordinate.
 
@@ -117,8 +123,8 @@ PulseFollowedTurnInRings.
 
 Hovering ANY quest's objective dot marks that quest's own turn-in the same way,
 with a single breath: the followed quest pulses the circle it already wears, and
-any other quest is LENT one while its hover focus is held. A brief dwell filters
-passing dots, and a one-second release grace bridges the gaps between dots of
+any other quest is LENT one while its hover focus is held. The focus applies the
+moment a dot is entered, and a one-second release grace bridges the gaps between dots of
 the same quest without restarting the circle or flashing unrelated markers.
 See RequestQuestFocus and ClearHoverTurnInRings. Borders are separate mouse-disabled
 file-backed Buttons, so the proven single-BACKGROUND-texture contract remains
@@ -136,9 +142,19 @@ local UQ = UnrealQuest
 local Client = UQ.Client
 local WorldMapPins = UQ:NewModule("WorldMapPins")
 
-local MAX_MARKERS = 40
+-- Forever's numbered quest-POI atlas contains 1-25, matching the quest log's
+-- practical bound on this client. Numbers are drawn with dots and areas alike.
+local MAX_MARKERS = 25
+local QUEST_NUMBER_SIZE = Client.WORLD_MAP_QUEST_POI_SIZE
+-- The stack above the pin floor, bottom to top: area hit cells 0, objective
+-- dots 1, the number's glow 2 and circle 3 (its layers sit at -2 and -1, see
+-- Client.PrepareWorldMapQuestNumber), the number itself 4 with the followed
+-- turn-in ring beside it, the turn-in "?" 5, the giver "!" 6, and the service,
+-- mob and vendor pins 7 (Map/NpcPins.lua, Map/QuestVendorPins.lua). Every step
+-- is strict, so no two overlapping kinds are left to draw order: the circle
+-- and its glow cover the dots under them.
+local QUEST_NUMBER_LEVEL_BOOST = 4
 local REFRESH_INTERVAL = 0.25
-local OBJECTIVE_FOCUS_DWELL = 0.15
 local OBJECTIVE_FOCUS_RELEASE = 1
 local OBJECTIVE_FOCUS_POLL = 0.05
 -- Tile size is deliberately NOT a constant here: it must equal the cell size
@@ -147,14 +163,11 @@ local OBJECTIVE_FOCUS_POLL = 0.05
 -- translucent tiles compounding into visibly darker bands and 1.32.0 confirmed
 -- an edge-to-edge grid is uniform, so "tile size equals cell size" is a
 -- measured requirement rather than a tidy coincidence.
-local AREA_ALPHA = 0.5
-local COMPLETE_AREA_ALPHA = 0.5
 -- The main quest's tiles. Probe 1.29.0 confirmed 0.5 alpha visible on this
 -- client and the first 0.2 run confirmed INVISIBLE, so this stays inside the
 -- measured band rather than leaning on transparency to signal selection.
-local MAIN_AREA_ALPHA = 0.5
 
--- The second objective presentation, chosen by the `mapObjectiveDots` setting.
+-- The second objective presentation, switched by the `mapObjectiveDots` setting.
 --
 -- The blue area above answers "somewhere in here". This answers "exactly
 -- here", drawing one dot per raw spawn point in the same style the minimap
@@ -190,14 +203,14 @@ local OBJECTIVE_DOT_LEVEL_BOOST = 1
 local MAX_GIVER_MARKERS = 100
 local MAX_GIVER_LOCATIONS = 200
 -- Objective frames now own a named namespace. This numeric offset only has to
--- stay clear of the retired numbered quest markers and the other bounded
+-- stay clear of the numbered quest markers and the other bounded
 -- non-objective pools.
 local GIVER_INDEX_OFFSET = 2000
 -- How far a giver "!" is lifted above the area tiles it can overlap, so the
 -- tile cannot win the click. Small on purpose: it only has to break a tie
 -- between siblings, and the pins stay well inside the confirmed ">= 120"
 -- rendering contract either way.
-local GIVER_LEVEL_BOOST = 4
+local GIVER_LEVEL_BOOST = 6
 
 -- A patrol route draws as ONE thing -- the stroke below. What this pool is for
 -- is the other half of it: the mouse.
@@ -274,7 +287,7 @@ local TURNIN_INDEX_OFFSET = 3000
 -- below it. An NPC that both hands out one quest and takes another draws both
 -- markers on one coordinate, and the "!" is the one carrying a shift-click,
 -- so it must win that tie rather than leave it to draw order.
-local TURNIN_LEVEL_BOOST = 3
+local TURNIN_LEVEL_BOOST = 5
 -- A quest ender is a named NPC, not a spawn cloud like the CLUCK! chicken, so
 -- this bound is a guard against a pathological record rather than a routine
 -- cap. Kept well under the complete objective-location path because turn-in
@@ -292,7 +305,7 @@ local TURNIN_ICON_WIDTH = TURNIN_ICON_HEIGHT * 19 / 32
 -- glow overpower it, and reads as a ring around the "?" rather than a halo
 -- sitting on it.
 local FOLLOWED_TURNIN_RING_SIZE = 38
-local FOLLOWED_TURNIN_LEVEL_BOOST = 2
+local FOLLOWED_TURNIN_LEVEL_BOOST = 4
 -- media/icons/questIcon.tga is also 19x32. Keep the giver "!" at the
 -- confirmed pin height without stretching its artwork into a square.
 local GIVER_ICON_HEIGHT = 14
@@ -343,16 +356,10 @@ local MAX_CLUSTER_ENTRIES = 4
 -- overlap, plus one opaque numbered marker above the area.
 local AREA_RENDER_ENABLED = true
 
--- The yellow numbered square above each area is retired. Once hovering an area
--- was confirmed in game to show the quest itself, the number was a second,
--- weaker identity for something the map already names on demand -- and unlike
--- the tooltip it sat permanently on top of the terrain it points at.
---
--- The marker construction stays in place rather than being deleted: it is the
--- confirmed recovery baseline in docs/WORLD-MAP-PINS-RECOVERY.md, the giver
--- "!" pins are built from the same constructor, and restoring the numbers --
--- with the hover behaviour that hides them again -- is this one flag.
-local MARKER_RENDER_ENABLED = false
+-- Areas carry a numbered POI badge at their primary component. Dots
+-- keep the badge off: their quest palette is already a direct visual key, and
+-- adding one number to a large point cloud would imply that point is special.
+local MARKER_RENDER_ENABLED = true
 
 -- `/uq nav` leaves one diagnostic marker at the navigator's exact selected
 -- database coordinate. It is intentionally larger and higher than the normal
@@ -434,6 +441,7 @@ WorldMapPins.navigatorDebugVisible = false
 WorldMapPins.renderEnabled = true
 WorldMapPins.visibleCount = 0
 WorldMapPins.areaVisibleCount = 0
+WorldMapPins.objectiveDotsMode = true
 WorldMapPins.dotBorderVisibleCount = 0
 WorldMapPins.giverVisibleCount = 0
 WorldMapPins.patrolVisibleCount = 0
@@ -474,6 +482,7 @@ WorldMapPins.canvasDetected = false
 WorldMapPins.lastDiagnosticKey = nil
 WorldMapPins.lastSnapshotKey = nil
 WorldMapPins.hoverArea = nil
+WorldMapPins.hoverQuestMarker = nil
 WorldMapPins.hoverFocusOwner = nil
 WorldMapPins.focusQuest = nil
 WorldMapPins.focusTurnInPin = nil
@@ -504,6 +513,10 @@ end
 
 local function MapContext()
     return UQ:GetModule("MapContext")
+end
+
+local function AreaContours()
+    return UQ:GetModule("AreaContours")
 end
 
 local function QuestState()
@@ -565,6 +578,9 @@ local function HideAllPools()
     WorldMapPins.poolsHidden = true
     WorldMapPins.visibleCount = HidePoolFrom(WorldMapPins.pool, 1)
     WorldMapPins.areaVisibleCount = HidePoolFrom(WorldMapPins.areaPool, 1)
+    WorldMapPins:EndHoverTooltip()
+    local contours = AreaContours()
+    if contours then contours:HideAll() end
     WorldMapPins.dotBorderVisibleCount = HidePoolFrom(WorldMapPins.dotBorderPool, 1)
     WorldMapPins.giverVisibleCount = HidePoolFrom(WorldMapPins.giverPool, 1)
     WorldMapPins.patrolVisibleCount = HidePoolFrom(WorldMapPins.patrolPool, 1)
@@ -585,9 +601,15 @@ local function HideAllPools()
     if WorldMapPins.hoverFocusOwner then
         Client.HideMapTooltip(WorldMapPins.hoverFocusOwner)
     end
+    local trackerFrame = UQ:GetModule("TrackerFrame")
+    if trackerFrame and trackerFrame.ClearMapHoveredQuest then
+        trackerFrame:ClearMapHoveredQuest(WorldMapPins.hoverQuestMarker)
+    end
     WorldMapPins.hoverArea = nil
+    WorldMapPins.hoverQuestMarker = nil
     WorldMapPins.hoverFocusOwner = nil
     WorldMapPins.hoverObjectivePatrolUnitId = nil
+    WorldMapPins:FlushNumberUnhover()
     WorldMapPins:ApplyFocus(nil, nil, nil)
 end
 
@@ -642,6 +664,21 @@ local function ObjectiveDotsEnabled()
     return config:Get("mapObjectiveDots") and true or false
 end
 
+-- The area presentation's own switch, independent of the dots.
+local function ObjectiveAreasEnabled()
+    local config = UQ:GetModule("Config")
+    return config and config:Get("mapObjectiveAreas") and true or false
+end
+
+-- Areas mode only: whether every in-progress quest keeps its area on screen.
+-- Off (the default), only the followed quest's area stays drawn and any other
+-- appears while its quest is hovered. Carried by the view signature for the
+-- same reason as ObjectiveDotsEnabled.
+local function ShowAllAreasEnabled()
+    local config = UQ:GetModule("Config")
+    return config and config:Get("mapShowAllAreas") and true or false
+end
+
 local function ObjectiveDotSize()
     local config = UQ:GetModule("Config")
     local scale = config and config:Get("mapObjectiveDotScale")
@@ -689,6 +726,8 @@ local function ViewSignature(areaId, report)
         -- and a signature that ignored it would leave the old shape on screen
         -- until something else happened to dirty the layer.
         .. "|" .. tostring(ObjectiveDotsEnabled())
+        .. "|" .. tostring(ObjectiveAreasEnabled())
+        .. "|" .. tostring(ShowAllAreasEnabled())
         .. "|" .. tostring(ObjectiveDotSize())
         .. "|" .. tostring(LowLevelQuestsEnabled())
         .. "|" .. ProfessionSignature()
@@ -1359,16 +1398,19 @@ end
 -- objective prose, and only when the log reports no objective lines at all
 -- (a "go and speak to" quest has none).
 --
--- The title colour is an argument rather than a constant only so a tooltip
--- carrying SEVERAL quests can tint each heading with that quest's own dot
--- colour (see BuildObjectiveTooltipLines). Left out, the heading stays the
--- gold every other map tooltip in this file uses.
-local function BuildQuestTooltipLines(database, quest, titleRed, titleGreen, titleBlue)
+-- The title takes the quest's level-difficulty colour, the same one the quest
+-- tracker paints its rows with, so a quest reads the same on both surfaces. A
+-- quest with no known level keeps the gold every other map tooltip here uses.
+local function BuildQuestTooltipLines(database, quest)
     local lines = {}
     local title = UQ.GetQuestDisplayTitle(quest)
+    local titleRed, titleGreen, titleBlue = 1, 0.82, 0
+    if type(quest.level) == "number" then
+        titleRed, titleGreen, titleBlue = Client.GetQuestLevelColor(quest.level)
+    end
     table.insert(lines, {
         text = title or UQ.L("COMMON_UNKNOWN"),
-        r = titleRed or 1, g = titleGreen or 0.82, b = titleBlue or 0,
+        r = titleRed, g = titleGreen, b = titleBlue,
     })
 
     if type(quest.level) == "number" then
@@ -1499,11 +1541,12 @@ local function RecordSnapshot(config)
     if not config then
         return
     end
-    -- Samples whichever pool actually owns a child: with the numbered markers
-    -- retired the area tiles are the only quest layer on the canvas, and a
-    -- snapshot of an absent marker would report the map as empty.
+    -- The objective frame is the stable sample in both presentations. In Areas
+    -- mode its texture is hidden but it still owns interaction; in Dots mode
+    -- it is the visible mark. Falling back to a number only covers an unusual
+    -- partial construction failure.
     local snapshot = Client.GetWorldMapPinSnapshot(
-        WorldMapPins.pool[1] or WorldMapPins.areaPool[1])
+        WorldMapPins.areaPool[1] or WorldMapPins.pool[1])
     local key = tostring(snapshot.canvasToken) .. "|" .. tostring(snapshot.parentToken)
         .. "|" .. tostring(snapshot.canvasShown) .. "|" .. tostring(snapshot.canvasVisible)
         .. "|" .. tostring(snapshot.pinShown) .. "|" .. tostring(snapshot.pinVisible)
@@ -1530,8 +1573,11 @@ end
 local function RecordDiagnostic(state, areaId, report, matchedQuests, candidates, failures)
     local visible = WorldMapPins.visibleCount or 0
     local areaVisible = WorldMapPins.areaVisibleCount or 0
+    local contours = AreaContours()
+    local contourVisible = contours and contours:GetVisibleCount() or 0
     local key = tostring(state) .. "|" .. tostring(areaId) .. "|" .. tostring(visible)
         .. "|" .. tostring(areaVisible)
+        .. "|" .. tostring(contourVisible)
         .. "|" .. tostring(WorldMapPins.giverVisibleCount or 0)
         .. "|" .. tostring(WorldMapPins.turnInVisibleCount or 0)
         .. "|" .. tostring(matchedQuests or 0) .. "|" .. tostring(candidates or 0)
@@ -1552,6 +1598,7 @@ local function RecordDiagnostic(state, areaId, report, matchedQuests, candidates
     config:SetSectionEntry("mapDiagnostics", "pooledPins", table.getn(WorldMapPins.pool))
     config:SetSectionEntry("mapDiagnostics", "visibleAreas", areaVisible)
     config:SetSectionEntry("mapDiagnostics", "pooledAreas", table.getn(WorldMapPins.areaPool))
+    config:SetSectionEntry("mapDiagnostics", "visibleAreaContours", contourVisible)
     config:SetSectionEntry("mapDiagnostics", "visibleGivers", WorldMapPins.giverVisibleCount or 0)
     config:SetSectionEntry("mapDiagnostics", "pooledGivers", table.getn(WorldMapPins.giverPool))
     -- Same "placed but invisible" vs "never placed" discriminator the giver
@@ -1575,14 +1622,15 @@ local function RecordDiagnostic(state, areaId, report, matchedQuests, candidates
         WorldMapPins.itemUseUnknown or 0)
     config:SetSectionEntry("mapDiagnostics", "renderMode",
         AREA_RENDER_ENABLED and (MARKER_RENDER_ENABLED
-                and "fileBackedAreasAndNumberedMarkersV1"
-                or "fileBackedAreasHoverTooltipV1")
+                and "contourAreasForeverNumbersV1"
+                or "contourAreasHoverTargetsV2")
             or "componentMarkersBaselineAreaDisabled")
     -- Which of the two objective presentations the pool is currently painted
     -- with. Persisted alongside renderMode so a screenshot of "no blue area"
     -- can be told apart from "the area is drawn as dots".
+    local dots, areas = ObjectiveDotsEnabled(), ObjectiveAreasEnabled()
     config:SetSectionEntry("mapDiagnostics", "objectiveStyle",
-        ObjectiveDotsEnabled() and "dots" or "areas")
+        (dots and areas and "both") or (dots and "dots") or (areas and "areas") or "none")
     config:SetSectionEntry("mapDiagnostics", "presentationTrace", "questAreaIsolationV1")
     RecordSnapshot(config)
     config:SetSectionEntry("mapDiagnostics", "recordedAt", Client.Now() or 0)
@@ -1595,7 +1643,19 @@ function WorldMapPins:GetPin(index)
     end
     pin = Client.CreateWorldMapPin(index, 1, 0.75, 0.1)
     if pin then
+        Client.SetWorldMapPinSize(pin, QUEST_NUMBER_SIZE, QUEST_NUMBER_SIZE)
+        -- It overlaps its own invisible area hit targets.  A higher frame
+        -- level makes the visible number own that exact patch of mouse input,
+        -- while still leaving giver/turn-in markers above it.
+        Client.RaiseWorldMapPin(pin, QUEST_NUMBER_LEVEL_BOOST)
+        pin.unrealQuestPoolIndex = index
+        Client.PrepareWorldMapQuestNumber(pin, index)
         self.pool[index] = pin
+        Client.SetWorldMapPinHandlers(pin,
+            function() WorldMapPins:OnQuestMarkerEnter(pin) end,
+            function() WorldMapPins:OnQuestMarkerLeave(pin) end,
+            function() WorldMapPins:OnQuestMarkerClick(pin) end,
+            false)
     end
     return pin
 end
@@ -1682,7 +1742,7 @@ function WorldMapPins:GetArea(index)
         return area
     end
     area = Client.CreateWorldMapArea(
-        index, 0.15, 0.55, 1, AREA_ALPHA, "Objective")
+        index, 0.15, 0.55, 1, 0, "Objective")
     if area then
         self.areaCreates = (self.areaCreates or 0) + 1
         self.areaPool[index] = area
@@ -1817,6 +1877,8 @@ function WorldMapPins:ReapplyVisiblePools()
     self.lastReapply = now
     Client.ReapplyWorldMapPins(self.pool, self.visibleCount)
     Client.ReapplyWorldMapPins(self.areaPool, self.areaVisibleCount)
+    local contours = AreaContours()
+    if contours then contours:Reapply(resized) end
     Client.ReapplyWorldMapPins(self.dotBorderPool, self.dotBorderVisibleCount)
     Client.ReapplyWorldMapPins(self.giverPool, self.giverVisibleCount)
     Client.ReapplyWorldMapPins(self.patrolPool, self.patrolVisibleCount)
@@ -1934,7 +1996,9 @@ function WorldMapPins:CollectClusterQuests(area)
     while index <= total do
         local other = self.areaPool[index]
         local quest = other and other.unrealQuestQuest
+        -- A hidden quest's cell describes nothing the player can see.
         if quest and quest.titleKey and not seen[quest.titleKey]
+            and other.unrealQuestHoverEnabled ~= false
             and type(other.unrealQuestMapX) == "number"
             and type(other.unrealQuestMapY) == "number" then
             local dx = (other.unrealQuestMapX - area.unrealQuestMapX) * width
@@ -1957,26 +2021,16 @@ end
 -- already are, so a shared spawn reads as more of the same list rather than as
 -- a different kind of tooltip. The hovered quest stays first: the tooltip is
 -- still about the dot under the cursor, and its title is still the line the
--- client turns into the heading.
---
--- Headings take their own dot colour ONLY once the tooltip carries more than
--- one quest. That is the single case where the player has to match a line to a
--- dot, and it is what the colour is for; a lone tooltip keeps the gold heading
--- every other map tooltip uses. Area tiles have no per-quest colour to match
--- against, so the tint is offered in dot mode alone.
+-- client turns into the heading. Every heading carries its quest's level
+-- colour (see BuildQuestTooltipLines), several quests or one.
 function WorldMapPins:BuildObjectiveTooltipLines(database, area)
     local quests, omitted = self:CollectClusterQuests(area)
     local total = table.getn(quests)
-    local tinted = total > 1 and ObjectiveDotsEnabled()
     local lines = nil
     local index = 1
     while index <= total do
         local quest = quests[index]
-        local red, green, blue
-        if tinted then
-            red, green, blue = UQ.GetQuestColor(quest)
-        end
-        local block = BuildQuestTooltipLines(database, quest, red, green, blue)
+        local block = BuildQuestTooltipLines(database, quest)
         if not lines then
             lines = block
         else
@@ -2000,6 +2054,183 @@ function WorldMapPins:BuildObjectiveTooltipLines(database, area)
     return lines
 end
 
+-- The hover tooltip is one session per hovered thing, not one per frame: the
+-- POI circle and every hit cell of its area describe the same quest, so
+-- crossing from one to the next keeps the tooltip up and unchanged, and it
+-- follows the cursor the whole time (Client.FollowMapTooltipCursor). Leaving
+-- releases it after HOVER_TOOLTIP_RELEASE, which the next frame's OnEnter
+-- cancels -- the client may deliver that OnEnter before or after this
+-- OnLeave. The content is rebuilt only when the hovered quest set changes.
+local HOVER_TOOLTIP_RELEASE = 0.1
+local HOVER_TOOLTIP_POLL = 0.01
+
+local function HoverTooltipKey(quests, omitted)
+    local parts = {}
+    local index = 1
+    local total = table.getn(quests or {})
+    while index <= total do
+        local quest = quests[index]
+        table.insert(parts, tostring(quest and (quest.titleKey or quest.questId)))
+        index = index + 1
+    end
+    table.insert(parts, tostring(omitted or 0))
+    return table.concat(parts, "|")
+end
+
+function WorldMapPins:EndHoverTooltip(keepTooltip)
+    if not keepTooltip and self.hoverTooltipOwner then
+        Client.HideMapTooltip(self.hoverTooltipOwner)
+    end
+    self.hoverTooltipOwner = nil
+    self.hoverTooltipKey = nil
+    self.hoverTooltipFrame = nil
+    self.hoverTooltipReleaseAt = nil
+    local driver = UQ:GetModule("Driver")
+    if driver then
+        driver:Unschedule("map.hovertooltip")
+    end
+end
+
+local function RunHoverTooltip()
+    local self = WorldMapPins
+    local releaseAt = self.hoverTooltipReleaseAt
+    if releaseAt then
+        local now = Client.Now()
+        if not now or now >= releaseAt then
+            self:EndHoverTooltip()
+            return
+        end
+    end
+    -- Another hover (a giver "!", a "?") took the tooltip over: stop
+    -- following it, and leave it to its new owner.
+    if not self.hoverTooltipOwner or not Client.IsMapTooltipOwnedBy(self.hoverTooltipOwner) then
+        self:EndHoverTooltip(true)
+        return
+    end
+    Client.FollowMapTooltipCursor()
+end
+
+function WorldMapPins:IsHoverTooltipShowing(key)
+    return key ~= nil and key == self.hoverTooltipKey and self.hoverTooltipOwner ~= nil
+        and Client.IsMapTooltipOwnedBy(self.hoverTooltipOwner)
+end
+
+-- `lines` may be nil when `key` is already showing: nothing is rebuilt then.
+function WorldMapPins:ShowHoverTooltip(frame, key, lines)
+    self.hoverTooltipFrame = frame
+    self.hoverTooltipReleaseAt = nil
+    if not self:IsHoverTooltipShowing(key) then
+        if not lines or not Client.ShowMapTooltip(frame, lines) then
+            self:EndHoverTooltip(true)
+            return false
+        end
+        self.hoverTooltipOwner = frame
+        self.hoverTooltipKey = key
+    end
+    if Client.FollowMapTooltipCursor() and not self.tooltipFollowDeclared then
+        self.tooltipFollowDeclared = true
+        UQ:DeclareCapability("worldMapTooltipCursorFollow", "unverified",
+            "map tooltip re-anchored to UIParent at GetCursorPosition / its effective scale; not yet confirmed in game")
+    end
+    local driver = UQ:GetModule("Driver")
+    if driver then
+        driver:Schedule("map.hovertooltip", HOVER_TOOLTIP_POLL, RunHoverTooltip)
+    end
+    return true
+end
+
+-- Only the frame the cursor was last reported on can release the session.
+-- `grace` overrides HOVER_TOOLTIP_RELEASE (see DotLeaveGrace).
+function WorldMapPins:ReleaseHoverTooltip(frame, grace)
+    if not frame or self.hoverTooltipFrame ~= frame then
+        return
+    end
+    self.hoverTooltipFrame = nil
+    local now = Client.Now()
+    if not now or not UQ:GetModule("Driver") then
+        self:EndHoverTooltip()
+        return
+    end
+    self.hoverTooltipReleaseAt = now + (grace or HOVER_TOOLTIP_RELEASE)
+end
+
+-- Leaving an objective dot releases the tooltip and the POI circle with the
+-- dots' focus grace, not the tooltip's: the gaps between one quest's dots are
+-- bare terrain, and a quest that is not followed has no area cell there to
+-- catch the cursor until its focus has applied -- so a tenth of a second
+-- switched both off and on again at every gap. Area cells and markers keep
+-- the short grace (nil here).
+function WorldMapPins:DotLeaveGrace(area)
+    if area and not area.unrealQuestAreaCell and self.objectiveDotsMode then
+        return OBJECTIVE_FOCUS_RELEASE
+    end
+    return nil
+end
+
+-- The POI circle's hover state is one session in the same way: the circle and
+-- every hit cell of its area hold it, and leaving one releases it only after
+-- HOVER_TOOLTIP_RELEASE, which entering the next cell or the circle cancels.
+-- Switched off at once, it blinked while the cursor crossed cell edges.
+local function NumberHoverHeld(self, pin)
+    return (self.hoverArea and self.hoverArea.unrealQuestMarkerPin == pin)
+        or self.hoverQuestMarker == pin
+end
+
+function WorldMapPins:FlushNumberUnhover()
+    local pin = self.pendingNumberUnhover
+    self.pendingNumberUnhover = nil
+    self.pendingNumberUnhoverAt = nil
+    local driver = UQ:GetModule("Driver")
+    if driver then
+        driver:Unschedule("map.numberhover")
+    end
+    if pin and not NumberHoverHeld(self, pin) and not pin.unrealQuestExternalHover then
+        Client.SetWorldMapQuestNumberHover(pin, false)
+    end
+end
+
+local function RunNumberUnhover()
+    local self = WorldMapPins
+    local releaseAt = self.pendingNumberUnhoverAt
+    local now = Client.Now()
+    if releaseAt and now and now < releaseAt then
+        return
+    end
+    self:FlushNumberUnhover()
+end
+
+function WorldMapPins:HoldNumberHover(pin)
+    if self.pendingNumberUnhover == pin then
+        self.pendingNumberUnhover = nil
+        self.pendingNumberUnhoverAt = nil
+        local driver = UQ:GetModule("Driver")
+        if driver then
+            driver:Unschedule("map.numberhover")
+        end
+    elseif self.pendingNumberUnhover then
+        self:FlushNumberUnhover()
+    end
+    Client.SetWorldMapQuestNumberHover(pin, true)
+end
+
+function WorldMapPins:ReleaseNumberHover(pin, grace)
+    if not pin or NumberHoverHeld(self, pin) then
+        return
+    end
+    if self.pendingNumberUnhover and self.pendingNumberUnhover ~= pin then
+        self:FlushNumberUnhover()
+    end
+    self.pendingNumberUnhover = pin
+    local now = Client.Now()
+    local driver = UQ:GetModule("Driver")
+    if not now or not driver then
+        self:FlushNumberUnhover()
+        return
+    end
+    self.pendingNumberUnhoverAt = now + (grace or HOVER_TOOLTIP_RELEASE)
+    driver:Schedule("map.numberhover", HOVER_TOOLTIP_POLL, RunNumberUnhover)
+end
+
 function WorldMapPins:OnAreaEnter(area)
     -- Charges this frame's cost to the hover bucket, not to the sweep that
     -- happens to follow it. See the census block near the pools.
@@ -2012,13 +2243,27 @@ function WorldMapPins:OnAreaEnter(area)
     self.hoverArea = area
     self.hoverFocusOwner = area
     self.hoverObjectivePatrolUnitId = area.unrealQuestObjectiveUnitId
-    self:SetMarkerSuppressed(area.unrealQuestMarkerPin, true)
+    self:HoldNumberHover(area.unrealQuestMarkerPin)
     self:RequestQuestFocus(quest)
+    -- Entered from its own POI, the focus is already this quest and the
+    -- request above only cancelled its release: take the tracker row back.
+    if self.focusQuest == quest then
+        local trackerFrame = UQ:GetModule("TrackerFrame")
+        if trackerFrame and trackerFrame.SetMapHoveredQuest then
+            trackerFrame:SetMapHoveredQuest(quest, area)
+        end
+    end
     -- RequestQuestFocus keeps focus while crossing dots of the same quest,
     -- but those dots can name different creatures. Restyle the route for the
     -- exact dot even when the broader quest focus did not change.
     self:RefreshPatrolHighlight()
-    Client.ShowMapTooltip(area, self:BuildObjectiveTooltipLines(database, area))
+    local quests, omitted = self:CollectClusterQuests(area)
+    local key = HoverTooltipKey(quests, omitted)
+    local lines = nil
+    if not self:IsHoverTooltipShowing(key) then
+        lines = self:BuildObjectiveTooltipLines(database, area)
+    end
+    self:ShowHoverTooltip(area, key, lines)
     RecordHover(quest)
 end
 
@@ -2030,25 +2275,28 @@ function WorldMapPins:OnAreaLeave(area)
         self.hoverArea = nil
     end
     -- One quest's tiles sit edge to edge and share a single marker, and the
-    -- client may deliver the next tile's OnEnter before this OnLeave. Restore
-    -- the marker only when nothing is hovering it any more, otherwise sliding
-    -- the mouse across an area would flicker the number back on.
+    -- client may deliver the next tile's OnEnter before or after this OnLeave.
+    -- Keep the highlight while the next tile or the marker itself owns it, and
+    -- otherwise release it only after the tooltip's grace.
     local hovered = self.hoverArea
-    if not hovered or hovered.unrealQuestMarkerPin ~= area.unrealQuestMarkerPin then
-        self:SetMarkerSuppressed(area.unrealQuestMarkerPin, false)
-    end
+    local grace = self:DotLeaveGrace(area)
+    self:ReleaseNumberHover(area.unrealQuestMarkerPin, grace)
     -- Same guard, for the same reason: the next tile's OnEnter may arrive
     -- before this OnLeave, and dropping the focus unconditionally would shrink
     -- the linked quest marker between two cells of one quest.
     self.hoverObjectivePatrolUnitId = hovered and hovered.unrealQuestObjectiveUnitId or nil
     if self.hoverFocusOwner == area then
         self.hoverFocusOwner = nil
-        self:RequestQuestFocus(nil)
+        -- An area cell releases after the tooltip's short grace even while
+        -- dots are drawn: that bridges a cell edge, while the dots' second-long
+        -- grace would only hold the dim after the cursor left the area.
+        self:RequestQuestFocus(nil,
+            area.unrealQuestAreaCell and HOVER_TOOLTIP_RELEASE or nil)
     end
     self:RefreshPatrolHighlight()
-    -- Guarded by the tooltip's own owner check, so this cannot pull a tooltip
-    -- that a neighbouring tile has already taken over.
-    Client.HideMapTooltip(area)
+    -- Released, not hidden: the next tile or the POI of the same quest keeps
+    -- the same tooltip up if the cursor lands on it within the grace.
+    self:ReleaseHoverTooltip(area, grace)
 end
 
 function WorldMapPins:FollowQuest(quest, origin)
@@ -2065,6 +2313,60 @@ end
 
 function WorldMapPins:OnAreaClick(area)
     return self:FollowQuest(area and area.unrealQuestQuest, "worldMapObjective")
+end
+
+function WorldMapPins:OnQuestMarkerEnter(pin)
+    self.hoverSinceTick = true
+    local database = Database()
+    local quest = pin and pin.unrealQuestQuest
+    if not database or not quest then
+        return
+    end
+    self.hoverQuestMarker = pin
+    self.hoverFocusOwner = pin
+    self.hoverObjectivePatrolUnitId = nil
+    self:HoldNumberHover(pin)
+    self:ApplyQuestFocus(quest)
+    self:RefreshPatrolHighlight()
+    local key = HoverTooltipKey({ quest }, 0)
+    local lines = nil
+    if not self:IsHoverTooltipShowing(key) then
+        lines = BuildQuestTooltipLines(database, quest)
+    end
+    self:ShowHoverTooltip(pin, key, lines)
+    RecordHover(quest)
+end
+
+function WorldMapPins:OnQuestMarkerLeave(pin)
+    if self.hoverQuestMarker == pin then
+        self.hoverQuestMarker = nil
+    end
+    self:ReleaseNumberHover(pin)
+    if self.hoverFocusOwner == pin then
+        self.hoverFocusOwner = nil
+        -- Released on the next poll rather than now: the cursor usually
+        -- leaves the POI INTO its own area, whose hit cells take the mouse
+        -- only while this focus holds, and whose OnEnter cancels the release.
+        self:RequestQuestFocus(nil, 0)
+        self:RefreshPatrolHighlight()
+        -- The tracker row lets go now; the area, if entered, takes it back.
+        local trackerFrame = UQ:GetModule("TrackerFrame")
+        if trackerFrame and trackerFrame.ClearMapHoveredQuest then
+            trackerFrame:ClearMapHoveredQuest(pin)
+        end
+    end
+    self:ReleaseHoverTooltip(pin)
+end
+
+function WorldMapPins:OnQuestMarkerClick(pin)
+    local quest = pin and pin.unrealQuestQuest
+    local mainQuest = MainQuest()
+    if quest and mainQuest and mainQuest:IsMain(quest.titleKey) then
+        -- A pin means "follow this quest", not the tracker's deliberate
+        -- follow/unfollow toggle. Clicking the current target is idempotent.
+        return false
+    end
+    return self:FollowQuest(quest, "worldMapQuestNumber")
 end
 
 local function QuestHasMapId(quest, questId)
@@ -2286,6 +2588,33 @@ local function FocusRelatedQuestFrame(pin)
     return WorldMapPins:FocusIncludesQuest(pin.unrealQuestQuest)
 end
 
+-- A hidden quest's hit cells take the mouse exactly while its quest is in
+-- focus, so its revealed area keeps the hover once the cursor moves off the
+-- POI into it, and bare terrain answers nothing otherwise. Only cells whose
+-- state changes are touched.
+function WorldMapPins:RefreshHoverOnlyCells()
+    local index = 1
+    local total = self.areaVisibleCount or 0
+    while index <= total do
+        local area = self.areaPool[index]
+        if area and area.unrealQuestHoverOnly then
+            local enabled = self:FocusIncludesQuest(area.unrealQuestQuest) and true or false
+            if area.unrealQuestHoverEnabled ~= enabled then
+                area.unrealQuestHoverEnabled = enabled
+                Client.SetWorldMapPinMouseEnabled(area, enabled)
+            end
+        end
+        index = index + 1
+    end
+end
+
+-- Handed to AreaContours as its hover test: a quest's contour takes its hover
+-- tint -- and, when it is not pinned, shows at all -- exactly while that quest
+-- is in focus.
+local function AreaHovered(quest)
+    return WorldMapPins:FocusIncludesQuest(quest)
+end
+
 local function FocusRelatedGiver(pin)
     return FocusGiverOffers(pin)
 end
@@ -2307,7 +2636,7 @@ local function ApplyPoolFocusDim(pool, visible, related, active)
     local total = table.getn(pool)
     while index <= total do
         local pin = pool[index]
-        if pin and not pin.unrealQuestFlashBaseWidth then
+        if pin and not pin.unrealQuestFlashActive then
             local alpha = FOCUS_FULL_ALPHA
             if active and index <= visible and not related(pin) then
                 alpha = FOCUS_DIM_ALPHA
@@ -2329,8 +2658,16 @@ function WorldMapPins:RefreshFocusDim()
         return
     end
     self.focusDimApplied = active
+    -- Areas are never faded by a hover: the hovered quest's own contour is
+    -- recoloured instead (AreaContours:RefreshHover). Dots still fade.
+    local dimObjectives = active and self.objectiveDotsMode and true or false
     ApplyPoolFocusDim(self.areaPool, self.areaVisibleCount,
-        FocusRelatedQuestFrame, active)
+        FocusRelatedQuestFrame, dimObjectives)
+    local contours = AreaContours()
+    if contours then
+        ApplyPoolFocusDim(contours:GetGroupPool(), contours:GetVisibleCount(),
+            FocusRelatedQuestFrame, false)
+    end
     ApplyPoolFocusDim(self.dotBorderPool, self.dotBorderVisibleCount,
         FocusRelatedQuestFrame, active)
     ApplyPoolFocusDim(self.giverPool, self.giverVisibleCount,
@@ -2797,8 +3134,8 @@ end
 
 local SetPatrolStrokeStyle
 
--- Only objective hover requests are delayed. Direct marker focus and scene
--- invalidation cancel the request even when the applied focus is unchanged.
+-- Objective entry and release use the delayed request. Marker focus and scene
+-- invalidation cancel it.
 function WorldMapPins:CancelQuestFocusRequest()
     self.pendingFocusQuest = nil
     self.pendingFocusStarted = nil
@@ -2823,7 +3160,10 @@ local function RunQuestFocusRequest()
     WorldMapPins:ApplyQuestFocus(WorldMapPins.pendingFocusQuest)
 end
 
-function WorldMapPins:RequestQuestFocus(quest)
+-- `release`, when given, overrides the leave grace (the POI passes 0 and area
+-- cells the tooltip's short grace: the dots' grace is for gaps between dots,
+-- not for leaving a marker or an area).
+function WorldMapPins:RequestQuestFocus(quest, release)
     if quest and self.focusQuest == quest and not self.focusTurnInPin
         and not self.focusGiverPin then
         -- Re-entering this quest cancels its release, preserving the current
@@ -2836,19 +3176,28 @@ function WorldMapPins:RequestQuestFocus(quest)
         self:CancelQuestFocusRequest()
         return
     end
-    if self.pendingFocusDeadline and self.pendingFocusQuest == quest then
-        return
-    end
+    -- Entering applies at once, by user request: the area appears and the
+    -- tracker row lights up the moment a dot or cell is hovered. A switch to
+    -- another quest goes straight there (ApplyFocus handles the direct swap).
     local now = Client.Now()
     local driver = UQ:GetModule("Driver")
-    if not now or not driver then
+    if quest or not now or not driver then
         self:ApplyQuestFocus(quest)
         return
     end
-    self.pendingFocusQuest = quest
+    if self.pendingFocusDeadline and self.pendingFocusQuest == nil then
+        return
+    end
+    self.pendingFocusQuest = nil
     self.pendingFocusStarted = now
-    self.pendingFocusDeadline = now
-        + (quest and OBJECTIVE_FOCUS_DWELL or OBJECTIVE_FOCUS_RELEASE)
+    -- Leaving an area releases after a short grace, late enough for a
+    -- neighbouring tile's OnEnter to cancel it, and nothing the player
+    -- perceives as a delay. Dots keep the longer release grace, since the gaps
+    -- between dots of one quest are not a way out of it.
+    if type(release) ~= "number" then
+        release = self.objectiveDotsMode and OBJECTIVE_FOCUS_RELEASE or 0
+    end
+    self.pendingFocusDeadline = now + release
     -- One reusable job, independent of dot count; it sleeps once applied or
     -- cancelled. Timing remains on the shared GetTime-based driver.
     driver:Schedule("map.questfocus", OBJECTIVE_FOCUS_POLL, RunQuestFocusRequest)
@@ -2875,6 +3224,11 @@ function WorldMapPins:ApplyFocus(quest, turnInPin, giverPin)
     -- not this quest, so they are easy to find among.
     self:RefreshMarkerEmphasis()
     self:RefreshFocusDim()
+    local contours = AreaContours()
+    if contours then
+        contours:RefreshHover()
+    end
+    self:RefreshHoverOnlyCells()
 
     -- ...and one breath from a ring on that quest's own turn-in, so hovering an
     -- objective also says where the quest ends. The followed quest pulses the
@@ -2899,11 +3253,75 @@ end
 
 function WorldMapPins:ApplyQuestFocus(quest)
     self:ApplyFocus(quest, nil, nil)
+    local trackerFrame = UQ:GetModule("TrackerFrame")
+    if quest and trackerFrame and trackerFrame.SetMapHoveredQuest then
+        trackerFrame:SetMapHoveredQuest(quest, self.hoverFocusOwner)
+    elseif trackerFrame and trackerFrame.ClearMapHoveredQuest then
+        trackerFrame:ClearMapHoveredQuest()
+    end
 end
 
 -- Hovering a "?" focuses every quest handed in at that point: its own giver
 -- and turn-in markers grow, and every pin belonging to no quest at that point
 -- fades. Objective colours are unchanged.
+-- A quest hovered OUTSIDE the map -- a tracker row, in either tracker window.
+-- The map answers exactly as if that quest's POI circle or dot were under the
+-- cursor: the same focus (its area revealed and tinted, everything else's dots
+-- faded, its turn-in ring pulsed) and its circle in the hover state with its
+-- glow. No map tooltip: the row already shows its own. A hover that starts on
+-- the map itself owns the focus; this never takes it from one, and clearing
+-- only clears what this set.
+function WorldMapPins:SetExternalQuestHover(quest)
+    self.externalHoverQuest = quest
+    self:PulseExternalVendors(quest)
+    if self.hoverFocusOwner then
+        return
+    end
+    self:ApplyFocus(quest, nil, nil)
+    self:SetExternalMarkerHover(quest)
+end
+
+-- While a tracker row is hovered, the merchants selling what its quest needs
+-- grow and shrink as the reveal flash does, without its blink -- their
+-- opacity never changes -- for as long as the hover lasts. A reveal flash already running is left alone; ending the hover stops
+-- only a pulse this started.
+function WorldMapPins:PulseExternalVendors(quest)
+    if self.flashIsHoverPulse then
+        self:StopFlash()
+    end
+    if not quest or type(quest.questId) ~= "number" or self.flashTargets then
+        return false
+    end
+    local vendors = UQ:GetModule("QuestVendorPins")
+    local targets = {}
+    if not vendors or not vendors.AppendFlashTargets
+        or vendors:AppendFlashTargets(targets, quest.questId) == 0 then
+        return false
+    end
+    if self:RunFlash(targets, nil, true) then
+        self.flashIsHoverPulse = true
+        return true
+    end
+    return false
+end
+
+-- The hover circle and glow on every drawn POI of `quest`, and off on the
+-- previous one's, unless the cursor is on that circle itself.
+function WorldMapPins:SetExternalMarkerHover(quest)
+    local index = 1
+    while index <= (self.visibleCount or 0) do
+        local pin = self.pool[index]
+        if pin and pin.unrealQuestQuest and pin ~= self.hoverQuestMarker then
+            local wanted = quest and SameQuest(pin.unrealQuestQuest, quest) or false
+            if wanted or pin.unrealQuestExternalHover then
+                pin.unrealQuestExternalHover = wanted or nil
+                Client.SetWorldMapQuestNumberHover(pin, wanted)
+            end
+        end
+        index = index + 1
+    end
+end
+
 function WorldMapPins:ApplyTurnInFocus(pin)
     self:ApplyFocus(nil, pin, nil)
 end
@@ -3029,7 +3447,7 @@ local FLASH_MAX_ALPHA = 1.0
 local FLASH_SCALE_HZ = 1
 local FLASH_MIN_SCALE = 0.85
 local FLASH_MAX_SCALE = 1.4
--- Normal UnrealQuest marks top out six levels above the shared pin floor
+-- Normal UnrealQuest marks top out seven levels above the shared pin floor
 -- (service, mob and vendor pins). A revealed quest must win every overlap for
 -- the whole flash, whether its target is an objective dot/area or a turn-in
 -- icon. The original level is restored exactly when the flash ends.
@@ -3037,10 +3455,12 @@ local FLASH_LEVEL_BOOST = 10
 
 local function CollectFlashTargets(questId)
     local targets = {}
+    local contours = AreaContours()
+    local contourTargets = contours and contours:AppendFlashTargets(targets, questId) or 0
     local pool = WorldMapPins.areaPool
     local index = 1
     local total = table.getn(pool)
-    while index <= total do
+    while contourTargets == 0 and index <= total do
         local area = pool[index]
         if area and area.unrealQuestQuest and area.unrealQuestQuest.questId == questId
             and Client.IsObjectShown(area) then
@@ -3057,6 +3477,11 @@ local function CollectFlashTargets(questId)
             table.insert(targets, pin)
         end
         index = index + 1
+    end
+    -- The merchants selling what the quest still needs (Map/QuestVendorPins.lua).
+    local vendors = UQ:GetModule("QuestVendorPins")
+    if vendors and vendors.AppendFlashTargets then
+        vendors:AppendFlashTargets(targets, questId)
     end
     return targets
 end
@@ -3078,6 +3503,7 @@ local function RestoreFlashTargets()
             end
             target.unrealQuestFlashBaseWidth = nil
             target.unrealQuestFlashBaseHeight = nil
+            target.unrealQuestFlashActive = nil
             if target.unrealQuestFlashRaised then
                 Client.RaiseWorldMapPin(target, -FLASH_LEVEL_BOOST)
                 target.unrealQuestFlashRaised = nil
@@ -3094,6 +3520,7 @@ local function RaiseFlashTargets(targets)
     while index <= total do
         local target = targets[index]
         if target then
+            target.unrealQuestFlashActive = true
             if Client.RaiseWorldMapPin(target, FLASH_LEVEL_BOOST) then
                 target.unrealQuestFlashRaised = true
             end
@@ -3116,7 +3543,23 @@ function WorldMapPins:FlashQuest(questId)
     if type(questId) ~= "number" then
         return false
     end
-    local targets = CollectFlashTargets(questId)
+    self.flashIsHoverPulse = nil
+    return self:RunFlash(CollectFlashTargets(questId), FLASH_DURATION)
+end
+
+-- Stops a running flash or hover pulse and hands its targets back.
+function WorldMapPins:StopFlash()
+    RestoreFlashTargets()
+    self.flashIsHoverPulse = nil
+    local driver = UQ:GetModule("Driver")
+    if driver then
+        driver:Unschedule("map.questflash")
+    end
+end
+
+-- The same pulse on `targets`; `duration` nil keeps it going until StopFlash.
+-- `keepAlpha` pulses the size alone and leaves each target fully opaque.
+function WorldMapPins:RunFlash(targets, duration, keepAlpha)
     if table.getn(targets) == 0 then
         return false
     end
@@ -3132,8 +3575,8 @@ function WorldMapPins:FlashQuest(questId)
     RaiseFlashTargets(targets)
     driver:Schedule("map.questflash", 0.05, function()
         local now = Client.Now()
-        local elapsed = now and (now - start) or FLASH_DURATION
-        if elapsed < 0 or elapsed >= FLASH_DURATION then
+        local elapsed = now and (now - start) or (duration or 0)
+        if elapsed < 0 or (duration and elapsed >= duration) then
             RestoreFlashTargets()
             WorldMapPins.dirty = true
             local d = UQ:GetModule("Driver")
@@ -3158,7 +3601,7 @@ function WorldMapPins:FlashQuest(questId)
         local total = table.getn(targets)
         while index <= total do
             local target = targets[index]
-            Client.SetWorldMapPinAlpha(target, alpha)
+            Client.SetWorldMapPinAlpha(target, keepAlpha and 1 or alpha)
             if target and target.unrealQuestFlashBaseWidth and target.unrealQuestFlashBaseHeight then
                 Client.SetWorldMapPinSize(target,
                     target.unrealQuestFlashBaseWidth * scale,
@@ -4266,48 +4709,36 @@ function WorldMapPins:ReapplyHoverPatrolStrokes()
     end
 end
 
--- Dots identify their quest through the shared stable palette. Area tiles keep
--- the older blue/in-progress and green/complete state colours. The alpha this
--- returns belongs to the tiles; a dot is opaque.
-local function ObjectiveColor(quest, complete, isMain, dots)
-    local r, g, b, a
-    if dots then
-        r, g, b = UQ.GetQuestColor(quest)
-        a = DOT_ALPHA
-    elseif complete and isMain then
-        r, g, b, a = 0.55, 1, 0.55, MAIN_AREA_ALPHA
-    elseif complete then
-        r, g, b, a = 0.2, 1, 0.2, COMPLETE_AREA_ALPHA
-    elseif isMain then
-        -- Alpha alone would not separate this from the other blue tiles, so
-        -- the main quest shifts towards a paler blue as well. Alpha stays at
-        -- the 0.5 probe 1.29.0 confirmed visible: the first 0.2 run was
-        -- confirmed INVISIBLE on this client, so nothing here may go below it.
-        r, g, b, a = 0.45, 0.82, 1, MAIN_AREA_ALPHA
-    else
-        r, g, b, a = 0.12, 0.55, 1, AREA_ALPHA
-    end
-    -- No hover term: a quest's colour is its identity, and hover is answered
-    -- entirely by frame alpha (WorldMapPins:ApplyFocus). Keeping the two apart
-    -- is what lets a hover skip the rebuild this assignment lives in.
-    return r, g, b, a
+-- A hovered area that is not the followed quest's takes a lighter blue, so
+-- the area a POI hover reveals never reads as the followed quest's own.
+local AREA_HOVER_RGB = { 0.45, 0.82, 1 }
+
+-- Dots identify their quest through the shared stable palette. Area contours
+-- take no colour from here: at rest every one, followed included, draws
+-- Forever's baked quest-blob blue; only a hover tints (AREA_HOVER_RGB).
+--
+-- No hover term: a quest's colour is its identity, and hover is answered
+-- entirely by frame alpha (WorldMapPins:ApplyFocus). Keeping the two apart
+-- is what lets a hover skip the rebuild this assignment lives in.
+local function ObjectiveColor(quest)
+    return UQ.GetQuestColor(quest)
 end
 
--- Swaps one pooled objective frame between the two presentations. Guarded on
--- the flag it stores: SetTexture is the only call in this path that is not a
--- field write, and a pool that never changes mode must not pay for one on
--- every rebuild.
+-- Swaps one pooled objective Button between a visible dot and an invisible
+-- area hover target. The contour textures are owned by Map/AreaContours.lua.
 local function ApplyObjectiveStyle(area, dots)
-    if not area or area.unrealQuestDotStyle == dots then
-        return
-    end
+    if not area then return end
+    local changed = area.unrealQuestDotStyle ~= dots
     area.unrealQuestDotStyle = dots
     if dots then
-        Client.SetWorldMapPinTexture(area, Client.MINIMAP_OBJECTIVE_TEXTURE)
-        Client.SetWorldMapPinLevelBoost(area, OBJECTIVE_DOT_LEVEL_BOOST)
+        if changed then
+            Client.SetWorldMapPinTexture(area, Client.MINIMAP_OBJECTIVE_TEXTURE)
+            Client.SetWorldMapPinLevelBoost(area, OBJECTIVE_DOT_LEVEL_BOOST)
+        end
+        Client.ShowObject(area.unrealQuestTexture)
     else
-        Client.SetWorldMapPinTexture(area, Client.WORLD_MAP_PIN_TEXTURE)
-        Client.SetWorldMapPinLevelBoost(area, 0)
+        if changed then Client.SetWorldMapPinLevelBoost(area, 0) end
+        Client.HideObject(area.unrealQuestTexture)
     end
 end
 
@@ -4566,6 +4997,8 @@ function WorldMapPins:Refresh()
     -- is per-quest, never carries over into the new layout. The held hover is
     -- re-resolved against the finished layout at the end of this pass.
     local heldHoverArea = self.hoverFocusOwner == self.hoverArea and self.hoverArea or nil
+    local heldHoverQuestMarker = self.hoverFocusOwner == self.hoverQuestMarker
+        and self.hoverQuestMarker or nil
     local heldFocusTurnIn = self.hoverFocusOwner == self.focusTurnInPin and self.focusTurnInPin or nil
     local heldFocusGiver = self.hoverFocusOwner == self.focusGiverPin and self.focusGiverPin or nil
     self.hoverArea = nil
@@ -4590,6 +5023,14 @@ function WorldMapPins:Refresh()
     -- half way through a pass, and the signature above already forced this
     -- rebuild if it changed since the last one.
     local dotsMode = ObjectiveDotsEnabled()
+    local areasMode = ObjectiveAreasEnabled()
+    local showAllAreas = ShowAllAreasEnabled()
+    self.objectiveDotsMode = dotsMode
+    local areaContours = AreaContours()
+    if areaContours then
+        areaContours:BeginPass(AREA_RENDER_ENABLED and areasMode)
+    areaContours:SetHoverTest(AreaHovered)
+    end
     -- One drawn dot per distinct spawn coordinate for the WHOLE pass, not per
     -- quest: the dedup used to be quest-local, so twenty quests sharing a
     -- camp each placed their own frame on the same point and nineteen of them
@@ -4648,6 +5089,8 @@ function WorldMapPins:Refresh()
                 CollectRoamingObjectiveUnits(locations, objectivePatrolUnitIds)
             end
             local components = questTarget:BuildComponents(locations)
+            -- The numbered POI circle is drawn whichever presentation is on:
+            -- with dots alone it still names the quest and links its hover.
             local markerComponent = MARKER_RENDER_ENABLED
                 and questTarget:SelectPrimary(components)
             -- The main quest's tiles are drawn brighter than the rest, so the
@@ -4681,7 +5124,7 @@ function WorldMapPins:Refresh()
                             local previous = owner.unrealQuestQuest
                             owner.unrealQuestQuest = quest
                             owner.unrealQuestIsMain = true
-                            local r, g, b = ObjectiveColor(quest, complete, true, true)
+                            local r, g, b = ObjectiveColor(quest)
                             Client.SetWorldMapAreaColor(owner, r, g, b, DOT_ALPHA)
                             AppendSharedQuest(owner, previous)
                         else
@@ -4702,7 +5145,7 @@ function WorldMapPins:Refresh()
                             end
                             local area = self:GetArea(areaIndex)
                             if area then
-                                local r, g, b = ObjectiveColor(quest, complete, isMain, true)
+                                local r, g, b = ObjectiveColor(quest)
                                 ApplyObjectiveStyle(area, true)
                                 Client.SetWorldMapAreaColor(area, r, g, b, DOT_ALPHA)
                                 if Client.PositionWorldMapDot(area, dotX, dotY, ObjectiveDotSize()) then
@@ -4716,6 +5159,10 @@ function WorldMapPins:Refresh()
                                     area.unrealQuestIsMain = isMain
                                     area.unrealQuestMarkerPin = nil
                                     area.unrealQuestObjectiveUnitId = nil
+                                    area.unrealQuestHoverOnly = nil
+                                    area.unrealQuestAreaCell = nil
+                                    area.unrealQuestHoverEnabled = true
+                                    Client.SetWorldMapPinMouseEnabled(area, true)
                                     if location.sourceType == "unit"
                                         and type(location.sourceId) == "number" then
                                         area.unrealQuestObjectiveUnitId = location.sourceId
@@ -4732,7 +5179,18 @@ function WorldMapPins:Refresh()
                     end
                     locationIndex = locationIndex + 1
                 end
-            else
+            end
+            if areasMode and not complete then
+                -- A complete quest draws no area: its turn-in "?" is the only
+                -- place left to go. An in-progress area is pinned on screen
+                -- for the followed quest (or every quest, by setting); any
+                -- other is drawn hidden and shown while its quest is hovered.
+                -- Its hit cells are placed too but take the mouse only while
+                -- its quest is in focus (RefreshHoverOnlyCells): an invisible
+                -- area must not answer the cursor over bare terrain, and a
+                -- revealed one must keep its hover while the cursor moves
+                -- from the POI into it.
+                local pinnedArea = isMain or showAllAreas
                 local componentIndex = 1
                 local componentTotal = table.getn(components)
                 while componentIndex <= componentTotal do
@@ -4746,9 +5204,7 @@ function WorldMapPins:Refresh()
                         if areaX and areaY then
                             local area = self:GetArea(areaIndex)
                             if area then
-                                local r, g, b, a = ObjectiveColor(quest, complete, isMain, false)
                                 ApplyObjectiveStyle(area, false)
-                                Client.SetWorldMapAreaColor(area, r, g, b, a)
                                 if Client.PositionWorldMapArea(
                                     area, areaX, areaY,
                                     questTarget.CELL_PERCENT, questTarget.CELL_PERCENT) then
@@ -4757,6 +5213,10 @@ function WorldMapPins:Refresh()
                                     area.unrealQuestIsMain = false
                                     area.unrealQuestMarkerPin = nil
                                     area.unrealQuestObjectiveUnitId = nil
+                                    area.unrealQuestHoverOnly = not pinnedArea
+                                    area.unrealQuestAreaCell = true
+                                    area.unrealQuestHoverEnabled = pinnedArea
+                                    Client.SetWorldMapPinMouseEnabled(area, pinnedArea)
                                     areaIndex = areaIndex + 1
                                 else
                                     pinFailures = pinFailures + 1
@@ -4770,6 +5230,21 @@ function WorldMapPins:Refresh()
 
                     componentIndex = componentIndex + 1
                 end
+                if areaContours then
+                    -- The baked blue texture at rest. Any quest but the
+                    -- followed one turns light blue under the cursor; the
+                    -- followed quest keeps its blue.
+                    local hoverRed, hoverGreen, hoverBlue = nil, nil, nil
+                    if not isMain then
+                        hoverRed, hoverGreen, hoverBlue =
+                            AREA_HOVER_RGB[1], AREA_HOVER_RGB[2], AREA_HOVER_RGB[3]
+                    end
+                    local contourFailures = areaContours:DrawQuest(
+                        quest, locations, areaId, report, mapContext,
+                        nil, nil, nil, false,
+                        hoverRed, hoverGreen, hoverBlue, pinnedArea)
+                    pinFailures = pinFailures + contourFailures
+                end
             end
 
             local markerPin = nil
@@ -4779,16 +5254,14 @@ function WorldMapPins:Refresh()
                 if markerX and markerY then
                     local pin = self:GetPin(markerIndex)
                     if pin then
-                        if complete then
-                            Client.SetWorldMapPinColor(pin, 0.2, 1, 0.2)
-                        else
-                            Client.SetWorldMapPinColor(pin, 1, 0.75, 0.1)
-                        end
-                        local labeled = Client.SetWorldMapPinLabel(pin, questIndex)
+                        pin.unrealQuestQuest = quest
+                        local labeled = Client.SetWorldMapQuestNumber(
+                            pin, questIndex, isMain)
                         if labeled and mapContext:PlaceOnWorldMap(pin, markerX, markerY) then
                             markerPin = pin
                             markerIndex = markerIndex + 1
                         else
+                            pin.unrealQuestQuest = nil
                             Client.HideObject(pin)
                             pinFailures = pinFailures + 1
                         end
@@ -4809,6 +5282,7 @@ function WorldMapPins:Refresh()
         end
         questIndex = questIndex + 1
     end
+    if areaContours then areaContours:FinishPass() end
 
     local giverMarkerIndex = 1
     -- The patrol set records successfully placed markers, not merely database
@@ -5008,8 +5482,26 @@ function WorldMapPins:Refresh()
             and heldHoverArea.unrealQuestQuest then
             self:OnAreaEnter(heldHoverArea)
         else
-            Client.HideMapTooltip(heldHoverArea)
+            self:EndHoverTooltip()
         end
+    end
+    if heldHoverQuestMarker then
+        if type(heldHoverQuestMarker.unrealQuestPoolIndex) == "number"
+            and heldHoverQuestMarker.unrealQuestPoolIndex < markerIndex
+            and heldHoverQuestMarker.unrealQuestQuest then
+            self:OnQuestMarkerEnter(heldHoverQuestMarker)
+        else
+            local trackerFrame = UQ:GetModule("TrackerFrame")
+            if trackerFrame and trackerFrame.ClearMapHoveredQuest then
+                trackerFrame:ClearMapHoveredQuest(heldHoverQuestMarker)
+            end
+            Client.HideMapTooltip(heldHoverQuestMarker)
+            self.hoverQuestMarker = nil
+        end
+    end
+    -- A tracker-row hover held across the rebuild is re-applied the same way.
+    if self.externalHoverQuest and not self.hoverFocusOwner then
+        self:SetExternalQuestHover(self.externalHoverQuest)
     end
     self.itemUseUnknown = itemUseUnknown
     -- What this pass cost, for the tick that follows it to charge its gap to.
@@ -5031,9 +5523,9 @@ function WorldMapPins:Refresh()
     -- The layer was just rewritten, so every visible marker is re-forced on
     -- every tick for the next few seconds before the sweep idles down.
     self:MarkSettling()
-    -- "rendered" means the quest layer put something on the canvas. With the
-    -- numbered markers retired the areas are that layer, so keying this on the
-    -- marker pool alone would report every drawn map as empty.
+    -- "rendered" means the quest layer put something on the canvas. Dots do
+    -- not use the numbered marker pool, so the objective frames remain part
+    -- of the answer.
     if self.visibleCount > 0 or self.areaVisibleCount > 0 then
         RecordDiagnostic("rendered", areaId, report, matchedQuests, candidateLocations, pinFailures)
     else
@@ -5203,11 +5695,13 @@ function WorldMapPins:GetRelevantBagItemIds(quests)
 end
 
 function WorldMapPins:GetStatus()
+    local contours = AreaContours()
     return {
         visible = self.visibleCount,
         pooled = table.getn(self.pool),
         areaVisible = self.areaVisibleCount,
         areaPooled = table.getn(self.areaPool),
+        areaContours = contours and contours:GetVisibleCount() or 0,
         dotBorders = self.dotBorderVisibleCount,
         giverVisible = self.giverVisibleCount,
         giverPooled = table.getn(self.giverPool),
@@ -5221,6 +5715,7 @@ function WorldMapPins:GetStatus()
         inProgressTurnIns = ShowInProgressTurnIns(),
         areasEnabled = AREA_RENDER_ENABLED,
         objectiveDots = ObjectiveDotsEnabled(),
+        objectiveAreas = ObjectiveAreasEnabled(),
         markersEnabled = MARKER_RENDER_ENABLED,
         renderEnabled = self.renderEnabled,
         areaHovers = self.hoverCount or 0,
@@ -5251,7 +5746,9 @@ function WorldMapPins:OnEnable()
     local mainQuest = MainQuest()
     if mainQuest then
         mainQuest:AddListener(function()
-            if ObjectiveDotsEnabled() then
+            -- The numbered markers restyle for the followed quest only
+            -- through a rebuild; without them dots could be restyled in place.
+            if not MARKER_RENDER_ENABLED then
                 WorldMapPins:RefreshDotBordersAndFollowedTurnIns()
             else
                 WorldMapPins:WakeMapDriver()

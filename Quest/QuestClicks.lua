@@ -394,8 +394,8 @@ function QuestClicks:RevealOnMap(quest)
     if table.getn(areaIds) == 0 then
         -- The data records no coordinate for this relation, so there is no
         -- zone to go to and no pin that could exist for it either -- every
-        -- pin this addon draws is built from the same records.
-        UQ:Print(UQ.L("REVEAL_NOTHING_KNOWN", tostring(title)))
+        -- pin this addon draws is built from the same records. Silent: a
+        -- chat line here only nagged on every follow click.
         return
     end
 
@@ -449,8 +449,6 @@ function QuestClicks:RevealOnMap(quest)
     local zones = DescribeAreas(areaIds)
     if zones then
         PrintRevealElsewhere(complete, title, zones)
-    else
-        UQ:Print(UQ.L("REVEAL_NOTHING_KNOWN", tostring(title)))
     end
 end
 
