@@ -1,3 +1,5 @@
+<p align="center"><img src="media/logo.webp" alt="UnrealQuest logo" width="160"></p>
+
 # UnrealQuest
 
 See every objective. Spend less time searching. Adventure more.
