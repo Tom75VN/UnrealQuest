@@ -105,10 +105,11 @@ local defaults = {
     -- uninstalling unrealUI later returns the player to their own last choice
     -- rather than to English.
     --
-    -- The default is English, but a first run with no unrealUI seeds it from
-    -- GetLocale instead, so a French client opens in French without the player
-    -- having to find the flag row first.
-    language = "enUS",
+    -- Deliberately NO default here. The fill loop in OnInit would write it
+    -- before Core/Locale.lua runs, and a stored value always wins, so the
+    -- client-locale first-run default (zhCN -> Chinese, ruRU -> Russian,
+    -- anything else -> English) could never apply. Core/Locale.lua seeds the
+    -- value itself and marks it with `languageSeeded`.
 
     -- Uses the addon's selected language for quest titles and for the native
     -- Quest Log's objective summary/description when that exact translation

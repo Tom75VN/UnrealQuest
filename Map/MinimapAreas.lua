@@ -29,8 +29,8 @@ is clipped to the minimap circle here, before it is placed:
 The edge is therefore exact to within one strip (about a pixel), and nothing
 is ever drawn outside the circle.
 
-Geometry that is not yet in the cache is built on the shared driver within a
-per-tick budget, like the world map's, so a rebuild never computes every area
+Geometry that is not yet in the cache is built on the shared driver in bounded
+grid-row slices, like the world map's, so a rebuild never computes every area
 in one frame.
 ]]
 
@@ -43,7 +43,6 @@ local STRIP_HEIGHT = 1.5
 -- Kept inside the rim, like the pins' CLAMP_MARGIN, so the soft outer glow
 -- never sits on the minimap's border art.
 local EDGE_MARGIN = 2
-local BUILD_BUDGET = 0.006
 -- The lighter blue a hovered area takes unless it is the followed quest's,
 -- the same tint as the world map's AREA_HOVER_RGB.
 local HOVER_RED, HOVER_GREEN, HOVER_BLUE = 0.45, 0.82, 1
@@ -100,16 +99,29 @@ end
 local function RunBuildQueue()
     local self = MinimapAreas
     local contours = Contours()
-    local started = Client.Now()
-    while contours and table.getn(self.buildQueue) > 0 do
+    if contours and table.getn(self.buildQueue) > 0 then
         local entry = table.remove(self.buildQueue, 1)
         if entry.serial == self.serial and not entry.records then
-            ToYards(entry, contours:BuildLayout(entry.key, entry.ordered),
-                entry.widthYards, entry.heightYards)
-            self.lastProjectKey = nil
-            local now = Client.Now()
-            if not started or not now or now - started >= BUILD_BUDGET then
-                break
+            local patches = contours.patchCache[entry.key]
+            if not patches then
+                local build = entry.build
+                if not build then
+                    build, patches = contours:BeginLayoutBuild(
+                        entry.key, entry.ordered)
+                    entry.build = build
+                end
+                if not patches then
+                    local done
+                    done, patches = contours:StepLayoutBuild(
+                        build, contours.BUILD_ROWS_PER_TICK)
+                    if not done then
+                        table.insert(self.buildQueue, entry)
+                    end
+                end
+            end
+            if patches then
+                ToYards(entry, patches, entry.widthYards, entry.heightYards)
+                self.lastProjectKey = nil
             end
         end
     end

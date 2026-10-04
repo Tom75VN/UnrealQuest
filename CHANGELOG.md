@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.1
+
+- Few optimisations done
+- Without unrealUI, the first language now follows the game client: Chinese for a Chinese client, Russian for a Russian client, English otherwise
+- Accepting a quest no longer performs a second full tracker layout inside the quest-log scan.
+- Quest-area geometry is spread across bounded driver slices without changing its resolution or shape.
+
 ## 0.4.0
 
 - Reworked quest tracker windows

@@ -19,7 +19,7 @@ UnrealQuest = {}
 local UQ = UnrealQuest
 
 UQ.name = "UnrealQuest"
-UQ.version = "0.4.0"
+UQ.version = "0.4.1"
 
 -- Keep UnrealQuest visually aligned with UnrealUI without creating a runtime
 -- dependency between the two addons. These values mirror UnrealUI's shared
@@ -479,6 +479,11 @@ local ADDON_PREFIX = "|cff" .. UQ.colors.accentHex .. "UnrealQuest|r"
 
 function UQ:Print(text)
     Output(ADDON_PREFIX .. ": " .. tostring(text))
+end
+
+function UQ:PrintLoaded(text)
+    Output("|cffffffffUnreal |cff" .. UQ.colors.accentHex
+        .. "Quest|r |cffb3b3b3: " .. tostring(text) .. "|r")
 end
 
 function UQ:Debug(text)

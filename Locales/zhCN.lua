@@ -461,7 +461,7 @@ UQ.RegisterLocale("zhCN", {
     ["NPC_CATEGORY_VENDOR"] = "商人",
     ["NPC_DETAIL_LEVEL"] = "（等级 %s）",
     ["NPC_DETAIL_SKILL"] = "（技能 %s）",
-    ["NPC_LOOT_HINT"] = "点击以显示掉落物品",
+    ["NPC_LOOT_HINT"] = "<点击以显示掉落物品>",
     ["NPC_LOOT_LOADING"] = "正在加载另外 %s 件物品...",
     ["NPC_LOOT_NONE"] = "没有优秀或更好的掉落物品",
     ["NPC_LOOT_UNKNOWN"] = "%s 件物品客户端未知",

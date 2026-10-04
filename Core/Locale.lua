@@ -437,13 +437,19 @@ local function Config()
     return UQ:GetModule("Config")
 end
 
+-- Before `languageSeeded` existed, Config's default fill wrote "enUS" into
+-- every install before this file ran, so an unmarked "enUS" is that
+-- automatic value, not a choice: it is re-seeded once from the client locale.
 local function StoredLanguage()
     local config = Config()
     local code = config and config:Get("language")
-    if languageByCode[code] then
-        return code
+    if not languageByCode[code] then
+        return nil
     end
-    return nil
+    if code == DEFAULT_LANGUAGE and config:Get("languageSeeded") ~= true then
+        return nil
+    end
+    return code
 end
 
 -- Persists the choice and points the lookup at the new table. Text already on
@@ -467,6 +473,7 @@ function UQ.SetLanguage(code)
     local config = Config()
     if config then
         config:Set("language", code)
+        config:Set("languageSeeded", true)
     end
     return true
 end
@@ -499,15 +506,21 @@ local function UnrealUILanguage(host)
     return nil
 end
 
--- First run on this installation, with no unrealUI to follow. English is the
--- default; a client already reporting one of this addon's other languages is a
--- better opening guess, and the player can still change it. The client locale
--- is a HINT only -- the language is a preference that has to survive playing an
--- enUS client in French.
+-- First run on this installation, with no unrealUI to follow. The shared
+-- Unreal rule, identical in unrealUI and unrealMap: a zhCN client opens in
+-- Chinese, a ruRU client in Russian, every other client in English. French
+-- stays selectable with the flag row. The client locale is a HINT only -- the
+-- language is a preference that has to survive playing an enUS client in
+-- French.
+local CLIENT_LOCALE_DEFAULT = {
+    zhCN = "zhCN",
+    ruRU = "ruRU",
+}
+
 local function FirstRunLanguage()
     local clientLocale = Client.GetLocale()
-    if languageByCode[clientLocale] then
-        return clientLocale
+    if clientLocale and CLIENT_LOCALE_DEFAULT[clientLocale] then
+        return CLIENT_LOCALE_DEFAULT[clientLocale]
     end
     return DEFAULT_LANGUAGE
 end
@@ -553,6 +566,7 @@ function Locale:Resolve(force)
         local config = Config()
         if config and not stored then
             config:Set("language", active)
+            config:Set("languageSeeded", true)
         end
         UQ:DeclareCapability("languageSource", "detected",
             "unrealUI was not present after " .. POLL_SECONDS .. "s of polling, so UnrealQuest "

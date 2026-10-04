@@ -687,7 +687,7 @@ function NpcPins:TooltipLines(target, showRemoveHint)
     if showRemoveHint and self:HasLoot(target) then
         table.insert(lines, {
             text = UQ.L("NPC_LOOT_HINT"),
-            r = 0.6, g = 0.6, b = 0.6,
+            r = 0, g = 1, b = 0,
         })
     end
     if REVIEW_REMOVAL_ENABLED and showRemoveHint and target.rankLabelKey then

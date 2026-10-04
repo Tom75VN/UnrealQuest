@@ -470,7 +470,7 @@ UQ.RegisterLocale("frFR", {
     ["NPC_CATEGORY_VENDOR"] = "Marchand",
     ["NPC_DETAIL_LEVEL"] = "(niveau %s)",
     ["NPC_DETAIL_SKILL"] = "(competence %s)",
-    ["NPC_LOOT_HINT"] = "Cliquez pour afficher le butin",
+    ["NPC_LOOT_HINT"] = "<Cliquez pour afficher le butin>",
     ["NPC_LOOT_LOADING"] = "Chargement de %s objets de plus...",
     ["NPC_LOOT_NONE"] = "Aucun butin inhabituel ou meilleur",
     ["NPC_LOOT_UNKNOWN"] = "%s objets inconnus du client",

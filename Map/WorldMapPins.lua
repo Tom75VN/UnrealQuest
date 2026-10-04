@@ -142,9 +142,11 @@ local UQ = UnrealQuest
 local Client = UQ.Client
 local WorldMapPins = UQ:NewModule("WorldMapPins")
 
--- Forever's numbered quest-POI atlas contains 1-25, matching the quest log's
--- practical bound on this client. Numbers are drawn with dots and areas alike.
-local MAX_MARKERS = 25
+-- Forever's numbered quest-POI atlas contains 1-25; from 26 up the number is
+-- written as text over the same circle (Client.SetWorldMapQuestNumber).
+-- Numbers are drawn with dots and areas alike. The cap stays well below the
+-- area pool's numeric band (index + 500), which marker keys must never reach.
+local MAX_MARKERS = 50
 local QUEST_NUMBER_SIZE = Client.WORLD_MAP_QUEST_POI_SIZE
 -- The stack above the pin floor, bottom to top: area hit cells 0, objective
 -- dots 1, the number's glow 2 and circle 3 (its layers sit at -2 and -1, see

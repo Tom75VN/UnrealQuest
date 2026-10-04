@@ -89,7 +89,7 @@ local function RunEnable()
         end
     end)
 
-    UQ:Print(UQ.L("BOOT_LOADED", UQ.version))
+    UQ:PrintLoaded(UQ.L("BOOT_LOADED", UQ.version))
 end
 
 local function OnBootstrapUpdate()

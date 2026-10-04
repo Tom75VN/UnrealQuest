@@ -318,10 +318,10 @@ STRINGS.update({
     "从地图和提醒中移除",
 ),
 "NPC_LOOT_HINT": (
-    "Click to show loot",
-    "Cliquez pour afficher le butin",
-    "Щелкните, чтобы показать добычу",
-    "点击以显示掉落物品",
+    "<Click to show loot>",
+    "<Cliquez pour afficher le butin>",
+    "<Щелкните, чтобы показать добычу>",
+    "<点击以显示掉落物品>",
 ),
 "NPC_LOOT_NONE": (
     "No uncommon or better loot",

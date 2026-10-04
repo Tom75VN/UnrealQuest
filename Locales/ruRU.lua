@@ -501,7 +501,7 @@ UQ.RegisterLocale("ruRU", {
     ["NPC_CATEGORY_VENDOR"] = "Торговец",
     ["NPC_DETAIL_LEVEL"] = "(уровень %s)",
     ["NPC_DETAIL_SKILL"] = "(навык %s)",
-    ["NPC_LOOT_HINT"] = "Щелкните, чтобы показать добычу",
+    ["NPC_LOOT_HINT"] = "<Щелкните, чтобы показать добычу>",
     ["NPC_LOOT_LOADING"] = "Загрузка еще %s предметов...",
     ["NPC_LOOT_NONE"] = "Нет необычной или лучшей добычи",
     ["NPC_LOOT_UNKNOWN"] = "%s предметов неизвестны клиенту",

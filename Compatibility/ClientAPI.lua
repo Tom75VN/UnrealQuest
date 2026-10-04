@@ -4318,6 +4318,34 @@ function QuestPOI.SetGlyph(texture, number, active, region)
         (row * 32 + inset) / 256, ((row + 1) * 32 - inset) / 256)
 end
 
+-- The glyph atlas stops at 25. Past it the badge keeps its circle and writes
+-- the number as text instead: the glyph texture stays in place but fully
+-- transparent (the same four-component vertex colour the glow relies on;
+-- SetGlyph restores alpha 1 through QuestPOI.SetTexture), and the text takes
+-- the glyph's own colours -- gold on the main circle, dark on the active one.
+function QuestPOI.SetNumberText(texture, label, number, active)
+    if type(number) ~= "number" or number < 1 or number ~= math.floor(number)
+        or not texture or type(texture.SetVertexColor) ~= "function"
+        or not label or type(label.SetText) ~= "function" then
+        return false
+    end
+    if not pcall(texture.SetVertexColor, texture, 1, 1, 1, 0) then
+        return false
+    end
+    if type(label.SetTextColor) == "function" then
+        if active then
+            pcall(label.SetTextColor, label, 0.05, 0.05, 0.05)
+        else
+            pcall(label.SetTextColor, label, 1, 0.82, 0)
+        end
+    end
+    if not pcall(label.SetText, label, tostring(number)) then
+        return false
+    end
+    Client.ShowObject(label)
+    return true
+end
+
 function QuestPOI.SetGlow(texture)
     local placed = QuestPOI.SetCircle(texture, QuestPOI.GLOW)
     if placed and type(texture.SetVertexColor) == "function" then
@@ -4430,8 +4458,22 @@ function Client.SetWorldMapQuestNumber(frame, number, selected)
     frame.unrealQuestQuestNumberSelected = selected and true or false
     frame.unrealQuestQuestNumberHovered = nil
     if not QuestPOI.SetCircle(frame.unrealQuestCircleLayer.unrealQuestTexture,
-            selected and QuestPOI.ACTIVE or QuestPOI.MAIN)
-        or not QuestPOI.SetGlyph(frame.unrealQuestTexture,
+            selected and QuestPOI.ACTIVE or QuestPOI.MAIN) then
+        return false
+    end
+    if type(number) == "number" and number > 25 then
+        -- Past the atlas: the lazily created pin label (the same
+        -- GameFontNormalSmall overlay the questarea probes confirmed)
+        -- carries the number over the transparent glyph.
+        if not Client.SetWorldMapPinLabel(frame, "")
+            or not QuestPOI.SetNumberText(frame.unrealQuestTexture,
+                frame.unrealQuestLabel, number, selected) then
+            return false
+        end
+        QuestPOI.ApplyMapLayers(frame)
+        return true
+    end
+    if not QuestPOI.SetGlyph(frame.unrealQuestTexture,
             number, selected, Client.WORLD_MAP_QUEST_POI_SIZE) then
         return false
     end
@@ -12671,6 +12713,19 @@ function Client.GetTrackerRow(window, kind, index)
     if type(button.RegisterForClicks) == "function" then
         pcall(button.RegisterForClicks, button, "LeftButtonUp", "RightButtonUp")
     end
+    -- A quest number past the glyph atlas (26 and up) is written as text,
+    -- centred on the numbered circle drawn below.
+    if kind == "quest" and type(button.CreateFontString) == "function" then
+        local textOk, questNumberText = pcall(button.CreateFontString, button,
+            nil, "OVERLAY", "GameFontNormalSmall")
+        if textOk and questNumberText then
+            pcall(questNumberText.SetPoint, questNumberText, "CENTER", button,
+                "LEFT", TRACKER_QUEST_NUMBER_SIZE / 2, 0)
+            pcall(questNumberText.SetJustifyH, questNumberText, "CENTER")
+            pcall(questNumberText.Hide, questNumberText)
+            button.unrealQuestQuestNumberText = questNumberText
+        end
+    end
     if type(button.CreateFontString) == "function" then
         local labelOk, label = pcall(button.CreateFontString, button, nil, "OVERLAY",
             TRACKER_ROW_FONTS[kind] or "GameFontHighlightSmall")
@@ -13002,10 +13057,20 @@ function Client.SetTrackerRowQuestNumber(row, number, selected, complete)
     local numberBackground = row and row.unrealQuestQuestNumberBackground
     local numberMark = row and row.unrealQuestQuestNumber
     local statusMark = row and row.unrealQuestQuestMark
-    if not numberBackground or not numberMark
-        or not QuestPOI.SetCircle(numberBackground,
-            selected and QuestPOI.ACTIVE or QuestPOI.MAIN)
-        or not QuestPOI.SetGlyph(numberMark, number, selected, 20) then
+    local numberText = row and row.unrealQuestQuestNumberText
+    local drawn = false
+    if numberBackground and numberMark
+        and QuestPOI.SetCircle(numberBackground,
+            selected and QuestPOI.ACTIVE or QuestPOI.MAIN) then
+        if type(number) == "number" and number > 25 then
+            drawn = QuestPOI.SetNumberText(numberMark, numberText, number, selected)
+        else
+            drawn = QuestPOI.SetGlyph(numberMark, number, selected, 20)
+            Client.HideObject(numberText)
+        end
+    end
+    if not drawn then
+        Client.HideObject(numberText)
         if row then
             row.unrealQuestQuestNumberValue = nil
             row.unrealQuestQuestNumberSelected = nil
@@ -13086,6 +13151,7 @@ function Client.SetTrackerRowQuestMark(row, red, green, blue, texture)
         return false
     end
     Client.HideObject(row.unrealQuestQuestNumber)
+    Client.HideObject(row.unrealQuestQuestNumberText)
     Client.HideObject(row.unrealQuestQuestNumberBackground)
     row.unrealQuestQuestNumberValue = nil
     row.unrealQuestQuestNumberSelected = nil

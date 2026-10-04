@@ -1808,7 +1808,7 @@ for path in toc_files(os.path.join(ADDONS, "unrealQuest", "UnrealQuest.toc")):
 
 check("world data populated", rt.eval("UnrealQuestData ~= nil and UnrealQuestData.quests ~= nil"))
 
-check("namespace created", rt.eval("UnrealQuest ~= nil and UnrealQuest.version == '0.4.0'"))
+check("namespace created", rt.eval("UnrealQuest ~= nil and UnrealQuest.version == '0.4.1'"))
 check("slash command registered", rt.eval("SlashCmdList.UNREALQUEST == nil"),
       "should still be nil before init")
 
@@ -6854,7 +6854,7 @@ rt.execute("""
     table.insert(UQ_TEST_LOG, { "Gold Dust Exchange", 7, nil, nil, nil, nil,
       { { "Gold Dust: 5/10", "item", nil } } })
     UnrealQuest:GetModule('QuestState'):Scan()
-    UQ_TEST_TICK(0.5, 2)
+    UQ_TEST_TICK(0.05, 120)
 """)
 check("quest areas use contour textures over invisible hover targets", rt.eval("""(function()
     local pins = UnrealQuest:GetModule('WorldMapPins')
@@ -6919,6 +6919,36 @@ check("a contour is drawn as distance-gradient pieces of the real hull", rt.eval
         and table.getn(patches) < 120
         and width >= 13 and width <= 18
         and profile.dMin == -1.22 and profile.dMax == 0.94 and profile.size == 256
+end)()"""))
+check("incremental contour rows produce the exact synchronous geometry", rt.eval("""(function()
+    local contours = UnrealQuest:GetModule('AreaContours')
+    local locations = { { x = 31.25, y = 42.5 }, { x = 34.5, y = 44.75 } }
+    local expected = contours:ProfilePatches(locations)
+    local key = 'uqtestincrementalgeometry'
+    contours.patchCache[key] = nil
+    contours.layoutBuilds[key] = nil
+    local build, cached = contours:BeginLayoutBuild(key, locations)
+    if cached or not build then return false end
+    local done, actual = contours:StepLayoutBuild(build, 1)
+    if done then return false end
+    local steps = 1
+    while not done and steps <= contours.GRID do
+        done, actual = contours:StepLayoutBuild(build, 1)
+        steps = steps + 1
+    end
+    if not done or table.getn(actual) ~= table.getn(expected) then return false end
+    local patchIndex = 1
+    while patchIndex <= table.getn(expected) do
+        local valueIndex = 1
+        while valueIndex <= 6 do
+            if actual[patchIndex][valueIndex] ~= expected[patchIndex][valueIndex] then
+                return false
+            end
+            valueIndex = valueIndex + 1
+        end
+        patchIndex = patchIndex + 1
+    end
+    return steps > 1
 end)()"""))
 # The interactive marker is the TOP frame and draws the number; the circle,
 # the hover circle and the glow are mouse-disabled Buttons below it. A
@@ -7007,8 +7037,20 @@ check("quest POI followed state uses the active circle, a dark glyph and the glo
         and marker.unrealQuestGlowLayer.unrealQuestSuppressed == nil
         and marker.unrealQuestHoverLayer.unrealQuestSuppressed == true
 end)()"""))
-check("quest-number atlas refuses values outside 1-25", rt.eval(
-    "UnrealQuest.Client.SetWorldMapQuestNumber(UQ_TEST_QUEST_POI_MARKER, 26, false) == false"))
+check("quest numbers past the atlas are written as text over a transparent glyph", rt.eval("""(function()
+    local client = UnrealQuest.Client
+    local marker = UQ_TEST_QUEST_POI_MARKER
+    if not client.SetWorldMapQuestNumber(marker, 26, false) then return false end
+    local label = marker.unrealQuestLabel
+    local text = label ~= nil and label:GetText() == '26' and label:IsShown() == true
+        and marker.unrealQuestTexture.vertex[4] == 0
+        and marker.unrealQuestCircleLayer.unrealQuestSuppressed == nil
+    if not client.SetWorldMapQuestNumber(marker, 3, false) then return false end
+    return text and label:IsShown() == false
+        and marker.unrealQuestTexture.vertex[4] == 1
+end)()"""))
+check("quest-number badge refuses values below 1", rt.eval(
+    "UnrealQuest.Client.SetWorldMapQuestNumber(UQ_TEST_QUEST_POI_MARKER, 0, false) == false"))
 check("stable map refresh reapplies cached area positions", rt.eval("""(function()
     local pins = UnrealQuest:GetModule('WorldMapPins')
     local area = pins and pins.areaPool[1]
@@ -10728,6 +10770,7 @@ rt.execute("""
     state:Scan()
     UQ_TEST_LOG[acceptedIndex][6] = nil
     state:Scan()
+    UQ_TEST_TICK(0.05, 1)
 """)
 check("a same-title follow-up is tracked automatically", rt.eval("""(function()
     local state = UnrealQuest:GetModule('QuestState')
@@ -10763,6 +10806,7 @@ rt.execute("""
     frame.dirty = true
     frame:Refresh()
     tracker:Track(quest)
+    UQ_TEST_TICK(0.05, 1)
 """)
 check("tracking an existing quest recalculates a shortened tracker height so the quest "
       "is visible", rt.eval("""(function()
@@ -13990,8 +14034,18 @@ check("revealing a quest opens the HUD page that holds its row", rt.eval("""(fun
     tracker.dirty = true
     tracker:Refresh()
     if row() then return false end
+    local originalBuildLines = tracker.BuildLines
+    local builds = 0
+    function tracker:BuildLines()
+        builds = builds + 1
+        return originalBuildLines(self)
+    end
     tracker:RevealQuest(quest)
-    return tracker.hudPage > 1 and row() ~= nil and tracker.hudRevealTitle == nil
+    local deferred = builds == 0
+    UQ_TEST_TICK(0.05, 1)
+    tracker.BuildLines = originalBuildLines
+    return deferred and builds == 1 and tracker.hudPage > 1
+        and row() ~= nil and tracker.hudRevealTitle == nil
 end)()"""))
 rt.execute("""
     UIParent:SetHeight(UQ_TEST_SCREEN_HEIGHT or 768)
@@ -14027,6 +14081,21 @@ check("the followed tracker quest gets the active circle and dark glyph, no glow
     return row.unrealQuestFollowingLabel == nil
         and row.unrealQuestFollowingArrow == nil
         and active(row) and active(UnrealQuestMapTrackerRowquest1)
+end)()"""))
+
+check("a tracker quest number past 25 is written as text on the circle", rt.eval("""(function()
+    local client = UnrealQuest.Client
+    local row = UnrealQuestTrackerRowquest1
+    local text = row and row.unrealQuestQuestNumberText
+    if not text or not client.SetTrackerRowQuestNumber(row, 27, false, false) then
+        return false
+    end
+    local written = text:GetText() == '27' and text:IsShown() == true
+        and row.unrealQuestQuestNumber.vertex[4] == 0
+        and row.unrealQuestQuestNumberBackground:IsShown() == true
+    client.SetTrackerRowQuestNumber(row, 1, true, false)
+    return written and text:IsShown() == false
+        and row.unrealQuestQuestNumber.vertex[4] == 1
 end)()"""))
 
 check("both trackers use followed-quest.tga behind the followed row", rt.eval("""(function()

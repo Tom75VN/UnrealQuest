@@ -231,6 +231,9 @@ TrackerFrame.hudPages = 1
 -- Set by RevealQuest: the HUD's next paged redraw opens the page that holds
 -- this quest's row, then forgets it.
 TrackerFrame.hudRevealTitle = nil
+TrackerFrame.pendingRevealTitle = nil
+TrackerFrame.mapInitialized = false
+TrackerFrame.mapDirty = true
 
 local function Config()
     return UQ:GetModule("Config")
@@ -1792,6 +1795,8 @@ function TrackerFrame:TurnMapPage(delta)
     if self.mapWindow and self.lines then
         self:RedrawWindow(self.mapWindow, self.lines,
             self.lastQuestCount or 0, self.lastCompleted or 0, true)
+        self.mapDirty = false
+        self.mapInitialized = true
     end
     return true
 end
@@ -2035,12 +2040,18 @@ function TrackerFrame:RedrawWindow(window, lines, questCount, completed, mapOwne
     Client.SetObjectSize(window, width, height)
 end
 
-function TrackerFrame:Redraw(lines, questCount, completed)
+function TrackerFrame:Redraw(lines, questCount, completed, drawMap)
     -- Kept for turning the map copy's page without rebuilding the lines.
     self.lastQuestCount = questCount
     self.lastCompleted = completed
     self:RedrawWindow(self.window, lines, questCount, completed, false)
-    self:RedrawWindow(self.mapWindow, lines, questCount, completed, true)
+    if drawMap then
+        self:RedrawWindow(self.mapWindow, lines, questCount, completed, true)
+        self.mapDirty = false
+        self.mapInitialized = true
+    else
+        self.mapDirty = true
+    end
     self.redraws = self.redraws + 1
 end
 
@@ -2061,6 +2072,53 @@ function TrackerFrame:SyncAreaToggle()
     Client.SetTrackerAreaToggle(self.areaToggle, visible, checked)
 end
 
+-- Quest acceptance reaches this through QuestState's listener while the
+-- shared driver is already scanning the log. Keep the exact reveal/layout
+-- behavior, but fold it into the one scheduled tracker refresh instead of
+-- building the full line list here and then building it again in Refresh.
+function TrackerFrame:PreparePendingReveal(lines)
+    local title = self.pendingRevealTitle
+    if not title then
+        return
+    end
+    self.pendingRevealTitle = nil
+
+    local revealIndex = nil
+    local index = 1
+    local total = table.getn(lines)
+    while index <= total do
+        local line = lines[index]
+        if line.quest and line.quest.title == title then
+            revealIndex = index
+        end
+        index = index + 1
+    end
+    if not revealIndex then
+        return
+    end
+
+    local targetHeight = Setting("trackerHeight")
+    if type(targetHeight) == "number" and targetHeight > ROW_AREA_CHROME then
+        local width = Setting("trackerWidth")
+        if type(width) ~= "number" or width < 110 then
+            width = 170
+        end
+        local requiredHeight = HeightThroughLine(
+            lines, revealIndex, self.window, width)
+        if requiredHeight > targetHeight then
+            local config = Config()
+            if config then
+                if requiredHeight >= HudPageHeight(self.window) then
+                    config:Set("trackerHeight", 0)
+                else
+                    config:Set("trackerHeight", requiredHeight)
+                end
+            end
+        end
+    end
+    self.hudRevealTitle = title
+end
+
 -- Rebuilds the line list and redraws only when the rendered content changes.
 function TrackerFrame:Refresh()
     local window = self.window
@@ -2070,6 +2128,8 @@ function TrackerFrame:Refresh()
     if not Setting("trackerEnabled") then
         Client.HideObject(window)
         Client.HideObject(self.mapWindow)
+        self.mapDirty = true
+        self.mapInitialized = false
         return
     end
 
@@ -2077,6 +2137,7 @@ function TrackerFrame:Refresh()
     self:SyncAreaToggle()
 
     local lines, questCount, completed = self:BuildLines()
+    self:PreparePendingReveal(lines)
     local parts = { tostring(questCount), tostring(completed),
         Setting("trackerCollapsed") and "1" or "0", tostring(Setting("trackerWidth")),
         tostring(Setting("trackerHeight")),
@@ -2093,16 +2154,37 @@ function TrackerFrame:Refresh()
         index = index + 1
     end
     local signature = table.concat(parts, "|")
+    -- The map copy receives one initial layout so its first presentation is
+    -- never blank. Afterwards, model changes while the game UI is visible
+    -- update only the HUD copy; the map copy catches up from the same lines on
+    -- the first tracker tick after the fullscreen map hides the game UI.
+    local mapPresented = Client.IsGameUIHidden()
+    if mapPresented ~= true then
+        local trackerVisible = Client.IsObjectVisible(self.mapWindow)
+        if trackerVisible ~= nil then
+            mapPresented = trackerVisible
+        end
+    end
+    local drawMap = not self.mapInitialized or mapPresented ~= false
 
     if not self.dirty and signature == self.signature then
+        if drawMap and self.mapDirty then
+            self:RedrawWindow(self.mapWindow, lines,
+                questCount, completed, true)
+            self.mapDirty = false
+            self.mapInitialized = true
+            Client.ShowObject(self.mapWindow)
+        end
         return
     end
     self.dirty = false
     self.signature = signature
     self.lines = lines
-    self:Redraw(lines, questCount, completed)
+    self:Redraw(lines, questCount, completed, drawMap)
     Client.ShowObject(window)
-    Client.ShowObject(self.mapWindow)
+    if drawMap then
+        Client.ShowObject(self.mapWindow)
+    end
 end
 
 -- Refreshes after Tracker clears the quest and zone folds for a newly tracked
@@ -2115,45 +2197,14 @@ function TrackerFrame:RevealQuest(quest)
     if not quest or not quest.title then
         return false
     end
-    local lines = self:BuildLines()
-    local revealIndex = nil
-    local index = 1
-    local total = table.getn(lines)
-    while index <= total do
-        local line = lines[index]
-        if line.quest and line.quest.title == quest.title then
-            -- Objective lines carry the same quest, so retaining the last
-            -- match reveals the whole block rather than only its title row.
-            revealIndex = index
-        end
-        index = index + 1
-    end
-    if not revealIndex then
-        return false
-    end
-
-    local targetHeight = Setting("trackerHeight")
-    if type(targetHeight) == "number" and targetHeight > ROW_AREA_CHROME then
-        local width = Setting("trackerWidth")
-        if type(width) ~= "number" or width < 110 then
-            width = 170
-        end
-        local requiredHeight = HeightThroughLine(lines, revealIndex, self.window, width)
-        if requiredHeight > targetHeight then
-            local config = Config()
-            if config then
-                if requiredHeight >= HudPageHeight(self.window) then
-                    config:Set("trackerHeight", 0)
-                else
-                    config:Set("trackerHeight", requiredHeight)
-                end
-            end
-        end
-    end
-
-    self.hudRevealTitle = quest.title
+    self.pendingRevealTitle = quest.title
     self.dirty = true
-    self:Refresh()
+    local driver = UQ:GetModule("Driver")
+    if driver then
+        driver:Wake("tracker.frame")
+    else
+        self:Refresh()
+    end
     return true
 end
 
@@ -2554,6 +2605,8 @@ function TrackerFrame:SetShown(shown)
     else
         Client.HideObject(self.window)
         Client.HideObject(self.mapWindow)
+        self.mapDirty = true
+        self.mapInitialized = false
     end
     self:ApplyNativeWatchVisibility()
     return true

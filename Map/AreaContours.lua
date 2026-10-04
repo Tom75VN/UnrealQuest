@@ -27,14 +27,15 @@ local PROFILE_D_MAX = 0.94
 AreaContours.PROFILE = {
     size = PROFILE_SIZE, dMin = PROFILE_D_MIN, dMax = PROFILE_D_MAX,
 }
--- Contour geometry is the one expensive step, so it is never computed twice
--- for the same layout (a reopened map, or a zone revisited) and never all in
--- one frame: a missing layout is queued and built by the shared driver within
--- a per-tick time budget, its group staying hidden until then.
-local BUILD_BUDGET = 0.006
+-- GetTime does not advance inside one frame on this client, so elapsed-time
+-- budgets cannot split this work. Advance an exact number of 800-cell grid
+-- rows per driver tick instead; the finished geometry is byte-for-byte the
+-- same as the synchronous path.
+local BUILD_ROWS_PER_TICK = 8
 local PATCH_CACHE_LIMIT = 64
 AreaContours.patchCache = {}
 AreaContours.patchCacheCount = 0
+AreaContours.layoutBuilds = {}
 AreaContours.buildQueue = {}
 AreaContours.groups = {}
 AreaContours.groupPool = {}
@@ -512,13 +513,13 @@ end
 -- Returns { left, top, right, bottom, distanceLeft, distanceRight } patches
 -- in grid cells. The texture spans distanceLeft..distanceRight across its
 -- width.
-function AreaContours:ProfilePatches(locations, padding)
+local function BeginProfileBuild(self, locations, padding)
     local patches = {}
     local reach = -PROFILE_D_MIN + 0.01
     local polygons = self:AreaPolygons(locations, padding, reach)
     local polygonTotal = table.getn(polygons)
     if polygonTotal == 0 then
-        return patches
+        return { patches = patches, done = true }
     end
     local minY, maxY = nil, nil
     local index = 1
@@ -530,13 +531,32 @@ function AreaContours:ProfilePatches(locations, padding)
     end
     local firstRow = math.max(0, math.floor((minY - reach) / Y_SCALE - 0.5))
     local lastRow = math.min(GRID - 1, math.ceil((maxY + reach) / Y_SCALE - 0.5))
-    local active = {}
-    local row = firstRow
-    while row <= lastRow do
+    return {
+        patches = patches,
+        reach = reach,
+        polygons = polygons,
+        polygonTotal = polygonTotal,
+        active = {},
+        row = firstRow,
+        lastRow = lastRow,
+        done = false,
+    }
+end
+
+local function StepProfileBuild(build, rowBudget)
+    if build.done then
+        return true, build.patches
+    end
+    local processed = 0
+    while build.row <= build.lastRow and processed < rowBudget do
+        local row = build.row
+        local reach = build.reach
+        local polygons = build.polygons
+        local polygonTotal = build.polygonTotal
         local y = (row + 0.5) * Y_SCALE
         local lefts, rights, nears = {}, {}, {}
         local bandRanges, cellRanges = {}, {}
-        index = 1
+        local index = 1
         while index <= polygonTotal do
             local near = polygons[index].rows[row]
             nears[index] = near
@@ -614,20 +634,32 @@ function AreaContours:ProfilePatches(locations, padding)
             local piece = pieces[pieceIndex]
             local key = piece[1] .. ":" .. piece[2] .. ":"
                 .. math.floor(piece[3] * 1000 + 0.5) .. ":" .. math.floor(piece[4] * 1000 + 0.5)
-            local patch = active[key]
+            local patch = build.active[key]
             if patch then
                 patch[4] = row + 1
             else
                 patch = { piece[1], row, piece[2], row + 1, piece[3], piece[4] }
-                table.insert(patches, patch)
+                table.insert(build.patches, patch)
             end
             nextActive[key] = patch
             pieceIndex = pieceIndex + 1
         end
-        active = nextActive
-        row = row + 1
+        build.active = nextActive
+        build.row = row + 1
+        processed = processed + 1
     end
-    return patches
+    if build.row > build.lastRow then
+        build.done = true
+    end
+    return build.done, build.patches
+end
+
+function AreaContours:ProfilePatches(locations, padding)
+    local build = BeginProfileBuild(self, locations, padding)
+    while not build.done do
+        StepProfileBuild(build, GRID)
+    end
+    return build.patches
 end
 
 local function LayoutKey(quest, areaId, locations)
@@ -851,22 +883,57 @@ function AreaContours:DrawQuest(quest, locations, areaId, report, mapContext,
     return failures
 end
 
--- Builds one queued group: its geometry (then cached), its records and its
--- textures. The group appears as soon as it is placed.
-function AreaContours:BuildPending(entry)
+local function StoreLayout(self, key, patches)
+    if self.patchCache[key] then
+        return self.patchCache[key]
+    end
+    if self.patchCacheCount >= PATCH_CACHE_LIMIT then
+        self.patchCache = {}
+        self.patchCacheCount = 0
+    end
+    self.patchCache[key] = patches
+    self.patchCacheCount = self.patchCacheCount + 1
+    return patches
+end
+
+-- One in-progress build is shared by the world map and minimap. Both may ask
+-- for the same newly accepted quest before either surface has cached it.
+function AreaContours:BeginLayoutBuild(key, ordered)
+    local cached = self.patchCache[key]
+    if cached then
+        return nil, cached
+    end
+    local build = self.layoutBuilds[key]
+    if not build then
+        build = BeginProfileBuild(self, ordered, HULL_PADDING)
+        build.key = key
+        self.layoutBuilds[key] = build
+    end
+    return build, nil
+end
+
+function AreaContours:StepLayoutBuild(build, rowBudget)
+    if not build then
+        return false, nil
+    end
+    local cached = self.patchCache[build.key]
+    if cached then
+        return true, cached
+    end
+    local done, patches = StepProfileBuild(
+        build, rowBudget or BUILD_ROWS_PER_TICK)
+    if done then
+        self.layoutBuilds[build.key] = nil
+        patches = StoreLayout(self, build.key, patches)
+        return true, patches
+    end
+    return false, nil
+end
+
+local function FinishPending(entry, patches)
     local pending = entry.pending
     if not pending then
         return 0
-    end
-    local patches = self.patchCache[pending.key]
-    if not patches then
-        patches = self:ProfilePatches(pending.locations, HULL_PADDING)
-        if self.patchCacheCount >= PATCH_CACHE_LIMIT then
-            self.patchCache = {}
-            self.patchCacheCount = 0
-        end
-        self.patchCache[pending.key] = patches
-        self.patchCacheCount = self.patchCacheCount + 1
     end
     entry.patches = BuildPatchRecords(
         pending.mapContext, pending.areaId, pending.report, patches)
@@ -874,19 +941,54 @@ function AreaContours:BuildPending(entry)
     return ApplyEntry(entry)
 end
 
+-- Synchronous fallback for an environment with no shared driver.
+function AreaContours:BuildPending(entry)
+    local pending = entry.pending
+    if not pending then
+        return 0
+    end
+    return FinishPending(entry,
+        self:BuildLayout(pending.key, pending.locations))
+end
+
+function AreaContours:StepPending(entry)
+    local pending = entry.pending
+    if not pending then
+        return true, 0
+    end
+    local patches = self.patchCache[pending.key]
+    if not patches then
+        local build = pending.build
+        if not build then
+            build, patches = self:BeginLayoutBuild(
+                pending.key, pending.locations)
+            pending.build = build
+        end
+        if not patches then
+            local done
+            done, patches = self:StepLayoutBuild(
+                build, BUILD_ROWS_PER_TICK)
+            if not done then
+                return false, 0
+            end
+        end
+    end
+    return true, FinishPending(entry, patches)
+end
+
 local function RunBuildQueue()
     local contours = AreaContours
-    local started = Client.Now()
     local built = 0
-    while table.getn(contours.buildQueue) > 0 do
+    if table.getn(contours.buildQueue) > 0 then
         local entry = table.remove(contours.buildQueue, 1)
         entry.queued = nil
         if entry.pending then
-            contours:BuildPending(entry)
-            built = built + 1
-            local now = Client.Now()
-            if not started or not now or now - started >= BUILD_BUDGET then
-                break
+            local done = contours:StepPending(entry)
+            if done then
+                built = 1
+            else
+                entry.queued = true
+                table.insert(contours.buildQueue, entry)
             end
         end
     end
@@ -1020,6 +1122,7 @@ end
 -- minimap. Both read one geometry cache, so a quest area is never computed
 -- twice for the two maps.
 AreaContours.GRID = GRID
+AreaContours.BUILD_ROWS_PER_TICK = BUILD_ROWS_PER_TICK
 
 -- The cached grid patches of one quest layout, or nil plus what BuildLayout
 -- needs to compute them.
@@ -1034,13 +1137,15 @@ function AreaContours:BuildLayout(key, ordered)
     if patches then
         return patches
     end
-    patches = self:ProfilePatches(ordered, HULL_PADDING)
-    if self.patchCacheCount >= PATCH_CACHE_LIMIT then
-        self.patchCache = {}
-        self.patchCacheCount = 0
+    local build
+    build, patches = self:BeginLayoutBuild(key, ordered)
+    while not patches do
+        local done
+        done, patches = self:StepLayoutBuild(build, GRID)
+        if not done then
+            patches = nil
+        end
     end
-    self.patchCache[key] = patches
-    self.patchCacheCount = self.patchCacheCount + 1
     return patches
 end
 

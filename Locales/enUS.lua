@@ -476,7 +476,7 @@ UQ.RegisterLocale("enUS", {
     ["NPC_CATEGORY_VENDOR"] = "Vendor",
     ["NPC_DETAIL_LEVEL"] = "(level %s)",
     ["NPC_DETAIL_SKILL"] = "(skill %s)",
-    ["NPC_LOOT_HINT"] = "Click to show loot",
+    ["NPC_LOOT_HINT"] = "<Click to show loot>",
     ["NPC_LOOT_LOADING"] = "Loading %s more items...",
     ["NPC_LOOT_NONE"] = "No uncommon or better loot",
     ["NPC_LOOT_PAGE"] = "%s / %s",
