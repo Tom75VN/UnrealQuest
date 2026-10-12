@@ -121,8 +121,8 @@ print("arrow source content %dx%d; 64 frames across %d atlases"
 for atlas_index, arrow in enumerate(arrows):
     name = "NavigationArrowFrames%d.tga" % atlas_index
     print("%s %dx%d %d bytes" % ((name,) + write_tga_rle(
-        arrow, os.path.join(MEDIA, name))))
+        arrow, os.path.join(MEDIA, "Textures", "HUD", name))))
 
 arc = build_arc()
 print("NavigationArc.tga %dx%d %d bytes"
-      % write_tga(arc, os.path.join(MEDIA, "NavigationArc.tga")))
+      % write_tga(arc, os.path.join(MEDIA, "Textures", "HUD", "NavigationArc.tga")))

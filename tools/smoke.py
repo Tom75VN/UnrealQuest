@@ -7,7 +7,8 @@ nothing about the actual client and is not runtime evidence.
 """
 import io, lupa, os, sys
 import make_area_contour_textures as area_contour_assets
-from PIL import Image
+import mend_dialogue_rail
+from PIL import Image, ImageStat
 
 ADDONS = r"C:\Games\Azeroth Launcher\Azeroth\Binaries\Win64\Games\Emberveil\live\Azeroth\Interface\AddOns"
 
@@ -179,6 +180,16 @@ function frameMeta:SetBackdropColor(r, g, b, a) self.bgColor = { r, g, b, a } en
 function frameMeta:SetBackdropBorderColor(r, g, b, a) self.edgeColor = { r, g, b, a } end
 function frameMeta:GetChildren() return unpack(self.children or {}) end
 function frameMeta:GetNumChildren() return table.getn(self.children or {}) end
+function frameMeta:SetScrollChild(child) self.scrollChild = child end
+function frameMeta:GetVerticalScroll() return self.verticalScroll or 0 end
+function frameMeta:SetVerticalScroll(value) self.verticalScroll = value end
+function frameMeta:GetVerticalScrollRange()
+    local childHeight = self.scrollChild and self.scrollChild:GetHeight() or 0
+    local range = childHeight - self:GetHeight()
+    return range > 0 and range or 0
+end
+function frameMeta:UpdateScrollChildRect() self.scrollUpdates = (self.scrollUpdates or 0) + 1 end
+function frameMeta:EnableMouseWheel(value) self.mouseWheel = value and true or false end
 function frameMeta:GetName() return self.name end
 -- Regions are the FontStrings and Textures a frame draws itself, returned as
 -- varargs. The real client's GetNumRegions is recorded as always answering 0,
@@ -275,6 +286,7 @@ end
 function textureMeta:SetVertexColor(red, green, blue, alpha)
     self.vertex = { red, green, blue, alpha }
 end
+function textureMeta:SetBlendMode(mode) self.blendMode = mode end
 -- Both SetTexCoord forms are recorded. The navigator deliberately uses only
 -- the four-argument form to select a pre-rotated atlas cell: the live client
 -- accepted the eight-argument form but distorted the image instead of turning
@@ -440,6 +452,10 @@ function CreateFrame(kind, name, parent)
         frame.SetMinMaxValues = function(self, minimum, maximum)
             self.minimum, self.maximum = minimum, maximum
         end
+    end
+    if kind == "PlayerModel" then
+        frame.SetUnit = function(self, unit) self.unit = unit end
+        frame.SetCamera = function(self, camera) self.camera = camera end
     end
     frames[#frames+1] = frame
     if name then env[name] = frame end
@@ -738,6 +754,8 @@ end
 -- the item and money frames are modelled on the same prefixes.
 QuestFrame = CreateFrame("Frame", "QuestFrame", UIParent)
 QuestFrame:Hide()
+GossipFrame = CreateFrame("Frame", "GossipFrame", UIParent)
+GossipFrame:Hide()
 for _, panel in ipairs({ "QuestDetail", "QuestReward" }) do
     local scroll = CreateFrame("ScrollFrame", panel .. "ScrollFrame", QuestFrame)
     local child = CreateFrame("Frame", panel .. "ScrollChildFrame", scroll)
@@ -833,6 +851,47 @@ function GetTitleText() return UQ_TEST_QUEST_TITLE end
 function GetQuestText() return UQ_TEST_QUEST_DETAIL_TEXT end
 function GetObjectiveText() return UQ_TEST_QUEST_OBJECTIVE_TEXT end
 function GetRewardText() return UQ_TEST_QUEST_REWARD_TEXT end
+UQ_TEST_QUEST_PROGRESS_TEXT = ""
+UQ_TEST_QUEST_GREETING_TEXT = ""
+UQ_TEST_GOSSIP_TEXT = ""
+UQ_TEST_GOSSIP_PROBABILISTIC = false
+UQ_TEST_GOSSIP_READS = 0
+UQ_TEST_GOSSIP_OPTIONS = {}
+UQ_TEST_GOSSIP_AVAILABLE = {}
+UQ_TEST_GOSSIP_ACTIVE = {}
+UQ_TEST_QUEST_ITEMS = 0
+UQ_TEST_QUEST_COMPLETABLE = false
+UQ_TEST_DIALOGUE_ACTION = nil
+function GetProgressText() return UQ_TEST_QUEST_PROGRESS_TEXT end
+function GetGreetingText() return UQ_TEST_QUEST_GREETING_TEXT end
+function GetGossipText()
+    if UQ_TEST_GOSSIP_PROBABILISTIC then
+        UQ_TEST_GOSSIP_READS = UQ_TEST_GOSSIP_READS + 1
+        return 'Greeting ' .. tostring(UQ_TEST_GOSSIP_READS)
+    end
+    return UQ_TEST_GOSSIP_TEXT
+end
+function GetGossipOptions() return unpack(UQ_TEST_GOSSIP_OPTIONS) end
+function GetGossipAvailableQuests() return unpack(UQ_TEST_GOSSIP_AVAILABLE) end
+function GetGossipActiveQuests() return unpack(UQ_TEST_GOSSIP_ACTIVE) end
+function GetNumActiveQuests() return 0 end
+function GetNumAvailableQuests() return 0 end
+function GetNumQuestItems() return UQ_TEST_QUEST_ITEMS end
+function GetRewardMoney() return UQ_TEST_QUEST_REWARD_MONEY or 0 end
+function IsQuestCompletable() return UQ_TEST_QUEST_COMPLETABLE end
+function AcceptQuest() UQ_TEST_DIALOGUE_ACTION = "accept" end
+function DeclineQuest() UQ_TEST_DIALOGUE_ACTION = "decline" end
+function CompleteQuest() UQ_TEST_DIALOGUE_ACTION = "progress" end
+function GetQuestReward(index) UQ_TEST_DIALOGUE_ACTION = "reward"; UQ_TEST_REWARDED = index end
+function CloseQuest() UQ_TEST_DIALOGUE_ACTION = "closeQuest" end
+function CloseGossip() UQ_TEST_DIALOGUE_ACTION = "closeGossip" end
+-- The named Font each dialogue label is put on (Client.ScaleQuestDialogueFont),
+-- so Minimal's card can measure its text (Client.FitQuestDialogueCardWidth).
+function CreateFont(name)
+    local font = { name = name }
+    function font:SetFont(path, size) self.path, self.size = path, size end
+    return font
+end
 QuestWatchFrame = CreateFrame("Frame", "QuestWatchFrame", UIParent)
 UQ_TEST_UIPANELS = 0
 function ShowUIPanel(frame)
@@ -874,8 +933,10 @@ function IsAltKeyDown() return UQ_TEST_ALT_DOWN end
 -- Screen ---------------------------------------------------------------------
 -- The waypoint converts a bearing offset into a screen offset, so the mock
 -- needs a real screen. 1600x900 keeps the half-width a round 800.
-function GetScreenWidth() return 1600 end
-function GetScreenHeight() return 900 end
+UQ_TEST_SCREEN_WIDTH = 1600
+UQ_TEST_SCREEN_HEIGHT = 900
+function GetScreenWidth() return UQ_TEST_SCREEN_WIDTH end
+function GetScreenHeight() return UQ_TEST_SCREEN_HEIGHT end
 
 UQ_TEST_CURSOR_X = -1
 UQ_TEST_CURSOR_Y = -1
@@ -1111,6 +1172,8 @@ function UnitName(unit)
     return "Tester"
 end
 function UnitExists(unit) return UnitName(unit) ~= nil end
+UQ_TEST_HIDDEN_UNITS = {}
+function UnitIsVisible(unit) return UnitExists(unit) and not UQ_TEST_HIDDEN_UNITS[unit] end
 function UnitIsPlayer(unit) return UQ_TEST_PLAYER_UNITS[unit] and true or false end
 function UnitClassification(unit)
     if unit == "target" then return UQ_TEST_TARGET_CLASSIFICATION end
@@ -1581,10 +1644,24 @@ def check(label, condition, detail=""):
         print(f"  FAIL  {label}  {detail}")
 
 
+settings_logo_path = os.path.join(
+    ADDONS, "unrealQuest", "media", "Textures", "Settings", "uQ_logo.tga")
+settings_logo_header = b""
+if os.path.isfile(settings_logo_path):
+    with open(settings_logo_path, "rb") as settings_logo_file:
+        settings_logo_header = settings_logo_file.read(18)
+check("the settings logo ships as a 128px 32-bit TGA",
+      len(settings_logo_header) == 18
+      and settings_logo_header[2] == 2
+      and int.from_bytes(settings_logo_header[12:14], "little") == 128
+      and int.from_bytes(settings_logo_header[14:16], "little") == 128
+      and settings_logo_header[16] == 32
+      and settings_logo_header[17] == 8)
+
 arrow_atlas_headers = []
 for arrow_atlas_index in range(4):
     arrow_atlas_path = os.path.join(
-        ADDONS, "unrealQuest", "media",
+        ADDONS, "unrealQuest", "media", "Textures", "HUD",
         f"NavigationArrowFrames{arrow_atlas_index}.tga")
     with open(arrow_atlas_path, "rb") as arrow_atlas_file:
         arrow_atlas_headers.append(arrow_atlas_file.read(18))
@@ -1604,7 +1681,7 @@ for area_contour_asset in (
         "AreaContourProfile.tga",
         "AreaContourProfileNeutral.tga"):
     area_contour_path = os.path.join(
-        ADDONS, "unrealQuest", "media", area_contour_asset)
+        ADDONS, "unrealQuest", "media", "Textures", "Map", "Contours", area_contour_asset)
     with open(area_contour_path, "rb") as area_contour_file:
         area_contour_headers.append(area_contour_file.read(18))
 check("both area-contour profile strips use the proven RLE TGA encoding",
@@ -1627,7 +1704,7 @@ check("area contours preserve the exact Forever quest-blob brush profile",
           for index, alpha in enumerate(
               area_contour_assets.FOREVER_BORDER_ALPHA_RAMP)))
 area_contour_image = Image.open(os.path.join(
-    ADDONS, "unrealQuest", "media", "AreaContourProfile.tga")).convert("RGBA")
+    ADDONS, "unrealQuest", "media", "Textures", "Map", "Contours", "AreaContourProfile.tga")).convert("RGBA")
 check("the profile's fill end carries the Forever fill colour and native alpha",
       area_contour_image.getpixel((255, 1)) == (57, 109, 255, 128)
       and area_contour_image.getpixel((0, 1))[3] == 0)
@@ -1649,7 +1726,7 @@ check("one profile carries both the outer glow and the inner shadow",
 # at an evenly spaced distance, and opacity rises from the outer glow inwards.
 for contour_name in ("AreaContourProfile.tga", "AreaContourProfileNeutral.tga"):
     contour_strip = Image.open(os.path.join(
-        ADDONS, "unrealQuest", "media", contour_name)).convert("RGBA")
+        ADDONS, "unrealQuest", "media", "Textures", "Map", "Contours", contour_name)).convert("RGBA")
     contour_columns_flat = all(
         len(set(contour_strip.crop((texel, 0, texel + 1, 4)).getdata())) == 1
         for texel in range(256))
@@ -1660,8 +1737,10 @@ for contour_name in ("AreaContourProfile.tga", "AreaContourProfileNeutral.tga"):
           # Transparent texels keep the glow colour, so filtering never darkens.
           and contour_strip.getpixel((0, 1))[:3] == contour_strip.getpixel((70, 1))[:3])
 
+# The imported atlas is a generator input, kept outside the addon folder.
 quest_number_path = os.path.join(
-    ADDONS, "unrealQuest", "media", "UIQuestPOINumberIcons.tga")
+    os.environ.get("UQ_SOURCE_ART", "D:/Development/unrealQuest_Data/#backup/unrealQuest-media"),
+    "UIQuestPOINumberIcons.tga")
 with open(quest_number_path, "rb") as quest_number_file:
     quest_number_header = quest_number_file.read(18)
 check("the imported quest-number atlas uses the proven RLE TGA encoding",
@@ -1683,7 +1762,7 @@ check("the quest-number atlas preserves Forever's separate POI layers",
           == (2, 2, 30, 30))
 
 def read_tga_header(name):
-    with open(os.path.join(ADDONS, "unrealQuest", "media", name), "rb") as handle:
+    with open(os.path.join(ADDONS, "unrealQuest", "media", "Textures", "Map", "Pins", name), "rb") as handle:
         return handle.read(18)
 
 quest_poi_circle_header = read_tga_header("questpoi-v2.tga")
@@ -1692,14 +1771,14 @@ check("the quest-area POI textures use the proven power-of-two RLE TGA encoding"
       all(len(header) == 18 and header[2] == 10
           and header[16] == 32 and header[17] == 8
           for header in (quest_poi_circle_header, quest_poi_number_header))
-      and int.from_bytes(quest_poi_circle_header[12:14], "little") == 256
+      and int.from_bytes(quest_poi_circle_header[12:14], "little") == 512
       and int.from_bytes(quest_poi_circle_header[14:16], "little") == 64
       and int.from_bytes(quest_poi_number_header[12:14], "little") == 512
       and int.from_bytes(quest_poi_number_header[14:16], "little") == 512)
 quest_poi_circles = Image.open(os.path.join(
-    ADDONS, "unrealQuest", "media", "questpoi-v2.tga")).convert("RGBA")
+    ADDONS, "unrealQuest", "media", "Textures", "Map", "Pins", "questpoi-v2.tga")).convert("RGBA")
 quest_poi_numbers = Image.open(os.path.join(
-    ADDONS, "unrealQuest", "media", "QuestPOINumbers.tga")).convert("RGBA")
+    ADDONS, "unrealQuest", "media", "Textures", "Map", "Pins", "QuestPOINumbers.tga")).convert("RGBA")
 check("questpoi-v2.tga keeps main, hover, active and the transparent glow in 64px cells",
       all(quest_poi_circles.crop((cell * 64, 0, cell * 64 + 64, 64))
           .getchannel("A").getbbox() is not None for cell in range(4))
@@ -1710,6 +1789,13 @@ check("quest-area numbers are gold on main/hover and dark on the active circle",
       quest_poi_numbers.getpixel((32, 32 + 256))[:3] == (0xF8, 0xC6, 0x62)
       and quest_poi_numbers.getpixel((32, 32))[:3] == (0x2C, 0x15, 0x01)
       and quest_poi_numbers.getpixel((32, 32))[3] == 255)
+check("the completed quest circle has an emerald centre and transparent corners",
+      quest_poi_circles.getpixel((288, 32))[1]
+          > quest_poi_circles.getpixel((288, 32))[0]
+      and quest_poi_circles.getpixel((288, 32))[1]
+          > quest_poi_circles.getpixel((288, 32))[2]
+      and quest_poi_circles.getpixel((288, 32))[3] >= 250
+      and quest_poi_circles.getpixel((256, 0))[3] == 0)
 # Twice the source's definition, same layout: glyph 1 keeps its place and
 # proportions within two texels of the doubled source bounds (the sharpened
 # edge drops the source's faintest antialiasing).
@@ -1729,7 +1815,7 @@ quest_log_asset_sizes = {
 quest_log_assets_valid = True
 for quest_log_asset, expected_size in quest_log_asset_sizes.items():
     quest_log_path = os.path.join(
-        ADDONS, "unrealQuest", "media", "QuestLog", quest_log_asset)
+        ADDONS, "unrealQuest", "media", "Textures", "QuestLog", quest_log_asset)
     if not os.path.isfile(quest_log_path):
         quest_log_assets_valid = False
         break
@@ -1750,7 +1836,7 @@ check("the imported Quest Log pages keep their source canvases and RLE form",
 
 eql3_leftovers = [
     name for name in os.listdir(
-        os.path.join(ADDONS, "unrealQuest", "media", "QuestLog"))
+        os.path.join(ADDONS, "unrealQuest", "media", "Textures", "QuestLog"))
     if name.find("EQL3") == 0
 ]
 check("the replaced EQL3 parchment set is no longer shipped",
@@ -1758,7 +1844,7 @@ check("the replaced EQL3 parchment set is no longer shipped",
       "the Dragonflight spread")
 
 followed_circle_path = os.path.join(
-    ADDONS, "unrealQuest", "media", "quest-circle.tga")
+    ADDONS, "unrealQuest", "media", "Textures", "Map", "Pins", "quest-circle.tga")
 followed_circle_header = b""
 followed_circle_bytes = b""
 if os.path.isfile(followed_circle_path):
@@ -1778,7 +1864,7 @@ check("the followed-quest circle retains transparent and soft-glow alpha",
       and len(followed_circle_alphas) > 16)
 
 followed_dot_border_path = os.path.join(
-    ADDONS, "unrealQuest", "media", "FollowedQuestDotBorder.tga")
+    ADDONS, "unrealQuest", "media", "Textures", "Map", "Pins", "FollowedQuestDotBorder.tga")
 followed_dot_border_header = b""
 if os.path.isfile(followed_dot_border_path):
     with open(followed_dot_border_path, "rb") as followed_dot_border_file:
@@ -1801,6 +1887,429 @@ with open(world_map_pins_path, "r", encoding="utf-8") as world_map_pins_file:
 check("the supplied circle is referenced only by the two turn-in ring pools",
       world_map_pins_source.count("Client.FOLLOWED_QUEST_CIRCLE_TEXTURE") == 2)
 
+cinematic_source_panel = Image.open(os.path.join(
+    ADDONS, "unrealQuest", "media", "Textures", "Dialogues", "#src",
+    "Ornate Empty Parchment UI Frame.png")).convert("RGBA")
+cinematic_source_bounds = cinematic_source_panel.getchannel("A").point(
+    lambda value: 255 if value > 24 else 0).getbbox()
+cinematic_source_panel = cinematic_source_panel.crop(cinematic_source_bounds)
+cinematic_source_center = cinematic_source_panel.crop((
+    170, 170, cinematic_source_panel.width - 170,
+    cinematic_source_panel.height - 170)).convert("L").resize((512, 256))
+cinematic_reward_center = Image.open(os.path.join(
+    ADDONS, "unrealQuest", "media", "Textures", "Dialogues", "HordeLight",
+    "UQ_HordeLight_Panel_C.tga")).convert("L")
+cinematic_source_stats = ImageStat.Stat(cinematic_source_center)
+cinematic_reward_stats = ImageStat.Stat(cinematic_reward_center)
+check("the cinematic reward parchment is darker and more contrasted than its source",
+      cinematic_reward_stats.mean[0] < cinematic_source_stats.mean[0] - 15
+      and cinematic_reward_stats.stddev[0] > cinematic_source_stats.stddev[0])
+cinematic_flag_normal = Image.open(os.path.join(
+    ADDONS, "unrealQuest", "media", "Textures", "Dialogues", "HordeLight",
+    "UQ_HordeLight_Flag.tga")).convert("RGBA")
+cinematic_flag_selected = Image.open(os.path.join(
+    ADDONS, "unrealQuest", "media", "Textures", "Dialogues", "HordeLight",
+    "UQ_HordeLight_Flag_Selected.tga")).convert("RGBA")
+check("the cinematic flag rims keep transparent centres and a double gold selected state",
+      cinematic_flag_normal.size == (64, 64)
+      and cinematic_flag_selected.size == (64, 64)
+      and cinematic_flag_normal.getpixel((0, 0))[3] == 0
+      and cinematic_flag_selected.getpixel((0, 0))[3] == 0
+      and cinematic_flag_normal.getpixel((32, 32))[3] == 0
+      and cinematic_flag_selected.getpixel((32, 32))[3] == 0
+      and cinematic_flag_selected.getpixel((4, 32))[:3] == (238, 171, 28)
+      and cinematic_flag_selected.getpixel((8, 32))[:3] == (255, 228, 119)
+      and cinematic_flag_normal.getpixel((4, 32))[:3] == (58, 27, 13))
+
+cinematic_texture_dir = os.path.join(
+    ADDONS, "unrealQuest", "media", "Textures", "Dialogues", "HordeLight")
+alliance_texture_dir = os.path.join(
+    ADDONS, "unrealQuest", "media", "Textures", "Dialogues", "AllianceLight")
+cinematic_textures = sorted(name for name in os.listdir(cinematic_texture_dir)
+                            if name.startswith("UQ_HordeLight_") and name.endswith(".tga"))
+alliance_textures = sorted(name for name in os.listdir(alliance_texture_dir)
+                           if name.startswith("UQ_AllianceLight_") and name.endswith(".tga"))
+alliance_extras = ["UQ_AllianceLight_Action_Button.tga",
+                   "UQ_AllianceLight_Action_Button_Hover.tga"]
+expected_alliance = sorted(name.replace("UQ_HordeLight_", "UQ_AllianceLight_", 1)
+                           for name in cinematic_textures) + alliance_extras
+expected_alliance.sort()
+alliance_reward_masters = {
+    "UQ_HordeLight_Plate.tga": "Alliance_Reward_Plate.png",
+    "UQ_HordeLight_Plate_Selected.tga": "Alliance_Reward_Plate_Selected.png",
+}
+alliance_geometry_ok = alliance_textures == expected_alliance
+for alliance_name in alliance_textures:
+    if alliance_name in alliance_extras:
+        continue
+    cinematic_name = alliance_name.replace("UQ_AllianceLight_", "UQ_HordeLight_", 1)
+    cinematic_image = Image.open(os.path.join(cinematic_texture_dir, cinematic_name)).convert("RGBA")
+    alliance_path = os.path.join(alliance_texture_dir, alliance_name)
+    alliance_image = Image.open(alliance_path).convert("RGBA")
+    reward_master_name = alliance_reward_masters.get(cinematic_name)
+    if reward_master_name:
+        reward_master = Image.open(os.path.join(
+            ADDONS, "unrealQuest", "media", "Textures", "Dialogues", "#src",
+            "AllianceLight", reward_master_name)).convert("RGBA")
+        expected_pixels = reward_master.resize(
+            cinematic_image.size, Image.LANCZOS).tobytes()
+        pixels_ok = alliance_image.tobytes() == expected_pixels
+    else:
+        alliance_alpha = alliance_image.getchannel("A")
+        cinematic_alpha = cinematic_image.getchannel("A")
+        # The quest card's rails are mended per theme (mend_dialogue_rail.py)
+        # from the other rail, whose torn edge differs; outside those
+        # stretches the geometry must still match.
+        tile = cinematic_name[len("UQ_HordeLight_CardTall_"):-len(".tga")]
+        if cinematic_name.startswith("UQ_HordeLight_CardTall_"):
+            tile_left = 512 if tile in ("TR", "BR") else 0
+            tile_top = 256 if tile in ("BL", "BR") else 0
+            for top, bottom, side in (mend_dialogue_rail.ALLIANCE_MENDS
+                                      + mend_dialogue_rail.HORDE_LIGHT_MENDS):
+                left = 0 if side == "left" else 1024 - mend_dialogue_rail.WIDTH
+                box = (left - tile_left, top - tile_top,
+                       left + mend_dialogue_rail.WIDTH - tile_left, bottom - tile_top)
+                alliance_alpha.paste(0, box)
+                cinematic_alpha.paste(0, box)
+        pixels_ok = alliance_alpha.tobytes() == cinematic_alpha.tobytes()
+    with open(alliance_path, "rb") as handle:
+        header = handle.read(18)
+    alliance_geometry_ok = (alliance_geometry_ok
+                            and alliance_image.size == cinematic_image.size
+                            and pixels_ok
+                            and header[2] == 10 and header[16] == 32 and header[17] == 8)
+check("the Alliance theme mirrors every cinematic texture with proven geometry and encoding",
+      len(alliance_textures) == len(cinematic_textures) + len(alliance_extras)
+      and alliance_geometry_ok)
+alliance_action_path = os.path.join(
+    alliance_texture_dir, "UQ_AllianceLight_Action_Button.tga")
+alliance_action_hover_path = os.path.join(
+    alliance_texture_dir, "UQ_AllianceLight_Action_Button_Hover.tga")
+alliance_action = Image.open(alliance_action_path).convert("RGBA")
+alliance_action_hover = Image.open(alliance_action_hover_path).convert("RGBA")
+with open(alliance_action_path, "rb") as handle:
+    alliance_action_header = handle.read(18)
+with open(alliance_action_hover_path, "rb") as handle:
+    alliance_action_hover_header = handle.read(18)
+alliance_action_centre = alliance_action.getpixel((256, 53))
+alliance_action_disabled_centre = alliance_action.getpixel((256, 218 + 53))
+check("the Alliance light action button keeps the simple bevel in brighter cobalt blue",
+      alliance_action.size == (512, 512)
+      and alliance_action_hover.size == (512, 128)
+      and alliance_action_header[2] == 10 and alliance_action_header[16] == 32
+      and alliance_action_header[17] == 8
+      and alliance_action_hover_header[2] == 10
+      and alliance_action_hover_header[16] == 32
+      and alliance_action_hover_header[17] == 8
+      and alliance_action_centre[2] > alliance_action_centre[0] * 1.5
+      and alliance_action_centre[2] > alliance_action_centre[1] * 1.25
+      and alliance_action_centre[2] >= 140
+      and alliance_action_disabled_centre[:3] == (38, 38, 38))
+
+alliance_v2_texture_dir = os.path.join(
+    ADDONS, "unrealQuest", "media", "Textures", "Dialogues", "Alliance")
+alliance_v2_textures = sorted(
+    name for name in os.listdir(alliance_v2_texture_dir)
+    if name.startswith("UQ_Alliance_") and name.endswith(".tga"))
+alliance_v2_renames = {
+    "UQ_HordeLight_Portrait.tga": "UQ_Alliance_Portrait_Frame.tga",
+    "UQ_HordeLight_Plate.tga": "UQ_Alliance_Reward_Item_Plate_Unified.tga",
+    "UQ_HordeLight_Plate_Selected.tga": "UQ_Alliance_Reward_Item_Plate_Unified_Selected.tga",
+}
+for suffix in ("TL", "TR", "BL", "BR"):
+    alliance_v2_renames["UQ_HordeLight_Card_" + suffix + ".tga"] = (
+        "UQ_Alliance_Conversation_" + suffix + ".tga")
+    alliance_v2_renames["UQ_HordeLight_CardTall_" + suffix + ".tga"] = (
+        "UQ_Alliance_Quest_" + suffix + ".tga")
+alliance_v2_extras = ["UQ_Alliance_Reward_Plate_Left_Edge.tga",
+                      "UQ_Alliance_Emblem.tga",
+                      "UQ_Alliance_Action_Button.tga",
+                      "UQ_Alliance_Action_Button_Hover.tga",
+                      "UQ_Alliance_Reward_Item_Plate_Unified_Hover.tga",
+                      "UQ_Alliance_Reward_Item_Plate_Unified_Selected_Hover.tga",
+                      "UQ_Alliance_Reward_Plate_Left_Edge_Hover.tga"]
+expected_alliance_v2 = sorted(
+    [alliance_v2_renames.get(name, name.replace("UQ_HordeLight_", "UQ_Alliance_", 1))
+     for name in cinematic_textures] + alliance_v2_extras)
+alliance_v2_reverse_names = dict((value, key) for key, value in alliance_v2_renames.items())
+alliance_v2_geometry_ok = alliance_v2_textures == expected_alliance_v2
+for alliance_v2_name in alliance_v2_textures:
+    if alliance_v2_name in alliance_v2_extras:
+        continue
+    cinematic_name = alliance_v2_reverse_names.get(
+        alliance_v2_name, alliance_v2_name.replace("UQ_Alliance_", "UQ_HordeLight_", 1))
+    cinematic_image = Image.open(
+        os.path.join(cinematic_texture_dir, cinematic_name)).convert("RGBA")
+    alliance_v2_path = os.path.join(alliance_v2_texture_dir, alliance_v2_name)
+    alliance_v2_image = Image.open(alliance_v2_path).convert("RGBA")
+    with open(alliance_v2_path, "rb") as handle:
+        header = handle.read(18)
+    alliance_v2_geometry_ok = (alliance_v2_geometry_ok
+                               and alliance_v2_image.size == cinematic_image.size
+                               and max(alliance_v2_image.size) <= 512
+                               and header[2] == 10 and header[16] == 32
+                               and header[17] == 8)
+check("Alliance V2 mirrors every cinematic texture with proven size and encoding",
+      len(alliance_v2_textures) == len(cinematic_textures) + len(alliance_v2_extras)
+      and alliance_v2_geometry_ok)
+alliance_v2_action_path = os.path.join(
+    alliance_v2_texture_dir, "UQ_Alliance_Action_Button.tga")
+with open(alliance_v2_action_path, "rb") as handle:
+    alliance_v2_action_header = handle.read(18)
+alliance_v2_action = Image.open(alliance_v2_action_path).convert("RGBA")
+alliance_v2_normal_centre = alliance_v2_action.getpixel((256, 52))
+alliance_v2_pressed_centre = alliance_v2_action.getpixel((256, 106 + 52))
+check("the Alliance V2 action button atlas packs three faces and four arrows",
+      alliance_v2_action.size == (512, 512)
+      and alliance_v2_action_header[2] == 10 and alliance_v2_action_header[16] == 32
+      and all(alliance_v2_action.getpixel((256, state * 106 + 52))[3] > 240
+              for state in range(3))
+      and sum(alliance_v2_normal_centre[:3]) < sum(alliance_v2_pressed_centre[:3])
+      and all(alliance_v2_action.getpixel((256, state * 106 + 105))[3] == 0
+              for state in range(3))
+      and all(alliance_v2_action.getchannel("A").crop(
+          (state * 66, 318, state * 66 + 64, 398)).getbbox() is not None
+              for state in range(4)))
+check("Alliance V2 removed the retired flagged portrait texture",
+      "UQ_Alliance_Portrait.tga" not in alliance_v2_textures
+      and "UQ_Alliance_Portrait_Frame.tga" in alliance_v2_textures)
+
+alliance_v2_card = Image.new("RGBA", (1024, 512))
+for suffix, left, top in (("TL", 0, 0), ("TR", 512, 0),
+                          ("BL", 0, 256), ("BR", 512, 256)):
+    tile = Image.open(os.path.join(
+        alliance_v2_texture_dir,
+        "UQ_Alliance_Conversation_" + suffix + ".tga")).convert("RGBA")
+    alliance_v2_card.alpha_composite(tile, (left, top))
+title_divider_crop = alliance_v2_card.crop((360, 259, 927, 284))
+title_divider_pixels = (title_divider_crop.get_flattened_data()
+                        if hasattr(title_divider_crop, "get_flattened_data")
+                        else title_divider_crop.getdata())
+check("Alliance V2's top divider uses the lower divider's brown ink",
+      (120, 86, 48, 255) in title_divider_pixels)
+
+alliance_v2_plate = Image.open(os.path.join(
+    alliance_v2_texture_dir, "UQ_Alliance_Reward_Item_Plate_Unified.tga")).convert("RGBA")
+alliance_v2_plate_selected = Image.open(os.path.join(
+    alliance_v2_texture_dir, "UQ_Alliance_Reward_Item_Plate_Unified_Selected.tga")).convert("RGBA")
+alliance_v2_left_edge = Image.open(os.path.join(
+    alliance_v2_texture_dir, "UQ_Alliance_Reward_Plate_Left_Edge.tga")).convert("RGBA")
+check("Alliance V2 reward plates use one continuous icon-and-row silhouette",
+      alliance_v2_plate.getpixel((0, 0))[3] == 0
+      and alliance_v2_plate.getpixel((4, 64))[3] > 0
+      and alliance_v2_plate.getpixel((8, 64))[3] > 0
+      and alliance_v2_plate.getpixel((64, 4))[3] > 0
+      and alliance_v2_plate.getpixel((64, 6))[3] > 0
+      and alliance_v2_plate.getpixel((64, 64))[3] == 255
+      and alliance_v2_plate.getpixel((256, 64))[3] == 255
+      and alliance_v2_plate.getpixel((506, 64))[3] > 0
+      and alliance_v2_plate.getpixel((511, 64))[3] == 0
+      and alliance_v2_plate.getchannel("A").tobytes()
+      == alliance_v2_plate_selected.getchannel("A").tobytes()
+      and alliance_v2_left_edge.getpixel((0, 0))[3] == 0
+      and alliance_v2_left_edge.getpixel((5, 64))[3] > 0
+      and alliance_v2_left_edge.getpixel((64, 4))[3] > 0
+      and alliance_v2_left_edge.getpixel((64, 64))[3] == 0
+      and alliance_v2_left_edge.getpixel((124, 64))[3] == 0)
+
+horde_v2_texture_dir = os.path.join(
+    ADDONS, "unrealQuest", "media", "Textures", "Dialogues", "Horde")
+horde_v2_textures = sorted(
+    name for name in os.listdir(horde_v2_texture_dir)
+    if name.startswith("UQ_Horde_") and name.endswith(".tga"))
+horde_v2_renames = dict(
+    (source, target.replace("UQ_Alliance_", "UQ_Horde_", 1))
+    for source, target in alliance_v2_renames.items())
+horde_v2_reward_panel = [
+    "UQ_Horde_RewardPanel_" + suffix + ".tga"
+    for suffix in ("TL", "T", "TR", "L", "C", "R", "BL", "B", "BR")]
+horde_v2_extras = (["UQ_Horde_Reward_Plate_Left_Edge.tga",
+                    "UQ_Horde_Title_Divider.tga", "UQ_Horde_Emblem.tga",
+                    "UQ_Horde_Action_Button.tga",
+                    "UQ_Horde_Action_Button_Hover.tga",
+                    "UQ_Horde_Reward_Item_Plate_Unified_Hover.tga",
+                    "UQ_Horde_Reward_Item_Plate_Unified_Selected_Hover.tga",
+                    "UQ_Horde_Reward_Plate_Left_Edge_Hover.tga"]
+                   + horde_v2_reward_panel)
+expected_horde_v2 = sorted(
+    [horde_v2_renames.get(name, name.replace("UQ_HordeLight_", "UQ_Horde_", 1))
+     for name in cinematic_textures] + horde_v2_extras)
+horde_v2_reverse_names = dict((value, key) for key, value in horde_v2_renames.items())
+horde_v2_geometry_ok = horde_v2_textures == expected_horde_v2
+for horde_v2_name in horde_v2_textures:
+    if horde_v2_name in horde_v2_extras:
+        continue
+    cinematic_name = horde_v2_reverse_names.get(
+        horde_v2_name, horde_v2_name.replace("UQ_Horde_", "UQ_HordeLight_", 1))
+    cinematic_image = Image.open(
+        os.path.join(cinematic_texture_dir, cinematic_name)).convert("RGBA")
+    horde_v2_path = os.path.join(horde_v2_texture_dir, horde_v2_name)
+    horde_v2_image = Image.open(horde_v2_path).convert("RGBA")
+    with open(horde_v2_path, "rb") as handle:
+        header = handle.read(18)
+    horde_v2_geometry_ok = (horde_v2_geometry_ok
+                            and horde_v2_image.size == cinematic_image.size
+                            and max(horde_v2_image.size) <= 512
+                            and header[2] == 10 and header[16] == 32
+                            and header[17] == 8)
+check("Horde V2 mirrors every cinematic texture with proven size and encoding",
+      len(horde_v2_textures) == len(cinematic_textures) + len(horde_v2_extras)
+      and horde_v2_geometry_ok)
+horde_v2_action_path = os.path.join(horde_v2_texture_dir, "UQ_Horde_Action_Button.tga")
+with open(horde_v2_action_path, "rb") as handle:
+    horde_v2_action_header = handle.read(18)
+horde_v2_action = Image.open(horde_v2_action_path).convert("RGBA")
+check("the Horde V2 action button atlas is a 512x512 RLE TGA with four state cells",
+      horde_v2_action.size == (512, 512)
+      and horde_v2_action_header[2] == 10 and horde_v2_action_header[16] == 32
+      and all(horde_v2_action.getpixel((205, state * 127 + 62))[3] > 240
+              for state in range(4))
+      and all(horde_v2_action.getpixel((205, state * 127 + 126))[3] == 0
+              for state in range(3))
+      and all(horde_v2_action.getchannel("A").crop(
+          (420, state * 98, 500, state * 98 + 96)).getbbox() is not None
+              for state in range(4)))
+check("Horde V2 hover keeps the normal button and chevron pixels",
+      horde_v2_action.crop((0, 0, 410, 125)).tobytes()
+      == horde_v2_action.crop((0, 127, 410, 252)).tobytes()
+      and horde_v2_action.crop((420, 0, 500, 96)).tobytes()
+      == horde_v2_action.crop((420, 98, 500, 194)).tobytes())
+horde_v2_hover_path = os.path.join(
+    horde_v2_texture_dir, "UQ_Horde_Action_Button_Hover.tga")
+with open(horde_v2_hover_path, "rb") as handle:
+    horde_v2_hover_header = handle.read(18)
+horde_v2_hover = Image.open(horde_v2_hover_path).convert("RGBA")
+check("Horde V2 hover bloom is a standalone transparent RLE texture",
+      horde_v2_hover.size == (512, 128)
+      and horde_v2_hover.getchannel("A").getextrema()[0] == 0
+      and horde_v2_hover.getchannel("A").getextrema()[1] > 200
+      and horde_v2_hover_header[2] == 10
+      and horde_v2_hover_header[16] == 32
+      and horde_v2_hover_header[17] == 8)
+check("Horde V2 uses the standalone portrait texture",
+      "UQ_Horde_Portrait.tga" not in horde_v2_textures
+      and "UQ_Horde_Portrait_Frame.tga" in horde_v2_textures)
+horde_v2_title_divider_path = os.path.join(
+    horde_v2_texture_dir, "UQ_Horde_Title_Divider.tga")
+horde_v2_title_divider = Image.open(horde_v2_title_divider_path).convert("RGBA")
+with open(horde_v2_title_divider_path, "rb") as handle:
+    horde_v2_title_divider_header = handle.read(18)
+check("Horde V2 title divider is a standalone transparent RLE texture",
+      horde_v2_title_divider.size == (512, 32)
+      and horde_v2_title_divider.getchannel("A").getextrema() == (0, 255)
+      and horde_v2_title_divider_header[2] == 10
+      and horde_v2_title_divider_header[16] == 32
+      and horde_v2_title_divider_header[17] == 8)
+alliance_title_divider = Image.open(os.path.join(
+    ADDONS, "unrealQuest", "media", "Textures", "Dialogues", "Parchment",
+    "UQ_Parchment_Title_Divider.tga")).convert("RGBA")
+parchment_objective_rule_ok = True
+for name, expected_size in (("Objective_Diamond", (32, 32)),
+                            ("Objective_Line", (64, 8))):
+    source = Image.open(os.path.join(
+        horde_v2_texture_dir, "UQ_Horde_" + name + ".tga")).convert("RGBA")
+    # Its own basename: the client resolves addon textures by file name
+    # alone (textures.addon_paths_resolved_by_basename).
+    path = os.path.join(ADDONS, "unrealQuest", "media", "Textures", "Dialogues", "Parchment",
+                        "UQ_Parchment_" + name + ".tga")
+    imported = Image.open(path).convert("RGBA")
+    with open(path, "rb") as handle:
+        header = handle.read(18)
+    parchment_objective_rule_ok = (parchment_objective_rule_ok
+        and imported.size == expected_size
+        and imported.getchannel("A").tobytes() == source.getchannel("A").tobytes()
+        and set((red, green, blue) for red, green, blue, alpha
+                in imported.getdata())
+        == set((red, green, blue) for red, green, blue, alpha
+               in alliance_title_divider.getdata())
+        and header[2] == 10 and header[16] == 32 and header[17] == 8)
+check("Parchment objective rule copies Horde geometry in Alliance brown",
+      parchment_objective_rule_ok)
+# The client resolves addon textures by file name alone
+# (textures.addon_paths_resolved_by_basename): two shipped files with one
+# basename draw the same image, whichever loaded first.
+shipped_texture_dirs = {}
+for root, dirs, files in os.walk(os.path.join(ADDONS, "unrealQuest", "media")):
+    dirs[:] = [folder for folder in dirs if not folder.startswith("#")]
+    for file_name in files:
+        stem, extension = os.path.splitext(file_name)
+        if extension.lower() in (".tga", ".blp"):
+            shipped_texture_dirs.setdefault(stem.lower(), []).append(root)
+check("every shipped texture has a basename of its own",
+      all(len(roots) == 1 for roots in shipped_texture_dirs.values()))
+
+horde_v2_reward_panel_sizes = {
+    "TL": (128, 128), "T": (512, 64), "TR": (128, 128),
+    "L": (64, 256), "C": (512, 256), "R": (64, 256),
+    "BL": (128, 128), "B": (512, 64), "BR": (128, 128),
+}
+horde_v2_reward_panel_ok = True
+for suffix, expected_size in horde_v2_reward_panel_sizes.items():
+    path = os.path.join(
+        horde_v2_texture_dir, "UQ_Horde_RewardPanel_" + suffix + ".tga")
+    image = Image.open(path).convert("RGBA")
+    with open(path, "rb") as handle:
+        header = handle.read(18)
+    horde_v2_reward_panel_ok = (horde_v2_reward_panel_ok
+                                and image.size == expected_size
+                                and header[2] == 10 and header[16] == 32
+                                and header[17] == 8)
+check("Horde V2 reward panel is a client-safe nine-slice",
+      horde_v2_reward_panel_ok)
+horde_v2_parchment = Image.open(os.path.join(
+    ADDONS, "unrealQuest", "media", "Textures", "Dialogues", "#src",
+    "Horde", "parchment.png")).convert("RGBA")
+horde_v2_parchment_bounds = horde_v2_parchment.getchannel("A").point(
+    lambda value: 255 if value > 24 else 0).getbbox()
+horde_v2_parchment = horde_v2_parchment.crop(horde_v2_parchment_bounds)
+parchment_width, parchment_height = horde_v2_parchment.size
+horde_v2_parchment = horde_v2_parchment.crop((
+    int(parchment_width * 0.18), int(parchment_height * 0.28),
+    int(parchment_width * 0.82), int(parchment_height * 0.72))).convert("RGB")
+horde_v2_reward_center = Image.open(os.path.join(
+    horde_v2_texture_dir, "UQ_Horde_RewardPanel_C.tga")).convert("RGB")
+horde_v2_parchment_mean = ImageStat.Stat(horde_v2_parchment).mean
+horde_v2_reward_mean = ImageStat.Stat(horde_v2_reward_center).mean
+check("Horde V2 reward panel uses the darker lower-card parchment tone",
+      231 < horde_v2_reward_mean[0] < 236
+      and 194 < horde_v2_reward_mean[1] < 200
+      and 148 < horde_v2_reward_mean[2] < 154
+      and horde_v2_reward_mean[1] < horde_v2_parchment_mean[1] - 20
+      and horde_v2_reward_mean[2] < horde_v2_parchment_mean[2] - 30)
+
+horde_v2_cards = {}
+for prefix in ("Conversation", "Quest"):
+    card = Image.new("RGBA", (1024, 512))
+    for suffix, left, top in (("TL", 0, 0), ("TR", 512, 0),
+                              ("BL", 0, 256), ("BR", 512, 256)):
+        tile = Image.open(os.path.join(
+            horde_v2_texture_dir,
+            "UQ_Horde_" + prefix + "_" + suffix + ".tga")).convert("RGBA")
+        card.alpha_composite(tile, (left, top))
+    horde_v2_cards[prefix] = card
+check("Horde V2 cards leave the portrait opening transparent",
+      horde_v2_cards["Conversation"].getpixel((225, 300))[3] == 0
+      and horde_v2_cards["Quest"].getpixel((225, 250))[3] == 0)
+
+horde_v2_plate = Image.open(os.path.join(
+    horde_v2_texture_dir, "UQ_Horde_Reward_Item_Plate_Unified.tga")).convert("RGBA")
+horde_v2_plate_selected = Image.open(os.path.join(
+    horde_v2_texture_dir,
+    "UQ_Horde_Reward_Item_Plate_Unified_Selected.tga")).convert("RGBA")
+horde_v2_left_edge = Image.open(os.path.join(
+    horde_v2_texture_dir, "UQ_Horde_Reward_Plate_Left_Edge.tga")).convert("RGBA")
+check("Horde V2 reward plates keep the V2 icon-and-row silhouette",
+      horde_v2_plate.getpixel((0, 0))[3] == 0
+      and horde_v2_plate.getpixel((4, 64))[3] > 0
+      and horde_v2_plate.getpixel((64, 64))[3] == 255
+      and horde_v2_plate.getpixel((256, 64))[3] == 255
+      and horde_v2_plate.getpixel((511, 64))[3] == 0
+      and horde_v2_plate.getchannel("A").tobytes()
+      == horde_v2_plate_selected.getchannel("A").tobytes()
+      and horde_v2_left_edge.getpixel((0, 0))[3] == 0
+      and horde_v2_left_edge.getpixel((5, 64))[3] > 0
+      and horde_v2_left_edge.getpixel((64, 64))[3] == 0)
+
 
 print("loading UnrealQuest (bundled world data included)")
 for path in toc_files(os.path.join(ADDONS, "unrealQuest", "UnrealQuest.toc")):
@@ -1808,7 +2317,7 @@ for path in toc_files(os.path.join(ADDONS, "unrealQuest", "UnrealQuest.toc")):
 
 check("world data populated", rt.eval("UnrealQuestData ~= nil and UnrealQuestData.quests ~= nil"))
 
-check("namespace created", rt.eval("UnrealQuest ~= nil and UnrealQuest.version == '0.4.1'"))
+check("namespace created", rt.eval("UnrealQuest ~= nil and UnrealQuest.version == '0.5.0'"))
 check("slash command registered", rt.eval("SlashCmdList.UNREALQUEST == nil"),
       "should still be nil before init")
 
@@ -1819,6 +2328,3072 @@ check("saved variables created", rt.eval("UnrealQuestDB ~= nil and UnrealQuestDB
 
 rt.execute("UQ_TEST_FIRE('PLAYER_ENTERING_WORLD')")
 check("modules enabled", rt.eval("UnrealQuest:GetModule('QuestState').enabled == true"))
+
+print("immersive quest dialogue")
+check("the immersive quest dialogue is enabled by default", rt.eval(
+    "UnrealQuestDB.immersiveDialogue == true"))
+check("the dialogue defaults to the minimal theme", rt.eval(
+    "UnrealQuestDB.dialogueTheme == 'minimal'"))
+# The checks below measure the Classic card's geometry, so they pin Classic;
+# "quest dialogue themes" further down covers the switch both ways.
+rt.execute("UnrealQuestDB.dialogueTheme = 'parchment'")
+check("the quest dialogue takes no keyboard input at all", rt.eval("""
+    UnrealQuestDialogueFrame.scripts.OnKeyDown == nil
+        and UnrealQuestDialogueInspector.scripts.OnKeyDown == nil
+        and UnrealQuestDialogueFrame.keyboardEnabled ~= true
+        and UnrealQuestDialogueInspector.keyboardEnabled ~= true
+        and UnrealQuest.Client.AddEscapeCloseFrame == nil
+"""))
+check("dialogue fades run on the every-frame driver job", rt.eval("""(function()
+    local driver = UnrealQuest:GetModule('Driver')
+    local job = driver.jobsByName['quest.dialogue.park']
+    return job ~= nil and job.interval == 0
+end)()"""))
+check("dialogue fades use a smooth curve and land fully opaque", rt.eval("""(function()
+    local Client = UnrealQuest.Client
+    local frame = UnrealQuestDialogueFrame
+    local start = 10
+    local duration = Client.QUEST_DIALOGUE_CARD_FADE
+    frame.unrealQuestAnimationStart = start
+    Client.UpdateQuestDialogueAnimation(frame, start + duration * 0.25)
+    local first = frame:GetAlpha()
+    Client.UpdateQuestDialogueAnimation(frame, start + duration * 0.50)
+    local middle = frame:GetAlpha()
+    Client.UpdateQuestDialogueAnimation(frame, start + duration * 0.75)
+    local last = frame:GetAlpha()
+    Client.UpdateQuestDialogueAnimation(frame, start + duration * 1.01)
+    local finished = frame:GetAlpha()
+    return math.abs(first - 0.15625) < 0.001
+        and math.abs(middle - 0.5) < 0.001
+        and math.abs(last - 0.84375) < 0.001
+        and finished == 1 and frame.unrealQuestAnimationStart == nil
+end)()"""))
+check("the replacement's 3D portrait fills the classic frame's opening", rt.eval("""(function()
+    local frame = UnrealQuestDialogueFrame
+    local model = frame and frame.unrealQuestPortraitModel
+    return frame ~= nil and model ~= nil
+        and math.abs(model:GetWidth() - 127.7 * UnrealQuest.Client.QUEST_DIALOGUE_UNIT) < 0.01
+        and math.abs(model:GetHeight() - 126.4 * UnrealQuest.Client.QUEST_DIALOGUE_UNIT) < 0.01
+end)()"""))
+rt.execute("""
+    UQ_TEST_QUEST_PACKET('A Threat Within', 'Speak with Marshal McBride.',
+        'The kingdom needs your help.')
+    UQ_TEST_QUEST_CHOICES = 1
+    UQ_TEST_QUEST_REWARD_ITEMS.choice1 = { 'Training Sword', 2 }
+    QuestFrame:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 0, -104)
+    QuestFrame:Show()
+    local onShow = QuestFrame:GetScript('OnShow')
+    if onShow then onShow() end
+    local dialogue = UnrealQuest:GetModule('Dialogue')
+    dialogue.modeHint = 'detail'
+    dialogue.closed = nil
+    dialogue:Refresh()
+    dialogue:FinishTextReveal()
+""")
+check("quest detail parks the stock frame off screen (never hides it) behind the compact dialogue", rt.eval("""
+    UnrealQuestDialogueFrame:IsShown()
+        and QuestFrame:IsShown() == true
+        and QuestFrame:GetAlpha() == 0
+        and QuestFrame:GetScale() == 1
+        and select(4, QuestFrame:GetPoint()) == -UnrealQuest.Client.QUEST_DIALOGUE_PARK
+        and UnrealQuestDialogueTitle:GetText() == 'A Threat Within'
+        and string.find(UnrealQuestDialogueFrame.unrealQuestBodyLetterText,
+            'The kingdom needs your help.', 1, true) ~= nil
+        and UnrealQuestDialogueTurnInItem1:IsShown()
+        and UnrealQuestDialogueTurnInItem1.unrealQuestTooltipType == 'choice'
+"""))
+check("a parked stock root is left alone until the client moves it, then put back", rt.eval("""(function()
+    local Client = UnrealQuest.Client
+    local calls = 0
+    local realClear = QuestFrame.ClearAllPoints
+    QuestFrame.ClearAllPoints = function(self) calls = calls + 1 return realClear(self) end
+    Client.KeepQuestDialogueRootsParked()
+    Client.ConcealQuestDialogueRoot(QuestFrame)
+    local untouched = calls == 0
+    realClear(QuestFrame)
+    QuestFrame:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 0, -104)
+    Client.KeepQuestDialogueRootsParked()
+    QuestFrame.ClearAllPoints = nil
+    return untouched and calls == 1
+        and select(4, QuestFrame:GetPoint()) == -Client.QUEST_DIALOGUE_PARK
+end)()"""))
+check("the 3D portrait loads once shown, then retries on unrealUI's budget", rt.eval("""(function()
+    local frame = UnrealQuestDialogueFrame
+    local model = frame.unrealQuestPortraitModel
+    local loaded = model.unit == 'npc' and model.camera == 0
+        and model.unrealQuestPortraitCalls == 1
+    local seen = {}
+    local dialogue = UnrealQuest:GetModule('Dialogue')
+    local steps = { 0.1, 0.5, 2, 5 }
+    local index = 1
+    while index <= table.getn(steps) do
+        UQ_TEST_CLOCK = model.unrealQuestPortraitFirstAt + steps[index]
+        dialogue:Refresh()
+        seen[index] = model.unrealQuestPortraitCalls
+        index = index + 1
+    end
+    return loaded and seen[1] == 1 and seen[2] == 2 and seen[3] == 3
+        and seen[4] == 3
+end)()"""))
+check("a reopened card reloads its speaker and skips a unit out of the world", rt.eval("""(function()
+    local Client = UnrealQuest.Client
+    local frame = UnrealQuestDialogueFrame
+    local model = frame.unrealQuestPortraitModel
+    local identity = string.gsub(model.unrealQuestPortraitKey, '^npc#', '')
+    Client.HideQuestDialogue(frame)
+    frame:Show()
+    local reopened = Client.SetQuestDialoguePortrait(frame, 'npc', identity) == true
+        and model.unrealQuestPortraitCalls == 1
+    model.unit = nil
+    UQ_TEST_HIDDEN_UNITS.npc = true
+    local hidden = Client.SetQuestDialoguePortrait(frame, 'npc', 'Someone Else') == false
+        and model.unit == nil and model:IsShown() == false
+    UQ_TEST_HIDDEN_UNITS.npc = nil
+    return reopened and hidden
+end)()"""))
+check("the dialogue speaker falls back to a nearby non-player target", rt.eval("""(function()
+    local Client = UnrealQuest.Client
+    local realName = UnitName
+    local savedTarget = UQ_TEST_TARGET_NAME
+    UnitName = function(unit)
+        if unit == 'npc' or unit == 'questnpc' then return nil end
+        return realName(unit)
+    end
+    UQ_TEST_TARGET_NAME = 'Harpy Lieutenant'
+    local viaTarget = Client.ResolveQuestDialogueUnit() == 'target'
+        and Client.GetQuestDialogueSpeaker() == 'Harpy Lieutenant'
+    CheckInteractDistance = function() return false end
+    Client.ForgetSymbol('CheckInteractDistance')
+    local farRefused = Client.ResolveQuestDialogueUnit() == nil
+    CheckInteractDistance = nil
+    Client.ForgetSymbol('CheckInteractDistance')
+    UQ_TEST_PLAYER_UNITS.target = true
+    local playerRefused = Client.ResolveQuestDialogueUnit() == nil
+    UQ_TEST_PLAYER_UNITS.target = nil
+    UnitName = realName
+    UQ_TEST_TARGET_NAME = savedTarget
+    return viaTarget and farRefused and playerRefused
+        and Client.ResolveQuestDialogueUnit() == 'npc'
+end)()"""))
+check("Escape closes the quest card and it stays closed once the stock window hides", rt.eval("""(function()
+    local dialogue = UnrealQuest:GetModule('Dialogue')
+    dialogue:OnDialogueEvent('QUEST_DETAIL')
+    dialogue.closed = nil
+    dialogue:Refresh()
+    local wasUp = UnrealQuestDialogueFrame:IsShown()
+    UnrealQuestDialogueFrame:Hide()
+    UnrealQuestDialogueFrame:GetScript('OnHide')()
+    QuestFrame:Hide()
+    dialogue:Refresh()
+    dialogue:Refresh()
+    local stayed = not UnrealQuestDialogueFrame:IsShown()
+    QuestFrame:Show()
+    local onShow = QuestFrame:GetScript('OnShow')
+    if onShow then onShow() end
+    dialogue:OnDialogueEvent('QUEST_DETAIL')
+    dialogue:Refresh()
+    return wasUp and stayed and UnrealQuestDialogueFrame:IsShown()
+end)()"""))
+rt.execute("""
+    UnrealQuest:GetModule('Config'):Set('immersiveDialogue', false)
+    UnrealQuest:GetModule('Dialogue'):Refresh()
+""")
+check("turning the option off restores the native window immediately", rt.eval("""
+    UnrealQuestDialogueFrame:IsShown() == false
+        and QuestFrame:IsShown() == true
+        and QuestFrame:GetAlpha() == 1
+        and QuestFrame:GetScale() == 1
+        and select(4, QuestFrame:GetPoint()) == 0
+        and select(5, QuestFrame:GetPoint()) == -104
+"""))
+# Drawn at QUEST_DIALOGUE_UNIT of its design units, at scale 1: SetScale
+# reached only a frame's own textures (frames.root_scale_reaches_textures_not_text).
+check("quest dialogue uses the compact Immersion-style geometry", rt.eval("""
+    math.abs(UnrealQuestDialogueFrame:GetWidth() - 680 * UnrealQuest.Client.QUEST_DIALOGUE_UNIT) < 0.01
+        and math.abs(UnrealQuestDialogueFrame:GetHeight() - UnrealQuest.Client.QUEST_DIALOGUE_CARD.TALL_HEIGHT * UnrealQuest.Client.QUEST_DIALOGUE_UNIT) < 0.01
+        and table.getn(UnrealQuestDialogueFrame.unrealQuestObjectiveDivider) == 3
+        and UnrealQuestDialogueFrame.unrealQuestObjectiveDivider[2]:IsShown()
+        and UnrealQuestDialogueFrame.unrealQuestObjectiveIcon:IsShown()
+        and UnrealQuestDialogueFrame.unrealQuestCineKicker:IsShown()
+        and UnrealQuestDialogueFrame.unrealQuestObjective:GetText() == 'Speak with Marshal McBride.'
+        and UnrealQuestDialogueFrame:GetScale() == 1
+        and math.abs(UnrealQuestDialogueOptionsScroll:GetWidth() - 340 * UnrealQuest.Client.QUEST_DIALOGUE_UNIT) < 0.01
+        and math.abs(UnrealQuestDialogueInspectorContent:GetWidth() - 720 * UnrealQuest.Client.QUEST_DIALOGUE_UNIT) < 0.01
+        and math.abs(UnrealQuestDialogueInspectorContent:GetHeight() - 400 * UnrealQuest.Client.QUEST_DIALOGUE_UNIT) < 0.01
+"""))
+rt.execute("""
+    UnrealQuest:GetModule('Config'):Set('immersiveDialogue', true)
+    UQ_TEST_LONG_DIALOGUE = string.rep('abcdefghij ', 80)
+    UQ_TEST_QUEST_PACKET('Long Test Quest', '', UQ_TEST_LONG_DIALOGUE)
+    local dialogue = UnrealQuest:GetModule('Dialogue')
+    dialogue:OnDialogueEvent('QUEST_DETAIL')
+    dialogue.closed = nil
+    dialogue:Refresh()
+    UQ_TEST_FIRST_PAGE_ACTION = UnrealQuestDialogueFrame.unrealQuestClickAction
+    UQ_TEST_FIRST_PAGE_ROWS_SHOWN = UnrealQuestDialogueTurnIn:IsShown()
+    UQ_TEST_PAGE_TOTAL = table.getn(dialogue.pages or {})
+    UQ_TEST_REBUILT_DIALOGUE = ''
+    UQ_TEST_PAGE_BODY_ANCHORS = true
+    local page = 1
+    while page <= UQ_TEST_PAGE_TOTAL do
+        dialogue:FinishTextReveal()
+        local body = UnrealQuestDialogueBody
+        UQ_TEST_PAGE_BODY_ANCHORS = UQ_TEST_PAGE_BODY_ANCHORS
+            and body.point[1] == 'TOPLEFT' and body.point[3] == 'TOPLEFT'
+        UQ_TEST_REBUILT_DIALOGUE = UQ_TEST_REBUILT_DIALOGUE
+            .. (UnrealQuestDialogueFrame.unrealQuestBodyLetterText or '')
+        if page < UQ_TEST_PAGE_TOTAL then
+            dialogue:RunAction('nextPage')
+        end
+        page = page + 1
+    end
+""")
+check("long quest prose is paged without losing text, its rewards shown from the first page", rt.eval("""
+    UQ_TEST_PAGE_TOTAL > 1
+        and UQ_TEST_FIRST_PAGE_ACTION == 'nextPage'
+        and UQ_TEST_FIRST_PAGE_ROWS_SHOWN
+        and UQ_TEST_REBUILT_DIALOGUE == UQ_TEST_LONG_DIALOGUE
+        and UQ_TEST_PAGE_BODY_ANCHORS == true
+"""))
+
+rt.execute("""
+    local dialogue = UnrealQuest:GetModule('Dialogue')
+    local columns, lines = UnrealQuest.Client.GetQuestDialogueTextBudget(dialogue.frame)
+    local source = {}
+    local index = 1
+    while index <= lines do
+        table.insert(source, 'Line ' .. tostring(index))
+        index = index + 1
+    end
+    UQ_TEST_NEWLINE_PAGES_SOURCE = table.concat(source, '\\n') .. '\\n\\nTop aligned'
+    UQ_TEST_QUEST_PACKET('Newline Page Test', '', UQ_TEST_NEWLINE_PAGES_SOURCE)
+    dialogue:OnDialogueEvent('QUEST_DETAIL')
+    dialogue.closed = nil
+    dialogue:Refresh()
+    dialogue:FinishTextReveal()
+    dialogue:RunAction('nextPage')
+    dialogue:FinishTextReveal()
+    UQ_TEST_NEWLINE_PAGE_BODY = dialogue.lastView and dialogue.lastView.body or ''
+    UQ_TEST_NEWLINE_PAGE_FIRST_Y = UnrealQuestDialogueBody.point[5]
+    UQ_TEST_NEWLINE_PAGES_REBUILT = table.concat(dialogue.pages or {})
+""")
+check("a paragraph boundary cannot leave a later dialogue page below the top edge", rt.eval("""
+    string.sub(UQ_TEST_NEWLINE_PAGE_BODY, 1, 1) ~= '\\n'
+        and UQ_TEST_NEWLINE_PAGE_FIRST_Y == 0
+        and UQ_TEST_NEWLINE_PAGES_REBUILT == UQ_TEST_NEWLINE_PAGES_SOURCE
+"""))
+
+rt.execute("""
+    UQ_TEST_GOSSIP_READS = 0
+    UQ_TEST_GOSSIP_PROBABILISTIC = true
+    UQ_TEST_GOSSIP_ACTIVE = { 'Ready Task', 23 }
+    UQ_TEST_GOSSIP_AVAILABLE = { 'A New Task', 17 }
+    UQ_TEST_GOSSIP_OPTIONS = { 'Browse goods', 'vendor' }
+    local dialogue = UnrealQuest:GetModule('Dialogue')
+    dialogue:OnDialogueEvent('GOSSIP_SHOW')
+    dialogue.closed = nil
+    dialogue:Refresh()
+    dialogue:Refresh()
+    dialogue:FinishTextReveal()
+""")
+check("gossip tuples keep levels, row indices, state and option icons", rt.eval("""
+    UnrealQuestDialogueRow1.unrealQuestLabel:GetText() == '[23] Ready Task'
+        and UnrealQuestDialogueRow1.unrealQuestPayload.index == 1
+        and UnrealQuestDialogueRow1.unrealQuestIcon.path
+            == 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\Textures\\\\Map\\\\Pins\\\\CompleteQuestIcon'
+        and UnrealQuestDialogueRow2.unrealQuestLabel:GetText() == '[17] A New Task'
+        and UnrealQuestDialogueRow2.unrealQuestPayload.index == 1
+        and UnrealQuestDialogueRow2.unrealQuestIcon.path
+            == 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\Textures\\\\Map\\\\Pins\\\\questIcon'
+        and UnrealQuestDialogueRow3.unrealQuestPayload.kind == 'gossipOption'
+        and UnrealQuestDialogueRow3.unrealQuestIcon.path
+            == 'Interface\\\\GossipFrame\\\\VendorGossipIcon'
+"""))
+check("gossip icons fill the square slot uncropped in both themes", rt.eval("""(function()
+    local frame = UnrealQuestDialogueFrame
+    local icon = UnrealQuestDialogueRow3.unrealQuestIcon
+    local expected = 26 * UnrealQuest.Client.QUEST_DIALOGUE_UNIT
+    local original = frame.unrealQuestTheme
+    UnrealQuest.Client.SetQuestDialogueTheme(frame, 'parchment')
+    local classic = math.abs(icon:GetWidth() - expected) < 0.01
+        and math.abs(icon:GetHeight() - expected) < 0.01 and icon.texCoord == nil
+    UnrealQuest.Client.SetQuestDialogueTheme(frame, 'horde-light')
+    local cinematic = math.abs(icon:GetWidth() - expected) < 0.01
+        and math.abs(icon:GetHeight() - expected) < 0.01 and icon.texCoord == nil
+    UnrealQuest.Client.SetQuestDialogueTheme(frame, original)
+    return classic and cinematic
+end)()"""))
+check("gossip quest marks keep their 19 x 32 shape, centred in the icon slot", rt.eval("""(function()
+    local icon = UnrealQuestDialogueRow1.unrealQuestIcon
+    local unit = UnrealQuest.Client.QUEST_DIALOGUE_UNIT
+    local side = 26 * unit
+    return math.abs(icon:GetHeight() - side) < 0.01
+        and math.abs(icon:GetWidth() - side * 19 / 32) < 0.01
+end)()"""))
+check("gossip options never draw a bundled addon icon", rt.eval("""(function()
+    local client = UnrealQuest.Client
+    local icon = UnrealQuestDialogueRow3.unrealQuestIcon
+    return string.find(client.QUEST_DIALOGUE_GOSSIP_PATH, 'AddOns', 1, true) == nil
+        and string.find(icon:GetTexture(), 'AddOns', 1, true) == nil
+end)()"""))
+check("gossip icon tokens are canonicalized and unknown tokens use Gossip", rt.eval("""(function()
+    local savedActive = UQ_TEST_GOSSIP_ACTIVE
+    local savedAvailable = UQ_TEST_GOSSIP_AVAILABLE
+    local savedOptions = UQ_TEST_GOSSIP_OPTIONS
+    UQ_TEST_GOSSIP_ACTIVE = {}
+    UQ_TEST_GOSSIP_AVAILABLE = {}
+    UQ_TEST_GOSSIP_OPTIONS = {
+        'Battle', 'BattleMaster', 'Unknown', 'auctioneer',
+        'Malformed', 'vendor2', 'Missing', false,
+    }
+    local rows = UnrealQuest.Client.GetQuestDialogueGossipRows()
+    UQ_TEST_GOSSIP_ACTIVE = savedActive
+    UQ_TEST_GOSSIP_AVAILABLE = savedAvailable
+    UQ_TEST_GOSSIP_OPTIONS = savedOptions
+    local prefix = 'Interface\\\\GossipFrame\\\\'
+    return table.getn(rows) == 4
+        and rows[1].icon == prefix .. 'BattleMasterGossipIcon'
+        and rows[2].icon == prefix .. 'GossipGossipIcon'
+        and rows[3].icon == prefix .. 'GossipGossipIcon'
+        and rows[4].icon == prefix .. 'GossipGossipIcon'
+end)()"""))
+check("the gossip stack sits against the card's right edge", rt.eval("""(function()
+    local point = UnrealQuestDialogueOptionsScroll.point
+    return point[1] == 'LEFT' and point[2] == UnrealQuestDialogueFrame
+        and point[3] == 'RIGHT' and point[4] > 0 and point[4] <= 40
+end)()"""))
+check("a probabilistic gossip line is read once per interaction", rt.eval(
+    "UQ_TEST_GOSSIP_READS == 1 "
+    "and UnrealQuestDialogueFrame.unrealQuestBodyLetterText == 'Greeting 1'"))
+check("a gossip NPC without quests keeps the stock window unless every NPC is opted in", rt.eval("""(function()
+    local dialogue = UnrealQuest:GetModule('Dialogue')
+    local config = UnrealQuest:GetModule('Config')
+    local savedActive, savedAvailable = UQ_TEST_GOSSIP_ACTIVE, UQ_TEST_GOSSIP_AVAILABLE
+    dialogue:OnDialogueEvent('GOSSIP_CLOSED')
+    UQ_TEST_GOSSIP_ACTIVE = {}
+    UQ_TEST_GOSSIP_AVAILABLE = {}
+    GossipFrame:Show()
+    local onShow = GossipFrame:GetScript('OnShow')
+    if onShow then onShow() end
+    dialogue:OnDialogueEvent('GOSSIP_SHOW')
+    dialogue:Refresh()
+    local stock = not UnrealQuestDialogueFrame:IsShown()
+        and GossipFrame:GetAlpha() == 1
+        and not UnrealQuest.Client.IsQuestDialogueRootParked(GossipFrame)
+    config:Set('immersiveDialogueAllNpcs', true)
+    dialogue:Refresh()
+    local taken = UnrealQuestDialogueFrame:IsShown()
+        and UnrealQuest.Client.IsQuestDialogueRootParked(GossipFrame)
+    config:Set('immersiveDialogueAllNpcs', false)
+    UQ_TEST_GOSSIP_ACTIVE, UQ_TEST_GOSSIP_AVAILABLE = savedActive, savedAvailable
+    dialogue:OnDialogueEvent('GOSSIP_SHOW')
+    dialogue:Refresh()
+    return stock and taken and UnrealQuestDialogueFrame:IsShown()
+        and UnrealQuestDB.immersiveDialogueAllNpcs == false
+end)()"""))
+
+check("a gossip row opening a quest keeps the card up through GOSSIP_CLOSED", rt.eval("""(function()
+    local dialogue = UnrealQuest:GetModule('Dialogue')
+    local card = UnrealQuestDialogueFrame
+    local hides = 0
+    local hide = card.Hide
+    card.Hide = function(self) hides = hides + 1; return hide(self) end
+    -- Both orders the client may deliver the two events in.
+    QuestFrame:Show()
+    dialogue:OnDialogueEvent('QUEST_DETAIL')
+    dialogue:OnDialogueEvent('GOSSIP_CLOSED')
+    local keptBefore = card:IsShown()
+    dialogue:Refresh()
+    local first = keptBefore and card:IsShown() and dialogue.mode ~= 'gossip'
+    dialogue:OnDialogueEvent('GOSSIP_CLOSED')
+    dialogue:OnDialogueEvent('QUEST_DETAIL')
+    dialogue:Refresh()
+    local second = card:IsShown() and not dialogue.closed
+    local noHide = hides == 0
+    -- With no root taking over, the close still lands on the next poll.
+    QuestFrame:Hide()
+    GossipFrame:Hide()
+    dialogue:OnDialogueEvent('QUEST_FINISHED')
+    dialogue:Refresh()
+    local closed = not card:IsShown() and dialogue.closed == true
+    card.Hide = nil
+    dialogue.closed = nil
+    dialogue:OnDialogueEvent('GOSSIP_SHOW')
+    GossipFrame:Show()
+    dialogue:Refresh()
+    return first and second and noHide and closed
+end)()"""))
+
+rt.execute("""
+    UQ_TEST_GOSSIP_ACTIVE = {}
+    UQ_TEST_GOSSIP_AVAILABLE = {}
+    UQ_TEST_GOSSIP_OPTIONS = {}
+    local index = 1
+    while index <= 40 do
+        table.insert(UQ_TEST_GOSSIP_OPTIONS, 'Option ' .. tostring(index))
+        table.insert(UQ_TEST_GOSSIP_OPTIONS, 'Gossip')
+        index = index + 1
+    end
+    local dialogue = UnrealQuest:GetModule('Dialogue')
+    dialogue:OnDialogueEvent('GOSSIP_SHOW')
+    dialogue:Refresh()
+""")
+check("every native gossip row remains reachable beyond the initial pool", rt.eval("""
+    UnrealQuestDialogueRow40 ~= nil and not UnrealQuestDialogueRow40:IsShown()
+        and UnrealQuestDialogueRow40.unrealQuestPayload.index == 40
+        and UnrealQuestDialogueRow1:IsShown() and UnrealQuestDialogueRow5:IsShown()
+        and not UnrealQuestDialogueRow6:IsShown()
+        and UnrealQuestDialogueRow1:GetParent() == UnrealQuestDialogueOptionsChild
+        and UnrealQuestDialogueOptionsChild:GetParent() == UnrealQuestDialogueFrame
+        and UnrealQuestDialogueOptionsDown:IsShown()
+"""), rt.eval("""(function()
+    return tostring(UnrealQuestDialogueRow40 ~= nil) .. '/'
+        .. tostring(UnrealQuestDialogueRow40 and UnrealQuestDialogueRow40:IsShown()) .. '/'
+        .. tostring(UnrealQuestDialogueRow40 and UnrealQuestDialogueRow40.unrealQuestPayload
+            and UnrealQuestDialogueRow40.unrealQuestPayload.index) .. '/'
+        .. tostring(UnrealQuestDialogueOptionsChild:GetHeight())
+end)()"""))
+rt.execute("UnrealQuestDialogueOptionsDown:GetScript('OnClick')()")
+check("long option lists scroll through explicit buttons", rt.eval("""
+    UnrealQuestDialogueFrame.unrealQuestRowOffset == 3
+        and not UnrealQuestDialogueRow3:IsShown() and UnrealQuestDialogueRow4:IsShown()
+        and UnrealQuestDialogueRow8:IsShown() and not UnrealQuestDialogueRow9:IsShown()
+        and math.abs(UnrealQuestDialogueRow4.point[5]
+            - UnrealQuest.Client.GetQuestDialogueRowTop(UnrealQuestDialogueFrame, 0)
+            * UnrealQuest.Client.QUEST_DIALOGUE_UNIT) < 0.01
+"""))
+rt.execute("UnrealQuestDialogueOptionsScroll:GetScript('OnMouseWheel')(-120)")
+check("the wheel over the option stack moves it one row by the delta's sign", rt.eval(
+    "UnrealQuestDialogueFrame.unrealQuestRowOffset == 4 and UnrealQuestDialogueRow9:IsShown()"))
+for _ in range(20):
+    rt.execute("UnrealQuestDialogueOptionsDown:GetScript('OnClick')()")
+check("scrolling stops at the last full window of rows", rt.eval(
+    "UnrealQuestDialogueFrame.unrealQuestRowOffset == 35 and UnrealQuestDialogueRow40:IsShown()"))
+
+rt.execute("""
+    UQ_TEST_GOSSIP_PROBABILISTIC = false
+    UQ_TEST_GOSSIP_TEXT = ''
+    UQ_TEST_GOSSIP_ACTIVE = {}
+    UQ_TEST_GOSSIP_AVAILABLE = {}
+    UQ_TEST_GOSSIP_OPTIONS = {}
+    UQ_TEST_QUEST_PACKET('A Threat Within', '', '')
+    UQ_TEST_QUEST_REWARD_TEXT = 'Choose well.'
+    UQ_TEST_QUEST_DETAIL_TEXT = ''
+    UQ_TEST_QUEST_OBJECTIVE_TEXT = ''
+    UQ_TEST_QUEST_CHOICES = 2
+    UQ_TEST_QUEST_REWARD_ITEMS.choice1 = { 'Training Sword', 2 }
+    UQ_TEST_QUEST_REWARD_ITEMS.choice2 = { 'Training Shield', 2 }
+    local dialogue = UnrealQuest:GetModule('Dialogue')
+    dialogue:OnDialogueEvent('QUEST_COMPLETE')
+    dialogue.closed = nil
+    dialogue.selectedChoice = 0
+    dialogue.lastSignature = nil
+    dialogue:Refresh()
+    dialogue:RunAction('closeInspector')
+    dialogue:RunAction('reward')
+""")
+check("completion without a required choice reopens a visible warning", rt.eval("""
+    UnrealQuestDialogueInspector:IsShown()
+        and UnrealQuestDialogueInspectorWarning:IsShown()
+        and UQ_TEST_DIALOGUE_ACTION ~= 'reward'
+"""))
+
+rt.execute("""
+    UQ_TEST_QUEST_REWARD_ITEMS = {}
+    UQ_TEST_QUEST_CHOICES = 16
+    local index = 1
+    while index <= UQ_TEST_QUEST_CHOICES do
+        UQ_TEST_QUEST_REWARD_ITEMS['choice' .. tostring(index)] = {
+            'Choice ' .. tostring(index), 2 }
+        index = index + 1
+    end
+    local dialogue = UnrealQuest:GetModule('Dialogue')
+    dialogue:OnDialogueEvent('QUEST_COMPLETE')
+    dialogue.closed = nil
+    dialogue:Refresh()
+    dialogue:FinishTextReveal()
+    dialogue:RunAction('inspectRewards')
+    UQ_TEST_INSPECTOR_FIRST_PAGE = UnrealQuestDialogueInspectorPage:GetText()
+    UnrealQuestDialogueInspectorAction2:GetScript('OnClick')()
+""")
+check("reward cards beyond the first fifteen remain reachable", rt.eval("""
+    UQ_TEST_INSPECTOR_FIRST_PAGE == 'Page 1 / 2'
+        and UnrealQuestDialogueInspectorPage:GetText() == 'Page 2 / 2'
+        and UnrealQuestDialogueInspectorCard1.unrealQuestPayload.index == 16
+        and UnrealQuestDialogueInspectorAction2.unrealQuestAction
+            == 'previousInspectorPage'
+"""))
+rt.execute("""
+    UQ_TEST_SCREEN_WIDTH = 800
+    UQ_TEST_SCREEN_HEIGHT = 500
+    UnrealQuest.Client.LayoutQuestDialogue(UnrealQuestDialogueFrame)
+""")
+check("dialogue and inspector content fit a small screen at scale 1", rt.eval("""
+    UnrealQuestDialogueFrame.scale == 1
+        and UnrealQuestDialogueInspectorContent.scale == 1
+        and UnrealQuestDialogueFrame:GetWidth() <= UQ_TEST_SCREEN_WIDTH - 40
+        and UnrealQuestDialogueInspectorContent:GetWidth() <= UQ_TEST_SCREEN_WIDTH - 40
+        and UnrealQuestDialogueInspectorContent:GetHeight() <= UQ_TEST_SCREEN_HEIGHT - 40
+"""))
+rt.execute("""
+    UQ_TEST_SCREEN_WIDTH = 1600
+    UQ_TEST_SCREEN_HEIGHT = 900
+    UnrealQuest.Client.LayoutQuestDialogue(UnrealQuestDialogueFrame)
+    UnrealQuestDialogueInspectorCard1:GetScript('OnClick')()
+    local index = 1
+    while index <= 4 do
+        local action = getglobal('UnrealQuestDialogueInspectorAction' .. tostring(index))
+        if action and action.unrealQuestAction == 'reward' then
+            action:GetScript('OnClick')()
+        end
+        index = index + 1
+    end
+""")
+check("clicking a reward card then Complete hands in that reward", rt.eval("""
+    UQ_TEST_DIALOGUE_ACTION == 'reward' and UQ_TEST_REWARDED == 16
+        and UnrealQuestDialogueFrame:IsShown() == false
+"""))
+
+rt.execute("""
+    UQ_TEST_QUEST_REWARD_ITEMS = {}
+    UQ_TEST_QUEST_CHOICES = 2
+    UQ_TEST_QUEST_REWARD_ITEMS.choice1 = { 'Training Sword', 2 }
+    UQ_TEST_QUEST_REWARD_ITEMS.choice2 = { 'Training Shield', 2 }
+    UQ_TEST_DIALOGUE_ACTION = nil
+    UQ_TEST_REWARDED = nil
+    local dialogue = UnrealQuest:GetModule('Dialogue')
+    dialogue:OnDialogueEvent('QUEST_COMPLETE')
+    dialogue.closed = nil
+    dialogue:Refresh()
+    dialogue:FinishTextReveal()
+    UnrealQuestDialogueTurnInItem2:GetScript('OnMouseUp')('LeftButton')
+    UnrealQuestDialogueFrame:GetScript('OnMouseUp')('LeftButton')
+""")
+check("the rewards panel is titled and carries the gear advisor marks on its tiles", rt.eval("""(function()
+    local Client = UnrealQuest.Client
+    local frame = UnrealQuestDialogueFrame
+    local height = Client.RenderQuestDialogueTurnIn(frame, {
+        title = 'Rewards', lines = { 'Experience: 17,700' }, rewards = {},
+        choices = {
+            { name = 'Footpads', tooltipType = 'choice', index = 1,
+              advisor = { arrow = 'best', coin = false } },
+            { name = 'Belt', tooltipType = 'choice', index = 2,
+              advisor = { arrow = 'worse', coin = true }, selected = true,
+              payload = { kind = 'rewardChoice', index = 2 } },
+        },
+    })
+    local first = UnrealQuestDialogueTurnInItem1
+    local second = UnrealQuestDialogueTurnInItem2
+    local ok = height > 0
+        and UnrealQuestDialogueTurnIn.unrealQuestStatusText:GetText() == 'Rewards'
+        and not UnrealQuestDialogueTurnIn.unrealQuestStatusIcon:IsShown()
+        and first.unrealQuestArrow:IsShown() and not first.unrealQuestCoin:IsShown()
+        and second.unrealQuestArrow:IsShown() and second.unrealQuestCoin:IsShown()
+        and second.unrealQuestGlow:IsShown() and not first.unrealQuestGlow:IsShown()
+        and second.unrealQuestPayload.index == 2 and first.unrealQuestPayload == nil
+        and second.unrealQuestCoin.points[1][2] == second.unrealQuestIcon
+        and table.getn(first.unrealQuestPlate) == 3
+        and second.unrealQuestPlateTexture == UnrealQuest.Client.QUEST_DIALOGUE_TURN_IN.TILE_PLATE_SELECTED
+        and first.unrealQuestPlateTexture == UnrealQuest.Client.QUEST_DIALOGUE_TURN_IN.TILE_PLATE
+    Client.RenderQuestDialogueTurnIn(frame, nil)
+    return ok
+end)()"""))
+check("reward sections use the native receive, choose and also-receive wording", rt.eval("""(function()
+    local Client = UnrealQuest.Client
+    local frame = UnrealQuestDialogueFrame
+    local panel = UnrealQuestDialogueTurnIn
+    local choice = { name = 'Sword', tooltipType = 'choice', index = 1 }
+    local reward = { name = 'Token', tooltipType = 'reward', index = 1 }
+    Client.RenderQuestDialogueTurnIn(frame, {
+        title = UnrealQuest.L('DIALOGUE_REWARDS'), choices = {}, rewards = { reward },
+    })
+    local receive = panel.unrealQuestSections[1]:GetText()
+    Client.RenderQuestDialogueTurnIn(frame, {
+        title = UnrealQuest.L('DIALOGUE_REWARDS'), choices = { choice }, rewards = {},
+    })
+    local choose = panel.unrealQuestSections[1]:GetText()
+    Client.RenderQuestDialogueTurnIn(frame, {
+        title = UnrealQuest.L('DIALOGUE_REWARDS'), choices = { choice }, rewards = { reward },
+    })
+    local mixedChoose = panel.unrealQuestSections[1]:GetText()
+    local alsoReceive = panel.unrealQuestSections[2]:GetText()
+    Client.RenderQuestDialogueTurnIn(frame, nil)
+    return receive == UnrealQuest.L('DIALOGUE_RECEIVE_REWARD')
+        and choose == UnrealQuest.L('DIALOGUE_CHOOSE_REWARD')
+        and mixedChoose == UnrealQuest.L('DIALOGUE_CHOOSE_REWARD')
+        and alsoReceive == UnrealQuest.L('DIALOGUE_ALSO_RECEIVE')
+end)()"""))
+check("the rewards panel contracts to its widest content row", rt.eval("""(function()
+    local Client = UnrealQuest.Client
+    local frame = UnrealQuestDialogueFrame
+    local panel = UnrealQuestDialogueTurnIn
+    local layout = Client.QUEST_DIALOGUE_TURN_IN
+    local choice = { name = 'Sword', tooltipType = 'choice', index = 1 }
+    local reward = { name = 'Token', tooltipType = 'reward', index = 1 }
+    Client.RenderQuestDialogueTurnIn(frame, {
+        title = UnrealQuest.L('DIALOGUE_REWARDS'), choices = {}, rewards = { reward },
+    })
+    local one = panel:GetWidth()
+    Client.RenderQuestDialogueTurnIn(frame, {
+        title = UnrealQuest.L('DIALOGUE_REWARDS'), choices = { choice }, rewards = { reward },
+    })
+    local onePerSection = panel:GetWidth()
+    Client.RenderQuestDialogueTurnIn(frame, {
+        title = UnrealQuest.L('DIALOGUE_REWARDS'), choices = { choice, choice }, rewards = {},
+    })
+    local two = panel:GetWidth()
+    Client.RenderQuestDialogueTurnIn(frame, {
+        completable = true, choices = {}, rewards = { reward }, lines = {},
+    })
+    local progress = panel:GetWidth()
+    Client.RenderQuestDialogueTurnIn(frame, nil)
+    local narrow = (2 * layout.PAD + layout.TILE_WIDTH) * Client.QUEST_DIALOGUE_UNIT
+    local full = layout.WIDTH * Client.QUEST_DIALOGUE_UNIT
+    return math.abs(one - narrow) < 0.01
+        and math.abs(onePerSection - narrow) < 0.01
+        and math.abs(two - full) < 0.01
+        and math.abs(progress - full) < 0.01
+end)()"""))
+check("a choose-one reward must be selected and is passed to GetQuestReward", rt.eval("""
+    UQ_TEST_DIALOGUE_ACTION == 'reward' and UQ_TEST_REWARDED == 2
+        and UnrealQuestDialogueFrame:IsShown() == false
+"""))
+rt.execute("""
+    UQ_TEST_QUEST_PACKET('Panel Test Quest', 'Do it.', 'Short words.')
+    UQ_TEST_QUEST_REWARD_TEXT = ''
+    UQ_TEST_QUEST_CHOICES = 1
+    UQ_TEST_QUEST_REWARD_ITEMS = {}
+    UQ_TEST_QUEST_REWARD_ITEMS.choice1 = { 'Training Sword', 2 }
+    QuestFrame:Show()
+    local dialogue = UnrealQuest:GetModule('Dialogue')
+    dialogue:OnDialogueEvent('QUEST_DETAIL')
+    dialogue.closed = nil
+    dialogue.lastSignature = nil
+    dialogue:Refresh()
+    local card = UnrealQuestDialogueFrame
+    local stack = UnrealQuestDialogueTurnIn
+    UQ_TEST_PANEL_UNDER = stack:IsShown() and stack.point[1] == 'TOP'
+        and stack.point[2] == card and stack.point[3] == 'BOTTOM'
+        and not UnrealQuestDialogueOptionsScroll:IsShown()
+    UQ_TEST_PANEL_STILL = card.point[1] == 'CENTER' and card.point[3] == 'CENTER'
+        and math.abs(card.point[4]) < 0.001 and math.abs(card.point[5]) < 0.001
+    UQ_TEST_PANEL_HEIGHT = stack:GetHeight()
+    UQ_TEST_QUEST_CHOICES = 0
+    UQ_TEST_QUEST_REWARD_ITEMS = {}
+""")
+check("quest pages hang their rewards under the card without moving it", rt.eval("""
+    UQ_TEST_PANEL_UNDER == true and UQ_TEST_PANEL_STILL == true
+        and UQ_TEST_PANEL_HEIGHT < 176 and UQ_TEST_PANEL_HEIGHT >= 35
+"""))
+rt.execute("""
+    UQ_TEST_QUEST_PACKET('Click Test Quest', 'Do it.', 'Text like this.')
+    UQ_TEST_QUEST_REWARD_TEXT = ''
+    UQ_TEST_QUEST_CHOICES = 0
+    UQ_TEST_QUEST_REWARD_ITEMS = {}
+    UQ_TEST_DIALOGUE_ACTION = nil
+    UQ_TEST_TYPEWRITER_SAVED_THEME = UnrealQuestDB.dialogueTheme
+    UnrealQuestDB.dialogueTheme = 'horde-light'
+    QuestFrame:Show()
+    local dialogue = UnrealQuest:GetModule('Dialogue')
+    dialogue:OnDialogueEvent('QUEST_DETAIL')
+    dialogue.closed = nil
+    dialogue:Refresh()
+    local card = UnrealQuestDialogueFrame
+    UQ_TEST_TYPEWRITER_EXPECTED = dialogue.lastView.body
+    UQ_TEST_TYPEWRITER_WIDTH = card.unrealQuestBody:GetWidth()
+    UQ_TEST_TYPEWRITER_POINT = card.unrealQuestBody.point
+    UQ_TEST_TYPEWRITER_INITIAL_COUNT = dialogue.revealCount
+    local stepAt = (dialogue.revealNextAt or UnrealQuest.Client.Now()) + 0.12
+    dialogue:StepTextReveal(stepAt)
+    UQ_TEST_TYPEWRITER_GROWN_COUNT = dialogue.revealCount
+    UQ_TEST_TYPEWRITER_PREFIX = card.unrealQuestBody:GetText()
+    local active = card.unrealQuestActiveBodyLetters or {}
+    UQ_TEST_TYPEWRITER_PROBE = active[1]
+    UQ_TEST_TYPEWRITER_START_ALPHA = UQ_TEST_TYPEWRITER_PROBE
+        and UQ_TEST_TYPEWRITER_PROBE:GetAlpha()
+    UQ_TEST_TYPEWRITER_START_Y = UQ_TEST_TYPEWRITER_PROBE
+        and UQ_TEST_TYPEWRITER_PROBE.point[5]
+    UQ_TEST_TYPEWRITER_FINAL_Y = UQ_TEST_TYPEWRITER_PROBE
+        and UQ_TEST_TYPEWRITER_PROBE.unrealQuestFinalY
+    UQ_TEST_TYPEWRITER_START_AT = UQ_TEST_TYPEWRITER_PROBE
+        and UQ_TEST_TYPEWRITER_PROBE.unrealQuestAnimationStart
+    UQ_TEST_TYPEWRITER_POOL_COUNT = table.getn(card.unrealQuestBodyLetterPool or {})
+    UQ_TEST_TYPEWRITER_NATIVE_LAYOUT = UQ_TEST_TYPEWRITER_PROBE:GetText()
+            == dialogue.revealCharacters[UQ_TEST_TYPEWRITER_PROBE.unrealQuestCharacterIndex]
+        and string.find(UQ_TEST_TYPEWRITER_PROBE:GetText(),
+            '|c00000000', 1, true) == nil
+        and UQ_TEST_TYPEWRITER_PROBE.unrealQuestFinalX >= 0
+        and UQ_TEST_TYPEWRITER_PROBE.point[2] == card.unrealQuestBody
+    UQ_TEST_TYPEWRITER_NATIVE_DURING = card.unrealQuestBody:IsShown()
+        and card.unrealQuestBodyAnimation:IsShown()
+        and UQ_TEST_TYPEWRITER_POOL_COUNT > 0
+        and UQ_TEST_TYPEWRITER_POOL_COUNT < table.getn(dialogue.revealCharacters)
+    UnrealQuest.Client.SetQuestDialogueBody(card, dialogue.lastView.body, true,
+        dialogue.revealCharacters, dialogue.revealCount)
+    UQ_TEST_TYPEWRITER_REFRESH_PRESERVED = card.unrealQuestBody:GetText()
+        == UQ_TEST_TYPEWRITER_PREFIX
+        and UQ_TEST_TYPEWRITER_PROBE.unrealQuestAnimationStart
+            == UQ_TEST_TYPEWRITER_START_AT
+        and UQ_TEST_TYPEWRITER_PROBE:GetAlpha() == UQ_TEST_TYPEWRITER_START_ALPHA
+        and UQ_TEST_TYPEWRITER_PROBE.point[5] == UQ_TEST_TYPEWRITER_START_Y
+    UnrealQuest.Client.StepQuestDialogueLetters(card, UQ_TEST_TYPEWRITER_START_AT + 0.10)
+    UQ_TEST_TYPEWRITER_MID_ALPHA = UQ_TEST_TYPEWRITER_PROBE:GetAlpha()
+    UQ_TEST_TYPEWRITER_MID_Y = UQ_TEST_TYPEWRITER_PROBE.point[5]
+    UnrealQuest.Client.StepQuestDialogueLetters(card, UQ_TEST_TYPEWRITER_START_AT + 0.21)
+    UQ_TEST_TYPEWRITER_END_ALPHA = UQ_TEST_TYPEWRITER_PROBE:GetAlpha()
+    UQ_TEST_TYPEWRITER_END_Y = UQ_TEST_TYPEWRITER_PROBE.point[5]
+    UQ_TEST_TYPEWRITER_LANDED = UQ_TEST_TYPEWRITER_PROBE:IsShown()
+        and UQ_TEST_TYPEWRITER_PROBE.unrealQuestInUse == true
+        and UQ_TEST_TYPEWRITER_PROBE.unrealQuestSettled == true
+        and card.unrealQuestBody:GetText() == UQ_TEST_TYPEWRITER_PREFIX
+    UQ_TEST_TYPEWRITER_GROWN_WIDTH = card.unrealQuestBody:GetWidth()
+    UQ_TEST_CARD_HOVER = card:GetScript('OnEnter') == nil
+        and card.unrealQuestHighlight == nil
+    UQ_TEST_TYPEWRITER_PARENT_UPDATE = card.unrealQuestBodyAnimation:GetScript('OnUpdate')
+    card:GetScript('OnMouseUp')('RightButton')
+    UQ_TEST_RIGHT_ACTION = UQ_TEST_DIALOGUE_ACTION
+    UQ_TEST_TYPEWRITER_FULL = card.unrealQuestBodyLetterText
+    UQ_TEST_TYPEWRITER_NATIVE_SETTLED = card.unrealQuestBody:IsShown()
+        and not card.unrealQuestBodyAnimation:IsShown()
+        and card.unrealQuestBody:GetText() == UQ_TEST_TYPEWRITER_EXPECTED
+    local pool = card.unrealQuestBodyLetterPool or {}
+    UQ_TEST_TYPEWRITER_POOL_SETTLED = true
+    local poolIndex = 1
+    while poolIndex <= table.getn(pool) do
+        if pool[poolIndex]:IsShown() or pool[poolIndex].unrealQuestInUse then
+            UQ_TEST_TYPEWRITER_POOL_SETTLED = false
+        end
+        poolIndex = poolIndex + 1
+    end
+    UQ_TEST_TYPEWRITER_FULL_WIDTH = card.unrealQuestBody:GetWidth()
+    card:GetScript('OnMouseUp')('LeftButton')
+    UnrealQuestDB.dialogueTheme = UQ_TEST_TYPEWRITER_SAVED_THEME
+""")
+check("dialogue holds landed letters until one native final handoff; the first click reveals and the next acts", rt.eval("""
+    UQ_TEST_CARD_HOVER == true and UQ_TEST_RIGHT_ACTION == nil
+        and UQ_TEST_TYPEWRITER_INITIAL_COUNT == 1
+        and UQ_TEST_TYPEWRITER_GROWN_COUNT >= 3
+        and UQ_TEST_TYPEWRITER_GROWN_COUNT < string.len(UQ_TEST_TYPEWRITER_EXPECTED)
+        and UQ_TEST_TYPEWRITER_PREFIX ~= UQ_TEST_TYPEWRITER_EXPECTED
+        and UQ_TEST_TYPEWRITER_NATIVE_DURING == true
+        and UQ_TEST_TYPEWRITER_NATIVE_LAYOUT == true
+        and UQ_TEST_TYPEWRITER_REFRESH_PRESERVED == true
+        and UQ_TEST_TYPEWRITER_START_ALPHA == 0
+        and UQ_TEST_TYPEWRITER_START_Y == UQ_TEST_TYPEWRITER_FINAL_Y
+            + UnrealQuest.Client.QUEST_DIALOGUE_LETTER_OFFSET
+        and UQ_TEST_TYPEWRITER_MID_ALPHA > 0
+        and UQ_TEST_TYPEWRITER_MID_ALPHA < 1
+        and UQ_TEST_TYPEWRITER_MID_Y < UQ_TEST_TYPEWRITER_START_Y
+        and UQ_TEST_TYPEWRITER_MID_Y > UQ_TEST_TYPEWRITER_FINAL_Y
+        and UQ_TEST_TYPEWRITER_END_ALPHA == 1
+        and UQ_TEST_TYPEWRITER_END_Y == UQ_TEST_TYPEWRITER_FINAL_Y
+        and UQ_TEST_TYPEWRITER_LANDED == true
+        and UQ_TEST_TYPEWRITER_PARENT_UPDATE == nil
+        and UQ_TEST_TYPEWRITER_FULL == UQ_TEST_TYPEWRITER_EXPECTED
+        and UQ_TEST_TYPEWRITER_NATIVE_SETTLED == true
+        and UQ_TEST_TYPEWRITER_POOL_SETTLED == true
+        and UnrealQuestDialogueBody:GetText() == UQ_TEST_TYPEWRITER_EXPECTED
+        and UnrealQuestDialogueBody.inherits == 'GameFontNormalSmall'
+        and UnrealQuestDialogueBody.justifyH == 'LEFT'
+        and UnrealQuestDialogueBody.justifyV == 'TOP'
+        and UQ_TEST_TYPEWRITER_POINT[1] == 'TOPLEFT'
+        and UQ_TEST_TYPEWRITER_POINT[3] == 'TOPLEFT'
+        and UQ_TEST_TYPEWRITER_WIDTH == UQ_TEST_TYPEWRITER_GROWN_WIDTH
+        and UQ_TEST_TYPEWRITER_WIDTH == UQ_TEST_TYPEWRITER_FULL_WIDTH
+        and UQ_TEST_DIALOGUE_ACTION == 'accept'
+        and UnrealQuestDialogueFrame:IsShown() == false
+"""), str(rt.eval("tostring(UQ_TEST_TYPEWRITER_INITIAL_COUNT) .. ' | ' .. tostring(UQ_TEST_TYPEWRITER_GROWN_COUNT) .. ' | ' .. tostring(UQ_TEST_TYPEWRITER_PREFIX) .. ' | ' .. tostring(UQ_TEST_TYPEWRITER_NATIVE_DURING) .. ' | ' .. tostring(UQ_TEST_TYPEWRITER_START_ALPHA) .. ' | ' .. tostring(UQ_TEST_TYPEWRITER_MID_ALPHA) .. ' | ' .. tostring(UQ_TEST_TYPEWRITER_END_ALPHA) .. ' | ' .. tostring(UQ_TEST_TYPEWRITER_LANDED) .. ' | ' .. tostring(UQ_TEST_TYPEWRITER_NATIVE_SETTLED) .. ' | ' .. tostring(UQ_TEST_DIALOGUE_ACTION)")))
+rt.execute("""
+    UQ_TEST_QUEST_PACKET('UTF Test Quest', '', '你好。')
+    UQ_TEST_DIALOGUE_ACTION = nil
+    UQ_TEST_TYPEWRITER_UTF_THEME = UnrealQuestDB.dialogueTheme
+    UnrealQuestDB.dialogueTheme = 'horde-light'
+    QuestFrame:Show()
+    local dialogue = UnrealQuest:GetModule('Dialogue')
+    dialogue:OnDialogueEvent('QUEST_DETAIL')
+    dialogue.closed = nil
+    dialogue:Refresh()
+    local firstLetter = UnrealQuestDialogueFrame.unrealQuestBodyLetters[1]
+    UQ_TEST_TYPEWRITER_UTF_FIRST = firstLetter and firstLetter.unrealQuestVisibleText
+        or UnrealQuestDialogueBody:GetText()
+    UQ_TEST_TYPEWRITER_UTF_SECOND_SHOWN = UQ_TEST_TYPEWRITER_UTF_FIRST == '你好'
+    dialogue:FinishTextReveal()
+    UQ_TEST_TYPEWRITER_UTF_FULL = UnrealQuestDialogueFrame.unrealQuestBodyLetterText
+    dialogue:OnDialogueEvent('QUEST_DETAIL')
+    dialogue:Refresh()
+    dialogue:StepTextReveal((dialogue.revealNextAt or UnrealQuest.Client.Now()) + 20)
+    UnrealQuest.Client.StepQuestDialogueLetters(UnrealQuestDialogueFrame,
+        UnrealQuest.Client.Now() + 40)
+    UQ_TEST_TYPEWRITER_UTF_SETTLED = UnrealQuestDialogueFrame.unrealQuestBodyLetterText
+    UQ_TEST_TYPEWRITER_UTF_RENDERED = UnrealQuestDialogueBody:GetText()
+    UQ_TEST_TYPEWRITER_UTF_DONE = dialogue.revealing == nil
+    UnrealQuestDB.dialogueTheme = UQ_TEST_TYPEWRITER_UTF_THEME
+""")
+check("the reveal never splits a multibyte character", rt.eval("""
+    UQ_TEST_TYPEWRITER_UTF_FIRST == '你'
+        and UQ_TEST_TYPEWRITER_UTF_SECOND_SHOWN == false
+        and UQ_TEST_TYPEWRITER_UTF_FULL == '你好。'
+        and UQ_TEST_TYPEWRITER_UTF_SETTLED == '你好。'
+        and UQ_TEST_TYPEWRITER_UTF_RENDERED == '你好。'
+        and UQ_TEST_TYPEWRITER_UTF_DONE == true
+"""), str(rt.eval("tostring(UQ_TEST_TYPEWRITER_UTF_FIRST == '你好。') .. ' | ' .. tostring(UQ_TEST_TYPEWRITER_UTF_FIRST == '你') .. ' | ' .. tostring(UQ_TEST_TYPEWRITER_UTF_SECOND_SHOWN) .. ' | ' .. tostring(UQ_TEST_TYPEWRITER_UTF_FULL == '你好。') .. ' | ' .. tostring(UQ_TEST_TYPEWRITER_UTF_SETTLED == '你好。') .. ' | ' .. tostring(UQ_TEST_TYPEWRITER_UTF_DONE)")))
+rt.execute("""
+    UQ_TEST_QUEST_COMPLETABLE = false
+    UQ_TEST_QUEST_PROGRESS_TEXT = 'Back so soon?'
+    UQ_TEST_DIALOGUE_ACTION = nil
+    QuestFrame:Show()
+    local dialogue = UnrealQuest:GetModule('Dialogue')
+    dialogue:OnDialogueEvent('QUEST_PROGRESS')
+    dialogue.closed = nil
+    dialogue:Refresh()
+    UnrealQuestDialogueFrame:GetScript('OnMouseUp')('LeftButton')
+    UQ_TEST_PROGRESS_FIRST_CLICK = UQ_TEST_DIALOGUE_ACTION
+    UnrealQuestDialogueFrame:GetScript('OnMouseUp')('LeftButton')
+""")
+check("an unfinished quest reveals before a second click closes it", rt.eval(
+    "UQ_TEST_PROGRESS_FIRST_CLICK == nil and UQ_TEST_DIALOGUE_ACTION == 'closeQuest'"))
+rt.execute("""
+    local dialogue = UnrealQuest:GetModule('Dialogue')
+    local function Page(event)
+        UQ_TEST_DIALOGUE_ACTION = nil
+        UQ_TEST_REWARDED = nil
+        QuestFrame:Show()
+        dialogue:OnDialogueEvent(event)
+        dialogue.closed = nil
+        dialogue:Refresh()
+        return UQ_TEST_DIALOGUE_ACTION
+    end
+    UnrealQuestDB.dialogueAutoQuest = true
+    UQ_TEST_QUEST_PACKET('Auto Test Quest', 'Do it.', 'Short words.')
+    UQ_TEST_QUEST_REWARD_TEXT = ''
+    UQ_TEST_QUEST_PROGRESS_TEXT = ''
+    UQ_TEST_QUEST_CHOICES = 0
+    UQ_TEST_QUEST_REWARD_ITEMS = {}
+    UQ_TEST_AUTO_ACCEPT = Page('QUEST_DETAIL')
+    UQ_TEST_DIALOGUE_ACTION = nil
+    dialogue:Refresh()
+    UQ_TEST_AUTO_ONCE = UQ_TEST_DIALOGUE_ACTION
+    UQ_TEST_QUEST_PROGRESS_TEXT = 'Back so soon?'
+    UQ_TEST_QUEST_COMPLETABLE = false
+    UQ_TEST_AUTO_UNFINISHED = Page('QUEST_PROGRESS')
+    UQ_TEST_QUEST_COMPLETABLE = true
+    UQ_TEST_AUTO_PROGRESS = Page('QUEST_PROGRESS')
+    UQ_TEST_QUEST_REWARD_TEXT = 'Well done.'
+    UQ_TEST_QUEST_CHOICES = 2
+    UQ_TEST_QUEST_REWARD_ITEMS.choice1 = { 'Training Sword', 2 }
+    UQ_TEST_QUEST_REWARD_ITEMS.choice2 = { 'Training Shield', 2 }
+    UQ_TEST_AUTO_CHOICE = Page('QUEST_COMPLETE')
+    UQ_TEST_QUEST_CHOICES = 1
+    UQ_TEST_AUTO_REWARD = Page('QUEST_COMPLETE')
+    UQ_TEST_AUTO_REWARD_INDEX = UQ_TEST_REWARDED
+    UnrealQuestDB.dialogueAutoQuest = nil
+    UQ_TEST_QUEST_REWARD_TEXT = ''
+    UQ_TEST_QUEST_PROGRESS_TEXT = ''
+    UQ_TEST_QUEST_COMPLETABLE = false
+    UQ_TEST_QUEST_CHOICES = 0
+    UQ_TEST_QUEST_REWARD_ITEMS = {}
+    dialogue:Hide(false)
+    QuestFrame:Hide()
+""")
+rt.execute("""
+    local dialogue = UnrealQuest:GetModule('Dialogue')
+    local frame = UnrealQuestDialogueFrame
+    local Client = UnrealQuest.Client
+    UQ_TEST_OPTIONS_SAVED_THEME = UnrealQuestDB.dialogueTheme
+    UnrealQuestDB.dialogueTheme = 'minimal'
+    UQ_TEST_GOSSIP_PROBABILISTIC = false
+    UQ_TEST_GOSSIP_TEXT = 'Well met, traveller.'
+    UQ_TEST_GOSSIP_ACTIVE = { 'Ready Task', 23 }
+    UQ_TEST_GOSSIP_AVAILABLE = { 'A New Task', 17 }
+    UQ_TEST_GOSSIP_OPTIONS = { 'Browse goods', 'vendor' }
+    GossipFrame:Show()
+    dialogue:OnDialogueEvent('GOSSIP_SHOW')
+    dialogue.closed = nil
+    dialogue:Refresh()
+    dialogue:FinishTextReveal()
+    local box = Client.QUEST_DIALOGUE_LAYOUTS.minimal.conversation.optionButtons
+    local third = UnrealQuestDialogueOptionButton3
+    UQ_TEST_OPTIONS = {
+        body = frame.unrealQuestBody:GetText() or '',
+        first = UnrealQuestDialogueOptionButton1 and UnrealQuestDialogueOptionButton1:IsShown(),
+        third = third and third:IsShown() and third.unrealQuestLabel:GetText(),
+        silver = third and third.unrealQuestSilver ~= nil and third.unrealQuestSilver.C:IsShown(),
+        inCard = third and third.point[2] == frame,
+        stack = UnrealQuestDialogueRow1:IsShown() or UnrealQuestDialogueOptionsScroll:IsShown(),
+        height = frame:GetHeight(),
+        expected = Client.GetQuestDialogueOptionsHeight(box, 3) * Client.QUEST_DIALOGUE_UNIT,
+    }
+    Client.SettleQuestDialogueLabels()
+    Client.SettleQuestDialogueLabels()
+    Client.SettleQuestDialogueLabels()
+    local widest = 0
+    for index = 1, 3 do
+        local label = getglobal('UnrealQuestDialogueOptionButton' .. index).unrealQuestLabel
+        if label:GetWidth() > widest then widest = label:GetWidth() end
+    end
+    local hug = box.labelX + widest / Client.QUEST_DIALOGUE_UNIT + box.rightPad
+    if hug < box.minWidth then hug = box.minWidth end
+    UQ_TEST_OPTIONS.hugWidth = hug * Client.QUEST_DIALOGUE_UNIT
+    UQ_TEST_OPTIONS.widths = { UnrealQuestDialogueOptionButton1:GetWidth(),
+        third:GetWidth() }
+    UQ_TEST_OPTIONS.full = box.width * Client.QUEST_DIALOGUE_UNIT
+    do
+        local role = UnrealQuestDialogueCineRole
+        local ink = Client.QUEST_DIALOGUE_LAYOUTS.minimal.ink.title
+        local red, green, blue = role:GetTextColor()
+        UQ_TEST_OPTIONS.roleInk = role:IsShown() and role:GetText() ~= ''
+            and math.abs(red - ink[1]) < 0.001 and math.abs(green - ink[2]) < 0.001
+            and math.abs(blue - ink[3]) < 0.001
+    end
+    local cardWidth = 2 * box.x + hug
+    if cardWidth < box.cardMinWidth then cardWidth = box.cardMinWidth end
+    UQ_TEST_OPTIONS.cardWidth = frame:GetWidth()
+    UQ_TEST_OPTIONS.cardExpected = cardWidth * Client.QUEST_DIALOGUE_UNIT
+    local borders = frame.unrealQuestMinimalCards.card.borders
+    UQ_TEST_OPTIONS.borderRight = borders.TR.points and borders.TR.points[1][4]
+    UQ_TEST_OPTIONS.borderExpected = (cardWidth - Client.QUEST_DIALOGUE_MINIMAL.BORDER_SIZE)
+        * Client.QUEST_DIALOGUE_UNIT
+    local realSelect = dialogue.SelectRow
+    dialogue.SelectRow = function(self, payload) UQ_TEST_OPTIONS.clicked = payload end
+    third:GetScript('OnClick')()
+    dialogue.SelectRow = realSelect
+    UQ_TEST_GOSSIP_ACTIVE = {}
+    UQ_TEST_GOSSIP_AVAILABLE = {}
+    dialogue.lastSignature = nil
+    dialogue:Refresh()
+    dialogue:FinishTextReveal()
+    dialogue.lastSignature = nil
+    dialogue:Refresh()
+    UQ_TEST_OPTIONS.plainBody = frame.unrealQuestBody:GetText() or ''
+    UQ_TEST_OPTIONS.plainButtons = UnrealQuestDialogueOptionButton1:IsShown()
+    UQ_TEST_OPTIONS.plainHeight = frame:GetHeight()
+    UQ_TEST_OPTIONS.plainWidth = frame:GetWidth()
+    UQ_TEST_GOSSIP_TEXT = ''
+    UQ_TEST_GOSSIP_OPTIONS = {}
+    dialogue:Hide(false)
+    GossipFrame:Hide()
+
+    -- A greeting (several quests, no gossip) takes the buttons too.
+    UQ_TEST_QUEST_GREETING_TEXT = 'Many tasks await.'
+    UQ_TEST_SAVED_NUM_AVAILABLE = GetNumAvailableQuests
+    function GetNumAvailableQuests() return 2 end
+    function GetAvailableTitle(index) return index == 1 and 'First Errand' or 'Second Errand' end
+    function GetAvailableLevel(index) return 5 end
+    Client.ForgetSymbol('GetNumAvailableQuests')
+    Client.ForgetSymbol('GetAvailableTitle')
+    Client.ForgetSymbol('GetAvailableLevel')
+    QuestFrame:Show()
+    dialogue:OnDialogueEvent('QUEST_GREETING')
+    dialogue.closed = nil
+    dialogue:Refresh()
+    dialogue:FinishTextReveal()
+    UQ_TEST_OPTIONS.greetingBody = frame.unrealQuestBody:GetText() or ''
+    UQ_TEST_OPTIONS.greetingSecond = UnrealQuestDialogueOptionButton2:IsShown()
+        and UnrealQuestDialogueOptionButton2.unrealQuestLabel:GetText()
+    UQ_TEST_OPTIONS.greetingThird = UnrealQuestDialogueOptionButton3:IsShown()
+    GetNumAvailableQuests = UQ_TEST_SAVED_NUM_AVAILABLE
+    Client.ForgetSymbol('GetNumAvailableQuests')
+    UQ_TEST_QUEST_GREETING_TEXT = ''
+    dialogue:Hide(false)
+    QuestFrame:Hide()
+
+    -- A completed quest's objectives read with their log counts, and the
+    -- Complete button grows to hold its label and key.
+    local questState = UnrealQuest:GetModule('QuestState')
+    UQ_TEST_OPTIONS_REAL_BY_TITLE = questState.GetQuestByTitle
+    questState.GetQuestByTitle = function(self, title)
+        if title ~= 'Counted Quest' then return UQ_TEST_OPTIONS_REAL_BY_TITLE(self, title) end
+        return { index = 2, objectives = {
+            { text = 'Kobold Vermin slain: 10/10', objectiveType = 'monster', finished = true },
+            { text = 'Candle: 6/6', objectiveType = 'item', finished = true },
+        } }
+    end
+    UQ_TEST_QUEST_PACKET('Counted Quest', 'Do it.', 'Short words.')
+    UQ_TEST_QUEST_PROGRESS_TEXT = ''
+    UQ_TEST_QUEST_REWARD_TEXT = 'Well done.'
+    UQ_TEST_QUEST_CHOICES = 0
+    UQ_TEST_QUEST_REWARD_ITEMS = {}
+    QuestFrame:Show()
+    dialogue:OnDialogueEvent('QUEST_COMPLETE')
+    dialogue.closed = nil
+    dialogue:Refresh()
+    dialogue:FinishTextReveal()
+    Client.SettleQuestDialogueLabels()
+    Client.SettleQuestDialogueLabels()
+    Client.SettleQuestDialogueLabels()
+    local action = UnrealQuestDialogueAction
+    local spec = Client.QUEST_DIALOGUE_MINIMAL.ACTION_BUTTON
+    local centre = Client.QUEST_DIALOGUE_LAYOUTS.minimal.quest.actionButtonCentre
+    local unit = Client.QUEST_DIALOGUE_UNIT
+    local label = UnrealQuestDialogueActionLabel
+    local hint = action.unrealQuestHint
+    UQ_TEST_OPTIONS.objective = dialogue.lastView and dialogue.lastView.objective
+    UQ_TEST_OPTIONS.actionWidth = action:GetWidth()
+    UQ_TEST_OPTIONS.actionNeeded = (label:GetWidth() + hint:GetWidth()) / unit
+        + 2 * spec.HINT_PAD + spec.HINT_GAP
+    UQ_TEST_OPTIONS.actionRight = action.point[4] + action:GetWidth() / 2
+    -- Both keep their place from the card's right edge, which moves in when
+    -- the card narrows to its content (Client.FitQuestDialogueCardWidth).
+    local narrow = Client.GetQuestDialogueCardNarrowing(UnrealQuestDialogueFrame)
+    UQ_TEST_OPTIONS.narrowed = narrow > 0
+    UQ_TEST_OPTIONS.actionRightExpected = (centre[1] - narrow + spec.WIDTH / 2) * unit
+    local badge = UnrealQuestDialogueFrame.unrealQuestCineKickerIcon
+    local badgeBox = Client.QUEST_DIALOGUE_LAYOUTS.minimal.quest.kickerIcon
+    UQ_TEST_OPTIONS.badgeTurnIn = badge:IsShown()
+        and string.find(badge:GetTexture() or '', 'Kicker_Icon_TurnIn', 1, true) ~= nil
+        and badge.points ~= nil and badge.points[1][1] == 'TOPLEFT'
+        and math.abs(badge.points[1][4] - (badgeBox[1] - narrow) * unit) < 0.01
+        and not UnrealQuestDialogueCineKicker:IsShown()
+    dialogue:Hide(false)
+    UQ_TEST_QUEST_REWARD_TEXT = ''
+    dialogue:OnDialogueEvent('QUEST_DETAIL')
+    dialogue.closed = nil
+    dialogue:Refresh()
+    UQ_TEST_OPTIONS.badgeAccept = badge:IsShown()
+        and string.find(badge:GetTexture() or '', 'Kicker_Icon_TurnIn', 1, true) == nil
+        and string.find(badge:GetTexture() or '', 'Kicker_Icon', 1, true) ~= nil
+    questState.GetQuestByTitle = UQ_TEST_OPTIONS_REAL_BY_TITLE
+    UQ_TEST_QUEST_REWARD_TEXT = ''
+    UnrealQuestDB.dialogueTheme = UQ_TEST_OPTIONS_SAVED_THEME
+    dialogue:Hide(false)
+    QuestFrame:Hide()
+""")
+check("a greeting's quests replace the talk as buttons in the Minimal card", rt.eval("""
+    UQ_TEST_OPTIONS.greetingBody == '' and UQ_TEST_OPTIONS.greetingSecond == '[5] Second Errand'
+        and UQ_TEST_OPTIONS.greetingThird == false
+"""), str(rt.eval("tostring(UQ_TEST_OPTIONS.greetingBody) .. ' | ' .. tostring(UQ_TEST_OPTIONS.greetingSecond) .. ' | ' .. tostring(UQ_TEST_OPTIONS.greetingThird)")))
+check("a completed quest shows its objectives with their log counts", rt.eval("""
+    UQ_TEST_OPTIONS.objective == 'Kobold Vermin slain: 10/10, Candle: 6/6'
+"""), str(rt.eval("tostring(UQ_TEST_OPTIONS.objective)")))
+rt.execute("""
+    local dialogue = UnrealQuest:GetModule('Dialogue')
+    UQ_TEST_STALE_SAVED_THEME = UnrealQuestDB.dialogueTheme
+    UnrealQuestDB.dialogueTheme = 'minimal'
+    UQ_TEST_QUEST_PACKET('Fresh Offer', 'Help us.', 'Bring ten pelts.')
+    -- The previous turn-in's text still readable as the offer opens.
+    UQ_TEST_QUEST_REWARD_TEXT = 'Thanks for the last one.'
+    UQ_TEST_QUEST_PROGRESS_TEXT = ''
+    QuestFrame:Show()
+    dialogue:OnDialogueEvent('QUEST_DETAIL')
+    dialogue.closed = nil
+    dialogue:Refresh()
+    do
+        local width, height = UnrealQuest.Client.GetScreenSize()
+        local card = UnrealQuestDialogueFrame
+        UQ_TEST_LOWER_CARD = card.point ~= nil and card.point[1] == 'CENTER'
+            and card.point[3] == 'CENTER'
+            and math.abs(card.unrealQuestRestY - (height / 2 - height * 2 / 3)) < 0.01
+    end
+    do
+        local ink = UnrealQuest.Client.QUEST_DIALOGUE_LAYOUTS.minimal.ink
+        local function Same(region, color)
+            local red, green, blue = region:GetTextColor()
+            return math.abs(red - color[1]) < 0.001 and math.abs(green - color[2]) < 0.001
+                and math.abs(blue - color[3]) < 0.001
+        end
+        UQ_TEST_SWAPPED_HEADER = Same(UnrealQuestDialogueCineSpeaker, ink.title)
+            and Same(UnrealQuestDialogueCineTitle, ink.speaker)
+    end
+    UQ_TEST_STALE_MODE = dialogue.lastView and dialogue.lastView.mode
+    UQ_TEST_STALE_LABEL = UnrealQuestDialogueActionLabel:GetText()
+    UQ_TEST_QUEST_REWARD_TEXT = ''
+    UnrealQuestDB.dialogueTheme = UQ_TEST_STALE_SAVED_THEME
+    dialogue:Hide(false)
+    QuestFrame:Hide()
+""")
+check("a fitted label keeps the escapes its caller set when GetText strips them", rt.eval("""(function()
+    local Client = UnrealQuest.Client
+    local label = UnrealQuestDialogueRewardLine
+    local realGetText = label.GetText
+    -- GetText documented as the VISIBLE text: escapes gone.
+    label.GetText = function(self)
+        local text = realGetText(self) or ''
+        text = string.gsub(text, '|c%x%x%x%x%x%x%x%x', '')
+        text = string.gsub(text, '|r', '')
+        text = string.gsub(text, '||', '|')
+        return text
+    end
+    local source = 'Rewards: |cffffffffExperience: 445|r  ||  |cffffffffOrgrimmar: +150|r'
+    label:SetText(source)
+    Client.FitQuestDialogueLabel(label, { 0, 0, 2000 }, source)
+    Client.SettleQuestDialogueLabels()
+    Client.SettleQuestDialogueLabels()
+    Client.SettleQuestDialogueLabels()
+    local kept = realGetText(label) == source
+    label.GetText = realGetText
+    return kept
+end)()"""))
+check("Minimal's quest card swaps the NPC name's and quest title's colours", rt.eval(
+    "UQ_TEST_SWAPPED_HEADER == true"))
+check("the Minimal card is centred two thirds down the screen", rt.eval(
+    "UQ_TEST_LOWER_CARD == true"))
+check("a quest offered after a turn-in opens as an offer, with Accept", rt.eval("""
+    UQ_TEST_STALE_MODE == 'detail'
+        and UQ_TEST_STALE_LABEL == UnrealQuest.L('DIALOGUE_BUTTON_ACCEPT_SHORT')
+"""), str(rt.eval("tostring(UQ_TEST_STALE_MODE) .. ' | ' .. tostring(UQ_TEST_STALE_LABEL)")))
+check("the Minimal quest card shows the '!' / '?' badge alone under the flags", rt.eval("""
+    UQ_TEST_OPTIONS.badgeTurnIn == true and UQ_TEST_OPTIONS.badgeAccept == true
+"""), str(rt.eval("tostring(UQ_TEST_OPTIONS.badgeTurnIn) .. ' | ' .. tostring(UQ_TEST_OPTIONS.badgeAccept)")))
+check("the Complete button grows left to hold its label and key", rt.eval("""
+    UQ_TEST_OPTIONS.actionNeeded > UnrealQuest.Client.QUEST_DIALOGUE_MINIMAL.ACTION_BUTTON.WIDTH
+        and math.abs(UQ_TEST_OPTIONS.actionWidth
+            - UQ_TEST_OPTIONS.actionNeeded * UnrealQuest.Client.QUEST_DIALOGUE_UNIT) < 0.01
+        and math.abs(UQ_TEST_OPTIONS.actionRight - UQ_TEST_OPTIONS.actionRightExpected) < 0.01
+        and UQ_TEST_OPTIONS.narrowed == true
+"""), str(rt.eval("tostring(UQ_TEST_OPTIONS.actionWidth) .. ' needed ' .. tostring(UQ_TEST_OPTIONS.actionNeeded) .. ' right ' .. tostring(UQ_TEST_OPTIONS.actionRight) .. '/' .. tostring(UQ_TEST_OPTIONS.actionRightExpected)")))
+check("a quest giver's gossip options replace the talk as silver buttons in the Minimal card", rt.eval("""
+    UQ_TEST_OPTIONS.body == '' and UQ_TEST_OPTIONS.first == true
+        and UQ_TEST_OPTIONS.third == 'Browse goods' and UQ_TEST_OPTIONS.silver == true
+        and UQ_TEST_OPTIONS.inCard == true and UQ_TEST_OPTIONS.stack == false
+        and math.abs(UQ_TEST_OPTIONS.height - UQ_TEST_OPTIONS.expected) < 0.01
+        and UQ_TEST_OPTIONS.clicked ~= nil and UQ_TEST_OPTIONS.clicked.kind == 'gossipOption'
+"""), str(rt.eval("tostring(UQ_TEST_OPTIONS.body) .. ' | ' .. tostring(UQ_TEST_OPTIONS.first) .. ' | ' .. tostring(UQ_TEST_OPTIONS.third) .. ' | ' .. tostring(UQ_TEST_OPTIONS.silver) .. ' | ' .. tostring(UQ_TEST_OPTIONS.inCard) .. ' | ' .. tostring(UQ_TEST_OPTIONS.stack) .. ' | ' .. tostring(UQ_TEST_OPTIONS.height) .. '/' .. tostring(UQ_TEST_OPTIONS.expected)")))
+check("option buttons share the longest label's width, not the card's", rt.eval("""
+    math.abs(UQ_TEST_OPTIONS.widths[1] - UQ_TEST_OPTIONS.hugWidth) < 0.01
+        and math.abs(UQ_TEST_OPTIONS.widths[2] - UQ_TEST_OPTIONS.hugWidth) < 0.01
+        and UQ_TEST_OPTIONS.hugWidth < UQ_TEST_OPTIONS.full
+"""), str(rt.eval("tostring(UQ_TEST_OPTIONS.widths[1]) .. ' ' .. tostring(UQ_TEST_OPTIONS.widths[2]) .. ' hug ' .. tostring(UQ_TEST_OPTIONS.hugWidth)")))
+check("Minimal's 'Quest Giver' line wears the quest title's colour", rt.eval(
+    "UQ_TEST_OPTIONS.roleInk == true"))
+check("the Minimal card narrows to its option buttons, art included", rt.eval("""
+    math.abs(UQ_TEST_OPTIONS.cardWidth - UQ_TEST_OPTIONS.cardExpected) < 0.01
+        and UQ_TEST_OPTIONS.borderRight ~= nil
+        and math.abs(UQ_TEST_OPTIONS.borderRight - UQ_TEST_OPTIONS.borderExpected) < 0.01
+"""), str(rt.eval("tostring(UQ_TEST_OPTIONS.cardWidth) .. '/' .. tostring(UQ_TEST_OPTIONS.cardExpected) .. ' border ' .. tostring(UQ_TEST_OPTIONS.borderRight) .. '/' .. tostring(UQ_TEST_OPTIONS.borderExpected)")))
+check("gossip without a quest keeps the talk and the stock-height card, narrowed to a one-line talk", rt.eval("""
+    UQ_TEST_OPTIONS.plainBody ~= '' and UQ_TEST_OPTIONS.plainButtons == false
+        and UQ_TEST_OPTIONS.plainWidth
+            < UnrealQuest.Client.QUEST_DIALOGUE_MINIMAL.WIDTH * UnrealQuest.Client.QUEST_DIALOGUE_UNIT
+        and UQ_TEST_OPTIONS.plainWidth
+            >= UnrealQuest.Client.QUEST_DIALOGUE_LAYOUTS.minimal.fitWidth.min
+                * UnrealQuest.Client.QUEST_DIALOGUE_UNIT - 0.01
+        and math.abs(UQ_TEST_OPTIONS.plainHeight
+            - UnrealQuest.Client.QUEST_DIALOGUE_MINIMAL.HEIGHT * UnrealQuest.Client.QUEST_DIALOGUE_UNIT) < 0.01
+"""), str(rt.eval("tostring(UQ_TEST_OPTIONS.plainBody) .. ' | ' .. tostring(UQ_TEST_OPTIONS.plainButtons) .. ' | ' .. tostring(UQ_TEST_OPTIONS.plainHeight)")))
+check("auto quest accepts once, completes when ready, and leaves a reward choice to the player", rt.eval("""
+    UQ_TEST_AUTO_ACCEPT == 'accept' and UQ_TEST_AUTO_ONCE == nil
+        and UQ_TEST_AUTO_UNFINISHED == nil and UQ_TEST_AUTO_PROGRESS == 'progress'
+        and UQ_TEST_AUTO_CHOICE == nil
+        and UQ_TEST_AUTO_REWARD == 'reward' and UQ_TEST_AUTO_REWARD_INDEX == 1
+"""), str(rt.eval("tostring(UQ_TEST_AUTO_ACCEPT) .. ' | ' .. tostring(UQ_TEST_AUTO_ONCE) .. ' | ' .. tostring(UQ_TEST_AUTO_UNFINISHED) .. ' | ' .. tostring(UQ_TEST_AUTO_PROGRESS) .. ' | ' .. tostring(UQ_TEST_AUTO_CHOICE) .. ' | ' .. tostring(UQ_TEST_AUTO_REWARD) .. ' | ' .. tostring(UQ_TEST_AUTO_REWARD_INDEX)")))
+rt.execute("""
+    UQ_TEST_QUEST_PACKET('Focus Test Quest', 'Do it.', 'Short words.')
+    UQ_TEST_QUEST_REWARD_TEXT = ''
+    UQ_TEST_QUEST_PROGRESS_TEXT = ''
+    UQ_TEST_FOCUS_REAL_NAME = UnitName
+    UQ_TEST_FOCUS_SAVED_TARGET = UQ_TEST_TARGET_NAME
+    UnitName = function(unit)
+        if unit == 'npc' or unit == 'questnpc' then return nil end
+        return UQ_TEST_FOCUS_REAL_NAME(unit)
+    end
+    local dialogue = UnrealQuest:GetModule('Dialogue')
+    local function Open()
+        UQ_TEST_DIALOGUE_ACTION = nil
+        QuestFrame:Show()
+        dialogue:OnDialogueEvent('QUEST_DETAIL')
+        dialogue.closed = nil
+        dialogue:Refresh()
+    end
+    -- Opened on the target, then the target is cleared: closed.
+    UQ_TEST_TARGET_NAME = 'Sergra Darkthorn'
+    Open()
+    dialogue:Refresh()
+    UQ_TEST_FOCUS_KEPT = UnrealQuestDialogueFrame:IsShown()
+        and UQ_TEST_DIALOGUE_ACTION == nil
+    UQ_TEST_TARGET_NAME = nil
+    dialogue:Refresh()
+    UQ_TEST_FOCUS_CLEARED = UQ_TEST_DIALOGUE_ACTION
+    UQ_TEST_FOCUS_CLEARED_SHOWN = UnrealQuestDialogueFrame:IsShown()
+    -- Opened on the target, then another unit is targeted: closed.
+    UQ_TEST_TARGET_NAME = 'Sergra Darkthorn'
+    Open()
+    UQ_TEST_TARGET_NAME = 'Thork'
+    dialogue:Refresh()
+    UQ_TEST_FOCUS_SWITCHED = UQ_TEST_DIALOGUE_ACTION
+    -- Opened with no target (an object quest giver): never armed.
+    UQ_TEST_TARGET_NAME = nil
+    Open()
+    dialogue:Refresh()
+    UQ_TEST_FOCUS_UNARMED = UnrealQuestDialogueFrame:IsShown()
+        and UQ_TEST_DIALOGUE_ACTION == nil
+    UnitName = UQ_TEST_FOCUS_REAL_NAME
+    UQ_TEST_TARGET_NAME = UQ_TEST_FOCUS_SAVED_TARGET
+    dialogue:Hide(false)
+""")
+rt.execute("""
+    if not GameMenuFrame then GameMenuFrame = CreateFrame('Frame', 'GameMenuFrame', UIParent) end
+    GameMenuFrame:Hide()
+    UQ_TEST_ESC_MENU_SCRIPT = GameMenuFrame:GetScript('OnShow')
+    local dialogue = UnrealQuest:GetModule('Dialogue')
+    UQ_TEST_QUEST_PACKET('Escape Test Quest', 'Do it.', 'Short words.')
+    UQ_TEST_QUEST_REWARD_TEXT = ''
+    UQ_TEST_QUEST_PROGRESS_TEXT = ''
+    UQ_TEST_DIALOGUE_ACTION = nil
+    QuestFrame:Show()
+    dialogue:OnDialogueEvent('QUEST_DETAIL')
+    dialogue.closed = nil
+    dialogue:Refresh()
+    UQ_TEST_ESC_OPEN = UnrealQuestDialogueFrame:IsShown()
+    -- Escape: the client shows its game menu; the next poll answers it.
+    GameMenuFrame:Show()
+    dialogue:Refresh()
+    UQ_TEST_ESC_ACTION = UQ_TEST_DIALOGUE_ACTION
+    UQ_TEST_ESC_MENU = GameMenuFrame:IsShown()
+    UQ_TEST_ESC_CARD = UnrealQuestDialogueFrame:IsShown()
+    -- With no dialogue open the menu is left alone.
+    UQ_TEST_DIALOGUE_ACTION = nil
+    GameMenuFrame:Show()
+    dialogue:Refresh()
+    UQ_TEST_ESC_IDLE_MENU = GameMenuFrame:IsShown()
+    UQ_TEST_ESC_IDLE_ACTION = UQ_TEST_DIALOGUE_ACTION
+    GameMenuFrame:Hide()
+    UQ_TEST_ESC_MENU_UNTOUCHED = GameMenuFrame:GetScript('OnShow') == UQ_TEST_ESC_MENU_SCRIPT
+    -- The Escape list: listed once, and the client hiding the card closes the
+    -- conversation; a menu that same press opens is put away, a later one is not.
+    UISpecialFrames = {}
+    local client = UnrealQuest.Client
+    client.SetQuestDialogueEscape(dialogue.frame, function() dialogue:OnEscape() end)
+    client.SetQuestDialogueEscape(dialogue.frame, function() dialogue:OnEscape() end)
+    UQ_TEST_ESC_LISTED = table.getn(UISpecialFrames) == 1
+        and UISpecialFrames[1] == 'UnrealQuestDialogueFrame'
+    QuestFrame:Show()
+    dialogue:OnDialogueEvent('QUEST_DETAIL')
+    dialogue.closed = nil
+    dialogue:Refresh()
+    UQ_TEST_DIALOGUE_ACTION = nil
+    UQ_TEST_ESC_LIST_OPEN = UnrealQuestDialogueFrame:IsShown()
+    -- The mock does not fire OnHide; make the card's Hide do it, as the client does.
+    local card = UnrealQuestDialogueFrame
+    card.Hide = function(self)
+        local was = self.shown
+        self.shown = false
+        if was and self:GetScript('OnHide') then self:GetScript('OnHide')() end
+    end
+    card:Hide()
+    UQ_TEST_ESC_LIST_ACTION = UQ_TEST_DIALOGUE_ACTION
+    GameMenuFrame:Show()
+    dialogue:Refresh()
+    UQ_TEST_ESC_LIST_MENU = GameMenuFrame:IsShown()
+    -- The client ends the interaction on closeQuest; the mock does not.
+    QuestFrame:Hide()
+    dialogue:OnDialogueEvent('QUEST_FINISHED')
+    UQ_TEST_CLOCK = UQ_TEST_CLOCK + 2
+    GameMenuFrame:Show()
+    dialogue:Refresh()
+    UQ_TEST_ESC_LIST_LATER_MENU = GameMenuFrame:IsShown()
+    GameMenuFrame:Hide()
+    -- The dialogue's own hides never count as Escape.
+    UQ_TEST_DIALOGUE_ACTION = nil
+    QuestFrame:Show()
+    dialogue:OnDialogueEvent('QUEST_DETAIL')
+    dialogue.closed = nil
+    dialogue:Refresh()
+    UQ_TEST_ESC_OWN_HIDE_SHOWN = card:IsShown()
+    dialogue:Hide(false)
+    UQ_TEST_ESC_OWN_HIDE_ACTION = UQ_TEST_DIALOGUE_ACTION
+    card.Hide = nil
+""")
+check("Escape through UISpecialFrames closes the dialogue and only that press's menu", rt.eval("""
+    UQ_TEST_ESC_LISTED == true and UQ_TEST_ESC_LIST_OPEN == true
+        and UQ_TEST_ESC_LIST_ACTION == 'closeQuest'
+        and UQ_TEST_ESC_LIST_MENU == false and UQ_TEST_ESC_LIST_LATER_MENU == true
+        and UQ_TEST_ESC_OWN_HIDE_SHOWN == true and UQ_TEST_ESC_OWN_HIDE_ACTION == nil
+"""))
+check("Escape (the game menu opening) closes the dialogue and puts the menu away", rt.eval("""
+    UQ_TEST_ESC_OPEN == true and UQ_TEST_ESC_ACTION == 'closeQuest'
+        and UQ_TEST_ESC_MENU == false and UQ_TEST_ESC_CARD == false
+        and UQ_TEST_ESC_IDLE_MENU == true and UQ_TEST_ESC_IDLE_ACTION == nil
+"""))
+check("the dialogue never installs a script on the game menu", rt.eval("""
+    UQ_TEST_ESC_MENU_UNTOUCHED == true
+"""))
+check("losing the NPC target closes the dialogue; one opened without a target stays", rt.eval("""
+    UQ_TEST_FOCUS_KEPT == true
+        and UQ_TEST_FOCUS_CLEARED == 'closeQuest' and UQ_TEST_FOCUS_CLEARED_SHOWN == false
+        and UQ_TEST_FOCUS_SWITCHED == 'closeQuest'
+        and UQ_TEST_FOCUS_UNARMED == true
+"""))
+rt.execute("""
+    UQ_TEST_QUEST_PACKET('Harpy Hunt', '', '')
+    UQ_TEST_QUEST_REWARD_TEXT = ''
+    UQ_TEST_QUEST_PROGRESS_TEXT = 'Do you have the talons?'
+    UQ_TEST_QUEST_ITEMS = 2
+    UQ_TEST_QUEST_REWARD_ITEMS = {}
+    UQ_TEST_QUEST_REWARD_ITEMS.required1 = { 'Harpy Talon', 8 }
+    UQ_TEST_QUEST_REWARD_ITEMS.required2 = { 'Harpy Feather', 3 }
+    local questState = UnrealQuest:GetModule('QuestState')
+    UQ_TEST_REAL_BY_TITLE = questState.GetQuestByTitle
+    questState.GetQuestByTitle = function(self, title)
+        if title ~= 'Harpy Hunt' then return UQ_TEST_REAL_BY_TITLE(self, title) end
+        return { index = 2, objectives = {
+            { text = 'Harpy Talon: 4/8', objectiveType = 'item', finished = false },
+            { text = 'Harpy Feather: 3/3', objectiveType = 'item', finished = true },
+        } }
+    end
+    -- The quest's log entry pays one of two choices plus a guaranteed item.
+    UQ_TEST_SAVED_LOG_STATE = { UQ_TEST_SELECTION, UQ_TEST_QUEST_LOG_CHOICES,
+        UQ_TEST_QUEST_LOG_REWARDS, UQ_TEST_QUEST_LOG_REWARD_MONEY,
+        GetQuestLogChoiceInfo, GetQuestLogRewardInfo }
+    UQ_TEST_SELECTION = 3
+    UQ_TEST_QUEST_LOG_CHOICES = 2
+    UQ_TEST_QUEST_LOG_REWARDS = 1
+    UQ_TEST_QUEST_LOG_REWARD_MONEY = 0
+    UQ_TEST_LOG_SELECTED_DURING_READ = nil
+    function GetQuestLogChoiceInfo(index)
+        UQ_TEST_LOG_SELECTED_DURING_READ = UQ_TEST_SELECTION
+        local names = { 'Talon Blade', 'Feather Cloak' }
+        return names[index], 'IconTest', 1, 2, 1
+    end
+    function GetQuestLogRewardInfo(index)
+        return 'Healing Potion', 'IconPotion', 3, 1, 1
+    end
+    UnrealQuest.Client.ForgetSymbol('GetQuestLogChoiceInfo')
+    UnrealQuest.Client.ForgetSymbol('GetQuestLogRewardInfo')
+    UQ_TEST_QUEST_COMPLETABLE = false
+    UQ_TEST_DIALOGUE_ACTION = nil
+    QuestFrame:Show()
+    local dialogue = UnrealQuest:GetModule('Dialogue')
+    dialogue:OnDialogueEvent('QUEST_PROGRESS')
+    dialogue.closed = nil
+    dialogue:Refresh()
+    dialogue:FinishTextReveal()
+    local panel = UnrealQuestDialogueTurnIn
+    local card = UnrealQuestDialogueFrame
+    local body = UnrealQuestDialogueFrame.unrealQuestBodyLetterText or ''
+    -- Labels are trimmed a frame after they are laid out.
+    UnrealQuest.Client.SettleQuestDialogueLabels()
+    UnrealQuest.Client.SettleQuestDialogueLabels()
+    -- A fitted label sets its text again once its width settled, then measures.
+    UnrealQuest.Client.SettleQuestDialogueLabels()
+    UQ_TEST_TURNIN_SHORT = {
+        talon = string.find(body, 'Harpy Talon: 4/8', 1, true) ~= nil,
+        feather = string.find(body, 'Harpy Feather: 3/3', 1, true) ~= nil,
+        speech = string.find(body, 'Do you have the talons?', 1, true) ~= nil,
+        shown = panel:IsShown(),
+        under = panel.point[1] == 'TOP' and panel.point[2] == card
+            and panel.point[3] == 'BOTTOM',
+        status = panel.unrealQuestStatusText:GetText(),
+        hint = panel.unrealQuestHint:GetText(),
+        chooseLabel = panel.unrealQuestSections[1]:GetText(),
+        chooseFits = panel.unrealQuestSections[1]:GetWidth()
+            == math.ceil(panel.unrealQuestSections[1]:GetStringWidth()) + 2,
+        alsoLabel = panel.unrealQuestSections[2]:GetText(),
+        first = UnrealQuestDialogueTurnInItem1.unrealQuestName:GetText(),
+        second = UnrealQuestDialogueTurnInItem2.unrealQuestName:GetText(),
+        third = UnrealQuestDialogueTurnInItem3.unrealQuestName:GetText(),
+        fourth = UnrealQuestDialogueTurnInItem4:IsShown(),
+        readSelection = UQ_TEST_LOG_SELECTED_DURING_READ,
+        restored = UQ_TEST_SELECTION,
+        stackShown = UnrealQuestDialogueOptionsScroll:IsShown(),
+    }
+    UQ_TEST_QUEST_COMPLETABLE = true
+    dialogue:Refresh()
+    dialogue:FinishTextReveal()
+    body = UnrealQuestDialogueFrame.unrealQuestBodyLetterText or ''
+    UQ_TEST_TURNIN_READY = {
+        talon = string.find(body, 'Harpy Talon: 8/8', 1, true) ~= nil,
+        status = panel.unrealQuestStatusText:GetText(),
+        hint = panel.unrealQuestHint:GetText(),
+    }
+    card:GetScript('OnMouseUp')('LeftButton')
+    questState.GetQuestByTitle = UQ_TEST_REAL_BY_TITLE
+    UQ_TEST_SELECTION = UQ_TEST_SAVED_LOG_STATE[1]
+    UQ_TEST_QUEST_LOG_CHOICES = UQ_TEST_SAVED_LOG_STATE[2]
+    UQ_TEST_QUEST_LOG_REWARDS = UQ_TEST_SAVED_LOG_STATE[3]
+    UQ_TEST_QUEST_LOG_REWARD_MONEY = UQ_TEST_SAVED_LOG_STATE[4]
+    GetQuestLogChoiceInfo = UQ_TEST_SAVED_LOG_STATE[5]
+    GetQuestLogRewardInfo = UQ_TEST_SAVED_LOG_STATE[6]
+    UnrealQuest.Client.ForgetSymbol('GetQuestLogChoiceInfo')
+    UnrealQuest.Client.ForgetSymbol('GetQuestLogRewardInfo')
+    UQ_TEST_QUEST_ITEMS = 0
+    UQ_TEST_QUEST_REWARD_ITEMS = {}
+    UQ_TEST_QUEST_PROGRESS_TEXT = ''
+    UQ_TEST_QUEST_COMPLETABLE = false
+""")
+check("the progress card lists required items as counts under the NPC's text", rt.eval("""
+    UQ_TEST_TURNIN_SHORT.talon and UQ_TEST_TURNIN_SHORT.feather
+        and UQ_TEST_TURNIN_SHORT.speech
+"""))
+check("the panel under it says the quest is short and lists what it pays", rt.eval("""
+    UQ_TEST_TURNIN_SHORT.shown and UQ_TEST_TURNIN_SHORT.under
+        and UQ_TEST_TURNIN_SHORT.status == UnrealQuest.L('DIALOGUE_ITEMS_MISSING')
+        and UQ_TEST_TURNIN_SHORT.hint == UnrealQuest.L('DIALOGUE_HINT_COME_BACK')
+        and UQ_TEST_TURNIN_SHORT.chooseLabel == UnrealQuest.L('DIALOGUE_CHOOSE_REWARD')
+        and UQ_TEST_TURNIN_SHORT.chooseFits == true
+        and UQ_TEST_TURNIN_SHORT.alsoLabel == UnrealQuest.L('DIALOGUE_ALSO_RECEIVE')
+        and UQ_TEST_TURNIN_SHORT.first == 'Talon Blade'
+        and UQ_TEST_TURNIN_SHORT.second == 'Feather Cloak'
+        and UQ_TEST_TURNIN_SHORT.third == 'Healing Potion  x3'
+        and UQ_TEST_TURNIN_SHORT.fourth == false
+        and UQ_TEST_TURNIN_SHORT.stackShown == false
+"""))
+check("reading the quest's rewards leaves the quest log selection where it was", rt.eval("""
+    UQ_TEST_TURNIN_SHORT.readSelection == 2 and UQ_TEST_TURNIN_SHORT.restored == 3
+"""))
+check("a completable quest reads ready, every item in hand, and a click turns it in", rt.eval("""
+    UQ_TEST_TURNIN_READY.talon
+        and UQ_TEST_TURNIN_READY.status == UnrealQuest.L('DIALOGUE_READY_TO_TURN_IN')
+        and UQ_TEST_TURNIN_READY.hint == UnrealQuest.L('DIALOGUE_HINT_TURN_IN')
+        and UQ_TEST_DIALOGUE_ACTION == 'progress'
+"""))
+rt.execute("""
+    UQ_TEST_QUEST_PACKET('', '', '')
+    UQ_TEST_QUEST_REWARD_TEXT = ''
+    UQ_TEST_QUEST_CHOICES = 0
+    UQ_TEST_QUEST_REWARD_ITEMS = {}
+    UQ_TEST_DIALOGUE_ACTION = nil
+    UQ_TEST_REWARDED = nil
+    QuestFrame:Hide()
+    local dialogue = UnrealQuest:GetModule('Dialogue')
+    dialogue.closed = nil
+    dialogue.modeHint = nil
+    dialogue.selectedChoice = 0
+    dialogue:Refresh()
+""")
+
+print("quest dialogue themes")
+# Two looks for the one card: Classic (the parchment) and Cinematic (the
+# bronze frame, tools/make_dialogue_horde_light.py). Both skins are built with
+# the frame; a theme switch only shows, hides and moves, so these check that
+# exactly one skin draws, the card takes the theme's geometry, the text is
+# paged to the theme's body box, and every Cinematic texture ships.
+check("the classic card pinned above is the one drawn", rt.eval("""
+    UnrealQuestDB.dialogueTheme == 'parchment'
+        and UnrealQuestDialogueFrame.unrealQuestTheme == 'parchment'
+        and math.abs(UnrealQuestDialogueFrame:GetHeight()
+            - ((UnrealQuestDialogueFrame.unrealQuestCard == 'quest'
+                and UnrealQuest.Client.QUEST_DIALOGUE_CARD.TALL_HEIGHT
+                or UnrealQuest.Client.QUEST_DIALOGUE_CARD.HEIGHT)
+            * UnrealQuest.Client.QUEST_DIALOGUE_UNIT)) < 0.01
+"""))
+check("the parchment centre under the portrait returns on the quest card after the shorter conversation card", rt.eval("""
+(function()
+    local frame = UnrealQuestDialogueFrame
+    local card = UnrealQuest.Client.QUEST_DIALOGUE_CARD
+    local piece = frame.unrealQuestClassicCentre and frame.unrealQuestClassicCentre[2]
+    if not piece or frame.unrealQuestTheme ~= 'parchment' then return false end
+    frame.unrealQuestLayClassicCard(card.HEIGHT)
+    local emptyOnConversation = piece.unrealQuestOutOfSkin == true
+    frame.unrealQuestLayClassicCard(card.TALL_HEIGHT)
+    local inSkin = false
+    local skin = frame.unrealQuestSkins.parchment
+    local index = 1
+    while index <= table.getn(skin) do
+        if skin[index] == piece then inSkin = true end
+        index = index + 1
+    end
+    local ok = emptyOnConversation and inSkin and piece:IsShown()
+    frame.unrealQuestLayClassicCard(frame.unrealQuestCard == 'quest'
+        and card.TALL_HEIGHT or card.HEIGHT)
+    return ok
+end)()
+"""))
+check("Parchment's quest footer is two columns: objectives left, the action button right", rt.eval("""
+(function()
+    local C = UnrealQuest.Client
+    local quest = C.ResolveQuestDialogueLayout(C.QUEST_DIALOGUE_LAYOUTS.parchment, 'quest')
+    local conversation = C.ResolveQuestDialogueLayout(C.QUEST_DIALOGUE_LAYOUTS.parchment, 'conversation')
+    local spec = C.QUEST_DIALOGUE_CARD.ACTION_BUTTON
+    local centre = quest.actionButtonCentre
+    local buttonLeft = centre[1] - spec.WIDTH / 2
+    local textRight = quest.objective[1] + quest.objective[3]
+    local blockTop, blockBottom = quest.objectiveHeading[2], quest.objective[2] + quest.objective[4]
+    return conversation.actionButtonCentre == nil
+        and textRight < buttonLeft
+        and math.abs(centre[2] - (blockTop + blockBottom) / 2) < 0.01
+        and centre[2] + spec.HEIGHT / 2 < C.QUEST_DIALOGUE_CARD.TALL_HEIGHT
+        and blockBottom <= C.QUEST_DIALOGUE_CARD.TALL_HEIGHT
+end)()
+"""))
+check("a fitted label sets its text again once its full width has settled, then measures", rt.eval("""
+(function()
+    local C = UnrealQuest.Client
+    local label = UnrealQuestDialogueFrame:CreateFontString(nil, 'OVERLAY', 'GameFontNormal')
+    label:SetText('Conversation')
+    C.FitQuestDialogueLabel(label, { 0, 0, 450, 24 })
+    C.SettleQuestDialogueLabels()
+    C.SettleQuestDialogueLabels()
+    C.SettleQuestDialogueLabels()
+    local narrow = label:GetWidth()
+    local sets = 0
+    local setText = label.SetText
+    label.SetText = function(self, text) sets = sets + 1 return setText(self, text) end
+    label:SetText('Cutting Teeth')
+    C.FitQuestDialogueLabel(label, { 0, 0, 450, 24 })
+    local afterFit = sets
+    C.SettleQuestDialogueLabels()
+    C.SettleQuestDialogueLabels()
+    local relaid = sets > afterFit and label.unrealQuestFitRelaid == true
+    C.SettleQuestDialogueLabels()
+    label.SetText = setText
+    return relaid and label:GetText() == 'Cutting Teeth'
+        and label:GetWidth() == math.ceil(label:GetStringWidth()) + 2
+        and label:GetWidth() > narrow
+end)()
+"""))
+check("each card resolves its own layout; a card's key never reaches the other", rt.eval("""
+(function()
+    local C = UnrealQuest.Client
+    local layouts = C.QUEST_DIALOGUE_LAYOUTS
+    local horde = layouts['horde']
+    local conversation = C.ResolveQuestDialogueLayout(horde, 'conversation')
+    local quest = C.ResolveQuestDialogueLayout(horde, 'quest')
+    local classicConversation = C.ResolveQuestDialogueLayout(layouts.parchment, 'conversation')
+    local classicQuest = C.ResolveQuestDialogueLayout(layouts.parchment, 'quest')
+    return conversation.title ~= quest.title and quest.title == horde.title
+        and conversation.headerDrop == 3.86 and quest.headerDrop == nil
+        and conversation.speakerDrop == 2.79 and quest.speakerDrop == nil
+        and conversation.hole ~= quest.hole
+        and classicConversation.titleFontGrow == -1 and classicQuest.titleFontGrow == nil
+        and string.find(classicConversation.titleDividerTexture,
+            'UQ_Parchment_Title_Divider', 1, true) ~= nil
+        and classicQuest.titleDividerTexture == classicConversation.titleDividerTexture
+        and classicConversation.objectiveRuleArt == nil
+        and string.find(classicQuest.objectiveRuleArt,
+            'Parchment\\\\UQ_Parchment_', 1, true) ~= nil
+        and C.ResolveQuestDialogueLayout(layouts["alliance-light"], 'quest').pageBeforeIndicator[1] == -2
+        and C.ResolveQuestDialogueLayout(layouts["alliance-light"], 'conversation').pageBeforeIndicator == nil
+        and C.ResolveQuestDialogueLayout(layouts["horde-light"], 'quest').pageBeforeIndicator[1] == -2
+        and C.ResolveQuestDialogueLayout(layouts["horde-light"], 'quest').kickerGap == 4
+        and C.ResolveQuestDialogueLayout(layouts["horde-light"], 'conversation').pageBeforeIndicator == nil
+        and C.ResolveQuestDialogueLayout(layouts["horde-light"], 'conversation').kickerGap == nil
+        and C.ResolveQuestDialogueLayout(layouts["alliance-light"], 'quest').kickerGap == 4
+        and C.ResolveQuestDialogueLayout(layouts["alliance-light"], 'conversation').kickerGap == nil
+        and C.ResolveQuestDialogueLayout(layouts['alliance'], 'quest').kickerGap == nil
+        and C.ResolveQuestDialogueLayout(horde, 'conversation') == conversation
+        and C.ResolveQuestDialogueLayout(layouts.minimal, 'quest').hideBody == true
+        and C.ResolveQuestDialogueLayout(layouts.minimal, 'conversation').hideBody == nil
+        and C.ResolveQuestDialogueLayout(layouts.minimal, 'conversation').rewardLine == nil
+        and C.ResolveQuestDialogueLayout(layouts.minimal, 'conversation').hideTitle == true
+        and C.ResolveQuestDialogueLayout(layouts.minimal, 'quest').hideTitle == nil
+        and C.ResolveQuestDialogueLayout(layouts.minimal, 'quest').rewardRowCollapse == 32
+        and C.ResolveQuestDialogueLayout(layouts.minimal, 'conversation').rewardRowCollapse == nil
+        and C.GetQuestDialogueCardKind({ card = 'quest' }) == 'quest'
+        and C.GetQuestDialogueCardKind({}) == 'conversation'
+        and UnrealQuestDialogueFrame.unrealQuestCard ~= nil
+end)()
+"""))
+check("Minimal's quest card drops an unused objective line and an empty icon row", rt.eval("""
+(function()
+    local C = UnrealQuest.Client
+    local frame = UnrealQuestDialogueFrame
+    local savedTheme, savedCard = frame.unrealQuestTheme, frame.unrealQuestCard
+    frame.unrealQuestTheme, frame.unrealQuestCard = 'minimal', 'quest'
+    local item = { name = 'Token', tooltipType = 'reward', index = 1 }
+    local withItem = C.QuestDialogueRewardRowCollapse(frame,
+        { turnIn = { choices = {}, rewards = { item } } })
+    local bare = C.QuestDialogueRewardRowCollapse(frame, { turnIn = { choices = {}, rewards = {} } })
+    local none = C.QuestDialogueRewardRowCollapse(frame, {})
+    local oneLine = C.QuestDialogueRewardRowCollapse(frame, { objectiveLines = 1 })
+    local twoLines = C.QuestDialogueRewardRowCollapse(frame, { objectiveLines = 2 })
+    local oneLineItem = C.QuestDialogueRewardRowCollapse(frame,
+        { objectiveLines = 1, turnIn = { choices = { item }, rewards = {} } })
+    frame.unrealQuestCardCollapse = bare
+    C.ShowQuestDialogueCardArt(frame)
+    local short = frame:GetHeight()
+    local tall = frame.unrealQuestMinimalCards and frame.unrealQuestMinimalCards.tallHeight
+    frame.unrealQuestCardCollapse = 0
+    C.ShowQuestDialogueCardArt(frame)
+    local full = frame:GetHeight()
+    frame.unrealQuestCard = 'conversation'
+    local conversation = C.QuestDialogueRewardRowCollapse(frame, {})
+    frame.unrealQuestTheme, frame.unrealQuestCard = savedTheme, savedCard
+    local unit = C.QUEST_DIALOGUE_UNIT
+    return withItem == 0 and bare == 32 and none == 32 and conversation == 0
+        and oneLine == 52 and twoLines == 32 and oneLineItem == 20
+        and math.abs(full - short - 32 * unit) < 0.01
+        and (tall == nil or tall == C.QUEST_DIALOGUE_MINIMAL.TALL_HEIGHT - 32)
+end)()
+"""))
+check("Minimal's cards narrow to their content, never past the design width or under the header", rt.eval("""
+(function()
+    local C = UnrealQuest.Client
+    local frame = UnrealQuestDialogueFrame
+    local saved = { frame.unrealQuestTheme, frame.unrealQuestCard, frame.unrealQuestFitView,
+        frame.unrealQuestFooterLeft, frame.unrealQuestInlineRewardsWidth }
+    frame.unrealQuestTheme, frame.unrealQuestCard = 'minimal', 'quest'
+    frame.unrealQuestFooterLeft, frame.unrealQuestInlineRewardsWidth = nil, nil
+    local fit = C.QUEST_DIALOGUE_LAYOUTS.minimal.fitWidth
+    local function Fit(view)
+        frame.unrealQuestFitView = view
+        C.FitQuestDialogueCardWidth(frame)
+        return frame.unrealQuestFitWidth
+    end
+    local short = Fit({ speaker = 'Shikrik', title = 'Parchment', objective = 'Parchment: 1/1' })
+    local name = C.MeasureQuestDialogueLabelWidth(frame, frame.unrealQuestCineSpeaker,
+        'A Very Long Quest Giver Name Indeed', 'GameFontNormal')
+    local named = Fit({ speaker = 'A Very Long Quest Giver Name Indeed', title = 'P' })
+    local wrapped = Fit({ speaker = 'S', title = 'P', objective = 'One\\nTwo' })
+    local long = Fit({ speaker = 'S', title = string.rep('Long title ', 40) })
+    frame.unrealQuestCard = 'conversation'
+    local talk = Fit({ speaker = 'S', speakerRole = 'R', body = 'Hi.', pageCount = 1 })
+    local paged = Fit({ speaker = 'S', speakerRole = 'R', body = 'Hi.', pageCount = 2 })
+    frame.unrealQuestTheme = 'horde-light'
+    local other = Fit({ speaker = 'S' })
+    frame.unrealQuestTheme, frame.unrealQuestCard, frame.unrealQuestFitView,
+        frame.unrealQuestFooterLeft, frame.unrealQuestInlineRewardsWidth =
+        saved[1], saved[2], saved[3], saved[4], saved[5]
+    C.FitQuestDialogueCardWidth(frame)
+    return short < 700 and short >= fit.min
+        and name ~= nil and named >= math.ceil(76 + name + fit.headerGap + fit.flags) - 1
+        and wrapped == 700 and long == 700
+        and talk == fit.min and paged == 700 and other == nil
+end)()
+"""))
+rt.execute("""
+    UQ_TEST_THEME = {}
+    -- The default art per theme: no zone backdrop applies here.
+    UQ_TEST_THEME.savedBackdrops = UnrealQuest.dialogueBackdrops
+    UnrealQuest.dialogueBackdrops = {}
+    local frame = UnrealQuestDialogueFrame
+    local dialogue = UnrealQuest:GetModule('Dialogue')
+    local function Shown(theme)
+        local regions = frame.unrealQuestSkins[theme]
+        local shown, hidden = 0, 0
+        for index = 1, table.getn(regions) do
+            if regions[index]:IsShown() then shown = shown + 1 else hidden = hidden + 1 end
+        end
+        return shown, hidden
+    end
+    local long = string.rep('The kingdom needs your help against the gnolls. ', 30)
+    local function Open()
+        UQ_TEST_QUEST_PACKET('A Threat Within', 'Speak with Marshal McBride.', long)
+        UQ_TEST_QUEST_CHOICES = 1
+        UQ_TEST_QUEST_REWARD_ITEMS.choice1 = { 'Training Sword', 2 }
+        QuestFrame:Show()
+        local onShow = QuestFrame:GetScript('OnShow')
+        if onShow then onShow() end
+        dialogue.modeHint = 'detail'
+        dialogue.closed = nil
+        dialogue:Refresh()
+    end
+    Open()
+    -- The red action button Horde light, Alliance light and Parchment share:
+    -- where it sits, what it samples, and each state's cell and bloom.
+    local function RedButton()
+        local Client = UnrealQuest.Client
+        local button = UnrealQuestDialogueAction
+        local red = {
+            shown = button:IsShown(),
+            face = button.unrealQuestFace.path,
+            glow = button.unrealQuestHoverGlow.path,
+            chevronShown = button.unrealQuestChevron:IsShown(),
+            point = button.point[3],
+            y = button.point[5],
+            label = UnrealQuestDialogueActionLabel:GetText(),
+            action = button.unrealQuestAction,
+        }
+        Client.RenderQuestDialogueActionButton(frame, { actionButton = {
+            action = 'progress', text = 'x', enabled = false } }, true)
+        red.disabled = button.unrealQuestFace.texCoord[3]
+        Client.RenderQuestDialogueActionButton(frame, { actionButton = {
+            action = 'progress', text = 'x' } }, true)
+        red.normal = button.unrealQuestFace.texCoord[3]
+        button:GetScript('OnEnter')()
+        red.hover = button.unrealQuestFace.texCoord[3]
+        red.hoverGlow = button.unrealQuestHoverGlow:IsShown()
+        button:GetScript('OnMouseDown')()
+        red.pressed = button.unrealQuestFace.texCoord[3]
+        red.pressedGlow = button.unrealQuestHoverGlow:IsShown()
+        button:GetScript('OnMouseUp')()
+        button:GetScript('OnLeave')()
+        red.leftGlow = button.unrealQuestHoverGlow:IsShown()
+        dialogue:Refresh()
+        return red
+    end
+    UQ_TEST_THEME.classicRed = RedButton()
+    UQ_TEST_THEME.classicPages = dialogue.lastView and dialogue.lastView.pageCount
+    UQ_TEST_THEME.classicPlate = UnrealQuestDialogueTurnInItem1.unrealQuestPlate[1].path
+    UnrealQuestDB.dialogueTheme = 'horde-light'
+    dialogue:Refresh()
+    local view = dialogue.lastView
+    local budgetColumns, budgetLines = UnrealQuest.Client.GetQuestDialogueTextBudget(frame)
+    UnrealQuest.Client.SettleQuestDialogueLabels()
+    UnrealQuest.Client.SettleQuestDialogueLabels()
+    -- A fitted label sets its text again once its width settled, then measures.
+    UnrealQuest.Client.SettleQuestDialogueLabels()
+    UQ_TEST_THEME.cine = {
+        theme = frame.unrealQuestTheme,
+        height = frame:GetHeight(),
+        width = frame:GetWidth(),
+        unit = UnrealQuest.Client.QUEST_DIALOGUE_UNIT,
+        cardHole = frame.unrealQuestCineCardHole,
+        pages = view and view.pageCount,
+        model = frame.unrealQuestPortraitModel:GetWidth(),
+        modelHeight = frame.unrealQuestPortraitModel:GetHeight(),
+        backdrop = frame.unrealQuestPortraitBackground:GetWidth(),
+        backdropPath = frame.unrealQuestPortraitBackground.path,
+        justify = UnrealQuestDialogueCineSpeaker.justifyH,
+        titleX = UnrealQuestDialogueCineTitle.point[4],
+        art = frame.unrealQuestPortraitArt.path,
+        plate = UnrealQuestDialogueTurnInItem1.unrealQuestPlate[1].path,
+        rowHover = UnrealQuestDialogueRow1.unrealQuestHover.path,
+        rowBanner = (function()
+            local regions = UnrealQuestDialogueRow1.regions or {}
+            for index = 1, table.getn(regions) do
+                local region = regions[index]
+                if region.path
+                    and string.find(region.path, 'UQ_HordeLight_Gossip_Frame', 1, true) then
+                    return true
+                end
+            end
+            return false
+        end)(),
+        title = UnrealQuestDialogueCineTitle:GetText(),
+        classicTitle = UnrealQuestDialogueTitle:IsShown(),
+        role = UnrealQuestDialogueCineRole:IsShown() and UnrealQuestDialogueCineRole:GetText(),
+        kicker = UnrealQuestDialogueCineKicker:IsShown() and UnrealQuestDialogueCineKicker:GetText(),
+        roleWidth = UnrealQuestDialogueCineRole:GetWidth(),
+        roleText = UnrealQuestDialogueCineRole:GetStringWidth(),
+        kickerArt = frame.unrealQuestCineKickerIcon:IsShown(),
+        speakerShown = frame.unrealQuestCineSpeaker:IsShown(),
+        scale = frame:GetScale(),
+        columns = budgetColumns,
+        lines = budgetLines,
+        panel = frame.unrealQuestOptionsPanel:IsShown(),
+        shortCardHidden = table.getn(frame.unrealQuestCineCard),
+        objective = UnrealQuestDialogueCineObjective:IsShown()
+            and UnrealQuestDialogueCineObjective:GetText(),
+        objectiveArt = frame.unrealQuestCineObjectiveIcon:IsShown()
+            and frame.unrealQuestCineObjectiveDivider:IsShown()
+            and frame.unrealQuestCineObjectiveLineLeft:IsShown()
+            and frame.unrealQuestCineObjectiveLineRight:IsShown(),
+        bodyHasObjective = string.find(UnrealQuestDialogueBody:GetText() or '',
+            'Speak with Marshal McBride.', 1, true) ~= nil,
+    }
+    UQ_TEST_THEME.cine.classicShown, UQ_TEST_THEME.cine.classicHidden = Shown('parchment')
+    UQ_TEST_THEME.cineRed = RedButton()
+    UQ_TEST_THEME.cine.cineShown, UQ_TEST_THEME.cine.cineHidden = Shown('ornate')
+    -- Horde light's quest card grows with a two-line objective and more with
+    -- a longer one; Alliance light, sharing its pieces, grows as much.
+    UQ_TEST_THEME.cineGrow = (function()
+        local Client = UnrealQuest.Client
+        local function Reopen(objective)
+            UQ_TEST_QUEST_PACKET('Uq Long Objective Test', objective, long)
+            local onShow = QuestFrame:GetScript('OnShow')
+            if onShow then onShow() end
+            dialogue.modeHint = 'detail'
+            dialogue.closed = nil
+            dialogue:Refresh()
+        end
+        local pieces = frame.unrealQuestCineCardsByHole['horde-light'].cardTall
+        local last = pieces[table.getn(pieces)]
+        local result = { unit = Client.QUEST_DIALOGUE_UNIT, short = frame:GetHeight(),
+            lastY = last.points[1][5], pieces = table.getn(pieces) }
+        Reopen('Kill 12 Vile Familiars.\\n\\nReturn to Zureetha Fargaze outside the Den.')
+        result.twoLines = dialogue.lastView.objectiveLines
+        result.twoGrow = frame.unrealQuestCardGrow
+        result.twoHeight = frame:GetHeight()
+        Reopen(string.rep('Slay the gnolls of the northern vale. ', 4))
+        result.longLines = dialogue.lastView.objectiveLines
+        result.longGrow = frame.unrealQuestCardGrow
+        result.longY = last.points[1][5]
+        result.longPieces = table.getn(pieces)
+        UnrealQuestDB.dialogueTheme = 'alliance-light'
+        dialogue:Refresh()
+        result.allianceHeight = frame:GetHeight()
+        result.allianceY = last.points[1][5]
+        UnrealQuestDB.dialogueTheme = 'horde-light'
+        Reopen('Speak with Marshal McBride.')
+        result.restored = frame:GetHeight()
+        return result
+    end)()
+    UQ_TEST_THEME.flagQuest = { questId = 372, title = 'At War With The Scarlet Crusade' }
+    UQ_TEST_THEME.flagTranslation = {
+        CanChooseLanguage = function() return true end,
+        GetLanguageChoices = function() return { 'enUS', 'frFR' } end,
+        GetQuestLanguage = function() return 'enUS' end,
+        SetQuestLanguage = function() return true end,
+    }
+    local flagModule = UnrealQuest:GetModule('QuestLanguageFlags')
+    flagModule:Refresh({
+        key = 'dialogue', namePrefix = 'UnrealQuestDialogueLanguageFlag',
+        quest = UQ_TEST_THEME.flagQuest, anchor = frame,
+        translation = UQ_TEST_THEME.flagTranslation,
+        framed = true,
+        place = function(button, anchor, x, y)
+            return UnrealQuest.Client.PlaceQuestDialogueFlag(button, anchor, x, y)
+        end,
+    })
+    UQ_TEST_THEME.cine.flag = (function()
+        local row = UnrealQuest:GetModule('QuestLanguageFlags').rows.dialogue
+        local buttons = row and row.buttons or {}
+        local result = {}
+        for code, button in pairs(buttons) do
+            if button.unrealQuestSelected then
+                local frame = button.unrealQuestFlagFrame
+                local points = frame and frame.points
+                result.width = button:GetWidth()
+                result.height = button:GetHeight()
+                result.framed = button.unrealQuestFlagFramed
+                result.frame = frame and frame:IsShown()
+                result.selectedArt = frame and frame.path
+                result.iconFills = button.unrealQuestIcon
+                    and button.unrealQuestIcon.allPoints == button
+                result.frameLeft = points and points[1] and points[1][4]
+                result.frameTop = points and points[1] and points[1][5]
+                result.frameRight = points and points[2] and points[2][4]
+                result.frameBottom = points and points[2] and points[2][5]
+            elseif button.unrealQuestFlagFrame then
+                result.normalArt = button.unrealQuestFlagFrame.path
+            end
+        end
+        return result
+    end)()
+    local paths = {}
+    local regions = frame.unrealQuestSkins.ornate
+    for index = 1, table.getn(regions) do
+        if regions[index].path then paths[regions[index].path] = true end
+    end
+    paths[UQ_TEST_THEME.cine.art] = true
+    paths[UQ_TEST_THEME.cine.backdropPath] = true
+    paths[UQ_TEST_THEME.cine.plate] = true
+    paths[UQ_TEST_THEME.cine.rowHover] = true
+    paths[frame.unrealQuestCineKickerIcon.path] = true
+    paths[UnrealQuest.Client.QUEST_DIALOGUE_HORDE_LIGHT.PATH .. 'Plate_Selected'] = true
+    paths[UnrealQuest.Client.QUEST_DIALOGUE_HORDE_LIGHT.PATH .. 'Row_Selected'] = true
+    paths[UnrealQuest.Client.QUEST_DIALOGUE_HORDE_LIGHT.PATH .. 'Flag'] = true
+    paths[UnrealQuest.Client.QUEST_DIALOGUE_HORDE_LIGHT.PATH .. 'Flag_Selected'] = true
+    paths[UnrealQuest.Client.QUEST_DIALOGUE_LAYOUTS.parchment.titleDividerTexture] = true
+    local list = {}
+    for path in pairs(paths) do table.insert(list, path) end
+    UQ_TEST_THEME.paths = table.concat(list, ';')
+    UnrealQuestDB.dialogueTheme = 'alliance-light'
+    dialogue:Refresh()
+    UQ_TEST_THEME.alliance = {
+        theme = frame.unrealQuestTheme,
+        ruleDiamond = frame.unrealQuestCineObjectiveDivider.path,
+        ruleLine = frame.unrealQuestCineObjectiveLineLeft.path,
+        ruleDiamondWidth = frame.unrealQuestCineObjectiveDivider:GetWidth(),
+        art = frame.unrealQuestPortraitArt.path,
+        backdropPath = frame.unrealQuestPortraitBackground.path,
+        plate = UnrealQuestDialogueTurnInItem1.unrealQuestPlate[1].path,
+        rewardPanelY = UnrealQuestDialogueTurnIn.point[5],
+        rewardPanelLevel = UnrealQuestDialogueTurnIn:GetFrameLevel(),
+        rewardTileLevel = UnrealQuestDialogueTurnInItem1:GetFrameLevel(),
+        cardLevel = frame:GetFrameLevel(),
+        rowHover = UnrealQuestDialogueRow1.unrealQuestHover.path,
+        card = (function()
+            local regions = frame.unrealQuestSkins.ornate
+            for index = 1, table.getn(regions) do
+                local path = regions[index].path or ''
+                if string.find(path, 'UQ_AllianceLight_Card', 1, true) then return path end
+            end
+            return ''
+        end)(),
+    }
+    UQ_TEST_THEME.allianceRed = RedButton()
+    UnrealQuestDB.dialogueTheme = 'alliance'
+    UnrealQuestDialogueCineTitle:SetJustifyH('RIGHT')
+    UnrealQuestDialogueBody:SetJustifyH('CENTER')
+    UnrealQuestDialogueCineObjective:SetJustifyH('CENTER')
+    UnrealQuestDialogueCineObjective:SetWidth(37)
+    dialogue:Refresh()
+    UQ_TEST_THEME.allianceV2 = {
+        theme = frame.unrealQuestTheme,
+        unit = UnrealQuest.Client.QUEST_DIALOGUE_UNIT,
+        width = frame:GetWidth(),
+        height = frame:GetHeight(),
+        cardHole = frame.unrealQuestCineCardHole,
+        speakerWidth = UnrealQuestDialogueCineSpeaker:GetWidth(),
+        dividerTop = UnrealQuest.Client.QUEST_DIALOGUE_LAYOUTS['alliance'].titleDivider[2],
+        dividerHeight = UnrealQuest.Client.QUEST_DIALOGUE_LAYOUTS['alliance'].titleDivider[4],
+        bodyTop = UnrealQuest.Client.QUEST_DIALOGUE_LAYOUTS['alliance'].body[2],
+        emblem = frame.unrealQuestDialogueEmblem.path,
+        emblemShown = frame.unrealQuestDialogueEmblem:IsShown(),
+        art = frame.unrealQuestPortraitArt.path,
+        backdropPath = frame.unrealQuestPortraitBackground.path,
+        plate = UnrealQuestDialogueTurnInItem1.unrealQuestPlate[1].path,
+        plateCap = UnrealQuestDialogueTurnInItem1.unrealQuestPlate[1]:GetWidth(),
+        plateU = UnrealQuestDialogueTurnInItem1.unrealQuestPlate[1].texCoord[2],
+        rewardIconWidth = UnrealQuestDialogueTurnInItem1.unrealQuestIcon:GetWidth(),
+        rewardIconX = UnrealQuestDialogueTurnInItem1.unrealQuestIcon.points[1][4],
+        rewardEdge = UnrealQuestDialogueTurnInItem1.unrealQuestRewardEdge.path,
+        rewardEdgeWidth = UnrealQuestDialogueTurnInItem1.unrealQuestRewardEdge:GetWidth(),
+        rewardEdgeX = UnrealQuestDialogueTurnInItem1.unrealQuestRewardEdge.points[1][4],
+        rewardEdgeLayer = UnrealQuestDialogueTurnInItem1.unrealQuestRewardEdge.layer,
+        rewardNameX = UnrealQuestDialogueTurnInItem1.unrealQuestName.point[4],
+        rewardPanelY = UnrealQuestDialogueTurnIn.point[5],
+        rewardPanelLevel = UnrealQuestDialogueTurnIn:GetFrameLevel(),
+        rewardTileLevel = UnrealQuestDialogueTurnInItem1:GetFrameLevel(),
+        cardLevel = frame:GetFrameLevel(),
+        titleJustify = UnrealQuestDialogueCineTitle.justifyH,
+        titleX = UnrealQuestDialogueCineTitle.point[4],
+        bodyJustify = UnrealQuestDialogueBody.justifyH,
+        bodyWidth = UnrealQuestDialogueBody:GetWidth(),
+        bodyX = UnrealQuestDialogueBodyScroll.point[4],
+        objectiveJustify = UnrealQuestDialogueCineObjective.justifyH,
+        objectiveNamedFont = UnrealQuestDialogueCineObjective.unrealQuestFont ~= nil,
+        objectiveWidth = UnrealQuestDialogueCineObjective:GetWidth(),
+        objectivePoint = UnrealQuestDialogueCineObjective.point[1],
+        objectiveRelativePoint = UnrealQuestDialogueCineObjective.point[3],
+        objectiveX = UnrealQuestDialogueCineObjective.point[4],
+        objectiveHeadingX = UnrealQuestDialogueCineObjectiveHeading.point[4],
+        objectiveY = UnrealQuestDialogueCineObjective.point[5],
+        actionShown = UnrealQuestDialogueAction:IsShown(),
+        actionFace = UnrealQuestDialogueAction.unrealQuestFace.path,
+        actionChevron = UnrealQuestDialogueAction.unrealQuestChevron.path,
+        actionTop = UnrealQuestDialogueAction.unrealQuestFace.texCoord[3],
+        actionLabel = UnrealQuestDialogueActionLabel:GetText(),
+        actionAction = UnrealQuestDialogueAction.unrealQuestAction,
+        actionPoint = UnrealQuestDialogueAction.point[3],
+        actionY = UnrealQuestDialogueAction.point[5],
+        actionStates = (function()
+            local Client = UnrealQuest.Client
+            local button = UnrealQuestDialogueAction
+            local saved = frame.unrealQuestActionCallback
+            local fired = {}
+            frame.unrealQuestActionCallback = function(action, direct)
+                table.insert(fired, tostring(action) .. ':' .. tostring(direct))
+            end
+            local states = {}
+            Client.RenderQuestDialogueActionButton(frame, { actionButton = {
+                action = 'progress', text = 'x', enabled = false } }, true)
+            states.disabled = button.unrealQuestFace.texCoord[3]
+            states.disabledChevron = button.unrealQuestChevron.texCoord[1]
+            button:GetScript('OnEnter')()
+            states.disabledHover = button.unrealQuestFace.texCoord[3]
+            states.disabledGlow = button.unrealQuestHoverGlow:IsShown()
+            button:GetScript('OnClick')()
+            button:GetScript('OnLeave')()
+            Client.RenderQuestDialogueActionButton(frame, { actionButton = {
+                action = 'progress', text = 'x' } }, true)
+            states.normal = button.unrealQuestFace.texCoord[3]
+            button:GetScript('OnEnter')()
+            states.hover = button.unrealQuestFace.texCoord[3]
+            states.hoverChevron = button.unrealQuestChevron.texCoord[1]
+            states.hoverGlow = button.unrealQuestHoverGlow:IsShown()
+            states.glowPath = button.unrealQuestHoverGlow.path
+            button:GetScript('OnMouseDown')()
+            states.pressed = button.unrealQuestFace.texCoord[3]
+            states.pressedChevron = button.unrealQuestChevron.texCoord[1]
+            states.pressedGlow = button.unrealQuestHoverGlow:IsShown()
+            button:GetScript('OnMouseUp')()
+            states.released = button.unrealQuestFace.texCoord[3]
+            button:GetScript('OnClick')()
+            button:GetScript('OnLeave')()
+            states.fired = table.concat(fired, ',')
+            frame.unrealQuestActionCallback = saved
+            return states
+        end)(),
+        rowHover = UnrealQuestDialogueRow1.unrealQuestHover.path,
+        card = (function()
+            local regions = frame.unrealQuestSkins.ornate
+            for index = 1, table.getn(regions) do
+                local path = regions[index].path or ''
+                if string.find(path, 'UQ_Alliance_Conversation', 1, true) then return path end
+            end
+            return ''
+        end)(),
+        ruleDiamond = frame.unrealQuestCineObjectiveDivider.path,
+        ruleLine = frame.unrealQuestCineObjectiveLineRight.path,
+        ruleDiamondWidth = frame.unrealQuestCineObjectiveDivider:GetWidth(),
+        -- A long objective grows the quest card at its seam; a short one
+        -- puts it back.
+        objectiveGrow = (function()
+            local pieces = frame.unrealQuestCineCardsByHole['alliance'].cardTall
+            -- The card's top tiles end above the seam (y 258): a piece of
+            -- theirs laid at or below it draws their art out of place.
+            local function TopTilesInSeam()
+                local unit = UnrealQuest.Client.QUEST_DIALOGUE_UNIT
+                local count = 0
+                for index = 1, table.getn(pieces) do
+                    local piece = pieces[index]
+                    local path = piece.path or ''
+                    if (string.find(path, '_TL', 1, true) or string.find(path, '_TR', 1, true))
+                        and -piece.points[1][5] / unit >= 258 - 0.01 then
+                        count = count + 1
+                    end
+                end
+                return count
+            end
+            local grown = { short = frame:GetHeight(), pieces = table.getn(pieces),
+                lastY = pieces[table.getn(pieces)].points[1][5],
+                shortTopInSeam = TopTilesInSeam() }
+            UQ_TEST_QUEST_PACKET('Uq Long Objective Test',
+                string.rep('Slay the gnolls of the northern vale. ', 6)
+                    .. '\\n \\n\\nReturn to Marshal McBride.\\n', long)
+            -- A new quest page: the dialogue reads the giver's text afresh.
+            local function Reopen()
+                local onShow = QuestFrame:GetScript('OnShow')
+                if onShow then onShow() end
+                dialogue.modeHint = 'detail'
+                dialogue.closed = nil
+                dialogue:Refresh()
+            end
+            Reopen()
+            local view = dialogue.lastView
+            grown.lines = view and view.objectiveLines
+            -- Its blank lines (one of spaces too) and the trailing break are
+            -- gone; the break between its steps stays.
+            grown.compact = view and string.find(view.objective, '\\n[ ]*\\n') == nil
+                and string.find(view.objective, '\\nReturn to Marshal McBride.$') ~= nil
+            grown.grow = frame.unrealQuestCardGrow
+            grown.height = frame:GetHeight()
+            grown.objectiveHeight = UnrealQuestDialogueCineObjective:GetHeight()
+            grown.grownPieces = table.getn(pieces)
+            grown.grownY = pieces[table.getn(pieces)].points[1][5]
+            grown.grownTopInSeam = TopTilesInSeam()
+            UQ_TEST_QUEST_PACKET('A Threat Within', 'Speak with Marshal McBride.', long)
+            Reopen()
+            grown.restored = frame:GetHeight()
+            grown.restoredGrow = frame.unrealQuestCardGrow
+            grown.restoredY = pieces[table.getn(pieces)].points[1][5]
+            return grown
+        end)(),
+    }
+    UnrealQuestDB.dialogueTheme = 'horde'
+    dialogue:Refresh()
+    UQ_TEST_THEME.hordeV2 = {
+        theme = frame.unrealQuestTheme,
+        ruleDiamond = frame.unrealQuestCineObjectiveDivider.path,
+        ruleDiamondWidth = frame.unrealQuestCineObjectiveDivider:GetWidth(),
+        kickerIconWidth = frame.unrealQuestCineKickerIcon:GetWidth(),
+        -- A label longer than the room between the chevrons is shown whole
+        -- and moved left of the chevron; a short one stays centred.
+        actionLabelFit = (function()
+            local Client = UnrealQuest.Client
+            local label = UnrealQuestDialogueActionLabel
+            local result = {}
+            local function Lay(text)
+                Client.RenderQuestDialogueActionButton(frame, { actionButton = {
+                    action = 'progress', text = text } }, true)
+                for _ = 1, 4 do Client.SettleQuestDialogueLabels() end
+                return label:GetText(), label.point[4] / Client.QUEST_DIALOGUE_UNIT,
+                    label:GetWidth() / Client.QUEST_DIALOGUE_UNIT
+            end
+            result.longText, result.longX, result.longWidth =
+                Lay('Zavershit zadanie, a very long label')
+            result.shortText, result.shortX = Lay('Go')
+            result.right = Client.QUEST_DIALOGUE_HORDE.ACTION_BUTTON.LABEL_RIGHT
+            dialogue:Refresh()
+            return result
+        end)(),
+        kickerIconY = frame.unrealQuestCineKickerIcon.points[1][5],
+        actionShown = UnrealQuestDialogueAction:IsShown(),
+        actionFace = UnrealQuestDialogueAction.unrealQuestFace.path,
+        actionChevron = UnrealQuestDialogueAction.unrealQuestChevron.path,
+        actionGlow = UnrealQuestDialogueAction.unrealQuestHoverGlow.path,
+        actionGlowBlend = UnrealQuestDialogueAction.unrealQuestHoverGlow.blendMode,
+        actionTop = UnrealQuestDialogueAction.unrealQuestFace.texCoord[3],
+        actionRight = UnrealQuestDialogueAction.unrealQuestFace.texCoord[2],
+        actionChevronLeft = UnrealQuestDialogueAction.unrealQuestChevron.texCoord[1],
+        actionChevronTop = UnrealQuestDialogueAction.unrealQuestChevron.texCoord[3],
+        actionY = UnrealQuestDialogueAction.point[5],
+        actionStates = (function()
+            local Client = UnrealQuest.Client
+            local button = UnrealQuestDialogueAction
+            local states = {}
+            Client.RenderQuestDialogueActionButton(frame, { actionButton = {
+                action = 'progress', text = 'x', enabled = false } }, true)
+            states.disabled = button.unrealQuestFace.texCoord[3]
+            states.disabledChevron = button.unrealQuestChevron.texCoord[3]
+            Client.RenderQuestDialogueActionButton(frame, { actionButton = {
+                action = 'progress', text = 'x' } }, true)
+            states.normal = button.unrealQuestFace.texCoord[3]
+            states.normalGlow = button.unrealQuestHoverGlow:IsShown()
+            button:GetScript('OnEnter')()
+            states.hover = button.unrealQuestFace.texCoord[3]
+            states.hoverGlow = button.unrealQuestHoverGlow:IsShown()
+            button:GetScript('OnMouseDown')()
+            states.pressed = button.unrealQuestFace.texCoord[3]
+            states.pressedGlow = button.unrealQuestHoverGlow:IsShown()
+            states.pressedChevron = button.unrealQuestChevron.texCoord[3]
+            states.pressedChevronLeft = button.unrealQuestChevron.texCoord[1]
+            button:GetScript('OnMouseUp')()
+            button:GetScript('OnLeave')()
+            return states
+        end)(),
+        unit = UnrealQuest.Client.QUEST_DIALOGUE_UNIT,
+        width = frame:GetWidth(),
+        cardHole = frame.unrealQuestCineCardHole,
+        art = frame.unrealQuestPortraitArt.path,
+        backdropPath = frame.unrealQuestPortraitBackground.path,
+        plate = UnrealQuestDialogueTurnInItem1.unrealQuestPlate[1].path,
+        rewardEdge = UnrealQuestDialogueTurnInItem1.unrealQuestRewardEdge.path,
+        rowHover = UnrealQuestDialogueRow1.unrealQuestHover.path,
+        titleDivider = frame.unrealQuestHordeTitleDivider.path,
+        titleDividerShown = frame.unrealQuestHordeTitleDivider:IsShown(),
+        emblem = frame.unrealQuestDialogueEmblem.path,
+        emblemShown = frame.unrealQuestDialogueEmblem:IsShown(),
+        rewardPanel = (function()
+            local regions = frame.unrealQuestSkins.ornate
+            for index = 1, table.getn(regions) do
+                local path = regions[index].path or ''
+                if string.find(path, 'UQ_Horde_RewardPanel_', 1, true) then
+                    return path
+                end
+            end
+            return ''
+        end)(),
+        inspectorPanel = (function()
+            local regions = frame.unrealQuestSkins.ornate
+            for index = 1, table.getn(regions) do
+                local path = regions[index].path or ''
+                if string.find(path, 'UQ_Horde_Panel_', 1, true) then
+                    return path
+                end
+            end
+            return ''
+        end)(),
+        card = (function()
+            local regions = frame.unrealQuestSkins.ornate
+            for index = 1, table.getn(regions) do
+                local path = regions[index].path or ''
+                if string.find(path, 'UQ_Horde_Conversation', 1, true) then return path end
+            end
+            return ''
+        end)(),
+    }
+    UnrealQuestDB.dialogueTheme = 'minimal'
+    dialogue:Refresh()
+    do
+        local Client = UnrealQuest.Client
+        Client.SettleQuestDialogueLabels()
+        Client.SettleQuestDialogueLabels()
+        Client.SettleQuestDialogueLabels()
+        local view = dialogue.lastView
+        local objective = UnrealQuestDialogueCineObjective
+        local secondary = UnrealQuestDialogueSecondary
+        UQ_TEST_THEME.minimal = {
+            theme = frame.unrealQuestTheme,
+            width = frame:GetWidth(),
+            fitWidth = frame.unrealQuestFitWidth,
+            tallWidth = frame.unrealQuestMinimalCards and frame.unrealQuestMinimalCards.tallWidth,
+            height = frame:GetHeight(),
+            unit = Client.QUEST_DIALOGUE_UNIT,
+            cardHole = frame.unrealQuestCineCardHole,
+            body = frame.unrealQuestBody:GetText(),
+            pages = view and view.pageCount,
+            roleShown = UnrealQuestDialogueCineRole:IsShown(),
+            kickerShown = UnrealQuestDialogueCineKicker:IsShown(),
+            titleShown = UnrealQuestDialogueCineTitle:IsShown(),
+            title = UnrealQuestDialogueCineTitle:GetText(),
+            heading = UnrealQuestDialogueCineObjectiveHeading:GetText(),
+            objective = objective:GetText(),
+            objectiveRelative = objective.point[2],
+            objectiveRelativePoint = objective.point[3],
+            ruleShown = frame.unrealQuestCineObjectiveDivider:IsShown()
+                or frame.unrealQuestCineObjectiveLineLeft:IsShown(),
+            actionShown = UnrealQuestDialogueAction:IsShown(),
+            actionLabel = UnrealQuestDialogueActionLabel:GetText(),
+            actionHint = UnrealQuestDialogueAction.unrealQuestHint:IsShown(),
+            actionHintText = UnrealQuestDialogueAction.unrealQuestHint:GetText(),
+            actionBorder = UnrealQuestDialogueAction.unrealQuestMinimalBorder[1]:IsShown(),
+            headerDivider = (function()
+                local cards = frame.unrealQuestMinimalCards
+                local line = cards and cards.cardTall.headerDivider
+                local short = cards and cards.card.headerDivider
+                return line ~= nil and short ~= nil and line:IsShown()
+                    and string.find(line:GetTexture() or '', 'unrealQuest' .. string.char(92) .. 'media' .. string.char(92) .. 'Textures' .. string.char(92) .. 'Tracker' .. string.char(92) .. 'QuestTrackerSheet', 1, true) ~= nil
+            end)(),
+            portraitFrame = (function()
+                local border = frame.unrealQuestMinimalPortraitBorder
+                    and frame.unrealQuestMinimalPortraitBorder[1]
+                return border ~= nil and border:IsShown()
+                    and table.getn(frame.unrealQuestMinimalPortraitBorder) == 1
+                    and string.find(border:GetTexture() or '', 'QuestTrackerSheet', 1, true) ~= nil
+            end)(),
+            actionSilver = UnrealQuestDialogueAction.unrealQuestSilver ~= nil
+                and UnrealQuestDialogueAction.unrealQuestSilver.C:IsShown()
+                and UnrealQuestDialogueAction.unrealQuestSilver.TL:GetTexture()
+                    == UnrealQuest.Client.QUEST_DIALOGUE_MINIMAL.PATH .. 'Button_Up'
+                and not UnrealQuestDialogueAction.unrealQuestFace:IsShown(),
+            secondarySilver = UnrealQuestDialogueSecondary.unrealQuestSilver ~= nil
+                and UnrealQuestDialogueSecondary.unrealQuestSilver.C:IsShown(),
+            secondaryShown = secondary:IsShown(),
+            secondaryLabel = UnrealQuestDialogueSecondaryLabel:GetText(),
+            secondaryAction = secondary.unrealQuestAction,
+            secondaryHint = secondary.unrealQuestHint:GetText(),
+            secondaryHintShown = secondary.unrealQuestHint:IsShown(),
+            secondaryLeft = secondary.point[4] < UnrealQuestDialogueAction.point[4],
+            rewardLineShown = UnrealQuestDialogueRewardLine:IsShown(),
+            turnInShown = frame.unrealQuestTurnIn:IsShown(),
+            turnInStatus = frame.unrealQuestTurnIn.unrealQuestStatusText:GetText(),
+            tileShown = UnrealQuestDialogueTurnInItem1:IsShown(),
+            -- The inline reward row: icon-only tiles inside the card, under
+            -- the objectives, after their section label.
+            inlineRow = frame.unrealQuestTurnIn.unrealQuestInline == true
+                and frame.unrealQuestTurnIn.point[2] == frame
+                and frame.unrealQuestTurnIn.point[3] == 'TOPLEFT'
+                and not UnrealQuestDialogueTurnInItem1.unrealQuestName:IsShown()
+                and UnrealQuestDialogueTurnInItem1.unrealQuestIcon:IsShown()
+                and frame.unrealQuestTurnIn.unrealQuestSections[1]:IsShown()
+                and not frame.unrealQuestTurnIn.unrealQuestMinimalSkin[1]:IsShown(),
+        }
+        -- With money on offer the card reads it on its reward line, and the
+        -- panel under it keeps only the item tiles.
+        UQ_TEST_QUEST_REWARD_MONEY = 15000
+        dialogue.lastSignature = nil
+        dialogue:Refresh()
+        UQ_TEST_THEME.minimal.rewardLine = UnrealQuestDialogueRewardLine:GetText()
+        UQ_TEST_THEME.minimal.rewardLineMoneyShown = UnrealQuestDialogueRewardLine:IsShown()
+        local rewardCoins = frame.unrealQuestRewardCoins
+        UQ_TEST_THEME.minimal.rewardCoins = rewardCoins ~= nil and rewardCoins:IsShown()
+            and rewardCoins.unrealQuestCoins[1].label:GetText() == '1'
+            and rewardCoins.unrealQuestCoins[1].icon:IsShown()
+            and rewardCoins.unrealQuestCoins[2].label:GetText() == '50'
+            and rewardCoins.unrealQuestCoins[2].icon:IsShown()
+            and not rewardCoins.unrealQuestCoins[3].icon:IsShown()
+            and rewardCoins.point[2] == UnrealQuestDialogueRewardLine
+            and not frame.unrealQuestTurnIn.unrealQuestCoins:IsShown()
+        UQ_TEST_THEME.minimal.panelLines = 0
+        for index = 1, table.getn(frame.unrealQuestTurnIn.unrealQuestLines) do
+            if frame.unrealQuestTurnIn.unrealQuestLines[index]:IsShown() then
+                UQ_TEST_THEME.minimal.panelLines = UQ_TEST_THEME.minimal.panelLines + 1
+            end
+        end
+        UQ_TEST_QUEST_REWARD_MONEY = nil
+        dialogue.lastSignature = nil
+        dialogue:Refresh()
+    end
+    UnrealQuestDB.dialogueTheme = 'parchment'
+    dialogue:Refresh()
+    UnrealQuest.Client.SettleQuestDialogueLabels()
+    UnrealQuest.Client.SettleQuestDialogueLabels()
+    -- A fitted label sets its text again once its width settled, then measures.
+    UnrealQuest.Client.SettleQuestDialogueLabels()
+    flagModule:Refresh({
+        key = 'dialogue', namePrefix = 'UnrealQuestDialogueLanguageFlag',
+        quest = UQ_TEST_THEME.flagQuest, anchor = frame,
+        translation = UQ_TEST_THEME.flagTranslation,
+        framed = false,
+        place = function(button, anchor, x, y)
+            return UnrealQuest.Client.PlaceQuestDialogueFlag(button, anchor, x, y)
+        end,
+    })
+    UQ_TEST_THEME.back = {
+        height = frame:GetHeight(),
+        width = frame:GetWidth(),
+        unit = UnrealQuest.Client.QUEST_DIALOGUE_UNIT,
+        model = frame.unrealQuestPortraitModel:GetWidth(),
+        art = frame.unrealQuestPortraitArt.path,
+        backdropPath = frame.unrealQuestPortraitBackground.path,
+        rowHover = UnrealQuestDialogueRow1.unrealQuestHover.path,
+        speakerJustify = UnrealQuestDialogueSpeaker.justifyH,
+        speakerX = UnrealQuestDialogueSpeaker.point[4],
+        titleJustify = UnrealQuestDialogueTitle.justifyH,
+        titleX = UnrealQuestDialogueTitle.point[4],
+        titleDivider = frame.unrealQuestTitleDivider[1].path,
+        titleDividerX = frame.unrealQuestTitleDivider[1].points[1][4],
+        objectiveDiamond = frame.unrealQuestObjectiveDivider[1].path,
+        objectiveLine = frame.unrealQuestObjectiveDivider[2].path,
+        hordeTitleDividerShown = frame.unrealQuestHordeTitleDivider:IsShown(),
+        hordeEmblemShown = frame.unrealQuestDialogueEmblem:IsShown(),
+        flag = (function()
+            local row = UnrealQuest:GetModule('QuestLanguageFlags').rows.dialogue
+            local buttons = row and row.buttons or {}
+            for code, button in pairs(buttons) do
+                if button.unrealQuestSelected then
+                    return {
+                        width = button:GetWidth(), height = button:GetHeight(),
+                        framed = button.unrealQuestFlagFramed,
+                        frame = button.unrealQuestFlagFrame
+                            and button.unrealQuestFlagFrame:IsShown(),
+                    }
+                end
+            end
+            return {}
+        end)(),
+    }
+    UQ_TEST_THEME.back.cineShown = Shown('ornate')
+    UQ_TEST_THEME.back.minimalExtras = UnrealQuestDialogueSecondary:IsShown()
+        or UnrealQuestDialogueRewardLine:IsShown()
+    UQ_TEST_THEME.back.kicker = UnrealQuestDialogueCineKicker:IsShown()
+        or frame.unrealQuestCineKickerIcon:IsShown() or UnrealQuestDialogueCineRole:IsShown()
+    UnrealQuestDB.dialogueTheme = 'horde-light'
+    UQ_TEST_QUEST_PACKET('', '', '')
+    UQ_TEST_QUEST_CHOICES = 0
+    UQ_TEST_QUEST_REWARD_ITEMS = {}
+    QuestFrame:Hide()
+    dialogue.closed = nil
+    dialogue.modeHint = nil
+    dialogue:Refresh()    UnrealQuest.dialogueBackdrops = UQ_TEST_THEME.savedBackdrops
+""")
+check("minimal draws the compact quest card: no quest text, no role, kicker or rule",
+      rt.eval("""(function()
+    local m = UQ_TEST_THEME.minimal
+    -- As wide as its content, under the 700 design width; the art follows.
+    return m.theme == 'minimal' and m.cardHole == 'minimal'
+        and m.fitWidth ~= nil and m.fitWidth < 700
+        and math.abs(m.width - m.fitWidth * m.unit) < 0.01
+        and m.tallWidth == m.fitWidth
+        -- 190 less the one-line objective's unused second line (20).
+        and math.abs(m.height - 170 * m.unit) < 0.01
+        and m.body == '' and m.pages == 1
+        and not m.roleShown and not m.kickerShown and not m.ruleShown
+        and m.titleShown and m.title == 'A Threat Within'
+end)()"""))
+check("minimal reads the objective inline, right after its heading",
+      rt.eval("""(function()
+    local m = UQ_TEST_THEME.minimal
+    return m.heading == 'Objectives:' and m.objective == 'Speak with Marshal McBride.'
+        and m.objectiveRelative == UnrealQuestDialogueCineObjectiveHeading
+        and m.objectiveRelativePoint == 'TOPRIGHT'
+end)()"""))
+check("minimal shows Decline (with its Esc key) left of a one-word Accept (with its Space key), both on unrealUI's silver binding face",
+      rt.eval("""(function()
+    local m = UQ_TEST_THEME.minimal
+    return m.actionShown and m.actionLabel == 'Accept'
+        and m.actionHint and m.actionHintText == 'Space'
+        and not m.actionBorder and m.actionSilver and m.secondarySilver
+        and m.headerDivider and m.portraitFrame
+        and m.secondaryShown and m.secondaryLabel == 'Decline'
+        and m.secondaryAction == 'decline'
+        and m.secondaryHint == 'Esc' and m.secondaryHintShown and m.secondaryLeft
+end)()"""))
+check("minimal reads money on its reward line; the items are icons on one row in the card",
+      rt.eval("""(function()
+    local m = UQ_TEST_THEME.minimal
+    return not m.rewardLineShown and m.inlineRow
+        and m.turnInShown and m.tileShown and m.turnInStatus == ''
+        and m.rewardLineMoneyShown and m.rewardLine == '|cffffffffRewards:|r'
+        and m.rewardCoins
+        and m.panelLines == 0
+end)()"""))
+check("every other theme draws reward money as gold, silver and copper coins after its label",
+      rt.eval("""(function()
+    local dialogue = UnrealQuest:GetModule('Dialogue')
+    local frame = dialogue.frame
+    local saved = UnrealQuestDB.dialogueTheme
+    local ok = true
+    UQ_TEST_QUEST_PACKET('Coin Test Quest', 'Do it.', 'Short words.')
+    QuestFrame:Show()
+    dialogue:OnDialogueEvent('QUEST_DETAIL')
+    for _, theme in ipairs({ 'parchment', 'horde-light', 'alliance-light', 'alliance', 'horde' }) do
+        UnrealQuestDB.dialogueTheme = theme
+        UQ_TEST_QUEST_REWARD_MONEY = 10203
+        dialogue.closed = nil
+        dialogue.lastSignature = nil
+        dialogue:Refresh()
+        local panel = frame.unrealQuestTurnIn
+        local coins = panel and panel.unrealQuestCoins
+        local label
+        for index = 1, table.getn(panel and panel.unrealQuestLines or {}) do
+            local line = panel.unrealQuestLines[index]
+            if line:IsShown() and coins and coins.point and coins.point[2] == line then
+                label = line:GetText()
+            end
+        end
+        ok = ok and coins ~= nil and coins:IsShown() and label == 'You will receive:'
+            and coins.unrealQuestCoins[1].label:GetText() == '1'
+            and coins.unrealQuestCoins[2].label:GetText() == '2'
+            and coins.unrealQuestCoins[3].label:GetText() == '3'
+            and coins.unrealQuestCoins[3].icon:IsShown()
+        UQ_TEST_QUEST_REWARD_MONEY = nil
+        dialogue.lastSignature = nil
+        dialogue:Refresh()
+        ok = ok and (not coins:IsShown() or not panel:IsShown())
+    end
+    UnrealQuestDB.dialogueTheme = saved
+    UQ_TEST_QUEST_PACKET('', '', '')
+    QuestFrame:Hide()
+    dialogue.lastSignature = nil
+    dialogue:Refresh()
+    return ok
+end)()"""))
+check("minimal draws no screen veil; the other themes keep theirs",
+      rt.eval("""(function()
+    local C = UnrealQuest.Client
+    local frame = UnrealQuest:GetModule('Dialogue').frame
+    local saved = frame.unrealQuestTheme
+    frame.unrealQuestTheme = 'minimal'
+    local minimal = C.GetQuestDialogueDimAlpha(frame)
+    frame.unrealQuestTheme = 'horde-light'
+    local cinematic = C.GetQuestDialogueDimAlpha(frame)
+    frame.unrealQuestTheme = saved
+    return minimal == 0 and cinematic == C.QUEST_DIALOGUE_DIM_ALPHA
+end)()"""))
+check("minimal's invisible veil stays up to catch the void click, and goes on close",
+      rt.eval("""(function()
+    local C = UnrealQuest.Client
+    local frame = UnrealQuest:GetModule('Dialogue').frame
+    local dim = frame.unrealQuestDim
+    local saved = frame.unrealQuestTheme
+    frame.unrealQuestTheme = 'minimal'
+    dim:Show()
+    C.FadeQuestDialogueDim(frame, C.GetQuestDialogueDimAlpha(frame))
+    dim.unrealQuestFadeStart = -1000
+    C.StepQuestDialogueDim(frame)
+    local kept = dim:IsShown()
+    C.FadeQuestDialogueDim(frame, 0, true)
+    dim.unrealQuestFadeStart = -1000
+    C.StepQuestDialogueDim(frame)
+    local gone = not dim:IsShown()
+    frame.unrealQuestTheme = saved
+    return kept and gone
+end)()"""))
+check("minimal rises into place when it opens; the other themes do not move",
+      rt.eval("""(function()
+    local C = UnrealQuest.Client
+    local frame = UnrealQuest:GetModule('Dialogue').frame
+    local savedTheme, savedRest = frame.unrealQuestTheme, frame.unrealQuestRestY
+    frame.unrealQuestTheme = 'minimal'
+    local slide = C.GetQuestDialogueLayout(frame).openSlide
+    local time = C.GetQuestDialogueLayout(frame).openSlideTime
+    frame.unrealQuestRestY = 10
+    frame.unrealQuestSlideStart = 100
+    frame.unrealQuestSlideOffset = -slide
+    C.UpdateQuestDialogueAnimation(frame, 100)
+    local below = frame.point[5] == 10 - slide
+    C.UpdateQuestDialogueAnimation(frame, 100 + time / 2)
+    local rising = frame.point[5] > 10 - slide and frame.point[5] < 10
+    C.UpdateQuestDialogueAnimation(frame, 100 + time + 0.001)
+    local landed = frame.point[5] == 10 and frame.unrealQuestSlideStart == nil
+    -- The fade shares the slide's length: half-way up it is part-opaque, and
+    -- it is fully opaque on landing.
+    local slideTime = time
+    frame.unrealQuestRestY = 10
+    frame.unrealQuestSlideStart = 200
+    frame.unrealQuestAnimationStart = 200
+    frame.unrealQuestFadeDuration = slideTime
+    C.UpdateQuestDialogueAnimation(frame, 200 + slideTime / 2)
+    local midAlpha = frame:GetAlpha()
+    C.UpdateQuestDialogueAnimation(frame, 200 + slideTime + 0.001)
+    local synced = midAlpha > 0 and midAlpha < 1 and frame:GetAlpha() == 1
+        and frame.point[5] == 10 and frame.unrealQuestFadeDuration == nil
+    frame.unrealQuestTheme = 'horde-light'
+    local still = C.GetQuestDialogueLayout(frame).openSlide == nil
+    frame.unrealQuestTheme, frame.unrealQuestRestY = savedTheme, savedRest
+    C.AnchorQuestDialogueCard(frame)
+    return below and rising and landed and synced and still
+end)()"""))
+check("leaving minimal hides its second button and reward line",
+      rt.eval("UQ_TEST_THEME.back.minimalExtras == false"))
+check("Space drives the card and Esc closes it through a key frame held only while it is up",
+      rt.eval("""(function()
+    local dialogue = UnrealQuest:GetModule('Dialogue')
+    local frame = dialogue.frame
+    local keys = UnrealQuestDialogueKeys
+    if not keys then return false end
+    local savedMode, savedClick, savedEscape = dialogue.mode, frame.unrealQuestCardClick,
+        frame.unrealQuestKeyEscape
+    local clicked, escaped
+    frame.unrealQuestCardClick = function(button) clicked = button end
+    frame.unrealQuestKeyEscape = function() escaped = true end
+    dialogue.mode = 'detail'
+    frame:Show()
+    dialogue:SyncKeyboard()
+    local held = keys:IsShown()
+    local handler = keys:GetScript('OnKeyDown')
+    arg1 = 'SPACE'; handler()
+    arg1 = 'W'; handler()
+    local spaceOnly = clicked == 'LeftButton' and not escaped
+    arg1 = 'ESCAPE'; handler()
+    arg1 = nil
+    UnrealQuestDB.dialogueKeyboard = false
+    dialogue:SyncKeyboard()
+    local optedOut = not keys:IsShown()
+    UnrealQuestDB.dialogueKeyboard = nil
+    dialogue:SyncKeyboard()
+    local again = keys:IsShown()
+    dialogue.mode = nil
+    dialogue:SyncKeyboard()
+    local released = not keys:IsShown()
+    dialogue.mode, frame.unrealQuestCardClick, frame.unrealQuestKeyEscape =
+        savedMode, savedClick, savedEscape
+    return held and spaceOnly and escaped == true and optedOut and again and released
+end)()"""))
+check("the dialogue hides the HUD and world tooltip while up, unrealUI's only when loaded",
+      rt.eval("""(function()
+    local dialogue = UnrealQuest:GetModule('Dialogue')
+    local tracker = UnrealQuest:GetModule('TrackerFrame')
+    local native = CreateFrame('Frame', 'PlayerFrame', UIParent)
+    local suppressed = CreateFrame('Frame', 'TargetFrame', UIParent)
+    local bar = CreateFrame('Frame', 'UnrealUIActionBar3', UIParent)
+    native:Show() suppressed:Show() bar:Show()
+    suppressed:SetAlpha(0)
+    local savedMode, savedOption = dialogue.mode, UnrealQuestDB.dialogueHideInterface
+    local savedHost = UnrealUI
+    UnrealUI = nil
+    dialogue.mode = 'detail'
+    dialogue.frame:Show()
+    dialogue:SyncInterfaceHidden()
+    local standalone = not native:IsShown() and bar:IsShown()
+        and suppressed:IsShown() and tracker.suppressed == true
+    UnrealUI = {}
+    dialogue:SyncInterfaceHidden()
+    local hosted = not bar:IsShown()
+    native:Show()
+    dialogue:SyncInterfaceHidden()
+    local rehidden = not native:IsShown()
+    -- An owner's own Show() between polls is undone on the next frame, and a
+    -- world hover's tooltip goes while a reward tile's stays.
+    bar:Show()
+    GameTooltip:SetOwner(UIParent, 'ANCHOR_NONE')
+    GameTooltip:Show()
+    UnrealQuest.Client.KeepGameInterfaceHidden()
+    local perFrame = not bar:IsShown() and not GameTooltip:IsShown()
+    GameTooltip:SetOwner(dialogue.frame, 'ANCHOR_NONE')
+    GameTooltip:Show()
+    UnrealQuest.Client.KeepGameInterfaceHidden()
+    local ownTooltip = GameTooltip:IsShown()
+    GameTooltip:Hide()
+    UnrealQuestDB.dialogueHideInterface = false
+    dialogue:SyncInterfaceHidden()
+    local optedOut = native:IsShown() and bar:IsShown() and not tracker.suppressed
+    UnrealQuestDB.dialogueHideInterface = savedOption
+    dialogue:SyncInterfaceHidden()
+    dialogue.mode = nil
+    dialogue:SyncInterfaceHidden()
+    local closed = native:IsShown() and bar:IsShown() and suppressed:IsShown()
+        and not tracker.suppressed
+    UnrealUI = savedHost
+    dialogue.mode = savedMode
+    return standalone and hosted and rehidden and perFrame and ownTooltip
+        and optedOut and closed
+end)()"""))
+check("cinematic swaps the whole skin: its art draws and none of the classic art does",
+      rt.eval("""UQ_TEST_THEME.cine.theme == 'horde-light'
+        and UQ_TEST_THEME.cine.classicShown == 0 and UQ_TEST_THEME.cine.classicHidden > 0
+        and UQ_TEST_THEME.cine.cineHidden >= UQ_TEST_THEME.cine.shortCardHidden
+        and UQ_TEST_THEME.cine.cineShown > 0
+        and UQ_TEST_THEME.cine.cardHole == 'horde-light'
+        and UQ_TEST_THEME.cine.panel == false"""))
+check("cinematic takes its own card geometry, portrait box and text layout", rt.eval("""
+    math.abs(UQ_TEST_THEME.cine.width - 680 * UQ_TEST_THEME.cine.unit) < 0.01 and math.abs(UQ_TEST_THEME.cine.height - 373.9 * UQ_TEST_THEME.cine.unit) < 0.01
+        and math.abs(UQ_TEST_THEME.cine.model - 158.5 * UQ_TEST_THEME.cine.unit) < 0.01
+        and math.abs(UQ_TEST_THEME.cine.modelHeight - 144.2 * UQ_TEST_THEME.cine.unit) < 0.01
+        and math.abs(UQ_TEST_THEME.cine.backdrop - 164.5 * UQ_TEST_THEME.cine.unit) < 0.01
+        and UQ_TEST_THEME.cine.justify == 'LEFT'
+        and math.abs(UQ_TEST_THEME.cine.titleX - 252 * UnrealQuest.Client.QUEST_DIALOGUE_UNIT) < 0.01
+        and UQ_TEST_THEME.cine.title == 'A Threat Within'
+        and UQ_TEST_THEME.cine.classicTitle == false
+        and UQ_TEST_THEME.cine.scale == 1
+        and string.find(UQ_TEST_THEME.cine.art, 'UQ_HordeLight_Portrait', 1, true) ~= nil
+        and string.find(UQ_TEST_THEME.cine.backdropPath, 'UQ_Portrait_Background_Wide', 1, true) ~= nil
+        and string.find(UQ_TEST_THEME.cine.plate, 'UQ_HordeLight_Plate', 1, true) ~= nil
+        and string.find(UQ_TEST_THEME.cine.rowHover, 'UQ_HordeLight_Row_Hover', 1, true) ~= nil
+        and UQ_TEST_THEME.cine.rowBanner == true
+"""))
+check("a quest page shows the quest kicker in both themes; cinematic names the quest giver", rt.eval("""
+    UQ_TEST_THEME.cine.role == UnrealQuest.L('DIALOGUE_ROLE_QUEST_GIVER')
+        and UQ_TEST_THEME.cine.kicker == UnrealQuest.L('DIALOGUE_KICKER_QUEST')
+        and UQ_TEST_THEME.cine.kickerArt == true
+        and UQ_TEST_THEME.cine.speakerShown == true
+        and UQ_TEST_THEME.cine.roleWidth == math.ceil(UQ_TEST_THEME.cine.roleText) + 2
+        and UQ_TEST_THEME.cine.roleWidth < 440 * UnrealQuest.Client.QUEST_DIALOGUE_UNIT
+        and UQ_TEST_THEME.back.kicker == true
+"""))
+check("cinematic language rims sit directly over the flag pixels",
+      rt.eval("""(function()
+    local flag = UQ_TEST_THEME.cine.flag
+    return flag.framed == true and flag.width == 18 and flag.height == 14
+        and flag.frame == true and flag.iconFills == true
+        and flag.frameLeft == -2 and flag.frameTop == 2
+        and flag.frameRight == 2 and flag.frameBottom == -2
+        and string.find(flag.selectedArt or '', 'UQ_HordeLight_Flag_Selected', 1, true) ~= nil
+        and string.find(flag.normalArt or '', 'UQ_HordeLight_Flag', 1, true) ~= nil
+        and string.find(flag.normalArt or '', 'Selected', 1, true) == nil
+end)()"""), str(rt.eval("""(function()
+    local flag = UQ_TEST_THEME.cine.flag
+    return tostring(flag.width) .. ',' .. tostring(flag.height) .. ','
+        .. tostring(flag.framed) .. ',' .. tostring(flag.frame) .. ','
+        .. tostring(flag.iconFills) .. ','
+        .. tostring(flag.frameLeft) .. ',' .. tostring(flag.frameTop) .. ','
+        .. tostring(flag.frameRight) .. ',' .. tostring(flag.frameBottom) .. ','
+        .. tostring(flag.selectedArt) .. ',' .. tostring(flag.normalArt)
+end)()""")))
+check("a cinematic quest page shows its objective in the strip, not in the paged text",
+      rt.eval("""UQ_TEST_THEME.cine.objective == 'Speak with Marshal McBride.'
+        and UQ_TEST_THEME.cine.objectiveArt == true
+        and UQ_TEST_THEME.cine.bodyHasObjective == false"""))
+check("a theme switch re-pages the text to the cinematic body box's budget", rt.eval("""
+    type(UQ_TEST_THEME.classicPages) == 'number' and type(UQ_TEST_THEME.cine.pages) == 'number'
+        and UQ_TEST_THEME.cine.columns == 48 and UQ_TEST_THEME.cine.lines == 4
+        and UQ_TEST_THEME.cine.pages > UQ_TEST_THEME.classicPages
+"""), str(rt.eval("tostring(UQ_TEST_THEME.classicPages) .. ' / ' .. tostring(UQ_TEST_THEME.cine.pages)")))
+check("switching back restores the classic card exactly", rt.eval("""
+    math.abs(UQ_TEST_THEME.back.height - UnrealQuest.Client.QUEST_DIALOGUE_CARD.TALL_HEIGHT * UnrealQuest.Client.QUEST_DIALOGUE_UNIT) < 0.01 and math.abs(UQ_TEST_THEME.back.model - 127.7 * UnrealQuest.Client.QUEST_DIALOGUE_UNIT) < 0.01
+        and UQ_TEST_THEME.back.cineShown == 0
+        and UQ_TEST_THEME.back.speakerJustify == 'LEFT'
+        and UQ_TEST_THEME.back.titleJustify == 'LEFT'
+        and math.abs(UQ_TEST_THEME.back.speakerX - UQ_TEST_THEME.back.titleX
+            - (UnrealQuest.Client.QUEST_DIALOGUE_LAYOUTS.parchment.speaker[1]
+                - UnrealQuest.Client.QUEST_DIALOGUE_LAYOUTS.parchment.title[1])
+            * UnrealQuest.Client.QUEST_DIALOGUE_UNIT) < 0.01
+        and UQ_TEST_THEME.back.titleDividerX == UQ_TEST_THEME.back.titleX
+        and string.find(UQ_TEST_THEME.back.titleDivider,
+            'UQ_Parchment_Title_Divider', 1, true) ~= nil
+        and string.find(UQ_TEST_THEME.back.objectiveDiamond,
+            'Parchment\\\\UQ_Parchment_Objective_Diamond', 1, true) ~= nil
+        and string.find(UQ_TEST_THEME.back.objectiveLine,
+            'Parchment\\\\UQ_Parchment_Objective_Line', 1, true) ~= nil
+        and string.find(UQ_TEST_THEME.back.art, 'UQ_Parchment_Portrait_Frame_Square', 1, true) ~= nil
+        and string.find(UQ_TEST_THEME.back.backdropPath, 'UQ_Parchment_Portrait_Background', 1, true) ~= nil
+        and UQ_TEST_THEME.back.rowHover == nil
+        and UQ_TEST_THEME.back.flag.width == 13 and UQ_TEST_THEME.back.flag.height == 10
+        and UQ_TEST_THEME.back.flag.framed ~= true
+        and UQ_TEST_THEME.back.flag.frame == false
+        and UQ_TEST_THEME.classicPlate ~= nil
+        and string.find(UQ_TEST_THEME.classicPlate, 'UQ_Parchment_Reward_Tile', 1, true) ~= nil
+"""))
+_theme_paths = [path for path in (rt.eval("UQ_TEST_THEME.paths") or "").split(";") if path]
+_missing_theme_art = [
+    path for path in _theme_paths
+    if not os.path.isfile(os.path.join(ADDONS, *path.split("\\")[2:]) + ".tga")]
+check("every cinematic texture the dialogue draws ships with the addon",
+      len(_theme_paths) >= 10 and not _missing_theme_art, str(_missing_theme_art))
+check("the Alliance option retargets the complete cinematic skin",
+      rt.eval("""UQ_TEST_THEME.alliance.theme == 'alliance-light'
+        and string.find(UQ_TEST_THEME.alliance.art, 'UQ_AllianceLight_Portrait', 1, true) ~= nil
+        and string.find(UQ_TEST_THEME.alliance.backdropPath,
+            'UQ_Portrait_Background_Wide', 1, true) ~= nil
+        and string.find(UQ_TEST_THEME.alliance.plate, 'UQ_AllianceLight_Plate', 1, true) ~= nil
+        and math.abs(UQ_TEST_THEME.alliance.rewardPanelY
+            + UnrealQuest.Client.QUEST_DIALOGUE_ALLIANCE_LIGHT.REWARD_PANEL_GAP
+                * UnrealQuest.Client.QUEST_DIALOGUE_BASE_UNIT) < 0.001
+        and UQ_TEST_THEME.alliance.rewardPanelLevel < UQ_TEST_THEME.alliance.cardLevel
+        and UQ_TEST_THEME.alliance.rewardTileLevel < UQ_TEST_THEME.alliance.cardLevel
+        and string.find(UQ_TEST_THEME.alliance.rowHover,
+            'UQ_AllianceLight_Row_Hover', 1, true) ~= nil
+        and string.find(UQ_TEST_THEME.alliance.card, 'UQ_AllianceLight_Card', 1, true) ~= nil"""))
+check("Alliance V2's quest card grows at its seam with a long objective, and shrinks back",
+      rt.eval("""(function()
+        local g = UQ_TEST_THEME.allianceV2.objectiveGrow
+        local unit = UQ_TEST_THEME.allianceV2.unit
+        local function Near(a, b) return math.abs(a - b) < 0.01 end
+        -- The text starts 7.72 units under its former 295.57 and must end
+        -- where two lines from there did.
+        return g.lines == 4 and g.compact
+            and Near(g.grow, 295.57 + 7.72 + g.lines * 14.7 - (295.57 + 2 * 14.7))
+            and Near(g.height, g.short + g.grow * unit)
+            and Near(g.objectiveHeight, (43 + g.grow) * unit)
+            and g.grownPieces == g.pieces
+            and Near(g.grownY, g.lastY - g.grow * unit)
+            and Near(g.restored, g.short) and g.restoredGrow == 0
+            and Near(g.restoredY, g.lastY)
+            and g.shortTopInSeam == 0 and g.grownTopInSeam == 0
+      end)()"""))
+check("Horde light's and Alliance light's quest cards grow with their objective",
+      rt.eval("""(function()
+        local g = UQ_TEST_THEME.cineGrow
+        local function Near(x, y) return math.abs(x - y) < 0.01 end
+        local fit = 307 + 2 * 19 - 10
+        return g.twoLines == 2 and Near(g.twoGrow, 10)
+            and Near(g.twoHeight, g.short + 10 * g.unit)
+            and g.longLines == 3 and Near(g.longGrow, 307 + 3 * 19 - fit)
+            and Near(g.longY, g.lastY - g.longGrow * g.unit)
+            and g.longPieces == g.pieces
+            and Near(g.allianceHeight, g.short + g.longGrow * g.unit)
+            and Near(g.allianceY, g.longY)
+            and Near(g.restored, g.short)
+      end)()"""))
+check("Horde V2's action button never cuts its label and keeps it clear of the chevron",
+      rt.eval("""(function()
+        local f = UQ_TEST_THEME.hordeV2.actionLabelFit
+        return f.longText == 'Zavershit zadanie, a very long label'
+            and f.longX < 0 and math.abs(f.longX + f.longWidth / 2 - f.right) < 0.01
+            and f.shortText == 'Go' and f.shortX == 0
+      end)()"""))
+check("Alliance light's action button label is Horde light's size",
+      rt.eval("""UnrealQuest.Client.QUEST_DIALOGUE_ALLIANCE_LIGHT.ACTION_BUTTON.LABEL_SIZE
+        == UnrealQuest.Client.QUEST_DIALOGUE_HORDE_LIGHT.ACTION_BUTTON.LABEL_SIZE
+        and UnrealQuest.Client.QUEST_DIALOGUE_ALLIANCE_LIGHT.ACTION_BUTTON.LABEL_SIZE == 16 - 2 / 0.8"""))
+check("Alliance light's quest card draws Parchment's brown objectives rule at its size",
+      rt.eval("""(function()
+        local a, h = UQ_TEST_THEME.alliance, UQ_TEST_THEME.hordeV2
+        return string.find(a.ruleDiamond,
+                'Dialogues\\\\Parchment\\\\UQ_Parchment_Objective_Diamond', 1, true) ~= nil
+            and string.find(a.ruleLine,
+                'Dialogues\\\\Parchment\\\\UQ_Parchment_Objective_Line', 1, true) ~= nil
+            and math.abs(a.ruleDiamondWidth - 12 * h.unit) < 0.01
+      end)()"""))
+check("Alliance V2's and Horde V2's quest cards draw Parchment's objectives rule at its size",
+      rt.eval("""(function()
+        local a, h = UQ_TEST_THEME.allianceV2, UQ_TEST_THEME.hordeV2
+        local function Near(x, y) return math.abs(x - y) < 0.01 end
+        return string.find(a.ruleDiamond,
+                'Dialogues\\\\Parchment\\\\UQ_Parchment_Objective_Diamond', 1, true) ~= nil
+            and string.find(a.ruleLine,
+                'Dialogues\\\\Parchment\\\\UQ_Parchment_Objective_Line', 1, true) ~= nil
+            and Near(a.ruleDiamondWidth, 12 * h.unit)
+            and string.find(h.ruleDiamond,
+                'Dialogues\\\\Parchment\\\\UQ_Parchment_Objective_Diamond', 1, true) ~= nil
+            and Near(h.ruleDiamondWidth, 12 * h.unit)
+      end)()"""))
+check("Horde V2's quest badge is 15% smaller about its former vertical centre",
+      rt.eval("""(function()
+        local h = UQ_TEST_THEME.hordeV2
+        local function Near(x, y) return math.abs(x - y) < 0.01 end
+        return Near(h.kickerIconWidth, 24 * 0.85 * h.unit)
+            and Near(-h.kickerIconY / h.unit + 20.4 / 2, 113.87 + 24 / 2)
+      end)()"""))
+check("the Alliance V2 option retargets the complete cinematic skin",
+      rt.eval("""UQ_TEST_THEME.allianceV2.theme == 'alliance'
+        and UQ_TEST_THEME.allianceV2.speakerWidth <= 250 * UQ_TEST_THEME.allianceV2.unit
+        and UQ_TEST_THEME.allianceV2.cardHole == 'alliance'
+        and UQ_TEST_THEME.allianceV2.bodyTop > UQ_TEST_THEME.allianceV2.dividerTop
+            + UQ_TEST_THEME.allianceV2.dividerHeight
+        and string.find(UQ_TEST_THEME.allianceV2.art,
+            'UQ_Alliance_Portrait_Frame', 1, true) ~= nil
+        and string.find(UQ_TEST_THEME.allianceV2.backdropPath,
+            'UQ_Portrait_Background_Wide', 1, true) ~= nil
+        and string.find(UQ_TEST_THEME.allianceV2.plate,
+            'UQ_Alliance_Reward_Item_Plate_Unified', 1, true) ~= nil
+        and string.find(UQ_TEST_THEME.allianceV2.rowHover,
+            'UQ_Alliance_Row_Hover', 1, true) ~= nil
+        and UQ_TEST_THEME.allianceV2.emblemShown == true
+        and string.find(UQ_TEST_THEME.allianceV2.emblem,
+            'UQ_Alliance_Emblem', 1, true) ~= nil
+        and string.find(UQ_TEST_THEME.allianceV2.card,
+            'UQ_Alliance_Conversation', 1, true) ~= nil"""))
+check("the Horde V2 option retargets the complete cinematic skin",
+      rt.eval("""UQ_TEST_THEME.hordeV2.theme == 'horde'
+        and UQ_TEST_THEME.hordeV2.cardHole == 'horde'
+        and math.abs(UQ_TEST_THEME.hordeV2.unit
+            - UnrealQuest.Client.QUEST_DIALOGUE_BASE_UNIT * 1.5552) < 0.0001
+        and math.abs(UQ_TEST_THEME.hordeV2.width
+            - 680 * UQ_TEST_THEME.hordeV2.unit) < 0.01
+        and string.find(UQ_TEST_THEME.hordeV2.art,
+            'UQ_Horde_Portrait_Frame', 1, true) ~= nil
+        and string.find(UQ_TEST_THEME.hordeV2.backdropPath,
+            'UQ_Portrait_Background_Wide', 1, true) ~= nil
+        and string.find(UQ_TEST_THEME.hordeV2.plate,
+            'UQ_Horde_Reward_Item_Plate_Unified', 1, true) ~= nil
+        and string.find(UQ_TEST_THEME.hordeV2.rewardEdge,
+            'UQ_Horde_Reward_Plate_Left_Edge', 1, true) ~= nil
+        and string.find(UQ_TEST_THEME.hordeV2.rowHover,
+            'UQ_Horde_Row_Hover', 1, true) ~= nil
+        and UQ_TEST_THEME.hordeV2.titleDividerShown == true
+        and string.find(UQ_TEST_THEME.hordeV2.titleDivider,
+            'UQ_Horde_Title_Divider', 1, true) ~= nil
+        and UQ_TEST_THEME.back.hordeTitleDividerShown == false
+        and UQ_TEST_THEME.hordeV2.emblemShown == true
+        and string.find(UQ_TEST_THEME.hordeV2.emblem, 'UQ_Horde_Emblem', 1, true) ~= nil
+        and string.find(UQ_TEST_THEME.hordeV2.rewardPanel,
+            'UQ_Horde_RewardPanel_', 1, true) ~= nil
+        and string.find(UQ_TEST_THEME.hordeV2.inspectorPanel,
+            'UQ_Horde_Panel_', 1, true) ~= nil
+        and UQ_TEST_THEME.back.hordeEmblemShown == false
+        and string.find(UQ_TEST_THEME.hordeV2.card,
+            'UQ_Horde_Conversation', 1, true) ~= nil"""))
+check("theme switches resize the dialogue immediately without a reload", rt.eval("""
+    math.abs(UQ_TEST_THEME.allianceV2.unit
+        - UnrealQuest.Client.QUEST_DIALOGUE_BASE_UNIT * 1.296) < 0.0001
+        and math.abs(UQ_TEST_THEME.allianceV2.width
+            - 680 * UQ_TEST_THEME.allianceV2.unit) < 0.01
+        and UQ_TEST_THEME.allianceV2.width > UQ_TEST_THEME.cine.width
+        and math.abs(UQ_TEST_THEME.back.unit
+            - UnrealQuest.Client.QUEST_DIALOGUE_BASE_UNIT) < 0.0001
+        and math.abs(UQ_TEST_THEME.back.width
+            - 680 * UQ_TEST_THEME.back.unit) < 0.01
+"""))
+check("Alliance V2 reward rows use a full-height icon cap",
+      rt.eval("""UQ_TEST_THEME.allianceV2.plateU == 0.25
+        and UQ_TEST_THEME.allianceV2.plateCap
+            == 46 * UQ_TEST_THEME.allianceV2.unit
+        and UQ_TEST_THEME.allianceV2.rewardIconWidth
+            == 40 * UQ_TEST_THEME.allianceV2.unit
+        and UQ_TEST_THEME.allianceV2.rewardIconX
+            == 4 * UQ_TEST_THEME.allianceV2.unit
+        and string.find(UQ_TEST_THEME.allianceV2.rewardEdge,
+            'UQ_Alliance_Reward_Plate_Left_Edge', 1, true) ~= nil
+        and UQ_TEST_THEME.allianceV2.rewardEdgeWidth
+            == 46 * UQ_TEST_THEME.allianceV2.unit
+        and UQ_TEST_THEME.allianceV2.rewardEdgeX == 0
+        and UQ_TEST_THEME.allianceV2.rewardEdgeLayer == 'OVERLAY'
+        and UQ_TEST_THEME.allianceV2.rewardNameX
+            == 54 * UQ_TEST_THEME.allianceV2.unit
+        and math.abs(UQ_TEST_THEME.allianceV2.rewardPanelY
+            + (UnrealQuest.Client.QUEST_DIALOGUE_ALLIANCE.ACTION_BUTTON.HEIGHT / 2
+                - UnrealQuest.Client.QUEST_DIALOGUE_ALLIANCE.ACTION_BUTTON.BAND
+                - UnrealQuest.Client.QUEST_DIALOGUE_ALLIANCE.ACTION_BUTTON.PANEL_OVERLAP)
+                * UQ_TEST_THEME.allianceV2.unit) < 0.001
+        and UQ_TEST_THEME.allianceV2.rewardPanelLevel
+            < UQ_TEST_THEME.allianceV2.cardLevel
+        and UQ_TEST_THEME.allianceV2.rewardTileLevel
+            < UQ_TEST_THEME.allianceV2.cardLevel"""),
+      rt.eval("""tostring(UQ_TEST_THEME.allianceV2.plateU) .. ','
+        .. tostring(UQ_TEST_THEME.allianceV2.plateCap) .. ','
+        .. tostring(UQ_TEST_THEME.allianceV2.rewardIconWidth) .. ','
+        .. tostring(UQ_TEST_THEME.allianceV2.rewardIconX) .. ','
+        .. tostring(UQ_TEST_THEME.allianceV2.rewardEdgeWidth) .. ','
+        .. tostring(UQ_TEST_THEME.allianceV2.rewardEdgeX) .. ','
+        .. tostring(UQ_TEST_THEME.allianceV2.rewardEdgeLayer) .. ','
+        .. tostring(UQ_TEST_THEME.allianceV2.rewardNameX) .. ','
+        .. tostring(UQ_TEST_THEME.allianceV2.rewardPanelY) .. ','
+        .. tostring(UQ_TEST_THEME.allianceV2.rewardPanelLevel) .. ','
+        .. tostring(UQ_TEST_THEME.allianceV2.rewardTileLevel) .. ','
+        .. tostring(UQ_TEST_THEME.allianceV2.cardLevel)"""))
+check("Horde light and Parchment draw the red Accept button on the bottom border",
+      rt.execute("""local Client = UnrealQuest.Client
+        local unit = Client.QUEST_DIALOGUE_BASE_UNIT
+        local function Ok(red, band)
+            return red.shown == true
+                and string.find(red.face, 'UQ_Red_Action_Button', 1, true) ~= nil
+                and string.find(red.glow, 'UQ_Red_Action_Button_Hover', 1, true) ~= nil
+                and red.chevronShown == false
+                and red.point == 'BOTTOM'
+                and math.abs(red.y - band * unit) < 0.001
+                and red.label == UnrealQuest.L('DIALOGUE_BUTTON_ACCEPT')
+                and red.action == 'accept'
+                and red.normal == 0 and red.hover == 0
+                and red.hoverGlow == true and red.pressedGlow == false
+                and red.leftGlow == false
+                and red.pressed == 109 / 512 and red.disabled == 218 / 512
+        end
+        -- Parchment's quest card holds the button in its footer's right
+        -- column instead (layouts.parchment.quest.actionButtonCentre).
+        local classic = UQ_TEST_THEME.classicRed
+        local centre = Client.QUEST_DIALOGUE_LAYOUTS.parchment.quest.actionButtonCentre
+        local saved = { classic.point, classic.y }
+        classic.point = 'BOTTOM'
+        classic.y = Client.QUEST_DIALOGUE_CARD.ACTION_BUTTON.BAND * unit
+        local classicOk = Ok(classic, Client.QUEST_DIALOGUE_CARD.ACTION_BUTTON.BAND)
+            and saved[1] == 'TOPLEFT' and math.abs(saved[2] + centre[2] * unit) < 0.001
+        classic.point, classic.y = saved[1], saved[2]
+        return Ok(UQ_TEST_THEME.cineRed, Client.QUEST_DIALOGUE_RED_ACTION_BUTTON.BAND)
+            and classicOk"""),
+      rt.execute("""local function Dump(red)
+            return tostring(red.shown) .. '/' .. tostring(red.face) .. '/'
+                .. tostring(red.y) .. '/' .. tostring(red.pressed) .. '/'
+                .. tostring(red.hoverGlow) .. '/' .. tostring(red.point) .. '/'
+                .. tostring(red.chevronShown) .. '/' .. tostring(red.label) .. '/'
+                .. tostring(red.action) .. '/' .. tostring(red.normal) .. '/'
+                .. tostring(red.hover) .. '/' .. tostring(red.pressedGlow) .. '/'
+                .. tostring(red.leftGlow) .. '/' .. tostring(red.disabled) .. '/'
+                .. tostring(red.glow)
+        end
+        return Dump(UQ_TEST_THEME.cineRed) .. ' | ' .. Dump(UQ_TEST_THEME.classicRed)"""))
+check("Alliance light draws its cobalt Accept button on the bottom border",
+      rt.execute("""local blue = UQ_TEST_THEME.allianceRed
+        local action = UnrealQuest.Client.QUEST_DIALOGUE_ALLIANCE_LIGHT.ACTION_BUTTON
+        return blue.shown == true
+            and string.find(blue.face, 'UQ_AllianceLight_Action_Button', 1, true) ~= nil
+            and string.find(blue.glow, 'UQ_AllianceLight_Action_Button_Hover', 1, true) ~= nil
+            and blue.chevronShown == false
+            and blue.point == 'BOTTOM'
+            and math.abs(blue.y - action.BAND * UnrealQuest.Client.QUEST_DIALOGUE_BASE_UNIT) < 0.001
+            and blue.normal == 0 and blue.hover == 0
+            and blue.pressed == 109 / 512 and blue.disabled == 218 / 512"""),
+      rt.eval("UQ_TEST_THEME.allianceRed.face .. ' | ' .. UQ_TEST_THEME.allianceRed.glow"))
+check("Alliance V2 draws the Accept button centred on the quest card's bottom band",
+      rt.eval("""UQ_TEST_THEME.allianceV2.actionShown == true
+        and string.find(UQ_TEST_THEME.allianceV2.actionFace,
+            'UQ_Alliance_Action_Button', 1, true) ~= nil
+        and UQ_TEST_THEME.allianceV2.actionChevron == UQ_TEST_THEME.allianceV2.actionFace
+        and UQ_TEST_THEME.allianceV2.actionTop == 0
+        and UQ_TEST_THEME.allianceV2.actionLabel == UnrealQuest.L('DIALOGUE_BUTTON_ACCEPT')
+        and UQ_TEST_THEME.allianceV2.actionAction == 'accept'
+        and UQ_TEST_THEME.allianceV2.actionPoint == 'BOTTOM'
+        and math.abs(UQ_TEST_THEME.allianceV2.actionY
+            - UnrealQuest.Client.QUEST_DIALOGUE_ALLIANCE.ACTION_BUTTON.BAND
+                * UQ_TEST_THEME.allianceV2.unit) < 0.001"""))
+check("Horde V2 keeps its resting pixels on hover and adds a separate bloom",
+      rt.eval("""UQ_TEST_THEME.hordeV2.actionShown == true
+        and string.find(UQ_TEST_THEME.hordeV2.actionFace,
+            'UQ_Horde_Action_Button', 1, true) ~= nil
+        and UQ_TEST_THEME.hordeV2.actionChevron == UQ_TEST_THEME.hordeV2.actionFace
+        and UQ_TEST_THEME.hordeV2.actionTop == 0
+        and UQ_TEST_THEME.hordeV2.actionRight == 410 / 512
+        and UQ_TEST_THEME.hordeV2.actionChevronLeft == 420 / 512
+        and UQ_TEST_THEME.hordeV2.actionChevronTop == 0
+        and string.find(UQ_TEST_THEME.hordeV2.actionGlow,
+            'UQ_Horde_Action_Button_Hover', 1, true) ~= nil
+        and UQ_TEST_THEME.hordeV2.actionGlowBlend == 'ADD'
+        and math.abs(UQ_TEST_THEME.hordeV2.actionY
+            - UnrealQuest.Client.QUEST_DIALOGUE_HORDE.ACTION_BUTTON.BAND
+                * UQ_TEST_THEME.hordeV2.unit) < 0.001
+        and UQ_TEST_THEME.hordeV2.actionStates.disabled == 381 / 512
+        and UQ_TEST_THEME.hordeV2.actionStates.disabledChevron == 294 / 512
+        and UQ_TEST_THEME.hordeV2.actionStates.normal == 0
+        and UQ_TEST_THEME.hordeV2.actionStates.hover == 0
+        and UQ_TEST_THEME.hordeV2.actionStates.normalGlow == false
+        and UQ_TEST_THEME.hordeV2.actionStates.hoverGlow == true
+        and UQ_TEST_THEME.hordeV2.actionStates.pressedGlow == false
+        and UQ_TEST_THEME.hordeV2.actionStates.pressed == 254 / 512
+        and UQ_TEST_THEME.hordeV2.actionStates.pressedChevron == 196 / 512
+        and UQ_TEST_THEME.hordeV2.actionStates.pressedChevronLeft == 420 / 512"""),
+      rt.eval("""tostring(UQ_TEST_THEME.hordeV2.actionShown) .. ','
+        .. tostring(UQ_TEST_THEME.hordeV2.actionFace) .. ','
+        .. tostring(UQ_TEST_THEME.hordeV2.actionStates.hover)"""))
+check("the action button switches atlas cells per state and ignores clicks while disabled",
+      rt.execute("""local s = UQ_TEST_THEME.allianceV2.actionStates
+        return s.disabled == 212 / 512 and s.disabledHover == 212 / 512
+            and s.disabledChevron == 198 / 512
+            and s.normal == 0 and s.hover == 0
+            and s.hoverChevron == 66 / 512
+            and s.hoverGlow == true and s.disabledGlow == false
+            and s.pressedGlow == false
+            and string.find(s.glowPath, 'UQ_Alliance_Action_Button_Hover', 1, true) ~= nil
+            and s.pressed == 106 / 512 and s.pressedChevron == 132 / 512
+            and s.released == 0
+            and s.fired == 'progress:true'"""),
+      rt.execute("""local s = UQ_TEST_THEME.allianceV2.actionStates
+        return tostring(s.disabled) .. ',' .. tostring(s.normal) .. ','
+            .. tostring(s.hover) .. ',' .. tostring(s.pressed) .. ',' .. tostring(s.fired)"""))
+check("Alliance V2 keeps every translated prose block on the authored left edge",
+      rt.eval("""UQ_TEST_THEME.allianceV2.titleJustify == 'LEFT'
+        and UQ_TEST_THEME.allianceV2.titleX
+            == UnrealQuest.Client.QUEST_DIALOGUE_LAYOUTS['alliance'].title[1]
+                * UQ_TEST_THEME.allianceV2.unit
+        and UQ_TEST_THEME.allianceV2.bodyJustify == 'LEFT'
+        and UQ_TEST_THEME.allianceV2.bodyX
+            == UnrealQuest.Client.QUEST_DIALOGUE_LAYOUTS['alliance'].body[1]
+                * UQ_TEST_THEME.allianceV2.unit
+        and UQ_TEST_THEME.allianceV2.bodyWidth
+            == (UnrealQuest.Client.QUEST_DIALOGUE_LAYOUTS['alliance'].body[3] - 8)
+                * UQ_TEST_THEME.allianceV2.unit
+        and UQ_TEST_THEME.allianceV2.objectiveJustify == 'LEFT'
+        and UQ_TEST_THEME.allianceV2.objectiveNamedFont == false
+        and UQ_TEST_THEME.allianceV2.objectivePoint == 'TOPLEFT'
+        and UQ_TEST_THEME.allianceV2.objectiveRelativePoint == 'TOPLEFT'
+        and UQ_TEST_THEME.allianceV2.objectiveX
+            == UnrealQuest.Client.QUEST_DIALOGUE_LAYOUTS['alliance'].objective[1]
+                * UQ_TEST_THEME.allianceV2.unit
+        and UQ_TEST_THEME.allianceV2.objectiveX
+            == UQ_TEST_THEME.allianceV2.objectiveHeadingX
+        and UQ_TEST_THEME.allianceV2.objectiveY
+            == -UnrealQuest.Client.ResolveQuestDialogueLayout(
+                UnrealQuest.Client.QUEST_DIALOGUE_LAYOUTS['alliance'], 'quest').objective[2]
+                * UQ_TEST_THEME.allianceV2.unit
+        -- 5 pixels under the heading-aligned 289.14, then 6 more on the
+        -- quest card.
+        and math.abs((UnrealQuest.Client.ResolveQuestDialogueLayout(
+            UnrealQuest.Client.QUEST_DIALOGUE_LAYOUTS['alliance'], 'quest').objective[2]
+            - 289.14) * UQ_TEST_THEME.allianceV2.unit - 11) < 0.01
+        and UQ_TEST_THEME.allianceV2.objectiveWidth
+            == UnrealQuest.Client.QUEST_DIALOGUE_LAYOUTS['alliance'].objective[3]
+                * UQ_TEST_THEME.allianceV2.unit
+        and math.abs((495.64
+            - UnrealQuest.Client.QUEST_DIALOGUE_LAYOUTS['alliance'].objective[3])
+                * UQ_TEST_THEME.allianceV2.unit - 5) < 0.01"""))
+rt.execute("""
+    UnrealQuestDB.dialogueTheme = 'alliance'
+    local dialogue = UnrealQuest:GetModule('Dialogue')
+    dialogue:Refresh()
+    UnrealQuest.Client.RenderQuestDialogueTurnIn(UnrealQuestDialogueFrame, {
+        title = 'Rewards',
+        rewards = { { name = 'A Sack of Coins', tooltipType = 'reward', index = 1 } },
+    })
+    UQ_TEST_THEME.allianceV2RewardInk = UnrealQuestDialogueTurnInItem1.unrealQuestName.color
+    UnrealQuest.Client.RenderQuestDialogueTurnIn(UnrealQuestDialogueFrame, nil)
+    UnrealQuestDB.dialogueTheme = 'horde-light'
+    dialogue:Refresh()
+""")
+check("Alliance V2 reward names use readable light ink", rt.eval("""
+    UQ_TEST_THEME.allianceV2RewardInk[1] == 0.92
+        and UQ_TEST_THEME.allianceV2RewardInk[2] == 0.90
+        and UQ_TEST_THEME.allianceV2RewardInk[3] == 0.84"""))
+
+# The cinematic portrait backdrop follows the quest's zone, then the zone the
+# player stands in, then the theme default; only listed areas are used.
+check("the cinematic backdrop follows the quest zone, then the standing zone",
+      rt.eval("""(function()
+    local UQ = UnrealQuest
+    local frame = UnrealQuestDialogueFrame
+    local dialogue = UQ:GetModule('Dialogue')
+    local mapContext = UQ:GetModule('MapContext')
+    local saved, realStanding = UQ.dialogueBackdrops, mapContext.GetStandingZone
+    local function Open()
+        UQ_TEST_QUEST_PACKET('A Threat Within', 'Speak with Marshal McBride.', 'Help.')
+        QuestFrame:Show()
+        local onShow = QuestFrame:GetScript('OnShow')
+        if onShow then onShow() end
+        dialogue.modeHint = 'detail'
+        dialogue.closed = nil
+        dialogue.backdropFor = nil
+        dialogue:Refresh()
+        return frame.unrealQuestPortraitBackground.path or ''
+    end
+    local folder = 'Portrait_Background\\\\'
+    -- Jasperlode (76): its one objective area is Elwynn Forest (12).
+    local match = UQ:GetModule('QuestMatch')
+    local realResolve = match.ResolveGiverQuestId
+    match.ResolveGiverQuestId = function() return 76 end
+    UQ.dialogueBackdrops = { [12] = 'QuestZone', [38] = 'StandZone' }
+    mapContext.GetStandingZone = function() return 'Loch Modan', 38, 'standing' end
+    local byQuest = Open()
+    UQ.dialogueBackdrops = { [38] = 'StandZone' }
+    local byStanding = Open()
+    UQ.dialogueBackdrops = {}
+    local byDefault = Open()
+    local background = frame.unrealQuestPortraitBackground
+    local defaultFull = background.texCoord == nil
+        or (background.texCoord[1] == 0 and background.texCoord[2] == 1)
+    UQ.dialogueBackdrops = { [12] = 'QuestZone' }
+    UnrealQuestDB.dialogueTheme = 'parchment'
+    local classic = Open()
+    local classicCoords = background.texCoord
+    UnrealQuestDB.dialogueTheme = 'horde-light'
+    Open()
+    UQ_BACKDROP_CLASSIC = string.find(classic, folder .. 'QuestZone', 1, true) ~= nil
+        and classicCoords ~= nil and classicCoords[1] > 0 and classicCoords[2] < 1
+        and defaultFull
+    UQ.dialogueBackdrops, mapContext.GetStandingZone = saved, realStanding
+    match.ResolveGiverQuestId = realResolve
+    UQ_TEST_QUEST_PACKET('', '', '')
+    QuestFrame:Hide()
+    dialogue.closed = nil
+    dialogue.modeHint = nil
+    dialogue:Refresh()
+    UQ_BACKDROP_DEBUG = byQuest .. ' | ' .. byStanding .. ' | ' .. byDefault
+    return string.find(byQuest, folder .. 'QuestZone', 1, true) ~= nil
+        and string.find(byStanding, folder .. 'StandZone', 1, true) ~= nil
+        and string.find(byDefault, 'UQ_Portrait_Background_Wide', 1, true) ~= nil
+end)()"""), str(rt.eval("UQ_BACKDROP_DEBUG")))
+check("the classic card draws the zone backdrop too, cropped to its square hole",
+      rt.eval("UQ_BACKDROP_CLASSIC") is True)
+_backdrop_files = [name for name in (rt.eval("""(function()
+    local list = {}
+    for _, name in pairs(UnrealQuest.dialogueBackdrops or {}) do table.insert(list, name) end
+    return table.concat(list, ';')
+end)()""") or "").split(";") if name]
+_missing_backdrops = [
+    name for name in _backdrop_files
+    if not os.path.isfile(os.path.join(ADDONS, "unrealQuest", "media", "Textures", "Dialogues",
+                                       "Portrait_Background", name + ".tga"))]
+check("every zone backdrop the index lists ships with the addon",
+      len(_backdrop_files) > 0 and not _missing_backdrops, str(_missing_backdrops))
+_theme_backdrop_copies = [
+    theme for theme in ("HordeLight", "AllianceLight", "Alliance", "Horde")
+    if os.path.isdir(os.path.join(ADDONS, "unrealQuest", "media", "Textures", "Dialogues",
+                                  theme, "Portrait_Background"))]
+check("the zone backdrops are one shared set, not copied into a theme folder",
+      not _theme_backdrop_copies, str(_theme_backdrop_copies))
+check("every theme draws its zone backdrop from the shared folder", rt.eval("""(function()
+    local frame = { unrealQuestPortraitBackground = CreateFrame('Frame'):CreateTexture() }
+    for _, theme in ipairs({ 'parchment', 'horde-light', 'alliance-light', 'alliance', 'horde' }) do
+        frame.unrealQuestTheme, frame.unrealQuestBackdrop = theme, nil
+        UnrealQuest.Client.SetQuestDialogueBackdrop(frame, 'Zone')
+        if frame.unrealQuestPortraitBackground.path
+            ~= UnrealQuest.Client.QUEST_DIALOGUE_ZONE_BACKDROPS .. 'Zone' then
+            return false
+        end
+    end
+    return true
+end)()""") is True)
+
+# Text cannot follow SetScale here, so each dialogue label is put on its stock
+# face at QUEST_DIALOGUE_FONT_UNIT of its size through a named Font. The mock has no
+# CreateFont, so one is lent for this check only.
+check("a dialogue label is put on its stock face at the dialogue font unit", rt.eval("""(function()
+    local savedCreateFont = CreateFont
+    CreateFont = function(name)
+        local font = { name = name }
+        function font:SetFont(path, size) self.path, self.size = path, size end
+        return font
+    end
+    UnrealQuest.Client.ForgetSymbol('CreateFont')
+    local label = UnrealQuestDialogueFrame:CreateFontString(nil, 'OVERLAY', 'GameFontNormal')
+    label.GetFont = function() return 'Fonts\\\\FRIZQT__.TTF', 12 end
+    local plain = UnrealQuest.Client.ScaleQuestDialogueFont(label)
+    local plainSize = label.fontObject and label.fontObject.size
+    local sized = UnrealQuest.Client.ScaleQuestDialogueFont(label, 20)
+    local sizedSize = label.fontObject and label.fontObject.size
+    local restored = UnrealQuest.Client.ScaleQuestDialogueFont(label)
+    local restoredSize = label.fontObject and label.fontObject.size
+    local path = label.fontObject and label.fontObject.path
+    CreateFont = savedCreateFont
+    UnrealQuest.Client.ForgetSymbol('CreateFont')
+    local fontUnit = UnrealQuest.Client.QUEST_DIALOGUE_FONT_UNIT
+    return plain == true and sized == true and restored == true
+        and path == 'Fonts\\\\FRIZQT__.TTF'
+        and plainSize == math.floor(12 * fontUnit + 0.5)
+        and sizedSize == math.floor(20 * fontUnit + 0.5)
+        and restoredSize == plainSize
+end)()"""))
 
 print("driving the driver")
 rt.execute("UQ_TEST_TICK(0.5, 60)")
@@ -2055,6 +5630,39 @@ rt.execute("""
 """)
 check("a stable money row is observed without repeated scroll-range writes",
       rt.eval("UQ_TEST_QUEST_LOG_SCROLL_UPDATES == UQ_TEST_REWARD_SCROLL_UPDATES"))
+rt.execute("""
+    UQ_TEST_FOLD_OFFSET = UQ_TEST_LOG_OFFSET
+    UQ_TEST_LOG_OFFSET = 0
+    if not QuestLogCollapseAllButton then
+        CreateFrame('Button', 'QuestLogCollapseAllButton', QuestLogFrame)
+    end
+    QuestLogTitle1:SetText('Elwynn Forest')
+    QuestLogTitle1:Show()
+    QuestLogTitle2:SetText('  Kobold Camp Cleanup')
+    QuestLogTitle2:Show()
+    UnrealQuest.Client.RefreshStandaloneQuestLogFoldFaces()
+""")
+check("quest log fold glyphs wear the tracker's plus/minus art",
+      rt.eval("""(function()
+    local header = QuestLogTitle1.unrealQuestFoldFace
+    local all = QuestLogCollapseAllButton
+        and QuestLogCollapseAllButton.unrealQuestFoldFace
+    local quest = QuestLogTitle2.unrealQuestFoldFace
+    return header and header.unrealQuestArtPiece == 'minusNormal'
+        and all and all.unrealQuestArtPiece == 'minusNormal'
+        and (not quest or not quest:IsShown())
+end)()"""))
+rt.execute("""
+    UQ_TEST_LOG[1][5] = 1
+    UnrealQuest.Client.RefreshStandaloneQuestLogFoldFaces()
+""")
+check("a collapsed header and an all-collapsed log show the plus glyph",
+      rt.eval("""QuestLogTitle1.unrealQuestFoldFace.unrealQuestArtPiece == 'plusNormal'
+    and QuestLogCollapseAllButton.unrealQuestFoldFace.unrealQuestArtPiece == 'plusNormal'"""))
+rt.execute("""
+    UQ_TEST_LOG[1][5] = nil
+    UQ_TEST_LOG_OFFSET = UQ_TEST_FOLD_OFFSET
+""")
 rt.execute("""
     UQ_TEST_QUEST_LOG_CHOICES = 0
     UQ_TEST_QUEST_LOG_REWARDS = 1
@@ -2602,7 +6210,7 @@ def arrow_cell(index, cell):
     local t = arrow.texCoord
     return arrow.shown ~= false and t ~= nil and t[1] == %s and t[2] == %s
         and t[3] == %s and t[4] == %s and arrow:GetTexture()
-        == 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\GearAdvisor'
+        == 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\Textures\\\\Rewards\\\\GearAdvisor'
 end)()""" % ((gear_mark(index),) + cell))
 
 def coin_shown(index):
@@ -3611,7 +7219,7 @@ check("the NPC finder uses its service icons instead of colour squares", rt.eval
         local row = getglobal("UnrealQuestNpcFilterRow" .. tostring(index))
         local icon = row and row.unrealQuestIcon
         if not icon or row.unrealQuestColor ~= nil
-            or icon:GetTexture() ~= "Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\icons\\\\" .. names[index] then
+            or icon:GetTexture() ~= "Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\Textures\\\\Icons\\\\" .. names[index] then
             return false
         end
         index = index + 1
@@ -3704,7 +7312,7 @@ end)()"""), str(rt.eval("""(function()
 end)()""")))
 check("service pins use their matching icon on both maps", rt.eval("""(function()
     local pins = UnrealQuest:GetModule('NpcPins')
-    local path = 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\icons\\\\trainers-icon'
+    local path = 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\Textures\\\\Icons\\\\trainers-icon'
     local world = pins.worldPool[1]
     local minimap = pins.minimapPool[1]
     return world and minimap and world.unrealQuestTexture and minimap.unrealQuestTexture
@@ -3805,12 +7413,12 @@ node_icons = rt.eval("""(function()
 end)()""")
 missing_icons = sorted(set(
     name for name in str(node_icons).split(";") if name and not os.path.isfile(
-        os.path.join(ADDONS, "unrealQuest", "media", "icons", *(name.split("/") )) + ".tga")))
-check("every node icon the table names ships in media/icons", not missing_icons,
+        os.path.join(ADDONS, "unrealQuest", "media", "Textures", "Icons", *(name.split("/") )) + ".tga")))
+check("every node icon the table names ships in media/Textures/Icons", not missing_icons,
       ", ".join(missing_icons))
 entrance_icons = ["dungeon-entrance.tga", "raid-entrance.tga"]
 missing_entrance_icons = [name for name in entrance_icons if not os.path.isfile(
-    os.path.join(ADDONS, "unrealQuest", "media", "icons", name))]
+    os.path.join(ADDONS, "unrealQuest", "media", "Textures", "Icons", name))]
 check("the dungeon and raid entrance artwork ships as TGA", not missing_entrance_icons,
       ", ".join(missing_entrance_icons))
 check("the entrance and node rows sit under the service rows behind one rule", rt.eval("""(function()
@@ -3820,7 +7428,7 @@ check("the entrance and node rows sit under the service rows behind one rule", r
         or entrance.unrealQuestEntry.separator ~= true
         or entrance.unrealQuestCheckMark:IsShown() ~= true
         or entrance.unrealQuestLabel:GetText() ~= UnrealQuest.L('NPC_CATEGORY_INSTANCES')
-        or entranceIcon:GetTexture() ~= "Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\icons\\\\dungeon-entrance" then
+        or entranceIcon:GetTexture() ~= "Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\Textures\\\\Icons\\\\dungeon-entrance" then
         return false
     end
     -- "rare-mobs", not "rares": the row covers every ranked creature now, and
@@ -3831,7 +7439,7 @@ check("the entrance and node rows sit under the service rows behind one rule", r
         local row = getglobal("UnrealQuestNpcFilterRow" .. tostring(index + 13))
         local icon = row and row.unrealQuestIcon
         if not icon or not row:IsShown()
-            or icon:GetTexture() ~= "Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\icons\\\\" .. names[index] then
+            or icon:GetTexture() ~= "Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\Textures\\\\Icons\\\\" .. names[index] then
             return false
         end
         index = index + 1
@@ -4267,7 +7875,7 @@ end)()"""), str(rt.eval("""(function()
 end)()""")))
 check("a vendor point wears the NPC finder's own vendor icon", rt.eval("""(function()
     local pins = UnrealQuest:GetModule('QuestVendorPins')
-    local path = 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\icons\\\\vendor'
+    local path = 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\Textures\\\\Icons\\\\vendor'
     local world = pins.worldPool[1]
     local minimap = pins.minimapPool[1]
     return world and minimap and world.unrealQuestTexture and minimap.unrealQuestTexture
@@ -5402,6 +9010,62 @@ rt.execute("""
     UQ_TEST_TARGET_NAME = nil
     UQ_TEST_MARKS = {}
     UnrealQuest:GetModule('QuestMarks').written = {}
+""")
+
+
+print("quest icon on the target portrait")
+
+# Drawn only on UnrealUI's own target frame; the native TargetFrame's children
+# are never used as an anchor (frames.native_widget_reference_crash_risk).
+rt.execute("""
+    UQ_TEST_TARGET_NAME = "Kobold Vermin"
+    UQ_TEST_TICK(0.25, 3)
+""")
+check("no UnrealUI target frame means no icon", rt.eval("""(function()
+    local icon = UnrealQuest:GetModule('TargetQuestIcon')
+    return icon.shown == false and icon.holder == nil
+end)()"""))
+
+rt.execute("""
+    UnrealUIUnitTarget = CreateFrame("Button", "UnrealUIUnitTarget", UIParent)
+    UnrealUIUnitTarget:SetFrameLevel(4)
+    UnrealUIUnitTarget.portrait = CreateFrame("Frame", nil, UnrealUIUnitTarget)
+    UnrealUIUnitTarget.portrait:SetWidth(58)
+    UnrealUIUnitTarget.portrait:SetHeight(58)
+    UQ_TEST_TICK(0.25, 3)
+""")
+check("an objective creature shows the shield centred on the portrait's bottom",
+      rt.eval("""(function()
+    local holder = UnrealQuest:GetModule('TargetQuestIcon').holder
+    if not holder or not holder:IsShown() then return false end
+    local point, relative, relativePoint = holder.point[1], holder.point[2], holder.point[3]
+    return point == "CENTER" and relative == UnrealUIUnitTarget.portrait
+        and relativePoint == "BOTTOM" and holder:GetWidth() == 20
+        and holder.parent == UnrealUIUnitTarget and holder.frameLevel == 34
+        and string.find(holder.unrealQuestTexture.path, "UQ_TargetQuestIcon", 1, true) ~= nil
+end)()"""), "Retail: 20px on a 58px portrait")
+
+rt.execute("""
+    UQ_TEST_TARGET_NAME = "Stonetusk Boar"
+    UQ_TEST_TICK(0.25, 3)
+""")
+check("a creature no quest wants hides it", rt.eval(
+    "UnrealQuest:GetModule('TargetQuestIcon').holder:IsShown() == false"))
+
+rt.execute("""
+    UQ_TEST_TARGET_NAME = "Kobold Vermin"
+    UnrealQuest:GetModule('Config'):Set('targetQuestIcon', false)
+    UQ_TEST_TICK(0.25, 3)
+""")
+check("the option turns it off", rt.eval(
+    "UnrealQuest:GetModule('TargetQuestIcon').holder:IsShown() == false"))
+
+rt.execute("""
+    UnrealQuest:GetModule('Config'):Set('targetQuestIcon', true)
+    UQ_TEST_TARGET_NAME = nil
+    UnrealUIUnitTarget:Hide()
+    UnrealUIUnitTarget = nil
+    UQ_TEST_TICK(0.25, 3)
 """)
 
 
@@ -6699,9 +10363,9 @@ check("minimap turn-in markers swap from active to complete icons", rt.eval("""(
     local complete = pins.turnInPool[2]
     local valid = pins.turnInVisible == 2
         and active.unrealQuestTexture.path
-            == 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\ActiveQuestIcon'
+            == 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\Textures\\\\Map\\\\Pins\\\\ActiveQuestIcon'
         and complete.unrealQuestTexture.path
-            == 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\CompleteQuestIcon'
+            == 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\Textures\\\\Map\\\\Pins\\\\CompleteQuestIcon'
     pins.dirty = true
     pins:Refresh()
     return valid
@@ -6980,7 +10644,7 @@ check("quest areas carry numbered POI circle markers", rt.eval("""(function()
             == UnrealQuest.Client.WORLD_MAP_QUEST_POI_CIRCLE_TEXTURE
         and math.abs(glow.width - 24 * UnrealQuest.Client.QUEST_POI_GLOW_SCALE) < 1e-6
         and glow.unrealQuestTexture.vertex[4] == UnrealQuest.Client.QUEST_POI_GLOW_ALPHA
-        and glow.unrealQuestTexture.texCoord[1] == 192 / 256
+        and glow.unrealQuestTexture.texCoord[1] == 192 / 512
         and marker.unrealQuestLabel == nil
         and marker.unrealQuestQuest ~= nil
         and type(marker.scripts.OnEnter) == 'function'
@@ -6999,7 +10663,7 @@ check("quest POI uses the main circle and a gold glyph", rt.eval("""(function()
     local circle = marker.unrealQuestCircleLayer.unrealQuestTexture.texCoord
     local glyph = marker.unrealQuestTexture.texCoord
     return UQ_TEST_QUEST_POI_NORMAL == true
-        and circle[1] == 0 and circle[2] == 64 / 256
+        and circle[1] == 0 and circle[2] == 64 / 512
         and circle[3] == 0 and circle[4] == 1
         and glyph[1] == 4 / 256 and glyph[2] == 28 / 256
         and glyph[3] == 132 / 256 and glyph[4] == 156 / 256
@@ -7013,7 +10677,7 @@ check("quest POI hover swaps the circle layer for the hover-circle layer", rt.ev
     local circle = marker.unrealQuestCircleLayer
     local hover = marker.unrealQuestHoverLayer
     local coord = hover.unrealQuestTexture.texCoord
-    if coord[1] ~= 64 / 256 or coord[2] ~= 128 / 256
+    if coord[1] ~= 64 / 512 or coord[2] ~= 128 / 512
         or hover.unrealQuestSuppressed ~= true then
         return false
     end
@@ -7030,7 +10694,7 @@ check("quest POI followed state uses the active circle, a dark glyph and the glo
     UnrealQuest.Client.SetWorldMapQuestNumberHover(marker, true)
     local circle = marker.unrealQuestCircleLayer.unrealQuestTexture.texCoord
     local glyph = marker.unrealQuestTexture.texCoord
-    return circle[1] == 128 / 256 and circle[2] == 192 / 256
+    return circle[1] == 128 / 512 and circle[2] == 192 / 512
         and glyph[1] == 4 / 256 and glyph[2] == 28 / 256
         and glyph[3] == 100 / 256 and glyph[4] == 124 / 256
         and marker.unrealQuestCircleLayer.unrealQuestSuppressed == nil
@@ -8444,7 +12108,7 @@ check("a grey quest giver uses the low-level icon on the world map", rt.eval("""
     local pin = UnrealQuest:GetModule('WorldMapPins').giverPool[1]
     return pin and pin.unrealQuestLowLevel == true
         and pin.unrealQuestTexture.path
-            == 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\icons\\\\QuestIcon-lowlvl'
+            == 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\Textures\\\\Map\\\\Pins\\\\QuestIcon-lowlvl'
         and pin.width == 14 * 27 / 64 and pin.height == 14
 end)()"""))
 check("the same grey quest uses the low-level icon on the minimap", rt.eval("""(function()
@@ -8461,7 +12125,7 @@ check("the same grey quest uses the low-level icon on the minimap", rt.eval("""(
     local pin = minimap.giverPool[1]
     return minimap.giverVisible == 1 and pin
         and pin.unrealQuestTexture.path
-            == 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\icons\\\\QuestIcon-lowlvl'
+            == 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\Textures\\\\Map\\\\Pins\\\\QuestIcon-lowlvl'
         and pin.width == 12 * 27 / 64 and pin.height == 12
 end)()"""))
 check("no patrol hit target ever paints anything", rt.eval("""(function()
@@ -9132,7 +12796,7 @@ check("quest giver marker uses the bundled available-quest icon", rt.eval("""(fu
     local pin = pins.giverPool[1]
     if pins.giverVisibleCount == 0 or pin == nil then return false end
     -- Bundled icon, untinted, and no "!" FontString of our own.
-    return pin.unrealQuestTexture.path == 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\icons\\\\questIcon'
+    return pin.unrealQuestTexture.path == 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\Textures\\\\Map\\\\Pins\\\\questIcon'
         and pin.unrealQuestTexture.vertex[1] == 1
         and pin.unrealQuestTexture.vertex[2] == 1
         and pin.unrealQuestTexture.vertex[3] == 1
@@ -9639,11 +13303,26 @@ check("completed turn-in marker uses the bundled complete-quest icon", rt.eval("
     if pin == nil then return false end
     -- Both bundled icons are 19x32 portraits, so the frame keeps their aspect
     -- ratio at the confirmed height of 14 instead of stretching to 14x14.
-    return pin.unrealQuestTexture.path == 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\CompleteQuestIcon'
+    return pin.unrealQuestTexture.path == 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\Textures\\\\Map\\\\Pins\\\\CompleteQuestIcon'
         and pin.unrealQuestLabel == nil
         and pin.frameType == 'Button' and pin.width == 14 * 19 / 32 and pin.height == 14
         and pin.unrealQuestTexture.layer == 'BACKGROUND'
         and pin.shown == true and pin.point ~= nil
+end)()"""))
+check("completed quests retain turn-ins without numbered map circles or stale layers", rt.eval("""(function()
+    local pins = UnrealQuest:GetModule('WorldMapPins')
+    if not UQ_TEST_TURNIN or not UQ_TEST_TURNIN:IsShown() then return false end
+    for index, marker in ipairs(pins.pool) do
+        if index <= pins.visibleCount then
+            if marker.unrealQuestQuest.isComplete == 1 then return false end
+        elseif marker:IsShown()
+            or (marker.unrealQuestCircleLayer and marker.unrealQuestCircleLayer:IsShown())
+            or (marker.unrealQuestHoverLayer and marker.unrealQuestHoverLayer:IsShown())
+            or (marker.unrealQuestGlowLayer and marker.unrealQuestGlowLayer:IsShown()) then
+            return false
+        end
+    end
+    return pins.visibleCount > 0
 end)()"""))
 check("two quests ending at one NPC share a single marker", rt.eval("""(function()
     local pin = UQ_TEST_TURNIN
@@ -9663,7 +13342,7 @@ check("a quest still in progress keeps the bundled active-quest icon", rt.eval("
     if pin == nil or pin.unrealQuestTurnIn.complete ~= false then return false end
     local v = pin.unrealQuestTexture.vertex
     return pin.unrealQuestTexture.path
-            == 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\ActiveQuestIcon'
+            == 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\Textures\\\\Map\\\\Pins\\\\ActiveQuestIcon'
         and v[1] == 1 and v[2] == 1 and v[3] == 1
 end)()"""))
 # 174 bundled quests have no `end` relation, 53 of them while still carrying
@@ -9800,20 +13479,14 @@ end)()"""))
 # Hovering an objective is a question about that quest, and a ring on its
 # turn-in answers it with ONE breath -- once per hover, not once per dot, and
 # one cycle rather than the arrival's three. The followed quest here is
-# complete, so it draws no area: its numbered marker is the hover.
-check("hovering a followed quest's marker pulses the ring it already wears",
+# complete, so the tracker supplies the quest hover without a numbered map POI.
+check("hovering a completed followed quest in the tracker pulses its turn-in ring",
       rt.eval("""(function()
     local pins = UnrealQuest:GetModule('WorldMapPins')
     local ring = pins.followedTurnInPool[1]
     local followed = ring and ring.unrealQuestQuest
     if not followed then return false end
-    local dot = nil
-    for index = 1, pins.visibleCount do
-        local marker = pins.pool[index]
-        if marker.unrealQuestQuest == followed then dot = dot or marker end
-    end
-    if not dot then return false end
-    dot.scripts.OnEnter()
+    pins:SetExternalQuestHover(followed)
     UQ_TEST_TICK(0.16, 1)
     if pins.followedRingPulseCycles ~= 1 then return false end
     -- The followed quest wears its ring already; no second one is lent to it.
@@ -9822,11 +13495,11 @@ check("hovering a followed quest's marker pulses the ring it already wears",
     local started = pins.followedRingPulseStart
     local grew = ring.width ~= 38 and ring.width == ring.height
     -- Re-entering the same quest is still one hover, not a second breath.
-    dot.scripts.OnEnter()
+    pins:SetExternalQuestHover(followed)
     local heldSteady = pins.followedRingPulseStart == started
     UQ_TEST_TICK(0.05, 40)
     local rested = ring.width == 38 and pins.followedRingPulseStart == nil
-    dot.scripts.OnLeave()
+    pins:SetExternalQuestHover(nil)
     UQ_TEST_TICK(0.05, 25)
     return grew and heldSteady and rested
 end)()"""))
@@ -9905,10 +13578,10 @@ check("crossing dots keeps a borrowed ring steady until the release grace expire
     -- (the next rebuild re-marks every pooled frame).
     if first then first.unrealQuestAreaCell = nil end
     if second then second.unrealQuestAreaCell = nil end
-    -- The complete followed quest has no area; its numbered marker stands in.
-    for i = 1, pins.visibleCount do
-        if pins.pool[i].unrealQuestQuest == followed then
-            followedDot = followedDot or pins.pool[i]
+    -- The completed followed quest is reached through its remaining "?".
+    for i = 1, pins.turnInVisibleCount do
+        for _, quest in ipairs(pins.turnInPool[i].unrealQuestTurnIn.quests) do
+            if quest == followed then followedDot = pins.turnInPool[i] end
         end
     end
     if not first or not second or not followedDot then return false end
@@ -9924,11 +13597,11 @@ check("crossing dots keeps a borrowed ring steady until the release grace expire
     first.scripts.OnLeave()
     UQ_TEST_TICK(0.05, 3)
     if pins.followedRingPulseStart ~= pulse or not ring.shown then return false end
-    -- Switching straight to a followed objective must remove the lent ring.
+    -- Switching straight to the followed turn-in must remove the lent ring.
     followedDot.scripts.OnEnter()
     second.scripts.OnLeave()
     UQ_TEST_TICK(0.05, 5)
-    if pins.focusQuest ~= followed or ring.shown
+    if pins.focusTurnInPin ~= followedDot or ring.shown
         or pins.hoverTurnInRingVisibleCount ~= 0 then return false end
     followedDot.scripts.OnLeave()
     first.scripts.OnEnter()
@@ -11818,6 +15491,12 @@ check("modern quest log highlights the visible followed row", rt.eval("""(functi
     local highlight = row:GetHighlightTexture()
     return row.unrealQuestFollowingBackground ~= nil
         and row.unrealQuestFollowingBackground:IsShown() == true
+        -- The tracker sheet's bar glow, the same highlight the trackers draw.
+        and string.find(row.unrealQuestFollowingBackground.path or '',
+            'QuestTrackerSheet', 1, true) ~= nil
+        and row.unrealQuestFollowingBackground.texCoord[1] == 561 / 1024
+        -- 40% fainter than the asset, through vertex alpha.
+        and math.abs(row.unrealQuestFollowingBackground.vertex[4] - 0.6) < 0.0001
         and row.unrealQuestFollowingMark:IsShown() == true
         and row.unrealQuestFollowingArrow == nil
         and row.unrealQuestFollowingLabel == nil
@@ -14073,8 +17752,8 @@ check("the followed tracker quest gets the active circle and dark glyph, no glow
             and coord[3] == 6 / 256 and coord[4] == 26 / 256
             and background:IsShown() == true
             and background.path == client.WORLD_MAP_QUEST_POI_CIRCLE_TEXTURE
-            and background.texCoord[1] == 128 / 256
-            and background.texCoord[2] == 192 / 256
+            and background.texCoord[1] == 128 / 512
+            and background.texCoord[2] == 192 / 512
             and row.unrealQuestQuestNumberGlow == nil
     end
     local row = UnrealQuestTrackerRowquest1
@@ -14098,25 +17777,80 @@ check("a tracker quest number past 25 is written as text on the circle", rt.eval
         and row.unrealQuestQuestNumber.vertex[4] == 1
 end)()"""))
 
-check("both trackers use followed-quest.tga behind the followed row", rt.eval("""(function()
+check("completed badges stay green when followed and reset on pooled row reuse", rt.eval("""(function()
+    local client = UnrealQuest.Client
+    local function verify(row)
+        for _, selected in ipairs({false, true}) do
+            if not client.SetTrackerRowQuestNumber(row, 7, selected, true) then return false end
+            local circle = row.unrealQuestQuestNumberBackground.texCoord
+            local glyph = row.unrealQuestQuestNumber.texCoord
+            if circle[1] ~= 256 / 512 or circle[2] ~= 320 / 512
+                or glyph[3] ~= 134 / 256 or glyph[4] ~= 154 / 256
+                or not row.unrealQuestQuestMark:IsShown() then return false end
+        end
+        client.SetTrackerRowQuestNumber(row, 27, true, true)
+        local text = row.unrealQuestQuestNumberText
+        if text:GetText() ~= '27' or not text:IsShown()
+            or text.color[1] ~= 1 or text.color[2] ~= 0.82 or text.color[3] ~= 0 then
+            return false
+        end
+        client.SetTrackerRowQuestNumber(row, 1, true, false)
+        local circle = row.unrealQuestQuestNumberBackground.texCoord
+        local glyph = row.unrealQuestQuestNumber.texCoord
+        return circle[1] == 128 / 512 and circle[2] == 192 / 512
+            and glyph[3] == 6 / 256 and glyph[4] == 26 / 256
+            and not row.unrealQuestQuestMark:IsShown()
+    end
+    return verify(UnrealQuestTrackerRowquest1) and verify(UnrealQuestMapTrackerRowquest1)
+end)()"""))
+
+check("both trackers draw the sheet's bar glow behind the followed row", rt.eval("""(function()
     local hud = UnrealQuestTracker.unrealQuestFollowingBackground
     local map = UnrealQuestMapTracker.unrealQuestFollowingBackground
-    local path = 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\followed-quest'
+    local path = 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\Textures\\\\Tracker\\\\QuestTrackerSheet'
+    local function glow(texture)
+        local c = texture.texCoord
+        return texture.path == path and c ~= nil
+            and c[1] == 561 / 1024 and c[2] == 935 / 1024
+            and c[3] == 1 / 512 and c[4] == 57 / 512
+    end
     return UnrealQuestTracker.unrealQuestFollowingActive == true
         and UnrealQuestMapTracker.unrealQuestFollowingActive == true
         and hud:IsShown() == true and map:IsShown() == true
-        and hud.path == path and map.path == path
+        and glow(hud) and glow(map)
         and hud.vertex[1] == 1 and hud.vertex[2] == 1 and hud.vertex[3] == 1
         and map.vertex[1] == 1 and map.vertex[2] == 1 and map.vertex[3] == 1
-        and math.abs(hud.vertex[4] - 0.55) < 0.0001
-        and math.abs(map.vertex[4] - 0.4) < 0.0001
+        -- Fixed, not either window's background opacity: the quest log's 60%
+        -- on the map, 35% fainter again (0.39) on the HUD.
+        and math.abs(hud.vertex[4] - 0.39) < 0.0001
+        and math.abs(map.vertex[4] - 0.6) < 0.0001
+end)()"""))
+
+check("only the HUD tracker's followed title carries a drop shadow", rt.eval("""(function()
+    local followed = 0
+    local index = 1
+    while getglobal('UnrealQuestTrackerRowquest' .. index) do
+        local row = getglobal('UnrealQuestTrackerRowquest' .. index)
+        if row:IsShown() then
+            local offset = row.unrealQuestLabel.shadowOffset
+            if row.unrealQuestQuestNumberSelected then
+                followed = followed + 1
+                if offset[1] ~= 1 or offset[2] ~= -1 then return false end
+            elseif offset[1] ~= 0 or offset[2] ~= 0 then
+                return false
+            end
+        end
+        index = index + 1
+    end
+    return followed == 1
 end)()"""))
 
 rt.execute("UnrealQuest:GetModule('TrackerFrame'):ApplyBackgroundOpacity(0)")
-check("zero tracker opacity hides the HUD plaque and leaves the map's at 40%", rt.eval("""(function()
+check("zero tracker opacity keeps the followed glow in both trackers", rt.eval("""(function()
+    local hud = UnrealQuestTracker.unrealQuestFollowingBackground
     local map = UnrealQuestMapTracker.unrealQuestFollowingBackground
-    return UnrealQuestTracker.unrealQuestFollowingBackground:IsShown() == false
-        and map:IsShown() == true and math.abs(map.vertex[4] - 0.4) < 0.0001
+    return hud:IsShown() == true and math.abs(hud.vertex[4] - 0.39) < 0.0001
+        and map:IsShown() == true and math.abs(map.vertex[4] - 0.6) < 0.0001
 end)()"""))
 rt.execute("UnrealQuest:GetModule('TrackerFrame'):ApplyBackgroundOpacity(55)")
 
@@ -14205,7 +17939,7 @@ check("a complete quest keeps its level colour and number plus complete icon, "
         or number.path ~= UnrealQuest.Client.WORLD_MAP_QUEST_POI_NUMBER_TEXTURE
         or questRow.unrealQuestQuestNumberValue ~= 2
         or mark == nil or mark:IsShown() ~= true
-        or mark.path ~= 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\CompleteQuestIcon' then
+        or mark.path ~= 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\Textures\\\\Map\\\\Pins\\\\CompleteQuestIcon' then
         return false
     end
     local shown = 0
@@ -14273,14 +18007,13 @@ rt.execute("""
     tracker:Refresh()
 """)
 
-check("a complete quest sinks past OTHER zones too, to the bottom of the window, "
-      "under its own zone header written again there", rt.eval("""
+check("a complete quest stays at the bottom of its single zone block", rt.eval("""
     UnrealQuestTrackerRowzone1.fontString.text == 'Elwynn Forest'
         and UnrealQuestTrackerRowquest1.unrealQuestSubject.titleKey == 'koboldcampcleanup'
+        and string.find(UnrealQuestTrackerRowquest2.fontString.text, 'Sharptalon', 1, true) ~= nil
         and UnrealQuestTrackerRowzone2.fontString.text == 'Westfall'
-        and string.find(UnrealQuestTrackerRowquest2.fontString.text, 'Blanchy', 1, true) ~= nil
-        and UnrealQuestTrackerRowzone3.fontString.text == 'Elwynn Forest'
-        and string.find(UnrealQuestTrackerRowquest3.fontString.text, 'Sharptalon', 1, true) ~= nil
+        and string.find(UnrealQuestTrackerRowquest3.fontString.text, 'Blanchy', 1, true) ~= nil
+        and (UnrealQuestTrackerRowzone3 == nil or UnrealQuestTrackerRowzone3:IsShown() == false)
 """))
 
 # The quest that just moved goes to the top, above the zone it interrupted:
@@ -14304,9 +18037,9 @@ check("a quest whose objective just advanced is lifted to the top of the window,
         and UnrealQuestTrackerRowzone2.fontString.text == 'Elwynn Forest'
         and UnrealQuestTrackerRowquest2.unrealQuestSubject.titleKey == 'koboldcampcleanup'
 """))
-# Still second to the partition: a completed quest belongs at the bottom
-# whatever it did last, and completing one moves its mark too.
-check("the lift does not raise a complete quest out of the tail",
+# Still second to the partition: a completed quest belongs at the bottom of
+# its zone whatever it did last, and completing one moves its mark too.
+check("the lift does not raise a complete quest above unfinished quests in its zone",
       rt.eval("string.find(UnrealQuestTrackerRowquest3.fontString.text, "
               "'Sharptalon', 1, true) ~= nil"))
 
@@ -14321,8 +18054,8 @@ check("switching it back on lifts the same quest again, without a second advance
         and string.find(UnrealQuestTrackerRowquest1.fontString.text, 'Blanchy', 1, true) ~= nil"""))
 
 # Back in Elwynn Forest with the filter off, the current zone outranks the
-# lift: Kobold Camp Cleanup heads the window, the lifted Westfall quest follows,
-# and the complete Elwynn quest still sits in the tail.
+# lift: Kobold Camp Cleanup heads the window and the complete Elwynn quest stays
+# directly below it, at the bottom of their single zone block.
 rt.execute("""
     UQ_TEST_ZONE_NAME = 'Elwynn Forest'
     local tracker = UnrealQuest:GetModule('TrackerFrame')
@@ -14330,12 +18063,12 @@ rt.execute("""
     tracker:Refresh()
 """)
 check("with the zone filter off, the zone the player stands in heads the window "
-      "above a quest lifted elsewhere, and its complete quest stays in the tail",
+      "above a quest lifted elsewhere, and its complete quest stays in its block",
       rt.eval("""UnrealQuestDB.trackerCurrentZoneOnly ~= true
         and UnrealQuestTrackerRowzone1.fontString.text == 'Elwynn Forest'
         and UnrealQuestTrackerRowquest1.unrealQuestSubject.titleKey == 'koboldcampcleanup'
-        and string.find(UnrealQuestTrackerRowquest2.fontString.text, 'Blanchy', 1, true) ~= nil
-        and string.find(UnrealQuestTrackerRowquest3.fontString.text, 'Sharptalon', 1, true) ~= nil"""))
+        and string.find(UnrealQuestTrackerRowquest2.fontString.text, 'Sharptalon', 1, true) ~= nil
+        and string.find(UnrealQuestTrackerRowquest3.fontString.text, 'Blanchy', 1, true) ~= nil"""))
 
 # The lift is keyed by title and outlives a counter going back down, so the
 # quest has to actually leave the log for the blocks below to see the raw order
@@ -14365,8 +18098,9 @@ check("a quest that leaves the log takes its lift with it, and comes back where 
       "the log files it", rt.eval("""
     UnrealQuestTrackerRowzone1.fontString.text == 'Elwynn Forest'
         and UnrealQuestTrackerRowquest1.unrealQuestSubject.titleKey == 'koboldcampcleanup'
+        and string.find(UnrealQuestTrackerRowquest2.fontString.text, 'Sharptalon', 1, true) ~= nil
         and UnrealQuestTrackerRowzone2.fontString.text == 'Westfall'
-        and string.find(UnrealQuestTrackerRowquest2.fontString.text, 'Blanchy', 1, true) ~= nil
+        and string.find(UnrealQuestTrackerRowquest3.fontString.text, 'Blanchy', 1, true) ~= nil
 """))
 
 # Standing in Westfall, its quest moves above Elwynn Forest although the log
@@ -14506,7 +18240,7 @@ check("hovering the corner shows the resize artwork, leaving hides it", rt.eval(
       local grip = UnrealQuestTrackerResizeGrip
       if grip.unrealQuestMark:IsShown() ~= false then return false end
       if grip.unrealQuestMark:GetTexture()
-          ~= 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\resize' then return false end
+          ~= 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\Textures\\\\Tracker\\\\resize' then return false end
       grip:GetScript('OnEnter')()
       local shown = grip.unrealQuestMark:IsShown() == true
     grip:GetScript('OnLeave')()
@@ -14789,7 +18523,7 @@ check("every quest row gets its matching map quest number", rt.eval("""(function
         and background ~= nil and background:IsShown() == true
         and background.path == UnrealQuest.Client.WORLD_MAP_QUEST_POI_CIRCLE_TEXTURE
         and background.texCoord[1] == 0
-        and background.texCoord[2] == 64 / 256
+        and background.texCoord[2] == 64 / 512
         and row.unrealQuestQuestNumberGlow == nil
 end)()"""))
 
@@ -14819,13 +18553,12 @@ check("shift + click untracks and removes the quest from the tracker",
       rt.eval("UnrealQuestDB.trackerHiddenQuests['Kobold Camp Cleanup'] ~= nil"))
 check("shift + click calls the same Tracker:Toggle the quest log's Track/Untrack button "
       "uses, so it also untracks on the client's own watch list", rt.eval("IsQuestWatched(2) == false"))
-# Elwynn Forest's remaining quest is complete, so the whole zone block is now
-# the complete tail at the bottom of the window: Westfall's unfinished quest
-# comes first and Elwynn's header is written again below it.
+# Elwynn Forest's remaining quest is complete, but its zone stays a single
+# block ahead of Westfall because it is the current zone.
 check("Elwynn Forest's header survives: Sharptalon's Claw is still visible under it",
-      rt.eval("""UnrealQuestTrackerRowzone1.fontString.text == 'Westfall'
-        and UnrealQuestTrackerRowzone2.fontString.text == 'Elwynn Forest'
-        and UnrealQuestTrackerRowquest2.unrealQuestSubject.titleKey == 'sharptalonsclaw'"""))
+      rt.eval("""UnrealQuestTrackerRowzone1.fontString.text == 'Elwynn Forest'
+        and UnrealQuestTrackerRowquest1.unrealQuestSubject.titleKey == 'sharptalonsclaw'
+        and UnrealQuestTrackerRowzone2.fontString.text == 'Westfall'"""))
 
 rt.execute("""
     -- Toggle only hides a quest that WAS tracked (untracking it): a fresh
@@ -14837,9 +18570,8 @@ rt.execute("""
     UnrealQuest:GetModule('TrackerFrame').dirty = true
     UnrealQuest:GetModule('TrackerFrame'):Refresh()
     UQ_TEST_SHIFT_DOWN = true
-    -- Row 2: complete quests sit at the bottom of the window, so Westfall's
-    -- unfinished Poor Old Blanchy holds row 1 and Sharptalon's Claw row 2.
-    UnrealQuestTrackerRowquest2:GetScript('OnClick')()
+    -- Row 1 is the complete quest at the bottom of Elwynn Forest's block.
+    UnrealQuestTrackerRowquest1:GetScript('OnClick')()
     UQ_TEST_SHIFT_DOWN = false
 """)
 check("hiding every quest in a zone drops that zone's header too, rather than leaving it "
@@ -15501,9 +19233,18 @@ check("no row or header text carries a drop shadow", rt.eval("""(function()
         UnrealQuestTracker.unrealQuestCount,
         UnrealQuestTrackerCollapse.unrealQuestLabel,
         UnrealQuestTrackerNpcFinder.unrealQuestLabel,
-        UnrealQuestTrackerRowquest1.unrealQuestLabel,
         UnrealQuestTrackerRowzone1.unrealQuestLabel,
     }
+    -- Every quest title but the followed one, which is shaded on purpose.
+    local index = 1
+    while getglobal('UnrealQuestTrackerRowquest' .. index) do
+        local row = getglobal('UnrealQuestTrackerRowquest' .. index)
+        if not row.unrealQuestQuestNumberSelected then
+            table.insert(targets, row.unrealQuestLabel)
+        end
+        index = index + 1
+    end
+    if table.getn(targets) < 6 then return false end
     for _, label in ipairs(targets) do
         if not label or not label.shadowOffset then return false end
         if label.shadowOffset[1] ~= 0 or label.shadowOffset[2] ~= 0 then return false end
@@ -15706,7 +19447,7 @@ check("the tracker header's spyglass opens the NPC finder list", rt.eval("""(fun
     local button = UnrealQuestTrackerNpcFinder
     local icon = button and button.unrealQuestIcon
     if not button or not icon
-        or icon:GetTexture() ~= 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\search-icon' then
+        or icon:GetTexture() ~= 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\Textures\\\\Tracker\\\\search-icon' then
         return false
     end
     local iconPoint = icon.points and icon.points[1]
@@ -15730,7 +19471,7 @@ check("the quest count sits immediately after the tracker title", rt.eval("""(fu
 end)()"""))
 
 check("the tracker fold button wears the plus/minus tree button, 45% smaller", rt.eval("""(function()
-    local path = 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\plus-minus-button'
+    local path = 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\Textures\\\\Tracker\\\\plus-minus-button'
     local button = UnrealQuestTrackerCollapse
     local art = button and button.unrealQuestArt
     local point = art and art.points and art.points[1]
@@ -15755,7 +19496,7 @@ end)()"""))
 check("the fold button's hover glow shows and hides without touching the glyph", rt.eval("""(function()
     local button = UnrealQuestTrackerCollapse
     local glow = button and button.unrealQuestGlow
-    local glowPath = 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\128RedButton'
+    local glowPath = 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\Textures\\\\QuestLog\\\\128RedButton'
     local glyph = button and button.unrealQuestArt
     local beforeCoord = glyph and glyph.texCoord
     if not glow or glow:GetTexture() ~= glowPath or glow.shown
@@ -15790,7 +19531,7 @@ check("the fold button's hover glow is unrealUI's settings-menu bloom, inset 2 i
 end)()"""))
 
 check("both tracker copies draw the Forever header rails across the title line", rt.eval("""(function()
-    local path = 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\QuestTracker'
+    local path = 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\Textures\\\\Tracker\\\\QuestTrackerSheet'
     local height = UnrealQuest.Client.TRACKER_HEADER_HEIGHT
     for _, window in ipairs({ UnrealQuestTracker, UnrealQuestMapTracker }) do
         local art = window.unrealQuestHeaderArt
@@ -15800,7 +19541,7 @@ check("both tracker copies draw the Forever header rails across the title line",
             or first[1] ~= 'TOPLEFT' or first[4] ~= 2 or first[5] ~= 0
             or second[1] ~= 'BOTTOMRIGHT' or second[3] ~= 'TOPRIGHT'
             or second[4] ~= -2 or second[5] ~= -height
-            or art.texCoord[1] ~= 2 / 512 or art.texCoord[4] ~= 38 / 512 then
+            or art.texCoord[1] ~= 20 / 1024 or art.texCoord[4] ~= 318 / 512 then
             return false
         end
     end
@@ -15809,7 +19550,7 @@ check("both tracker copies draw the Forever header rails across the title line",
 end)()"""))
 
 check("a zone row is a section bar whose fold mark follows the zone fold", rt.eval("""(function()
-    local path = 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\QuestTracker'
+    local path = 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\Textures\\\\Tracker\\\\QuestTrackerSheet'
     local row = UnrealQuestTrackerRowzone1
     local bar = row and row.unrealQuestZoneBar
     local fold = row and row.unrealQuestZoneFold
@@ -15824,9 +19565,9 @@ check("a zone row is a section bar whose fold mark follows the zone fold", rt.ev
     end
     local before = fold.unrealQuestArtPiece
     UnrealQuest.Client.SetTrackerZoneFolded(row, true)
-    local plus = fold.texCoord[1] == 84 / 512
+    local plus = fold.texCoord[1] == 981 / 1024
     UnrealQuest.Client.SetTrackerZoneFolded(row, false)
-    local minus = fold.texCoord[1] == 65 / 512
+    local minus = fold.texCoord[1] == 989 / 1024
     UnrealQuest.Client.SetTrackerZoneFolded(row, before == 'zoneExpand')
     return plus and minus
 end)()"""))
@@ -15844,9 +19585,9 @@ check("an objective row carries the nub while open, the check when done, nothing
     local before = bullet.unrealQuestArtPiece
     local wasShown = bullet.shown ~= false
     client.SetTrackerRowObjectiveMark(row, 'done')
-    local done = bullet.shown == true and bullet.texCoord[1] == 125 / 512
+    local done = bullet.shown == true and bullet.texCoord[1] == 871 / 1024
     client.SetTrackerRowObjectiveMark(row, 'open')
-    local open = bullet.shown == true and bullet.texCoord[1] == 103 / 512
+    local open = bullet.shown == true and bullet.texCoord[1] == 977 / 1024
     client.SetTrackerRowObjectiveMark(row, nil)
     local none = bullet.shown == false
     if wasShown then
@@ -17329,6 +21070,10 @@ check("unrealUI is picked up by the poll, well before the fallback timeout",
       rt.eval("UnrealQuest:GetModule('Settings').host == 'unrealui'"))
 check("the page registers under an id unrealUI does not already own",
       rt.eval("UnrealUI.tabs[1] ~= nil and UnrealUI.tabs[1].id == 'unrealquest'"))
+check("the hosted settings tab advertises the addon's extensionless logo", rt.eval(
+    "UnrealUI.tabs[1].options ~= nil "
+    "and UnrealUI.tabs[1].options.icon "
+    "== 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\Textures\\\\Settings\\\\uQ_logo'"))
 check("the capability records the detected host",
       rt.eval("UnrealQuest:GetCapability('unrealUISettingsHost') == 'detected'"))
 check("the host poll stops once the decision is made", rt.eval("""(function()
@@ -17740,6 +21485,45 @@ rt.execute("UnrealQuestSettingsHideUnlearnedProfessionQuests:GetScript('OnClick'
 check("clicking the profession-quest option stores the opt-out",
       rt.eval("UnrealQuestDB.hideUnlearnedProfessionQuests == false"))
 rt.execute("UnrealQuestSettingsHideUnlearnedProfessionQuests:GetScript('OnClick')()")
+check("the immersive-dialogue option is on the page and enabled by default",
+      rt.eval("getglobal('UnrealQuestSettingsImmersiveDialogue') ~= nil "
+              "and UnrealQuestDB.immersiveDialogue == true"))
+rt.execute("UnrealQuestSettingsImmersiveDialogue:GetScript('OnClick')()")
+check("clicking the immersive-dialogue option stores the opt-out",
+      rt.eval("UnrealQuestDB.immersiveDialogue == false"))
+rt.execute("UnrealQuestSettingsImmersiveDialogue:GetScript('OnClick')()")
+# The dialogue options live on their own Quest dialogue tab, 10px below the
+# tab strip, with the theme as one dropdown under the two switches.
+check("the dialogue options sit together on the Quest dialogue tab",
+      rt.eval("""(function()
+    local face = UnrealQuestSettingsDialogueTheme
+    local switch = UnrealQuestSettingsImmersiveDialogue
+    local allNpcs = UnrealQuestSettingsImmersiveDialogueAllNpcs
+    return getglobal('UnrealQuestSettingsDialogueTab') ~= nil and face ~= nil
+        and allNpcs.point[5] < switch.point[5] and face.point[5] < allNpcs.point[5]
+        and getglobal('UnrealQuestSettingsDialogueThemeItem6') ~= nil
+        and getglobal('UnrealQuestSettingsDialogueThemeItem7') == nil
+        and not UnrealQuestSettingsDialogueThemeItem1:IsShown()
+end)()"""))
+check("the first dialogue option sits 10px below the top of its tab",
+      rt.eval("UnrealQuestSettingsImmersiveDialogue.point[5] - UnrealQuestSettingsDialogueTab.point[5] == -10 - 27"))
+# The menu opens only from a face that is on screen, so show the Dialogue tab.
+rt.execute("UnrealQuestSettingsDialogueTab:GetScript('OnClick')()")
+rt.execute("UnrealQuestSettingsDialogueTheme:GetScript('OnClick')()")
+check("clicking the theme dropdown opens its menu",
+      rt.eval("UnrealQuestSettingsDialogueThemeItem1:IsShown() and UnrealQuestSettingsDialogueThemeItem5:IsShown()"))
+for index, value, label in [(1, "minimal", "Minimal"), (3, "alliance", "Alliance"),
+                            (4, "horde", "Horde"), (5, "alliance-light", "Alliance light"),
+                            (6, "horde-light", "Horde light"), (2, "parchment", "Parchment")]:
+    rt.execute("UnrealQuestSettingsDialogueTheme:GetScript('OnClick')()")
+    rt.execute("UnrealQuestSettingsDialogueThemeItem%d:GetScript('OnClick')()" % index)
+    check("picking %s stores the %s theme and closes the menu" % (label, value),
+          rt.eval("UnrealQuestDB.dialogueTheme == '%s' and not UnrealQuestSettingsDialogueThemeItem1:IsShown()"
+                  " and UnrealQuestSettingsDialogueTheme.unrealQuestLabel:GetText() == '%s'" % (value, label)))
+rt.execute("UnrealQuestSettingsDialogueTheme:GetScript('OnClick')()")
+rt.execute("UnrealQuestSettingsGeneralTab:GetScript('OnClick')()")
+check("leaving the Dialogue tab closes an open theme menu",
+      rt.eval("not UnrealQuestSettingsDialogueTheme:IsShown() and not UnrealQuestSettingsDialogueThemeItem1:IsShown()"))
 # Dots and areas are two switches: either, both or neither can be on.
 rt.execute("""
     UnrealQuestDB.mapObjectiveDots = true
@@ -17822,9 +21606,9 @@ rt.execute("""
         end
         return false
     end
-    function UnrealUI.RegisterSettingsGroup(id, label)
+    function UnrealUI.RegisterSettingsGroup(id, label, options)
         if Taken(id) then return nil end
-        local entry = { id = id, label = label }
+        local entry = { id = id, label = label, options = options }
         table.insert(UnrealUI.groups, entry)
         return entry
     end
@@ -17836,6 +21620,7 @@ rt.execute("""
     end
     setglobal('UnrealQuestSettingsGeneralTab', nil)
     setglobal('UnrealQuestSettingsMobTrackingTab', nil)
+    setglobal('UnrealQuestSettingsDialogueTab', nil)
 
     local settings = UnrealQuest:GetModule('Settings')
     settings.host = nil
@@ -17849,26 +21634,33 @@ rt.execute("""
 check("unrealUI with settings groups hosts UnrealQuest as a submenu",
       rt.eval("UnrealQuest:GetModule('Settings').host == 'unrealui' "
               "and UnrealQuest:GetModule('Settings').hostLayout == 'group'"))
-check("one UnrealQuest group holds a General page and a Mob tracking page", rt.eval("""(function()
+check("one UnrealQuest group holds General, Quest dialogue and Mob tracking pages", rt.eval("""(function()
     local groups, tabs = UnrealUI.groups, UnrealUI.tabs
     return table.getn(groups) == 1 and groups[1].id == 'unrealquest'
         and groups[1].label == 'UnrealQuest'
-        and table.getn(tabs) == 2
+        and groups[1].options.icon
+            == 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\Textures\\\\Settings\\\\uQ_logo'
+        and table.getn(tabs) == 3
         and tabs[1].id == 'unrealquest.general'
         and tabs[1].label == UnrealQuest.L('SETTINGS_TAB_GENERAL')
         and tabs[1].options.parent == 'unrealquest'
         and tabs[1].options.after == 'unrealquest'
-        and tabs[2].id == 'unrealquest.mobs'
-        and tabs[2].label == UnrealQuest.L('SETTINGS_TAB_MOB_TRACKING')
+        and tabs[2].id == 'unrealquest.dialogue'
+        and tabs[2].label == UnrealQuest.L('SETTINGS_TAB_DIALOGUE')
         and tabs[2].options.parent == 'unrealquest'
         and tabs[2].options.after == 'unrealquest.general'
-        and tabs[1].widgets == nil and tabs[2].widgets == nil
+        and tabs[3].id == 'unrealquest.mobs'
+        and tabs[3].label == UnrealQuest.L('SETTINGS_TAB_MOB_TRACKING')
+        and tabs[3].options.parent == 'unrealquest'
+        and tabs[3].options.after == 'unrealquest.dialogue'
+        and tabs[1].widgets == nil and tabs[2].widgets == nil and tabs[3].widgets == nil
 end)()"""))
 
 rt.execute("SlashCmdList.UNREALQUEST('config')")
 check("/uq config opens the General page of the submenu, and builds only that one",
       rt.eval("UnrealUI.opened == 'unrealquest.general' "
-              "and UnrealUI.tabs[1].widgets ~= nil and UnrealUI.tabs[2].widgets == nil"))
+              "and UnrealUI.tabs[1].widgets ~= nil and UnrealUI.tabs[2].widgets == nil "
+              "and UnrealUI.tabs[3].widgets == nil"))
 check("the General page carries its options and no internal tab strip",
       rt.eval("UnrealQuestSettingsTrackerCurrentZoneOnly ~= nil "
               "and getglobal('UnrealQuestSettingsGeneralTab') == nil "
@@ -17881,7 +21673,7 @@ rt.execute("""
 """)
 check("the Mob tracking page is its own page with the finder on it", rt.eval("""(function()
     local settings = UnrealQuest:GetModule('Settings')
-    return UnrealUI.tabs[2].widgets ~= nil
+    return UnrealUI.tabs[3].widgets ~= nil
         and UnrealQuestSettingsMobSearchInput ~= nil
         and UnrealQuestSettingsMobSearchInput:IsShown()
         and settings.mobRowsPerPage > 30
@@ -17957,6 +21749,15 @@ check("/uq config builds and shows the standalone window",
 check("the standalone window's content box matches unrealUI's",
       rt.eval("UnrealQuestSettings:GetWidth() == 520 and UnrealQuestSettings:GetHeight() == 506"),
       f"{rt.eval('UnrealQuestSettings:GetWidth()')}x{rt.eval('UnrealQuestSettings:GetHeight()')}")
+check("the standalone title places the addon logo before its wordmark", rt.eval("""(function()
+    local logo = UnrealQuestSettings.unrealQuestTitleLogo
+    local title = UnrealQuestSettings.unrealQuestTitle
+    return logo ~= nil and title ~= nil
+        and logo:GetTexture()
+            == 'Interface\\\\AddOns\\\\unrealQuest\\\\media\\\\Textures\\\\Settings\\\\uQ_logo'
+        and logo:GetWidth() == 20 and logo:GetHeight() == 20
+        and title.point[2] == logo and title.point[3] == 'RIGHT'
+end)()"""))
 check("the same builder runs against our own content frame",
       rt.eval("table.getn(UnrealQuestSettingsContent.regions) >= 3"))
 check("standalone imports the uUI slider's composite contract",
@@ -18574,6 +22375,32 @@ check("a creature rank is read through the string the data stores", rt.eval("""(
         id, record = next(units, id)
     end
     return false
+end)()"""))
+
+# Elite quests are inferred from objective creature rank: Hogger's head drops
+# only from Hogger (an item objective), Mercenaries sends the player after the
+# elite Mo'grosh ogres (a kill objective), Kobold Camp Cleanup after vermin.
+check("an elite quest's level label gains a +", rt.eval("""(function()
+    local db = UnrealQuest:GetModule('Database')
+    return db:IsEliteQuest(176) and db:IsEliteQuest(255)
+        and not db:IsEliteQuest(7)
+        and UnrealQuest.FormatQuestLevel(11, 176) == '11+'
+        and UnrealQuest.FormatQuestLevel(19, { questId = 255 }) == '19+'
+        and UnrealQuest.FormatQuestLevel(2, 7) == '2'
+        and UnrealQuest.FormatQuestLevel(11, { title = 'Wanted' }) == '11'
+end)()"""))
+
+# Serpentbloom (962) is gathered outdoors, in the Barrens cave in front of the
+# Wailing Caverns portal, and sends the player after no elite: only the
+# client's quest-log header says it is a dungeon quest.
+check("a quest filed under a dungeon header gains a +", rt.eval("""(function()
+    local db = UnrealQuest:GetModule('Database')
+    return not db:IsDungeonQuest(962) and not db:IsEliteQuest(962)
+        and db:IsInstanceZoneName('Wailing Caverns')
+        and not db:IsInstanceZoneName('The Barrens')
+        and UnrealQuest.FormatQuestLevel(18, { questId = 962, zone = 'Wailing Caverns' }) == '18+'
+        and UnrealQuest.FormatQuestLevel(18, { zone = 'Wailing Caverns' }) == '18+'
+        and UnrealQuest.FormatQuestLevel(18, { questId = 962, zone = 'The Barrens' }) == '18'
 end)()"""))
 
 check("the proximity alert recognizes all six Vanilla capital cities", rt.eval("""(function()
@@ -19264,6 +23091,24 @@ check("removing unrealUI returns the language to this addon",
       rt.eval("UnrealQuest.GetLanguage() == 'enUS' "
               "and UnrealQuest.IsLanguageFollowingUnrealUI() == false"))
 
+check("a theme's larger button font re-fits the same label instead of wrapping it", rt.eval("""
+(function()
+    local C = UnrealQuest.Client
+    local frame, button = UnrealQuestDialogueFrame, UnrealQuestDialogueAction
+    local entry = { text = 'Accept Quest', action = 'accept' }
+    local saved = button.unrealQuestSpec
+    C.ShowQuestDialogueButton(frame, button, C.QUEST_DIALOGUE_HORDE_LIGHT.ACTION_BUTTON, entry)
+    C.SettleQuestDialogueLabels()
+    C.SettleQuestDialogueLabels()
+    C.SettleQuestDialogueLabels()
+    C.SettleQuestDialogueLabels()
+    local settled = C.QUEST_DIALOGUE_FITS.pending[button.unrealQuestLabel] == nil
+    C.ShowQuestDialogueButton(frame, button, C.QUEST_DIALOGUE_ALLIANCE_LIGHT.ACTION_BUTTON, entry)
+    local refit = C.QUEST_DIALOGUE_FITS.pending[button.unrealQuestLabel] == true
+    if saved then C.ShowQuestDialogueButton(frame, button, saved, entry) end
+    return settled and refit
+end)()
+"""))
 
 print()
 print("chat output sample:")

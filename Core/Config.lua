@@ -118,6 +118,31 @@ local defaults = {
     -- fallback; identity, progress counters and game state are never changed.
     translateQuestTitles = true,
 
+    -- Replaces the stock gossip and quest-giver windows with UnrealQuest's
+    -- parchment dialogue, while preserving a live opt-out that restores the
+    -- stock root during the current interaction.
+    immersiveDialogue = true,
+    -- Off: the dialogue takes only quest givers (a quest page, or a gossip
+    -- list offering a quest); every other NPC keeps the stock gossip window.
+    immersiveDialogueAllNpcs = false,
+    -- The dialogue card's look (Client.QUEST_DIALOGUE_LAYOUTS). Minimal for a
+    -- new profile (user request, 2026-10-12); OnInit writes only a missing
+    -- key, so a profile that already saved a theme keeps it.
+    dialogueTheme = "minimal",
+    -- Hides the HUD (unit frames, bars, minimap, chat, the tracker, the world
+    -- tooltip) while the dialogue is up.
+    dialogueHideInterface = true,
+    -- Space continues or accepts and Esc closes while the dialogue is up;
+    -- every other key waits until it closes (this client cannot pass keys on).
+    dialogueKeyboard = true,
+    -- Not an option: the command Space was bound to while the dialogue has
+    -- it unbound (Quest/Dialogue.lua SyncKeyboard), false when nothing is
+    -- held. Kept so a session that ended mid-dialogue gives it back on load.
+    dialogueSpaceBinding = false,
+    -- Accepts offered quests, hands in completable ones and takes the reward,
+    -- except a reward the player must choose from.
+    dialogueAutoQuest = false,
+
     -- Shows the fixed respawn duration recorded by the bundled world data on
     -- creature and game-object tooltips. A zero or absent duration is unknown
     -- and stays hidden rather than being presented as an instant respawn.
@@ -281,6 +306,9 @@ local defaults = {
     -- while solo, so group leader / assistant is the only remaining route and
     -- it stays opt-in rather than changing shared group marks silently.
     questMarksInGroup = false,
+
+    -- Retail's quest shield on the target portrait (World/TargetQuestIcon.lua).
+    targetQuestIcon = true,
 
     -- Rare / elite proximity alert -------------------------------------------
     --
@@ -656,6 +684,27 @@ function Config:OnInit()
             UnrealQuestDB.trackerWidth = defaults.trackerWidth
         end
         UnrealQuestDB.trackerWidthDefaultVersion = TRACKER_WIDTH_DEFAULT_VERSION
+    end
+
+    -- The dialogue themes' keys now match their names in the options. This
+    -- carries a saved choice over exactly once, gated by its own counter: the
+    -- old "alliance" meant Alliance light and the new one means Alliance, so
+    -- running it twice would send a player to the wrong theme. A single table
+    -- lookup, never a chain, so no value is renamed twice.
+    local DIALOGUE_THEME_RENAMES = {
+        classic = "parchment",
+        cinematic = "horde-light",
+        alliance = "alliance-light",
+        ["alliance-v2"] = "alliance",
+        ["horde-v2"] = "horde",
+    }
+    if type(UnrealQuestDB.dialogueThemeKeyVersion) ~= "number"
+        or UnrealQuestDB.dialogueThemeKeyVersion < 1 then
+        local renamed = DIALOGUE_THEME_RENAMES[UnrealQuestDB.dialogueTheme]
+        if renamed then
+            UnrealQuestDB.dialogueTheme = renamed
+        end
+        UnrealQuestDB.dialogueThemeKeyVersion = 1
     end
 
     -- Dots and areas became two switches. Before, mapObjectiveDots == false

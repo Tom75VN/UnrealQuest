@@ -202,7 +202,7 @@ end
 
 -- A herb or a vein draws its own artwork rather than the category icon, so a
 -- Peacebloom pin is recognizable as Peacebloom. `Data/NodeIcons.lua` maps the
--- object ID to a file under media/icons/<category>/; an object it does not
+-- object ID to a file under media/Textures/Icons/<category>/; an object it does not
 -- name -- Incendicite, Indurium, the Obsidian Chunks -- keeps the category
 -- icon. Objects are looked up there; the one UNIT category with per-entity
 -- artwork is Rare/Elite/Boss, which picks its face by rank above.
@@ -589,6 +589,10 @@ function NpcPins:BuildTargets(areaId, selected, selectedCount, trackedMobs)
                 target.details[location.category] = location.detail
                 if location.category == "rares" then
                     target.rankLabelKey = RankLabelKey(location)
+                elseif location.category == "instances" then
+                    target.levelLow = location.levelLow
+                    target.levelHigh = location.levelHigh
+                    target.minimumLevel = location.minimumLevel
                 end
                 table.insert(target.categories, location.category)
             end
@@ -679,6 +683,20 @@ function NpcPins:TooltipLines(target, showRemoveHint)
                 local respawn = self:RespawnLine(target)
                 if respawn then
                     table.insert(lines, respawn)
+                end
+            elseif key == "instances" then
+                if type(target.levelLow) == "number" and type(target.levelHigh) == "number" then
+                    table.insert(lines, {
+                        text = UQ.L("NPC_INSTANCE_LEVELS",
+                            tostring(target.levelLow), tostring(target.levelHigh)),
+                        r = 1, g = 0.82, b = 0,
+                    })
+                end
+                if type(target.minimumLevel) == "number" then
+                    table.insert(lines, {
+                        text = UQ.L("NPC_INSTANCE_ENTRY", tostring(target.minimumLevel)),
+                        r = 0.7, g = 0.7, b = 0.7,
+                    })
                 end
             end
         end

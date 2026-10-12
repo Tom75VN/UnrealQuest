@@ -147,7 +147,7 @@ def main():
          lambda d: profile(d, NEUTRAL_RGB, NEUTRAL_SHADOW_RGB, NEUTRAL_RGB)),
     )
     for filename, profile_fn in strips:
-        path = os.path.join(MEDIA, filename)
+        path = os.path.join(MEDIA, "Textures", "Map", "Contours", filename)
         strip = build_profile(profile_fn)
         size = write_tga_rle(strip, path)
         if Image.open(path).convert("RGBA").tobytes() != strip.tobytes():

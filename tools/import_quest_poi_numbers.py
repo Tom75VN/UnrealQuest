@@ -51,7 +51,9 @@ def main():
     source = Image.open(source_path).convert("RGBA")
     if source.size != (256, 256):
         raise ValueError("expected a 256x256 UI-QuestPoi-NumberIcons source")
-    output = os.path.join(os.getcwd(), "media", "UIQuestPOINumberIcons.tga")
+    output = os.path.join(
+        os.environ.get("UQ_SOURCE_ART", "D:/Development/unrealQuest_Data/#backup/unrealQuest-media"),
+        "UIQuestPOINumberIcons.tga")
     write_tga_rle(source, output)
     if Image.open(output).convert("RGBA").tobytes() != source.tobytes():
         raise ValueError("RLE encoding changed the imported quest-number atlas")

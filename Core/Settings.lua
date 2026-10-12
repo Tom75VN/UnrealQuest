@@ -42,9 +42,13 @@ local Settings = UQ:NewModule("Settings")
 -- collide with a page it already owns.
 local TAB_ID = "unrealquest"
 local TAB_LABEL = "UnrealQuest"
--- The submenu's two pages, one per section of the page. Under a settings group
+local SETTINGS_LOGO_TEXTURE =
+    "Interface\\AddOns\\unrealQuest\\media\\Textures\\Settings\\uQ_logo"
+local SETTINGS_LOGO_SIZE = 20
+-- The submenu's three pages, one per section of the page. Under a settings group
 -- TAB_ID names the group, and these name the rows inside it.
 local GENERAL_PAGE_ID = TAB_ID .. ".general"
+local DIALOGUE_PAGE_ID = TAB_ID .. ".dialogue"
 local MOBS_PAGE_ID = TAB_ID .. ".mobs"
 
 -- The page's own first line: "Unreal Quest" in the addon's two-tone wordmark,
@@ -206,12 +210,20 @@ local NOTE_INDENT = 20
 -- Width of each option of a radio laid out on one line (page.Radio's
 -- inlineWidth): the check, the label gap and a one-word label.
 local RADIO_INLINE_WIDTH = 120
+local DROPDOWN_WIDTH = 200
+local DROPDOWN_HEIGHT = 22
+-- Clear space above the first control of a tab that has no heading of its own.
+local TAB_TOP_GAP = 10
 local INTERNAL_TAB_HEIGHT = 20
 -- Tab height, its 2px gap, and a 5px margin under the strip so the first
 -- control of either tab does not sit against the row of tabs.
 local INTERNAL_TAB_ADVANCE = 27
 local INTERNAL_TAB_WIDTH = 150
 local MOB_MIN_ROWS_PER_PAGE = 9
+-- Rows held back from the height-derived count: the measured host height
+-- overstates the drawable area, and without them the pager falls below the
+-- visible panel and the page needs scrolling.
+local MOB_RESERVED_ROWS = 2
 local MOB_ROW_HEIGHT = 20
 -- Table rows touch, as Forever's own lists do; the stripe separates them.
 local MOB_ROW_ADVANCE = MOB_ROW_HEIGHT
@@ -484,11 +496,19 @@ local function NewPage(parent)
     -- `inlineWidth`, when given, lays the rows side by side, each that wide,
     -- on a single line instead of one line per row. Only for short noteless
     -- labels: a wrapped label or a note would run into its neighbour.
-    page.Radio = function(key, title, options, note, inlineWidth)
+    --
+    -- `layout`, optional, is page.Checkbox's: `left` starts the rows at that X
+    -- instead of NOTE_INDENT, and a numeric `advance` moves the cursor by
+    -- exactly that much instead of the rows plus ROW_GAP -- so an inline
+    -- radio can share a row with a checkbox placed before it.
+    page.Radio = function(key, title, options, note, inlineWidth, layout)
         if title then
             page.Body(title)
         end
         local total = table.getn(options)
+        layout = layout or {}
+        local left = type(layout.left) == "number" and layout.left or NOTE_INDENT
+        local advance = type(layout.advance) == "number" and layout.advance or nil
 
         -- unrealUI's shared radio group when it hosts the page. It lays its
         -- rows out itself, so it is used only when no option carries a note
@@ -526,17 +546,19 @@ local function NewPage(parent)
                 end,
             })
             if group then
-                group.SetPoint("TOPLEFT", page.parent, "TOPLEFT", NOTE_INDENT, page.y)
+                group.SetPoint("TOPLEFT", page.parent, "TOPLEFT", left, page.y)
                 page.Add(group)
-                if inlineWidth then
+                if advance then
+                    page.y = page.y - advance
+                elseif inlineWidth then
                     page.y = page.y - CHECKBOX_ADVANCE
                 else
                     page.y = page.y - CHECKBOX_ADVANCE * total
                 end
-                if note then
+                if note and not advance then
                     page.Body(note, NOTE_INDENT)
                 end
-                page.y = page.y - ROW_GAP
+                if not advance then page.y = page.y - ROW_GAP end
                 page.Sync(function()
                     -- A stored value no option names leaves the group as it is
                     -- rather than writing a choice back for the player.
@@ -563,10 +585,10 @@ local function NewPage(parent)
             -- below outlives this iteration.
             local rowIndex = index
             local rowValue = option.value
-            local rowLeft = NOTE_INDENT
+            local rowLeft = left
             local rowWidth = TEXT_WIDTH - NOTE_INDENT * 2
             if inlineWidth then
-                rowLeft = NOTE_INDENT + (index - 1) * inlineWidth
+                rowLeft = left + (index - 1) * inlineWidth
                 rowWidth = inlineWidth - CHECKBOX_LABEL_GAP
             end
             local button = Client.CreateSettingsRadio(page.parent,
@@ -587,14 +609,17 @@ local function NewPage(parent)
             end
             index = index + 1
         end
-        if inlineWidth then
-            page.y = page.y - CHECKBOX_ADVANCE
+        if advance then
+            page.y = page.y - advance
+        else
+            if inlineWidth then
+                page.y = page.y - CHECKBOX_ADVANCE
+            end
+            if note then
+                page.Body(note, NOTE_INDENT)
+            end
+            page.y = page.y - ROW_GAP
         end
-
-        if note then
-            page.Body(note, NOTE_INDENT)
-        end
-        page.y = page.y - ROW_GAP
 
         page.Sync(function()
             local stored = Setting(key)
@@ -612,6 +637,54 @@ local function NewPage(parent)
             Select(selected)
         end)
         return buttons
+    end
+
+    -- One setting, several mutually exclusive values, as a titled dropdown:
+    -- page.Radio's contract (same `options` shape, the stored setting is the
+    -- single source of truth) in one row instead of one row per value. unrealUI's
+    -- U.CreateDropdown when it hosts the page, Client.CreateSettingsDropdown
+    -- otherwise; both hand back SetPoint / SetValue and a uuiSetShown.
+    page.Dropdown = function(key, title, options, width)
+        if title then
+            page.Body(title)
+        end
+        width = width or DROPDOWN_WIDTH
+        local items = {}
+        local index = 1
+        while index <= table.getn(options) do
+            items[index] = { value = options[index].value, text = options[index].label }
+            index = index + 1
+        end
+        local function OnChange(value)
+            Store(key, value)
+            page.Refresh()
+        end
+        local control
+        local createDropdown = HostComponent("CreateDropdown")
+        if createDropdown then
+            control = createDropdown(page.parent, {
+                name = WidgetName(key),
+                items = items,
+                width = width,
+                height = DROPDOWN_HEIGHT,
+                value = Setting(key),
+                onChange = OnChange,
+            })
+        end
+        if not control then
+            control = Client.CreateSettingsDropdown(page.parent, WidgetName(key),
+                width, items, OnChange)
+        end
+        if not control then
+            return nil
+        end
+        control.SetPoint("TOPLEFT", page.parent, "TOPLEFT", NOTE_INDENT, page.y)
+        page.Add(control)
+        page.y = page.y - DROPDOWN_HEIGHT - ROW_GAP
+        page.Sync(function()
+            control.SetValue(Setting(key), false)
+        end)
+        return control
     end
 
     -- An action rather than a setting: it runs something once and stores
@@ -941,8 +1014,11 @@ local function BuildGeneralSection(page)
 
     page.Checkbox("hideUnlearnedProfessionQuests", UQ.L("SETTINGS_HIDE_PROFESSION_QUESTS"), nil,
         { width = TEXT_WIDTH, advance = CHECKBOX_ADVANCE })
+    page.Checkbox("targetQuestIcon", UQ.L("SETTINGS_TARGET_QUEST_ICON"), nil,
+        { width = pairWidth, advance = 0 })
     page.Checkbox("questRewardGearAdvisor", UQ.L("SETTINGS_REWARD_GEAR_ADVISOR"), nil,
-        { width = TEXT_WIDTH, advance = CHECKBOX_ADVANCE + 4 })
+        { left = PAIR_COLUMN_RIGHT, width = rightWidth,
+          advance = CHECKBOX_ADVANCE + 4 })
 
     -- The import button's label describes its action. The ordinary row gap
     -- above is enough separation; the old extra 8px is now used by the clearer
@@ -986,6 +1062,29 @@ local function BuildGeneralSection(page)
     end)
 
     page.Sync(RefreshImportStatus)
+end
+
+-- The Quest dialogue section: every option of the immersive dialogue, on a
+-- page of its own so its controls no longer compete with General's fixed box
+-- for a line. The theme is a dropdown: the theme choices as radio rows took a
+-- line each, and inline columns overran the page width.
+local function BuildDialogueSection(page)
+    page.Gap(TAB_TOP_GAP)
+    page.Checkbox("immersiveDialogue", UQ.L("SETTINGS_IMMERSIVE_DIALOGUE"))
+    page.Checkbox("immersiveDialogueAllNpcs", UQ.L("SETTINGS_IMMERSIVE_DIALOGUE_ALL_NPCS"))
+    page.Checkbox("dialogueHideInterface", UQ.L("SETTINGS_DIALOGUE_HIDE_INTERFACE"))
+    page.Checkbox("dialogueKeyboard", UQ.L("SETTINGS_DIALOGUE_KEYBOARD"),
+        UQ.L("SETTINGS_DIALOGUE_KEYBOARD_NOTE"))
+    page.Checkbox("dialogueAutoQuest", UQ.L("SETTINGS_DIALOGUE_AUTO_QUEST"),
+        UQ.L("SETTINGS_DIALOGUE_AUTO_QUEST_NOTE"))
+    page.Dropdown("dialogueTheme", UQ.L("SETTINGS_DIALOGUE_THEME"), {
+        { value = "minimal", label = UQ.L("SETTINGS_DIALOGUE_THEME_MINIMAL") },
+        { value = "parchment", label = UQ.L("SETTINGS_DIALOGUE_THEME_PARCHMENT") },
+        { value = "alliance", label = UQ.L("SETTINGS_DIALOGUE_THEME_ALLIANCE") },
+        { value = "horde", label = UQ.L("SETTINGS_DIALOGUE_THEME_HORDE") },
+        { value = "alliance-light", label = UQ.L("SETTINGS_DIALOGUE_THEME_ALLIANCE_LIGHT") },
+        { value = "horde-light", label = UQ.L("SETTINGS_DIALOGUE_THEME_HORDE_LIGHT") },
+    })
 end
 
 -- The Mob tracking section: the creature search, the tracked-creature band and
@@ -1073,7 +1172,7 @@ local function BuildMobSection(page, MobsShown)
     local mobRowsPerPage = math.floor((availableHeight + page.y
         - MOB_TABLE_GAP - MOB_STATUS_ADVANCE - MOB_PAGING_ADVANCE
         - MOB_BOTTOM_MARGIN)
-        / MOB_ROW_ADVANCE)
+        / MOB_ROW_ADVANCE) - MOB_RESERVED_ROWS
     if mobRowsPerPage < MOB_MIN_ROWS_PER_PAGE then
         mobRowsPerPage = MOB_MIN_ROWS_PER_PAGE
     end
@@ -1242,15 +1341,15 @@ local function BuildMobSection(page, MobsShown)
     return RefreshMobResults, mobSearchInput
 end
 
--- `section` nil builds the whole page, both sections under the internal tab
+-- `section` nil builds the whole page, every section under the internal tab
 -- strip: the standalone window, and an unrealUI without settings groups.
--- "general" or "mobs" builds that section alone with no strip, for a page of
+-- "general", "dialogue" or "mobs" builds that section alone with no strip, for a page of
 -- unrealUI's submenu, where the sidebar rows are the tabs.
 function Settings:BuildPage(parent, section)
     if not parent then
         return {}, nil
     end
-    if section ~= "general" and section ~= "mobs" then
+    if section ~= "general" and section ~= "dialogue" and section ~= "mobs" then
         section = nil
     end
 
@@ -1262,8 +1361,9 @@ function Settings:BuildPage(parent, section)
         self.liveSliders = {}
     end
     local generalWidgets = {}
+    local dialogueWidgets = {}
     local mobWidgets = {}
-    local generalTab, mobTab
+    local generalTab, dialogueTab, mobTab
     local RefreshMobResults, mobSearchInput
 
     -- The page draws no wordmark heading of its own: both hosts already title
@@ -1283,25 +1383,26 @@ function Settings:BuildPage(parent, section)
         return Settings.activePageTab == "mobs"
     end
 
+    local function ShowGroup(widgets, shown)
+        local index = 1
+        while index <= table.getn(widgets) do
+            SetRegionShown(widgets[index], shown)
+            index = index + 1
+        end
+    end
+
     local function ApplyInternalTab(tab)
-        if tab ~= "mobs" then
+        if tab ~= "mobs" and tab ~= "dialogue" then
             tab = "general"
         end
         Settings.activePageTab = tab
-        local generalShown = tab == "general"
-        local index = 1
-        while index <= table.getn(generalWidgets) do
-            SetRegionShown(generalWidgets[index], generalShown)
-            index = index + 1
-        end
-        index = 1
-        while index <= table.getn(mobWidgets) do
-            SetRegionShown(mobWidgets[index], not generalShown)
-            index = index + 1
-        end
-        Client.SetSettingsTabSelected(generalTab, generalShown)
-        Client.SetSettingsTabSelected(mobTab, not generalShown)
-        if not generalShown and type(RefreshMobResults) == "function" then
+        ShowGroup(generalWidgets, tab == "general")
+        ShowGroup(dialogueWidgets, tab == "dialogue")
+        ShowGroup(mobWidgets, tab == "mobs")
+        Client.SetSettingsTabSelected(generalTab, tab == "general")
+        Client.SetSettingsTabSelected(dialogueTab, tab == "dialogue")
+        Client.SetSettingsTabSelected(mobTab, tab == "mobs")
+        if tab == "mobs" and type(RefreshMobResults) == "function" then
             RefreshMobResults()
         end
     end
@@ -1311,23 +1412,35 @@ function Settings:BuildPage(parent, section)
             WidgetName("generalTab"), UQ.L("SETTINGS_TAB_GENERAL"),
             0, page.y, INTERNAL_TAB_WIDTH, INTERNAL_TAB_HEIGHT,
             function() ApplyInternalTab("general") end))
+        dialogueTab = page.Add(Client.CreateSettingsTab(parent,
+            WidgetName("dialogueTab"), UQ.L("SETTINGS_TAB_DIALOGUE"),
+            INTERNAL_TAB_WIDTH + 6, page.y, INTERNAL_TAB_WIDTH,
+            INTERNAL_TAB_HEIGHT, function() ApplyInternalTab("dialogue") end))
         mobTab = page.Add(Client.CreateSettingsTab(parent,
             WidgetName("mobTrackingTab"), UQ.L("SETTINGS_TAB_MOB_TRACKING"),
-            INTERNAL_TAB_WIDTH + 6, page.y, INTERNAL_TAB_WIDTH,
+            (INTERNAL_TAB_WIDTH + 6) * 2, page.y, INTERNAL_TAB_WIDTH,
             INTERNAL_TAB_HEIGHT, function() ApplyInternalTab("mobs") end))
         page.y = page.y - INTERNAL_TAB_ADVANCE
     end
     local contentTop = page.y
 
     local generalHeight = 0
-    if section ~= "mobs" then
+    if not section or section == "general" then
         page.Group(generalWidgets)
         BuildGeneralSection(page)
         generalHeight = -page.y
     end
 
+    local dialogueHeight = 0
+    if not section or section == "dialogue" then
+        page.Group(dialogueWidgets)
+        page.y = contentTop
+        BuildDialogueSection(page)
+        dialogueHeight = -page.y
+    end
+
     local mobHeight = 0
-    if section ~= "general" then
+    if not section or section == "mobs" then
         page.Group(mobWidgets)
         page.y = contentTop
         RefreshMobResults, mobSearchInput = BuildMobSection(page, MobsShown)
@@ -1337,9 +1450,9 @@ function Settings:BuildPage(parent, section)
 
     -- Each open also records which section the player is on, so /uq config
     -- returns to it under either host.
-    if section == "general" then
+    if section == "general" or section == "dialogue" then
         page.Sync(function()
-            Settings.activePageTab = "general"
+            Settings.activePageTab = section
         end)
     elseif section == "mobs" then
         page.Sync(function()
@@ -1359,6 +1472,9 @@ function Settings:BuildPage(parent, section)
     -- can provide substantially more room and the mob rows consume it.
     local availableHeight = AvailableHeight(parent)
     self.pageHeight = generalHeight
+    if dialogueHeight > self.pageHeight then
+        self.pageHeight = dialogueHeight
+    end
     if mobHeight > self.pageHeight then
         self.pageHeight = mobHeight
     end
@@ -1398,7 +1514,8 @@ end
 -- Host resolution -----------------------------------------------------------
 
 -- Once. Where unrealUI has settings groups, UnrealQuest is an "UnrealQuest"
--- submenu in its sidebar with one page per section (General, Mob tracking) --
+-- submenu in its sidebar with one page per section (General, Quest dialogue,
+-- Mob tracking) --
 -- the sidebar rows replace the internal tab strip. An unrealUI without
 -- RegisterSettingsGroup gets the whole tabbed page as a single row instead.
 -- The guard means a re-entered resolution cannot file a duplicate id and get
@@ -1417,7 +1534,11 @@ function Settings:RegisterWithUnrealUI(host)
         -- General when the group is clicked. An unrealUI that predates the
         -- options table ignores it and keeps its own placement.
         local ok, group = pcall(host.RegisterSettingsGroup, TAB_ID, TAB_LABEL,
-            { after = "profiles", defaultPage = GENERAL_PAGE_ID })
+            {
+                after = "profiles",
+                defaultPage = GENERAL_PAGE_ID,
+                icon = SETTINGS_LOGO_TEXTURE,
+            })
         if not ok or not group then
             return false
         end
@@ -1426,12 +1547,18 @@ function Settings:RegisterWithUnrealUI(host)
             function(content)
                 return Settings:BuildPage(content, "general")
             end, { parent = TAB_ID, after = TAB_ID })
+        local okDialogue, dialogue = pcall(host.RegisterSettingsTab, DIALOGUE_PAGE_ID,
+            UQ.L("SETTINGS_TAB_DIALOGUE"),
+            function(content)
+                return Settings:BuildPage(content, "dialogue")
+            end, { parent = TAB_ID, after = GENERAL_PAGE_ID })
         local okMobs, mobs = pcall(host.RegisterSettingsTab, MOBS_PAGE_ID,
             UQ.L("SETTINGS_TAB_MOB_TRACKING"),
             function(content)
                 return Settings:BuildPage(content, "mobs")
-            end, { parent = TAB_ID, after = GENERAL_PAGE_ID })
-        if not okGeneral or not general or not okMobs or not mobs then
+            end, { parent = TAB_ID, after = DIALOGUE_PAGE_ID })
+        if not okGeneral or not general or not okDialogue or not dialogue
+            or not okMobs or not mobs then
             return false
         end
         self.registered = true
@@ -1442,7 +1569,7 @@ function Settings:RegisterWithUnrealUI(host)
     local ok, entry = pcall(host.RegisterSettingsTab, TAB_ID, TAB_LABEL,
         function(content)
             return Settings:BuildPage(content)
-        end)
+        end, { icon = SETTINGS_LOGO_TEXTURE })
     if not ok or not entry then
         return false
     end
@@ -1473,7 +1600,8 @@ function Settings:ResolveHost(force)
                 "unrealUI was found at runtime and accepted UnrealQuest's options page "
                 .. (self.hostLayout == "group"
                     and ("as a submenu (U.RegisterSettingsGroup '" .. TAB_ID .. "', pages '"
-                        .. GENERAL_PAGE_ID .. "' and '" .. MOBS_PAGE_ID .. "')")
+                        .. GENERAL_PAGE_ID .. "', '" .. DIALOGUE_PAGE_ID .. "' and '"
+                        .. MOBS_PAGE_ID .. "')")
                     or ("(U.RegisterSettingsTab, id '" .. TAB_ID .. "')"))
                 .. ". The page is drawn inside "
                 .. "unrealUI's settings window; /uq config opens it there. Detected by type-checking "
@@ -1760,6 +1888,7 @@ function Settings:BuildWindow()
     -- the addon the way the addon list and the page's first line do. With
     -- unrealUI hosting, that host owns the menu row and this window is unused.
     Client.SetSettingsTitle(window, PageTitle())
+    Client.SetSettingsTitleLogo(window, SETTINGS_LOGO_TEXTURE, SETTINGS_LOGO_SIZE)
 
     -- The handle stops short of the flag row so the header is draggable
     -- everywhere except where those buttons are. When unrealUI owns the
@@ -1846,7 +1975,12 @@ function Settings:Open()
             -- Under the submenu, back to the section the player last opened.
             local pageId = TAB_ID
             if self.hostLayout == "group" then
-                pageId = self.activePageTab == "mobs" and MOBS_PAGE_ID or GENERAL_PAGE_ID
+                pageId = GENERAL_PAGE_ID
+                if self.activePageTab == "mobs" then
+                    pageId = MOBS_PAGE_ID
+                elseif self.activePageTab == "dialogue" then
+                    pageId = DIALOGUE_PAGE_ID
+                end
             end
             local ok, opened = pcall(unrealUI.OpenSettingsPage, pageId)
             if ok and opened then

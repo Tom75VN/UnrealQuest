@@ -457,8 +457,22 @@ local function CombinedLines(nativeLines, unitKey, questLines)
     return lines
 end
 
+-- The quest dialogue hides the world tooltip while it is up
+-- (Dialogue:SyncInterfaceHidden): the replacement goes at once rather than
+-- after its mouse-out hold, and nothing is presented until it is lifted.
+function EntityTooltip:SetSuppressed(suppressed)
+    suppressed = suppressed and true or false
+    if (self.suppressed or false) == suppressed then return end
+    self.suppressed = suppressed
+    if suppressed then ResetHover(self) end
+end
+
 function EntityTooltip:Refresh(fromShow)
     self.refreshCount = self.refreshCount + 1
+    if self.suppressed then
+        if self.panel then ResetHover(self) end
+        return
+    end
 
     -- GameTooltip is also the surface this addon paints its own quest
     -- tooltips on (a minimap quest pin, a tracker row -- see

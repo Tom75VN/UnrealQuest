@@ -894,6 +894,14 @@ function Client.UnitIsPlayer(unit)
     return ok and value and true or false
 end
 
+-- OFFICIAL_CLIENT_DOCUMENTATION: whether the unit exists as an object in the
+-- world. nil when the call is missing or fails.
+function Client.UnitIsVisible(unit)
+    local ok, value = Call1("UnitIsVisible", unit)
+    if not ok then return nil end
+    return value and true or false
+end
+
 function Client.GetUnitName(unit)
     local ok, value = Call1("UnitName", unit)
     if ok and type(value) == "string" and value ~= "" then
@@ -1727,7 +1735,7 @@ end
 local WORLD_MAP_PIN_TEXTURE = "Interface\\Buttons\\WHITE8X8"
 -- Extensionless, like the two texture paths above it: this client resolves an
 -- addon texture by base name, and the ".tga" spelling silently drew nothing.
-local TRACKER_RESIZE_GRIP_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\resize"
+local TRACKER_RESIZE_GRIP_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\Textures\\Tracker\\resize"
 
 -- Whether the game UI is currently hidden, which on this client is what the
 -- fullscreen world map does. This is not a probe result and is not treated as
@@ -2101,7 +2109,7 @@ function Client.ReapplyWorldMapStrokeLayer()
 end
 
 -- Every quest-area patch, world map and minimap alike, is drawn at 80% of
--- the opacity baked into media/AreaContourProfile*.tga. Applied as the vertex
+-- the opacity baked into media/Textures/Map/Contours/AreaContourProfile*.tga. Applied as the vertex
 -- alpha, so it multiplies with the group's own alpha (flash, focus dimming)
 -- instead of fighting it.
 Client.AREA_CONTOUR_ALPHA = 0.8
@@ -3686,7 +3694,7 @@ local LOOT_SECTION_GAP = 6
 -- 0.8 alpha, with a second additive pass for
 -- blue items, whose colour reads darkest. No frame art: the glow alone
 -- carries the rarity. The art ships in this addon
--- (media/LootGlow, a copy of unrealUI's button-highlight) so the panel looks
+-- (media/Textures/Rewards/LootGlow, a copy of unrealUI's button-highlight) so the panel looks
 -- the same with or without unrealUI. Unlike the gear slot, the glow is drawn
 -- at the icon's own size on top of it, not 4 units proud of it.
 local LOOT_CELL_SIZE = 25
@@ -3695,7 +3703,7 @@ local LOOT_MIN_COLUMNS = 4
 local LOOT_MAX_COLUMNS = 10
 local LOOT_COLUMN_RATIO = 2.5
 local LOOT_CELL_BORDER = 0
-local LOOT_GLOW_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\LootGlow"
+local LOOT_GLOW_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\Textures\\Rewards\\LootGlow"
 local LOOT_GLOW_ALPHA = 0.8
 -- Blue draws both passes fully opaque: its colour reads darkest of all.
 local LOOT_RARE_ALPHA = 1
@@ -4250,26 +4258,26 @@ end
 -- client's own Interface\GossipFrame\ActiveQuestIcon. These are not client API
 -- dependencies, so they carry no capability/evidence requirement.
 Client.WORLD_MAP_PIN_TEXTURE = WORLD_MAP_PIN_TEXTURE
-Client.AVAILABLE_QUEST_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\icons\\questIcon"
-Client.LOW_LEVEL_QUEST_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\icons\\QuestIcon-lowlvl"
-Client.ACTIVE_QUEST_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\ActiveQuestIcon"
-Client.COMPLETE_QUEST_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\CompleteQuestIcon"
-Client.MINIMAP_OBJECTIVE_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\QuestDot"
+Client.AVAILABLE_QUEST_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\Textures\\Map\\Pins\\questIcon"
+Client.LOW_LEVEL_QUEST_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\Textures\\Map\\Pins\\QuestIcon-lowlvl"
+Client.ACTIVE_QUEST_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\Textures\\Map\\Pins\\ActiveQuestIcon"
+Client.COMPLETE_QUEST_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\Textures\\Map\\Pins\\CompleteQuestIcon"
+Client.MINIMAP_OBJECTIVE_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\Textures\\Map\\Pins\\QuestDot"
 Client.WORLD_MAP_AREA_CONTOUR_TEXTURE =
-    "Interface\\AddOns\\unrealQuest\\media\\AreaContourProfile"
+    "Interface\\AddOns\\unrealQuest\\media\\Textures\\Map\\Contours\\AreaContourProfile"
 Client.WORLD_MAP_AREA_CONTOUR_NEUTRAL_TEXTURE =
-    "Interface\\AddOns\\unrealQuest\\media\\AreaContourProfileNeutral"
+    "Interface\\AddOns\\unrealQuest\\media\\Textures\\Map\\Contours\\AreaContourProfileNeutral"
 -- Quest POI badges, shared by the world-map quest-area markers and the tracker
 -- rows (tools/make_quest_poi_markers.py builds both textures; questpoi-v2.tga
 -- is questpoi.tga with its main and hover circles redrawn): questpoi-v2.tga
--- holds the main, hover and active circles and then the soft glow drawn below
--- the followed quest's active circle, one per 64x64 cell; QuestPOINumbers.tga
+-- holds main, hover, active, glow and completed cells in a 512x64 strip;
+-- QuestPOINumbers.tga
 -- the glyphs 1-25 in 32x32 cells (rows 0-3 dark for the active circle, rows
 -- 4-7 gold for main and hover).
 Client.WORLD_MAP_QUEST_POI_CIRCLE_TEXTURE =
-    "Interface\\AddOns\\unrealQuest\\media\\questpoi-v2"
+    "Interface\\AddOns\\unrealQuest\\media\\Textures\\Map\\Pins\\questpoi-v2"
 Client.WORLD_MAP_QUEST_POI_NUMBER_TEXTURE =
-    "Interface\\AddOns\\unrealQuest\\media\\QuestPOINumbers"
+    "Interface\\AddOns\\unrealQuest\\media\\Textures\\Map\\Pins\\QuestPOINumbers"
 Client.WORLD_MAP_QUEST_POI_SIZE = 24
 -- The glow cell fades to nothing at its edge; 1.6x the circle leaves a tight
 -- rim around it, and 0.75 vertex alpha keeps that rim from washing out the
@@ -4277,11 +4285,11 @@ Client.WORLD_MAP_QUEST_POI_SIZE = 24
 Client.QUEST_POI_GLOW_SCALE = 1.6
 Client.QUEST_POI_GLOW_ALPHA = 0.75
 Client.FOLLOWED_QUEST_DOT_BORDER_TEXTURE =
-    "Interface\\AddOns\\unrealQuest\\media\\FollowedQuestDotBorder"
-Client.FOLLOWED_QUEST_CIRCLE_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\quest-circle"
+    "Interface\\AddOns\\unrealQuest\\media\\Textures\\Map\\Pins\\FollowedQuestDotBorder"
+Client.FOLLOWED_QUEST_CIRCLE_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\Textures\\Map\\Pins\\quest-circle"
 
 -- One local table: this chunk sits at the Lua 200-locals limit.
-local QuestPOI = { MAIN = 0, HOVER = 1, ACTIVE = 2, GLOW = 3 }
+local QuestPOI = { MAIN = 0, HOVER = 1, ACTIVE = 2, GLOW = 3, COMPLETE = 4 }
 
 function QuestPOI.SetTexture(texture, path, left, right, top, bottom)
     if not texture or type(texture.SetTexture) ~= "function"
@@ -4298,7 +4306,7 @@ end
 
 function QuestPOI.SetCircle(texture, state)
     return QuestPOI.SetTexture(texture, Client.WORLD_MAP_QUEST_POI_CIRCLE_TEXTURE,
-        state * 64 / 256, (state + 1) * 64 / 256, 0, 1)
+        state * 64 / 512, (state + 1) * 64 / 512, 0, 1)
 end
 
 -- `region` is how many texels of the 32px glyph cell the badge shows: equal
@@ -4527,7 +4535,7 @@ end
 -- Resizes a pin frame away from the default 14x14 square Client.CreateWorldMapPin
 -- builds. SetWorldMapPinTexture's texture uses SetAllPoints, which stretches
 -- the source image to fill whatever size the frame is -- fine for a square
--- icon, but a non-square source comes out visibly squashed. media/ActiveQuestIcon.tga
+-- icon, but a non-square source comes out visibly squashed. media/Textures/Map/Pins/ActiveQuestIcon.tga
 -- (the turn-in "?") is 19x32 and is the case that forced this.
 function Client.SetWorldMapPinSize(frame, width, height)
     if not frame or type(width) ~= "number" or type(height) ~= "number" then
@@ -6183,41 +6191,77 @@ local TRACKER_NPC_FINDER_ICON_SIZE = TRACKER_BUTTON_SIZE * 0.9 * 0.85
 -- remains available independently of the client's icon library.
 -- Keep the path extensionless: this client silently draws nothing when an
 -- addon texture path includes the ".tga" suffix.
-local TRACKER_NPC_FINDER_ICON_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\search-icon"
+local TRACKER_NPC_FINDER_ICON_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\Textures\\Tracker\\search-icon"
 -- The WoW Forever objective tracker chrome, drawn identically standalone and
 -- under every unrealUI theme: header rails, the zone section bar with its -/+
--- fold mark, and the objective nub and check. media/QuestTracker.tga is built
--- by tools/make_quest_tracker_art.py from the Forever sheet (FileDataID
--- 8268353) as a 512x512 RLE type-10 TGA, the form of
--- textures.rle_512_tga_atlas_four_arg_supported. The header's fold button
--- wears Blizzard's plus/minus tree control (buttons/plus-minus-button, user
--- request 2026-09-27, copied byte-for-byte from unrealUI's modern-wow media):
--- a literal "+" while the body is folded away and "-" while it is shown,
--- replacing the settings-menu dropdown faces this used before. Pieces are
--- { x, y, w, h } in atlas pixels, from QuestTracker unless a fifth field
--- names another sheet; each sheet's own pixel span is `sheetSize`, since
--- plusMinus is a 64x64 canvas rather than the 512x512 the others share.
+-- fold mark, and the objective nub and check. media/Textures/Tracker/QuestTrackerSheet.tga is
+-- the Forever sheet itself (FileDataID 8268353, 1024x512), converted from
+-- 8268353.png (kept outside the addon folder) by tools/make_quest_tracker_art.py with every pixel
+-- unchanged -- no crop,
+-- resize or repack -- as a 32-bit RLE type-10 TGA, the encoding of
+-- textures.rle_512_tga_atlas_four_arg_supported (1024x512 rather than
+-- 512x512, as media/Textures/QuestLog/128RedButton's 512x2048 RLE sheet already is). Each
+-- piece is drawn at the tracker's own sizes, so the client now does the
+-- halving to the interface's scale that the old repacked atlas baked in.
+-- The header's fold button wears Blizzard's plus/minus tree control
+-- (buttons/plus-minus-button, user request 2026-09-27, copied byte-for-byte
+-- from unrealUI's modern-wow media): a literal "+" while the body is folded
+-- away and "-" while it is shown, replacing the settings-menu dropdown faces
+-- this used before. Pieces are { x, y, w, h } in sheet pixels, from the
+-- tracker sheet unless a fifth field names another; each sheet's own
+-- { width, height } is `sheetSize`, `size` square for one without an entry.
 -- One table: this file's main chunk is at the 200-local limit.
 local TrackerArt = {
     size = 512,
     sheets = {
-        tracker = "Interface\\AddOns\\unrealQuest\\media\\QuestTracker",
-        settings = "Interface\\AddOns\\unrealQuest\\media\\setting-ui",
-        plusMinus = "Interface\\AddOns\\unrealQuest\\media\\plus-minus-button",
+        tracker = "Interface\\AddOns\\unrealQuest\\media\\Textures\\Tracker\\QuestTrackerSheet",
+        settings = "Interface\\AddOns\\unrealQuest\\media\\Textures\\Settings\\setting-ui",
+        plusMinus = "Interface\\AddOns\\unrealQuest\\media\\Textures\\Tracker\\plus-minus-button",
     },
-    -- Only sheets that are not the 512x512 default need an entry here.
+    -- Only sheets that are not 512x512 need an entry here.
     sheetSize = {
-        plusMinus = 64,
+        tracker = { 1024, 512 },
+        plusMinus = { 64, 64 },
     },
+    -- Every element of the tracker sheet, by its UiTextureAtlasMember (named
+    -- after each), as tools/make_quest_tracker_art.py prints them. The two
+    -- header bars are trimmed to their visible pixels and goldLine to every
+    -- pixel it draws; the rest are the member's own box. Only header, zone,
+    -- zoneCollapse, zoneExpand, nub, check, goldLine and itemFrame are drawn today.
     pieces = {
-        header = { 2, 2, 276, 36 },
-        zone = { 2, 40, 274, 25 },
-        zoneCollapse = { 65, 67, 17, 17 },
-        zoneExpand = { 84, 67, 17, 17 },
-        nub = { 103, 67, 20, 20 },
-        check = { 125, 67, 20, 20 },
+        progressFrame = { 1, 1, 558, 118 }, -- UI-QuestTracker-Progressbar-Frame
+        progressChannel = { 1, 121, 558, 118 }, -- UI-QuestTracker-Progressbar-Full-Channel
+        header = { 20, 247, 551, 71 }, -- UI-QuestTracker-Primary-Objective-Header
+        zone = { 25, 335, 546, 48 }, -- UI-QuestTracker-Secondary-Objective-Header
+        -- The thin gold glow line under the bottom rail; drawn as the Minimal
+        -- dialogue's header divider (layout key headerDivider).
+        goldLine = { 1, 385, 710, 11 }, -- ui-questtracker-objfx_lineglow-c60
+        barGlow = { 561, 1, 374, 56 }, -- UI-QuestTracker-OBJFX-BarGlow
+        shine = { 561, 59, 308, 46 }, -- ui-questtracker-objfx-shine-c60
+        fail = { 937, 1, 38, 38 }, -- UI-QuestTracker-Objective-Fail
+        nub = { 977, 1, 38, 38 }, -- UI-QuestTracker-Objective-Nub
+        check = { 871, 59, 38, 38 }, -- UI-QuestTracker-Tracker-Check
+        checkGlow = { 911, 59, 38, 38 }, -- UI-QuestTracker-Tracker-Check-Glow
+        collapse = { 951, 59, 36, 38 }, -- UI-QuestTrackerButton-Collapse-All
+        collapsePressed = { 905, 121, 36, 38 }, -- UI-QuestTrackerButton-Collapse-All-Pressed
+        expand = { 905, 161, 36, 38 }, -- UI-QuestTrackerButton-Expand-All
+        expandPressed = { 905, 201, 36, 38 }, -- UI-QuestTrackerButton-Expand-All-Pressed
+        filter = { 943, 121, 36, 38 }, -- UI-QuestTrackerButton-Filter
+        filterPressed = { 981, 121, 36, 38 }, -- UI-QuestTrackerButton-Filter-Pressed
+        highlight = { 943, 161, 36, 38 }, -- UI-QuestTrackerButton-Red-Highlight
+        zoneCollapse = { 989, 59, 32, 32 }, -- UI-QuestTrackerButton-Secondary-Collapse
+        zoneCollapsePressed = { 943, 201, 32, 32 }, -- UI-QuestTrackerButton-Secondary-Collapse-Pressed
+        zoneExpand = { 981, 161, 32, 32 }, -- UI-QuestTrackerButton-Secondary-Expand
+        zoneExpandPressed = { 981, 195, 32, 32 }, -- UI-QuestTrackerButton-Secondary-Expand-Pressed
+        yellowHighlight = { 603, 241, 32, 32 }, -- UI-QuestTrackerButton-Yellow-Highlight
+        -- Trimmed to its visible chamfered gold square; drawn as the Minimal
+        -- dialogue's portrait frame.
+        itemFrame = { 576, 136, 66, 66 }, -- UI-QuestTrackerButton-QuestItem-Frame
+        itemFrameGlow = { 659, 121, 96, 96 }, -- UI-QuestTrackerButton-QuestItem-Frame-Glow
+        eye = { 757, 121, 72, 92 }, -- UI-QuestTracker-LFG-eye
+        eyeSelected = { 831, 121, 72, 92 }, -- UI-QuestTracker-LFG-eye-selected
         -- Left column of buttons/plus-minus-button's 64x64 sheet: plus over
-        -- minus, each a 20x22 cell (media/QUEST-TRACKER-ATTRIBUTION.md). The
+        -- minus, each a 20x22 cell (media/Textures/Tracker/QUEST-TRACKER-ATTRIBUTION.md). The
         -- right column (pushed) is not wired: a pressed face needs
         -- OnMouseDown/OnMouseUp, which have no runtime record on this client
         -- (see SettingsList.PAGER_CELLS for the same refusal).
@@ -6248,7 +6292,7 @@ local TrackerArt = {
     -- game-settings menu puts over this same +/- toggle (user request
     -- 2026-09-27; unrealUI modules/modernwow.lua mw.RedButtonGlow with
     -- core/media.lua M.modernWow.button128Red). Same cell of the same file
-    -- (media/128RedButton, already shipped for the quest log's red buttons),
+    -- (media/Textures/QuestLog/128RedButton, already shipped for the quest log's red buttons),
     -- drawn ADD on OVERLAY over the untinted glyph at 0.8 vertex light. ADD
     -- works on the updated client (rendering.setblendmode_add_inert,
     -- superseded 2026-08-28) and unrealUI's settings menu draws it that way;
@@ -6258,11 +6302,33 @@ local TrackerArt = {
     -- inset 4 from a 14 toggle holding a 10 face -- 2 inside the face -- so
     -- here it is inset `foldHoverMargin` from the glyph itself. Table fields,
     -- not file-scope locals: this file's main chunk is at the 200-local limit.
-    foldHoverTexture = "Interface\\AddOns\\unrealQuest\\media\\128RedButton",
+    foldHoverTexture = "Interface\\AddOns\\unrealQuest\\media\\Textures\\QuestLog\\128RedButton",
     foldHoverCell = { 15 / 512, 418 / 512, 424 / 2048, 490 / 2048 },
     foldHoverMargin = -2,
     foldHoverIntensity = 0.8,
+    -- The followed quest's highlight, behind its row in both trackers and in
+    -- the quest log list (user request 2026-10-13): the sheet's own bar glow,
+    -- stretched to the row, replacing the followed-quest plaque.
+    followingPiece = "barGlow",
+    -- That glow is drawn 40% fainter than the asset (user request
+    -- 2026-10-13), the same in the quest log and both trackers. It does not
+    -- follow the tracker's background opacity: a player who clears the
+    -- background to 0 still sees which quest is followed.
+    followingAlpha = 0.6,
+    -- The HUD tracker alone draws it 35% fainter again, 0.6 * 0.65 (user
+    -- request 2026-10-13): it sits over the game world, not a panel.
+    hudFollowingAlpha = 0.39,
 }
+
+-- Re-points `texture` at a piece even when it already carries it: a host
+-- strip (unrealUI's U.HideRegion) clears the texture and zeroes the alpha
+-- behind Apply's cache, and a later Show restores neither.
+function TrackerArt.Restate(texture, name)
+    if texture then
+        texture.unrealQuestArtPiece = nil
+    end
+    return TrackerArt.Apply(texture, name)
+end
 local TRACKER_PADDING = 6
 local TRACKER_BAR_HEIGHT = 2
 -- How far a quest row's title is pushed right to clear the round quest dot
@@ -6276,7 +6342,7 @@ local TRACKER_QUEST_MARK_INSET = 13
 local TRACKER_QUEST_MARK_SIZE = 10
 local TRACKER_QUEST_NUMBER_SIZE = 16
 local TRACKER_QUEST_NUMBER_INSET = TRACKER_QUEST_NUMBER_SIZE + 3
--- Native pixel size of media/CompleteQuestIcon.tga. SetAllPoints-style
+-- Native pixel size of media/Textures/Map/Pins/CompleteQuestIcon.tga. SetAllPoints-style
 -- textures on this client stretch to whatever box they are given -- fine for
 -- the round dot, which is square, but this asset is a tall narrow checkmark:
 -- boxing it at TRACKER_QUEST_MARK_SIZE square visibly squashed it wide. The
@@ -6294,19 +6360,11 @@ local TRACKER_FOLLOWING_ARROW_HEIGHT = 10
 -- suffix is included. Both source PNGs are converted to alpha-preserving TGA
 -- files in media/ so the legacy texture loader can consume them reliably.
 local TRACKER_FOLLOWING_QUEST_TEXTURE =
-    "Interface\\AddOns\\unrealQuest\\media\\icons\\quest-marker"
+    "Interface\\AddOns\\unrealQuest\\media\\Textures\\Tracker\\quest-marker"
 local TRACKER_FOLLOWING_ARROW_TEXTURE =
-    "Interface\\AddOns\\unrealQuest\\media\\following-arrow"
--- The authored gold plaque that marks the followed quest in the modern quest
--- log list. It is a full-width band -- gold bevelled frame, dark interior --
--- authored at 558x34, so it replaces both the translucent accent fill and the
--- one-pixel accent border a followed row used to draw. It is stretched to the
--- row rather than nine-sliced: the end chamfers are a small fraction of the
--- width, and a row is far shorter than the source, so the bevel thins rather
--- than skewing. Not a power of two, which this client does not require
--- (media/ActiveQuestIcon.tga is 19x32 and renders).
-local QUEST_LOG_FOLLOWING_PLAQUE_TEXTURE =
-    "Interface\\AddOns\\unrealQuest\\media\\followed-quest"
+    "Interface\\AddOns\\unrealQuest\\media\\Textures\\Tracker\\following-arrow"
+-- The followed quest's highlight is TrackerArt.followingPiece, the tracker
+-- sheet's bar glow, in the quest log list and both trackers alike.
 -- The row's native title starts at x=24. Its gutter is shared deliberately:
 -- the tracked bar ends at x=8, then the quest-colour dot or followed marker
 -- starts at x=10. The native title is moved from x=24 to x=23 below, and the
@@ -6406,6 +6464,15 @@ local function CreateSolid(parent, layer, red, green, blue, alpha)
     return texture
 end
 
+-- A sheet's pixel width and height.
+function TrackerArt.SheetSize(sheet)
+    local size = TrackerArt.sheetSize[sheet]
+    if size then
+        return size[1], size[2]
+    end
+    return TrackerArt.size, TrackerArt.size
+end
+
 -- Points `texture` at one TrackerArt piece, or hides it for an unknown one.
 function TrackerArt.Apply(texture, name)
     local piece = TrackerArt.pieces[name]
@@ -6413,11 +6480,11 @@ function TrackerArt.Apply(texture, name)
         return Client.HideObject(texture)
     end
     local sheet = piece[5] or "tracker"
-    local size = TrackerArt.sheetSize[sheet] or TrackerArt.size
+    local width, height = TrackerArt.SheetSize(sheet)
     if texture.unrealQuestArtPiece ~= name then
         pcall(texture.SetTexture, texture, TrackerArt.sheets[sheet])
-        pcall(texture.SetTexCoord, texture, piece[1] / size, (piece[1] + piece[3]) / size,
-            piece[2] / size, (piece[2] + piece[4]) / size)
+        pcall(texture.SetTexCoord, texture, piece[1] / width, (piece[1] + piece[3]) / width,
+            piece[2] / height, (piece[2] + piece[4]) / height)
         texture.unrealQuestArtPiece = name
     end
     return Client.ShowObject(texture)
@@ -8067,13 +8134,13 @@ local QuestLogSkin = {
     labelOffsetY = -11,
     skins = {
         red = {
-            path = "Interface\\AddOns\\unrealQuest\\media\\128RedButton",
+            path = "Interface\\AddOns\\unrealQuest\\media\\Textures\\QuestLog\\128RedButton",
             atlasHeight = 2048,
             normal = { barTop = 523, capLeft = 392, capTop = 913 },
             hover = { barTop = 783, capLeft = 378, capTop = 1043 },
         },
         gold = {
-            path = "Interface\\AddOns\\unrealQuest\\media\\128GoldRedButton",
+            path = "Interface\\AddOns\\unrealQuest\\media\\Textures\\QuestLog\\128GoldRedButton",
             atlasHeight = 1024,
             normal = { barTop = 523, capLeft = 296, capTop = 523 },
             hover = { barTop = 783, capLeft = 296, capTop = 783 },
@@ -8797,7 +8864,7 @@ end
 -- book portrait inside its gold ring.
 --
 -- The artwork is the geometry authority. Every proportional number below was
--- measured off these exact canvases (media/QuestLog/ATTRIBUTION.md) and is
+-- measured off these exact canvases (media/Textures/QuestLog/ATTRIBUTION.md) and is
 -- recomputed from the window's live size, so the seam, the button beds, the
 -- channel and the ring stay where the art puts them.
 --
@@ -8824,7 +8891,7 @@ end
 -- One table rather than a few dozen file-scope locals: this file sits close to
 -- Lua's 200-local limit for a main chunk.
 local STANDALONE_QUEST_LOG = {
-    textureRoot = "Interface\\AddOns\\unrealQuest\\media\\QuestLog\\",
+    textureRoot = "Interface\\AddOns\\unrealQuest\\media\\Textures\\QuestLog\\",
     pageLeft = "QuestLogPageLeft",
     pageRight = "QuestLogPageRight",
     redButton = "QuestLogRedButton",
@@ -9395,8 +9462,8 @@ end
 
 -- The header strip's own controls: the close button on the imported red cell,
 -- the window title, the collapse-all control clear of the ring, and the
--- client's count line on that same row. The collapse control keeps its native
--- glyph; only where it sits changes.
+-- client's count line on that same row. Only where the collapse control sits
+-- changes here; its glyph is Client.RefreshStandaloneQuestLogFoldFaces'.
 function STANDALONE_QUEST_LOG.PlaceHeader(frame)
     local token = STANDALONE_QUEST_LOG
     local close = ResolveObject("QuestLogFrameCloseButton")
@@ -9718,6 +9785,149 @@ function Client.RefreshStandaloneQuestLogRewards()
         return false
     end
     Client.UpdateScrollChildRect(detail)
+    return true
+end
+
+-- The quest list's +/- fold glyphs, on every header row and on the
+-- collapse-all control (user request 2026-10-13): the plusNormal/minusNormal
+-- cells of media/Textures/Tracker/plus-minus-button the tracker's fold button
+-- already wears, in place of the stock UI-PlusButton/UI-MinusButton art.
+--
+-- The stock glyph is the Button's own NormalTexture, which QuestLog_Update
+-- rewrites on every refresh -- not a surface this addon can own, the same
+-- situation as the stock track check
+-- (questlog.stock_track_mark_is_native_owned_and_reanchored). It is
+-- suppressed instead, through SetVertexColor's alpha rather than
+-- Texture:SetAlpha (rendering.texture_setalpha_darkens_not_translucent), and
+-- the suppression is reasserted on every observer tick in case a native
+-- refresh brought it back. The owned face is a plain Texture on the button.
+--
+-- Its state comes from the quest log (GetQuestLogTitle's isHeader and
+-- isCollapsed, verified), never from reading the stock texture's path back:
+-- texture paths are not readable on this client (the CastingBarFrame capture).
+-- A row only takes a face once its own text matches the header the scrolled
+-- index names; one that cannot be verified gets its stock glyph back rather
+-- than no glyph at all.
+STANDALONE_QUEST_LOG.foldSize = 12
+-- The glyph's centre from the button's left edge: the template's 3px inset
+-- plus half its 16px NormalTexture (WORKING_SOURCE, Vanilla
+-- QuestLogTitleButtonTemplate, which QuestLogCollapseAllButton inherits too).
+STANDALONE_QUEST_LOG.foldCentreX = 11
+
+function STANDALONE_QUEST_LOG.SetStockFoldShown(button, shown)
+    if type(button.GetNormalTexture) ~= "function" then
+        return false
+    end
+    local ok, stock = pcall(button.GetNormalTexture, button)
+    if not ok or not stock then
+        return false
+    end
+    if type(stock.SetVertexColor) == "function" then
+        pcall(stock.SetVertexColor, stock, 1, 1, 1, shown and 1 or 0)
+    end
+    if shown then
+        Client.ShowObject(stock)
+    else
+        Client.HideObject(stock)
+    end
+    return true
+end
+
+-- `collapsed` is true for "+", false for "-", nil for no owned face (and the
+-- stock glyph back).
+function STANDALONE_QUEST_LOG.ShowFold(button, collapsed)
+    local token = STANDALONE_QUEST_LOG
+    token.SetStockFoldShown(button, collapsed == nil)
+    local face = button.unrealQuestFoldFace
+    if collapsed == nil then
+        Client.HideObject(face)
+        return false
+    end
+    if not face then
+        face = TrackerArt.Create(button, "OVERLAY", "minusNormal", true)
+        if not face then
+            return false
+        end
+        Client.SetObjectSize(face, token.foldSize, token.foldSize)
+        if type(face.SetPoint) == "function" then
+            pcall(face.SetPoint, face, "CENTER", button, "LEFT", token.foldCentreX, 0)
+        end
+        button.unrealQuestFoldFace = face
+    end
+    return TrackerArt.Apply(face, collapsed and "plusNormal" or "minusNormal")
+end
+
+-- Whether a native row shows a collapsed header (true), an expanded one
+-- (false), or nothing that could be verified as a header (nil).
+function STANDALONE_QUEST_LOG.HeaderFolded(row, rowIndex)
+    local text = Client.GetObjectText(row)
+    if not text then
+        return nil
+    end
+    text = string.gsub(string.gsub(text, "^%s+", ""), "%s+$", "")
+    local first, second = Client.GetQuestLogRowQuestIndex(row, rowIndex)
+    local candidates = { first, second }
+    local index = 1
+    while index <= 2 do
+        local entry = candidates[index]
+        if type(entry) == "number" and entry > 0 then
+            local title, _, _, isHeader, isCollapsed, _, raw = Client.GetQuestLogEntry(entry)
+            if isHeader and (text == title or text == raw) then
+                return isCollapsed and true or false
+            end
+        end
+        index = index + 1
+    end
+    return nil
+end
+
+-- "+" once every header is collapsed, "-" while any is open; nil (stock glyph)
+-- for a log with no headers at all.
+function STANDALONE_QUEST_LOG.AllFolded()
+    local count = Client.GetQuestLogCount()
+    local headers = 0
+    local index = 1
+    while index <= count do
+        local _, _, _, isHeader, isCollapsed = Client.GetQuestLogEntry(index)
+        if isHeader then
+            if not isCollapsed then
+                return false
+            end
+            headers = headers + 1
+        end
+        index = index + 1
+    end
+    if headers == 0 then
+        return nil
+    end
+    return true
+end
+
+function Client.RefreshStandaloneQuestLogFoldFaces()
+    if not Client.IsStandaloneQuestLogShown() then
+        return false
+    end
+    local token = STANDALONE_QUEST_LOG
+    local collapseAll = ResolveObject("QuestLogCollapseAllButton")
+    if collapseAll then
+        token.ShowFold(collapseAll, token.AllFolded())
+    end
+    local index = 1
+    local misses = 0
+    while index <= 30 and misses < 3 do
+        local row = ResolveObject("QuestLogTitle" .. tostring(index))
+        if not row then
+            misses = misses + 1
+        else
+            misses = 0
+            local collapsed = nil
+            if Client.IsObjectShown(row) then
+                collapsed = token.HeaderFolded(row, index)
+            end
+            token.ShowFold(row, collapsed)
+        end
+        index = index + 1
+    end
     return true
 end
 
@@ -10230,11 +10440,11 @@ QuestLogRewardRows.coinGap = 1
 -- alone says which is which.
 QuestLogRewardRows.coins = {
     { copper = 10000, r = 1, g = 1, b = 1,
-      texture = "Interface\\AddOns\\unrealQuest\\media\\coin-gold" },
+      texture = "Interface\\AddOns\\unrealQuest\\media\\Textures\\Rewards\\coin-gold" },
     { copper = 100, r = 1, g = 1, b = 1,
-      texture = "Interface\\AddOns\\unrealQuest\\media\\coin-silver" },
+      texture = "Interface\\AddOns\\unrealQuest\\media\\Textures\\Rewards\\coin-silver" },
     { copper = 1, r = 1, g = 1, b = 1,
-      texture = "Interface\\AddOns\\unrealQuest\\media\\coin-copper" },
+      texture = "Interface\\AddOns\\unrealQuest\\media\\Textures\\Rewards\\coin-copper" },
 }
 
 -- No drop shadow on the coin numbers, by request, whatever unrealUI theme is
@@ -10790,7 +11000,7 @@ end
 -- bottom swapped, the vertical flip unrealUI's professions border ships.
 local QuestRewardGear = {
     scannerName = "UnrealQuestGearScan",
-    texture = "Interface\\AddOns\\unrealQuest\\media\\GearAdvisor",
+    texture = "Interface\\AddOns\\unrealQuest\\media\\Textures\\Rewards\\GearAdvisor",
     cells = {
         best = { 0.5, 1, 0, 0.5 },
         second = { 0, 0.5, 0, 0.5 },
@@ -11408,17 +11618,18 @@ local function EnsureQuestLogFollowingRow(row)
         return row and true or false
     end
 
-    -- The authored plaque is the whole highlight: it carries its own gold edge,
-    -- so the row draws no accent fill and no flat border of its own. ARTWORK
-    -- keeps it above modern-wow's list-page art; the row labels are raised to
-    -- OVERLAY, so the plaque still stays behind the text. It starts at the
-    -- title rather than spanning the gutter, so the tracked bar and the quest
-    -- dot/followed marker stay outside its gold rim.
+    -- The tracker sheet's bar glow (TrackerArt.followingPiece) is the whole
+    -- highlight, the same one the trackers draw, so the row draws no accent
+    -- fill and no flat border of its own. ARTWORK keeps it above modern-wow's
+    -- list-page art; the row labels are raised to OVERLAY, so the glow still
+    -- stays behind the text. It starts at the title rather than spanning the
+    -- gutter, so the tracked bar and the quest dot/followed marker stay
+    -- outside it.
     local background = nil
     if type(row.CreateTexture) == "function" then
         local ok, created = pcall(row.CreateTexture, row, nil, "ARTWORK")
         if ok and created then
-            pcall(created.SetTexture, created, QUEST_LOG_FOLLOWING_PLAQUE_TEXTURE)
+            TrackerArt.Apply(created, TrackerArt.followingPiece)
             -- Restated after creation: the layer argument to CreateTexture is
             -- what keeps the plaque above modern-wow's page art. The labels'
             -- OVERLAY layer keeps them above it in turn.
@@ -11723,7 +11934,8 @@ function Client.SetQuestLogFollowingRow(row, active, red, green, blue, modern)
     local paths = {}
     if row.unrealQuestFollowingBackground then
         table.insert(parts, row.unrealQuestFollowingBackground)
-        table.insert(paths, QUEST_LOG_FOLLOWING_PLAQUE_TEXTURE)
+        -- false: a sheet piece, restated through TrackerArt.Restate below.
+        table.insert(paths, false)
     end
     if row.unrealQuestFollowingMark then
         table.insert(parts, row.unrealQuestFollowingMark)
@@ -11739,7 +11951,13 @@ function Client.SetQuestLogFollowingRow(row, active, red, green, blue, modern)
             -- zeroes the alpha as well as hiding, and a later Show restores
             -- neither. Both are restated before showing so a strip that caught
             -- these regions cannot keep them invisible.
-            if type(part.SetTexture) == "function" then
+            if not paths[index] then
+                TrackerArt.Restate(part, TrackerArt.followingPiece)
+                -- Vertex alpha, not SetAlpha: SetAlpha darkens rather than
+                -- fades on this client (rendering.texture_setalpha_darkens_
+                -- not_translucent), and the tracker's glow fades the same way.
+                Client.SetSolidColor(part, 1, 1, 1, TrackerArt.followingAlpha)
+            elseif type(part.SetTexture) == "function" then
                 pcall(part.SetTexture, part, paths[index])
             end
             if type(part.SetAlpha) == "function" then
@@ -12155,18 +12373,12 @@ function Client.CreateTrackerWindow(name, parentName, mapOwned)
     frame.unrealQuestBackground = background
     BuildFlatBorder(frame)
 
-    -- The followed quest row uses the authored followed-quest plaque. It stays
-    -- window-owned so it remains below the pooled row Button and cannot take
-    -- the mouse from it.
-    local followingBackground = CreateSolid(frame, "ARTWORK",
-        1, 1, 1, 0)
-    if followingBackground then
-        if type(followingBackground.SetTexture) == "function" then
-            pcall(followingBackground.SetTexture, followingBackground,
-                QUEST_LOG_FOLLOWING_PLAQUE_TEXTURE)
-        end
-        pcall(followingBackground.Hide, followingBackground)
-    end
+    -- The followed quest row wears the tracker sheet's bar glow
+    -- (TrackerArt.followingPiece). It stays window-owned so it remains below
+    -- the pooled row Button and cannot take the mouse from it.
+    local followingBackground = TrackerArt.Create(frame, "ARTWORK",
+        TrackerArt.followingPiece, true)
+    Client.SetSolidColor(followingBackground, 1, 1, 1, 0)
     frame.unrealQuestFollowingBackground = followingBackground
     frame.unrealQuestFollowingRings = {}
 
@@ -12312,8 +12524,11 @@ local function PlaceFollowingTexture(texture, frame, left, right, top, bottom)
     pcall(texture.SetPoint, texture, "BOTTOMRIGHT", frame, "TOPRIGHT", right, -bottom)
 end
 
--- Applies the tracker opacity to the authored followed plaque without
--- rebuilding any rows.
+-- Records the tracker opacity and re-shows the followed quest's bar glow
+-- without rebuilding any rows. The glow itself is drawn at
+-- TrackerArt.followingAlpha (hudFollowingAlpha on the HUD window) whatever
+-- the opacity: the HUD tracker at 0 background opacity hid it entirely (user
+-- report 2026-10-13).
 function Client.SetTrackerFollowingOpacity(frame, percent)
     if not frame or type(percent) ~= "number" then
         return false
@@ -12324,12 +12539,12 @@ function Client.SetTrackerFollowingOpacity(frame, percent)
         percent = 100
     end
     frame.unrealQuestFollowingOpacity = percent
-    local active = frame.unrealQuestFollowingActive and percent > 0
-    local scale = percent / 100
+    local active = frame.unrealQuestFollowingActive
 
     local background = frame.unrealQuestFollowingBackground
     if background then
-        Client.SetSolidColor(background, 1, 1, 1, scale)
+        Client.SetSolidColor(background, 1, 1, 1, frame.unrealQuestMapOwned
+            and TrackerArt.followingAlpha or TrackerArt.hudFollowingAlpha)
         if active then Client.ShowObject(background) else Client.HideObject(background) end
     end
     return true
@@ -12745,6 +12960,7 @@ function Client.GetTrackerRow(window, kind, index)
                 pcall(label.SetWordWrap, label, false)
             end
             TrackerArt.ShadeText(label, window.unrealQuestMapOwned)
+            button.unrealQuestMapOwned = window.unrealQuestMapOwned
             button.unrealQuestLabel = label
             button.unrealQuestLabelInset = labelInset
         end
@@ -12950,11 +13166,19 @@ function Client.SetTrackerRowText(row, text, red, green, blue)
     return true
 end
 
+-- On the HUD tracker the followed quest's title also takes the map copy's
+-- black drop shadow (user request 2026-10-13), so it stays legible over its
+-- bar glow; every other HUD title stays shadowless. Re-applied on every call
+-- because rows are pooled by index, not by quest. The map copy shades every
+-- label already and is left alone.
 function Client.SetTrackerRowFollowing(row, following)
     if not row then
         return false
     end
     row.unrealQuestLabelInsetRight = 0
+    if not row.unrealQuestMapOwned then
+        TrackerArt.ShadeText(row.unrealQuestLabel, following and true or false)
+    end
     return true
 end
 
@@ -13051,21 +13275,22 @@ end
 -- with the circle. The number is the quest's position in QuestState's
 -- unfiltered log order, so filtering, complete-last ordering and recent-first
 -- ordering never make the tracker disagree with the map. A complete quest
--- retains the small checkmark beside the number. The followed quest (behind
--- its authored plaque) gets the active circle and dark glyph, without a glow.
+-- keeps its status icon and uses the emerald circle with a gold glyph, even
+-- when followed. An unfinished followed quest uses the active circle.
 function Client.SetTrackerRowQuestNumber(row, number, selected, complete)
     local numberBackground = row and row.unrealQuestQuestNumberBackground
     local numberMark = row and row.unrealQuestQuestNumber
     local statusMark = row and row.unrealQuestQuestMark
     local numberText = row and row.unrealQuestQuestNumberText
+    local active = selected and not complete
     local drawn = false
     if numberBackground and numberMark
         and QuestPOI.SetCircle(numberBackground,
-            selected and QuestPOI.ACTIVE or QuestPOI.MAIN) then
+            complete and QuestPOI.COMPLETE or active and QuestPOI.ACTIVE or QuestPOI.MAIN) then
         if type(number) == "number" and number > 25 then
-            drawn = QuestPOI.SetNumberText(numberMark, numberText, number, selected)
+            drawn = QuestPOI.SetNumberText(numberMark, numberText, number, active)
         else
-            drawn = QuestPOI.SetGlyph(numberMark, number, selected, 20)
+            drawn = QuestPOI.SetGlyph(numberMark, number, active, 20)
             Client.HideObject(numberText)
         end
     end
@@ -13575,14 +13800,47 @@ function Client.SetSettingsTitle(frame, text)
     return ok and true or false
 end
 
+-- Adds the addon's mark before the standalone settings title. Addon-owned TGA
+-- paths are extensionless on this client (textures.addon_tga_paths_require_extensionless,
+-- BEHAVIOR_VERIFIED); the caller supplies that stable runtime path rather than
+-- persisting it anywhere.
+function Client.SetSettingsTitleLogo(frame, texturePath, size)
+    local title = frame and frame.unrealQuestTitle
+    if not frame or not title or type(frame.CreateTexture) ~= "function"
+        or type(texturePath) ~= "string" or texturePath == "" then
+        return false
+    end
+
+    local logo = frame.unrealQuestTitleLogo
+    if not logo then
+        local ok, created = pcall(frame.CreateTexture, frame, nil, "OVERLAY")
+        if not ok or not created then
+            return false
+        end
+        logo = created
+        frame.unrealQuestTitleLogo = logo
+    end
+    if type(logo.SetTexture) ~= "function"
+        or not pcall(logo.SetTexture, logo, texturePath) then
+        return false
+    end
+
+    local logoSize = type(size) == "number" and size or 20
+    Client.SetObjectSize(logo, logoSize, logoSize)
+    Client.AnchorObject(logo, "LEFT", frame, "TOPLEFT",
+        SETTINGS_ACCENT_WIDTH + SETTINGS_PADDING, -SETTINGS_HEADER_HEIGHT / 2)
+    Client.AnchorObject(title, "LEFT", logo, "RIGHT", 5, 0)
+    return true
+end
+
 -- One language flag button. Two surfaces use it: the settings header's own
 -- language row (Core/Settings.lua), drawn only when unrealUI is not the one
 -- deciding the language, and the quest log detail pane's per-quest translation
 -- toggle (Quest/QuestLogButtons.lua).
 --
--- No background, no border and no hover art: the flag texture owns the whole
--- face and selection is communicated by opacity alone, which is the treatment
--- unrealUI's identical row uses. A code whose artwork will not load keeps the
+-- By default there is no background, border or hover art: the flag texture
+-- owns the whole face, which is the treatment unrealUI's identical row uses.
+-- The Cinematic dialogue can add its frame lazily after creation. A code whose artwork will not load keeps the
 -- two-letter ASCII badge instead of an empty square, the same fallback shape
 -- Client.CreateMinimapButton has for its gear.
 --
@@ -13653,6 +13911,50 @@ function Client.CreateFlagButton(parent, name, texturePath, fallbackLabel,
     return button
 end
 
+function Client.EnsureFlagButtonFrame(button)
+    if not button or button.unrealQuestFlagFrame
+        or type(button.CreateTexture) ~= "function" then
+        return
+    end
+    local frame = CreateSolid(button, "OVERLAY", 1, 1, 1, 1)
+    if frame then
+        Client.HideObject(frame)
+        button.unrealQuestFlagFrame = frame
+    end
+end
+
+-- The Cinematic dialogue puts a transparent rim directly over each flag.
+-- Other flag rows keep their compact, artwork-only treatment.
+function Client.SetFlagButtonFrameStyle(button, framed, width, height)
+    if not button then return false end
+    Client.SetObjectSize(button, width, height)
+    button.unrealQuestFlagFramed = framed and true or nil
+
+    local icon = button.unrealQuestIcon
+    if icon and type(icon.ClearAllPoints) == "function" then
+        pcall(icon.ClearAllPoints, icon)
+        if type(icon.SetAllPoints) == "function" then
+            pcall(icon.SetAllPoints, icon, button)
+        end
+    end
+
+    if framed then Client.EnsureFlagButtonFrame(button) end
+    local frame = button.unrealQuestFlagFrame
+    if frame then
+        if type(frame.ClearAllPoints) == "function" then
+            pcall(frame.ClearAllPoints, frame)
+        end
+        if framed then
+            pcall(frame.SetPoint, frame, "TOPLEFT", button, "TOPLEFT", -2, 2)
+            pcall(frame.SetPoint, frame, "BOTTOMRIGHT", button, "BOTTOMRIGHT", 2, -2)
+            Client.ShowObject(frame)
+        else
+            Client.HideObject(frame)
+        end
+    end
+    return true
+end
+
 -- The artwork on an existing flag. The language is resolved by a poll that can
 -- still be waiting on unrealUI when a flag is built (Core/Locale.lua), so a
 -- flag created before that poll settled has to be able to change its face
@@ -13677,8 +13979,8 @@ function Client.SetFlagButtonTexture(button, texturePath, fallbackLabel)
 end
 
 -- Selection and hover for one of those flags. `shade` is the icon's opacity;
--- the ASCII fallback cannot be shaded the same way and takes the accent or the
--- dim grey instead, so both forms say the same thing.
+-- the ASCII fallback takes the accent or dim grey instead. Cinematic flags
+-- switch between authored transparent normal and selected rims.
 function Client.SetFlagButtonShade(button, shade, selected)
     if not button then
         return false
@@ -13694,6 +13996,19 @@ function Client.SetFlagButtonShade(button, shade, selected)
         else
             pcall(label.SetTextColor, label, 0.6, 0.6, 0.6)
         end
+    end
+    local frame = button.unrealQuestFlagFrame
+    if button.unrealQuestFlagFramed and frame then
+        local path = Client.GetQuestDialogueArt(button.unrealQuestFlagTheme).PATH .. "Flag"
+        local alpha = 1
+        if selected then
+            path = path .. "_Selected"
+        elseif shade and shade > 0.65 then
+            path = path .. "_Selected"
+            alpha = 0.72
+        end
+        pcall(frame.SetTexture, frame, path)
+        Client.SetSolidColor(frame, 1, 1, 1, alpha)
     end
     return true
 end
@@ -14122,14 +14437,14 @@ end
 -- runtime record on this client, so the arrows are the settings UI's stepper
 -- instead -- common-dropdown-c-button beds carrying common-dropdown-icon-back
 -- / -next, from Blizzard's settings-UI atlas (FileDataID 5412379, 512x512,
--- shipped as media/setting-ui, the same RLE 32-bit 512 TGA format as
--- media/128RedButton). These are the steppers the game's settings dropdowns
+-- shipped as media/Textures/Settings/setting-ui, the same RLE 32-bit 512 TGA format as
+-- media/Textures/QuestLog/128RedButton). These are the steppers the game's settings dropdowns
 -- wear, so the pager reads as part of the settings window. Cell rectangles
 -- are the atlas members' own texels.
 --
 -- States are rest, hover and disabled. There is no pressed face: that would
 -- need OnMouseDown / OnMouseUp, which have no runtime record here.
-SettingsList.PAGER_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\setting-ui"
+SettingsList.PAGER_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\Textures\\Settings\\setting-ui"
 SettingsList.PAGER_SHEET = 512
 SettingsList.PAGER_CELLS = {
     normal       = { 431, 509,   1,  79 },
@@ -14518,6 +14833,174 @@ function Client.CreateSettingsButton(parent, name, text, offsetX, offsetY, width
     return button
 end
 
+-- A one-choice dropdown for the standalone page: the same owned, flat shape as
+-- unrealUI's U.CreateDropdown (which the page uses instead when unrealUI hosts
+-- it), built only from parts this layer already draws -- a styled text button
+-- for the face and settings list rows for the menu. No native dropdown, no
+-- UIDropDownMenu and no ToggleDropDownMenu: none of them has runtime evidence
+-- on this client (frames.unit_dropdown_menu_unverified).
+--
+-- `items` is an array of { value = ..., text = "..." }. Returned as a control
+-- with SetPoint / SetValue / GetValue / SetOpen and a `uuiSetShown`, so a host
+-- showing the page shows the face and leaves a closed menu closed. Every row
+-- is shown and hidden by hand: parent visibility is not relied on here
+-- (rendering.parent_alpha_not_propagated).
+SettingsList.DROPDOWN_HEIGHT = 22
+SettingsList.DROPDOWN_ROW_HEIGHT = 20
+SettingsList.DROPDOWN_LEVEL_RAISE = 40
+SettingsList.DROPDOWN_ARROW = "v"
+
+function Client.CreateSettingsDropdown(parent, name, width, items, onSelect)
+    if not parent or type(name) ~= "string" or type(items) ~= "table" then
+        return nil
+    end
+    local face = Client.CreateStyledTextButton(parent, name, width,
+        SettingsList.DROPDOWN_HEIGHT, "")
+    if not face then
+        return nil
+    end
+    -- uuiParts lists every region for anything that inspects the composite;
+    -- showing and hiding goes through uuiSetShown, which keeps a closed menu
+    -- closed.
+    local control = { button = face, rows = {}, uuiParts = { face }, open = false,
+        shown = true }
+    local label = face.unrealQuestLabel
+    if label then
+        pcall(label.ClearAllPoints, label)
+        pcall(label.SetPoint, label, "LEFT", face, "LEFT",
+            SettingsList.LIST_ROW_TEXT_INSET, -2)
+        pcall(label.SetPoint, label, "RIGHT", face, "RIGHT", -20, -2)
+        pcall(label.SetJustifyH, label, "LEFT")
+    end
+    if type(face.CreateFontString) == "function" then
+        local made, arrow = pcall(face.CreateFontString, face, nil, "OVERLAY",
+            "GameFontNormalSmall")
+        if made and arrow then
+            pcall(arrow.SetPoint, arrow, "RIGHT", face, "RIGHT", -7, -2)
+            pcall(arrow.SetText, arrow, SettingsList.DROPDOWN_ARROW)
+            pcall(arrow.SetTextColor, arrow, UQ.colors.accent[1],
+                UQ.colors.accent[2], UQ.colors.accent[3])
+            StripShadow(arrow)
+        end
+    end
+
+    local function Paint()
+        local index = 1
+        local total = table.getn(control.rows)
+        while index <= total do
+            local row = control.rows[index]
+            Client.SetSettingsListRow(row, row.item.text, nil,
+                row.item.value == control.value)
+            index = index + 1
+        end
+        local text = ""
+        index = 1
+        while index <= table.getn(items) do
+            if items[index].value == control.value then
+                text = items[index].text or ""
+            end
+            index = index + 1
+        end
+        if label then
+            pcall(label.SetText, label, text)
+        end
+    end
+
+    local function ShowRows()
+        local shown = control.open and control.shown
+        local index = 1
+        local total = table.getn(control.rows)
+        while index <= total do
+            if shown then
+                Client.ShowObject(control.rows[index].button)
+            else
+                Client.HideObject(control.rows[index].button)
+            end
+            index = index + 1
+        end
+    end
+
+    control.SetOpen = function(open)
+        control.open = open and true or false
+        if control.open then
+            -- Reasserted on every open, as unrealUI's own popup does: a host
+            -- may re-level the page after the rows were made.
+            local ok, level = pcall(face.GetFrameLevel, face)
+            level = ok and tonumber(level) or nil
+            if level then
+                local index = 1
+                while index <= table.getn(control.rows) do
+                    pcall(control.rows[index].button.SetFrameLevel,
+                        control.rows[index].button,
+                        level + SettingsList.DROPDOWN_LEVEL_RAISE)
+                    index = index + 1
+                end
+            end
+            Paint()
+        end
+        ShowRows()
+    end
+
+    local index = 1
+    while index <= table.getn(items) do
+        local item = items[index]
+        local row = Client.CreateSettingsListRow(parent, name .. "Item" .. tostring(index),
+            0, 0, width, SettingsList.DROPDOWN_ROW_HEIGHT, false, function()
+                local changed = control.value ~= item.value
+                control.value = item.value
+                control.SetOpen(false)
+                Paint()
+                if changed and type(onSelect) == "function" then
+                    onSelect(item.value)
+                end
+            end)
+        if row then
+            row.item = item
+            -- An opaque bed under each row, so the open menu covers whatever
+            -- the page draws below the face.
+            local bed = CreateSolid(row.button, "BACKGROUND", FLAT_BACKGROUND[1],
+                FLAT_BACKGROUND[2], FLAT_BACKGROUND[3], 1)
+            if bed then
+                pcall(bed.SetAllPoints, bed, row.button)
+            end
+            pcall(row.button.ClearAllPoints, row.button)
+            pcall(row.button.SetPoint, row.button, "TOPLEFT", face, "BOTTOMLEFT", 0,
+                -1 - (index - 1) * SettingsList.DROPDOWN_ROW_HEIGHT)
+            Client.HideObject(row.button)
+            table.insert(control.rows, row)
+            table.insert(control.uuiParts, row.button)
+        end
+        index = index + 1
+    end
+
+    Client.SetObjectScript(face, "OnClick", function()
+        control.SetOpen(not control.open)
+    end)
+
+    control.SetValue = function(value)
+        control.value = value
+        Paint()
+    end
+    control.GetValue = function()
+        return control.value
+    end
+    control.SetPoint = function(point, relative, relativePoint, x, y)
+        pcall(face.ClearAllPoints, face)
+        pcall(face.SetPoint, face, point, relative, relativePoint, x, y)
+    end
+    control.uuiSetShown = function(shown)
+        control.shown = shown and true or false
+        if control.shown then
+            Client.ShowObject(face)
+        else
+            Client.HideObject(face)
+            control.open = false
+        end
+        ShowRows()
+    end
+    return control
+end
+
 -- Checkboxes ------------------------------------------------------------------
 --
 -- A plain Button plus owned textures, not a native CheckButton and not
@@ -14680,15 +15163,15 @@ end
 -- box and tick from one 64x64 sheet, drawn 15.6x15), on the map tracker's
 -- title line, right-aligned against the collapse button: [box] [label] [-].
 -- The label is the short "All areas" key, because the line also carries the
--- title and the count in a fixed 220px. media/checkbox-modern.tga is that
+-- title and the count in a fixed 220px. media/Textures/Settings/checkbox-modern.tga is that
 -- sheet copied byte-for-byte, so the control is the same with or without
--- unrealUI (media/CHECKBOX-ATTRIBUTION.md).
+-- unrealUI (media/Textures/Settings/CHECKBOX-ATTRIBUTION.md).
 --
 -- The box is a plain Button with an owned bed texture and an owned tick,
 -- which is what unrealUI draws too; Client.SetSettingsCheckbox shows and
 -- hides the tick through the same unrealQuestMark field every toggle uses.
 local ModernCheckbox = {
-    texture = "Interface\\AddOns\\unrealQuest\\media\\checkbox-modern",
+    texture = "Interface\\AddOns\\unrealQuest\\media\\Textures\\Settings\\checkbox-modern",
     width = 15.6, height = 15, gap = 4,
     box = { 1 / 64, 31 / 64, 1 / 64, 30 / 64 },
     tick = { 1 / 64, 31 / 64, 32 / 64, 61 / 64 },
@@ -14800,7 +15283,7 @@ end
 -- "<  Page 2/3  >" along the bottom edge of a tracker window, shown only while
 -- its content is split into pages. The arrows are the settings pager's own
 -- (SettingsList.CreatePagerArrow): the stepper beds and back/next icons from
--- Blizzard's modern settings-UI atlas, media/setting-ui, with the same rest,
+-- Blizzard's modern settings-UI atlas, media/Textures/Settings/setting-ui, with the same rest,
 -- hover and disabled faces.
 Client.TRACKER_PAGER_HEIGHT = 22
 -- MIN_TEXT_WIDTH: the page text never gets narrower than this, however narrow
@@ -15485,7 +15968,7 @@ local NPC_FILTER_SEPARATOR_BLOCK =
 local NPC_FILTER_SEPARATOR_COLOR = { 0.26, 0.26, 0.26, 1.00 }
 -- Addon TGA paths must remain extensionless on this client; see
 -- textures.addon_tga_paths_require_extensionless.
-local NPC_SERVICE_ICON_ROOT = "Interface\\AddOns\\unrealQuest\\media\\icons\\"
+local NPC_SERVICE_ICON_ROOT = "Interface\\AddOns\\unrealQuest\\media\\Textures\\Icons\\"
 Client.NPC_SERVICE_ICON_ROOT = NPC_SERVICE_ICON_ROOT
 local npcFilterMenu = nil
 local npcFilterRows = {}
@@ -16208,8 +16691,8 @@ end
 -- proving texture resources survive a UI reload. Fresh paths are required to
 -- make every higher-resolution atlas decode in the current client process.
 Client.NAVIGATOR_ARROW_TEXTURE_PREFIX =
-    "Interface\\AddOns\\unrealQuest\\media\\NavigationArrowFrames"
-Client.NAVIGATOR_ARC_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\NavigationArc"
+    "Interface\\AddOns\\unrealQuest\\media\\Textures\\HUD\\NavigationArrowFrames"
+Client.NAVIGATOR_ARC_TEXTURE = "Interface\\AddOns\\unrealQuest\\media\\Textures\\HUD\\NavigationArc"
 Client.NAVIGATOR_ARROW_FRAMES = 64
 Client.NAVIGATOR_ARROW_ATLASES = 4
 Client.NAVIGATOR_ARROW_FRAMES_PER_ATLAS = 16
@@ -16619,6 +17102,8843 @@ function Client.GetFrameCount()
         return nil
     end
     return count
+end
+
+-- Immersive quest dialogue --------------------------------------------------
+--
+-- The rebuilt dialogue is addon-owned, but every read and action still crosses
+-- this boundary.  The official client reference documents the gossip/quest
+-- globals below; runtime evidence additionally confirms the reward panel text,
+-- the two-call PlayerModel sequence (SetUnit + SetCamera), addon ScrollFrames,
+-- and extensionless addon TGA paths.  Missing calls simply leave that part of
+-- the presentation empty.
+
+function Client.GetQuestDialogueGossipText()
+    local ok, value = Call0("GetGossipText")
+    if ok and type(value) == "string" and value ~= "" then
+        return value
+    end
+    return nil
+end
+
+function Client.GetQuestDialogueGreetingText()
+    local ok, value = Call0("GetGreetingText")
+    if ok and type(value) == "string" and value ~= "" then
+        return value
+    end
+    return nil
+end
+
+function Client.GetQuestDialogueProgressText()
+    local ok, value = Call0("GetProgressText")
+    if ok and type(value) == "string" and value ~= "" then
+        return value
+    end
+    return nil
+end
+
+function Client.IsQuestDialogueCompletable()
+    local ok, value = Call0("IsQuestCompletable")
+    return ok and (value == true or value == 1) and true or false
+end
+
+-- Width over height of the addon's quest marks (media/Textures/Map/Pins/questIcon,
+-- media/Textures/Map/Pins/ActiveQuestIcon, media/Textures/Map/Pins/CompleteQuestIcon: all 19 x 32 px).
+Client.QUEST_DIALOGUE_QUEST_ICON_ASPECT = 19 / 32
+-- Gossip option rows draw the client's own Interface\GossipFrame\<Type>GossipIcon
+-- (documented: FrameXML builds the same path from GetGossipOptions' token).
+-- The addon ships no gossip icon of its own. The retail and "forever" FrameXML
+-- sets were checked as replacements and are the same 16 x 16 as the native
+-- files, so they bring no extra resolution and are not bundled.
+Client.QUEST_DIALOGUE_GOSSIP_PATH = "Interface\\GossipFrame\\"
+Client.QUEST_DIALOGUE_GOSSIP_SUFFIX = "GossipIcon"
+Client.QUEST_DIALOGUE_GOSSIP_TYPES = {
+    gossip = "Gossip",
+    vendor = "Vendor",
+    taxi = "Taxi",
+    trainer = "Trainer",
+    healer = "Healer",
+    binder = "Binder",
+    banker = "Banker",
+    petition = "Petition",
+    tabard = "Tabard",
+    battlemaster = "BattleMaster",
+}
+
+-- Interleaved varargs are captured into a table without select(), which is not
+-- part of UnrealQuest's conservative runtime subset.
+function Client.GetQuestDialogueGossipRows()
+    local rows = {}
+    local function AppendPairs(globalName, kind)
+        local fn = Resolve(globalName)
+        if not fn then
+            return
+        end
+        local values = nil
+        local ok = pcall(function() values = { fn() } end)
+        if not ok or type(values) ~= "table" then
+            return
+        end
+        local valueIndex = 1
+        local rowIndex = 1
+        local total = table.getn(values)
+        while valueIndex <= total do
+            local title = values[valueIndex]
+            local detail = values[valueIndex + 1]
+            if type(title) == "string" and title ~= "" then
+                local level = type(detail) == "number" and detail or nil
+                local icon = nil
+                local iconAspect = nil
+                -- Quest rows carry the addon's own map marks ("?" to turn
+                -- in, "!" to take), drawn at their 19 x 32 shape.
+                if kind == "gossipActive" then
+                    icon = Client.COMPLETE_QUEST_TEXTURE
+                    iconAspect = Client.QUEST_DIALOGUE_QUEST_ICON_ASPECT
+                elseif kind == "gossipAvailable" then
+                    icon = Client.AVAILABLE_QUEST_TEXTURE
+                    iconAspect = Client.QUEST_DIALOGUE_QUEST_ICON_ASPECT
+                elseif kind == "gossipOption" then
+                    local token = nil
+                    if type(detail) == "string" then
+                        local _, _, captured = string.find(detail, "^(%a+)$")
+                        token = captured
+                    end
+                    local iconType = token
+                        and Client.QUEST_DIALOGUE_GOSSIP_TYPES[string.lower(token)] or nil
+                    icon = Client.QUEST_DIALOGUE_GOSSIP_PATH .. (iconType or "Gossip")
+                        .. Client.QUEST_DIALOGUE_GOSSIP_SUFFIX
+                end
+                table.insert(rows, {
+                    kind = kind,
+                    index = rowIndex,
+                    text = title,
+                    detail = detail,
+                    level = level,
+                    complete = kind == "gossipActive" and true or nil,
+                    icon = icon,
+                    iconAspect = iconAspect,
+                })
+            end
+            valueIndex = valueIndex + 2
+            rowIndex = rowIndex + 1
+        end
+    end
+    AppendPairs("GetGossipActiveQuests", "gossipActive")
+    AppendPairs("GetGossipAvailableQuests", "gossipAvailable")
+    AppendPairs("GetGossipOptions", "gossipOption")
+    return rows
+end
+
+-- SetTexture is the existing failure boundary used by the addon's other icon
+-- widgets; this client does not expose a reliable missing-file query.
+function Client.SetQuestDialogueRowIcon(texture, path)
+    if not texture or type(texture.SetTexture) ~= "function"
+        or type(path) ~= "string" or path == "" then
+        return false
+    end
+    return pcall(texture.SetTexture, texture, path) and true or false
+end
+
+function Client.GetGreetingQuestCompletion(title)
+    if type(title) ~= "string" or title == "" then return nil end
+    local count = Client.GetQuestLogCount()
+    local matched = nil
+    local index = 1
+    while index <= count do
+        local logTitle, _, _, isHeader, _, isComplete = Client.GetQuestLogEntry(index)
+        if not isHeader and logTitle == title then
+            local complete = isComplete == true or isComplete == 1
+            if matched ~= nil and matched ~= complete then return nil end
+            matched = complete
+        end
+        index = index + 1
+    end
+    return matched
+end
+
+function Client.GetQuestDialogueGreetingRows()
+    local rows = {}
+    local ok, count = Call0("GetNumActiveQuests")
+    if not ok or type(count) ~= "number" or count < 0 then
+        count = 0
+    end
+    local index = 1
+    while index <= count do
+        local titleOk, title = Call1("GetActiveTitle", index)
+        if titleOk and type(title) == "string" and title ~= "" then
+            local levelOk, level = Call1("GetActiveLevel", index)
+            local complete = Client.GetGreetingQuestCompletion(title)
+            table.insert(rows, {
+                kind = "active",
+                index = index,
+                text = title,
+                level = levelOk and type(level) == "number" and level or nil,
+                complete = complete,
+                icon = complete == true and Client.COMPLETE_QUEST_TEXTURE
+                    or Client.ACTIVE_QUEST_TEXTURE,
+                iconAspect = Client.QUEST_DIALOGUE_QUEST_ICON_ASPECT,
+            })
+        end
+        index = index + 1
+    end
+
+    ok, count = Call0("GetNumAvailableQuests")
+    if not ok or type(count) ~= "number" or count < 0 then
+        count = 0
+    end
+    index = 1
+    while index <= count do
+        local titleOk, title = Call1("GetAvailableTitle", index)
+        if titleOk and type(title) == "string" and title ~= "" then
+            local levelOk, level = Call1("GetAvailableLevel", index)
+            table.insert(rows, {
+                kind = "available",
+                index = index,
+                text = title,
+                level = levelOk and type(level) == "number" and level or nil,
+                icon = Client.AVAILABLE_QUEST_TEXTURE,
+                iconAspect = Client.QUEST_DIALOGUE_QUEST_ICON_ASPECT,
+            })
+        end
+        index = index + 1
+    end
+    return rows
+end
+
+function Client.GetQuestDialogueItems(rewardType)
+    local rows = {}
+    local count = 0
+    local ok, value
+    if rewardType == "required" then
+        ok, value = Call0("GetNumQuestItems")
+    elseif rewardType == "choice" then
+        ok, value = Call0("GetNumQuestChoices")
+    elseif rewardType == "reward" then
+        ok, value = Call0("GetNumQuestRewards")
+    else
+        return rows
+    end
+    if ok and type(value) == "number" and value > 0 then
+        count = value
+    end
+    local index = 1
+    while index <= count do
+        local itemOk, name, texture, quantity, quality, usable =
+            Call2("GetQuestItemInfo", rewardType, index)
+        if itemOk and type(name) == "string" and name ~= "" then
+            table.insert(rows, {
+                rewardType = rewardType,
+                index = index,
+                name = name,
+                texture = type(texture) == "string" and texture or nil,
+                count = type(quantity) == "number" and quantity or 1,
+                quality = type(quality) == "number" and quality or nil,
+                usable = usable == true or usable == 1,
+            })
+        end
+        index = index + 1
+    end
+    return rows
+end
+
+function Client.GetQuestDialogueRewardMoney()
+    local ok, value = Call0("GetRewardMoney")
+    if ok and type(value) == "number" and value > 0 then
+        return value
+    end
+    return 0
+end
+
+function Client.GetQuestDialogueRequiredMoney()
+    local ok, required = Call0("GetQuestMoneyToGet")
+    if not ok or type(required) ~= "number" or required < 0 then required = 0 end
+    local moneyOk, money = Call0("GetMoney")
+    if not moneyOk or type(money) ~= "number" or money < 0 then money = 0 end
+    return required, money
+end
+
+function Client.GetQuestDialogueRewardSpell()
+    local ok, texture = Call0("GetRewardSpell")
+    if ok and type(texture) == "string" and texture ~= "" then return texture end
+    return nil
+end
+
+function Client.GetQuestDialogueQualityColor(quality)
+    if type(quality) ~= "number" then return nil end
+    local ok, red, green, blue = Call1("GetItemQualityColor", quality)
+    if not ok or type(red) ~= "number" or type(green) ~= "number"
+        or type(blue) ~= "number" then
+        return nil
+    end
+    return red, green, blue
+end
+
+-- Whether `unit` is within interact range. CheckInteractDistance is in the
+-- client's API reference with a single UnitID argument
+-- (OFFICIAL_CLIENT_DOCUMENTATION, not probed); nil when it is missing or
+-- fails, so a caller can tell "out of range" from "cannot tell".
+function Client.IsUnitInInteractRange(unit)
+    local ok, value = Call1("CheckInteractDistance", unit)
+    if not ok then return nil end
+    return value and true or false
+end
+
+-- The unit behind the open gossip or quest window, or nil.
+--
+-- "npc" (and the older "questnpc") is the documented UnitID for the unit the
+-- player is interacting with, but in game it resolved to nothing during a
+-- quest dialogue: the speaker line fell back to its generic label and the
+-- portrait, fed SetUnit("npc"), stayed empty (knowledge record
+-- units.npc_unitid_empty_during_quest_dialogue). Talking to a creature
+-- targets it, so the fallback is the target -- only when it is not a player
+-- and, where the client can tell, within interact range, which keeps a
+-- distant target from standing in for a quest board or an item.
+function Client.ResolveQuestDialogueUnit()
+    if Client.UnitExists("npc") then return "npc" end
+    if Client.UnitExists("questnpc") then return "questnpc" end
+    if Client.UnitExists("target") and not Client.UnitIsPlayer("target")
+        and Client.IsUnitInInteractRange("target") ~= false then
+        return "target"
+    end
+    return nil
+end
+
+function Client.GetQuestDialogueSpeaker()
+    local unit = Client.ResolveQuestDialogueUnit()
+    return unit and Client.GetUnitName(unit) or nil
+end
+
+function Client.RunQuestDialogueAction(action, index)
+    if action == "gossipOption" then
+        return Call1("SelectGossipOption", index)
+    elseif action == "gossipAvailable" then
+        return Call1("SelectGossipAvailableQuest", index)
+    elseif action == "gossipActive" then
+        return Call1("SelectGossipActiveQuest", index)
+    elseif action == "available" then
+        return Call1("SelectAvailableQuest", index)
+    elseif action == "active" then
+        return Call1("SelectActiveQuest", index)
+    elseif action == "accept" then
+        return Call0("AcceptQuest")
+    elseif action == "decline" then
+        return Call0("DeclineQuest")
+    elseif action == "progress" then
+        return Call0("CompleteQuest")
+    elseif action == "reward" then
+        return Call1("GetQuestReward", index or 0)
+    elseif action == "closeGossip" then
+        return Call0("CloseGossip")
+    elseif action == "closeQuest" then
+        return Call0("CloseQuest")
+    end
+    return false
+end
+
+-- Events choose the mode immediately.  Polling verifies it from live content
+-- and is also the fallback when every candidate event is rejected.
+function Client.ResolveQuestDialogueMode(hint, knownSource)
+    local valid = {
+        gossip = true,
+        greeting = true,
+        detail = true,
+        progress = true,
+        reward = true,
+    }
+
+    local greetingText = type(knownSource) == "table" and knownSource.greeting or nil
+    local gossipText = type(knownSource) == "table" and knownSource.gossip or nil
+    local greetingRows = nil
+    local gossipRows = nil
+    if hint == "greeting" then
+        greetingRows = Client.GetQuestDialogueGreetingRows()
+        if table.getn(greetingRows) > 0 then return "greeting" end
+        if not greetingText then greetingText = Client.GetQuestDialogueGreetingText() end
+        if greetingText then return "greeting", "greeting", greetingText end
+    elseif hint == "gossip" then
+        gossipRows = Client.GetQuestDialogueGossipRows()
+        if table.getn(gossipRows) > 0 then return "gossip" end
+        if not gossipText then gossipText = Client.GetQuestDialogueGossipText() end
+        if gossipText then return "gossip", "gossip", gossipText end
+    end
+
+    local title = Client.GetQuestGiverTitle()
+    -- The event's page wins while its own text is there: a quest offered
+    -- right after one was handed in opened as a turn-in, with Complete in
+    -- place of Accept (user report, 2026-10-12) -- the reward text is not
+    -- known to be cleared when the offer page shows (open question
+    -- quest_dialog.reward_text_after_turn_in), and it was checked first.
+    if title and hint == "detail"
+        and (Client.GetQuestGiverDescription() or Client.GetQuestGiverObjective()) then
+        return "detail"
+    end
+    if title and hint == "progress" and Client.GetQuestDialogueProgressText() then
+        return "progress"
+    end
+    if title and Client.GetQuestCompletionText() then
+        return "reward"
+    end
+    if title and Client.GetQuestDialogueProgressText() then
+        return "progress"
+    end
+    if title and (Client.GetQuestGiverDescription()
+        or Client.GetQuestGiverObjective()) then
+        return "detail"
+    end
+    if title and valid[hint] and hint ~= "gossip" and hint ~= "greeting" then
+        return hint
+    end
+
+    if not greetingRows then greetingRows = Client.GetQuestDialogueGreetingRows() end
+    if not gossipRows then gossipRows = Client.GetQuestDialogueGossipRows() end
+    if table.getn(greetingRows) > 0 then return "greeting" end
+    if not greetingText then greetingText = Client.GetQuestDialogueGreetingText() end
+    if greetingText then
+        return "greeting", "greeting", greetingText
+    end
+    if table.getn(gossipRows) > 0 then return "gossip" end
+    if not gossipText then gossipText = Client.GetQuestDialogueGossipText() end
+    if gossipText then
+        return "gossip", "gossip", gossipText
+    end
+    return nil
+end
+
+-- A suppressed stock root is concealed, never hidden: the native OnHide of
+-- GossipFrame calls CloseGossip (and QuestFrame's calls CloseQuest), so hiding
+-- it ends the NPC interaction and every later gossip/turn-in call goes
+-- nowhere (knowledge record npc_dialog.stock_root_hide_closes_interaction,
+-- questturnin.v1). It is parked far off screen at alpha 0, unrealUI's
+-- recipe for the stock bank (bank.native_frame_must_not_be_hidden): a native
+-- root's alpha and scale do not reach its parts, its position does. The
+-- earlier near-zero scale crashed the client when a gossip row opened a quest
+-- (2026-10-06, native access violation). Only a root that has moved is
+-- re-anchored: re-anchoring a parked root on every poll made its text and
+-- close button blink on screen (user report, 2026-10-06). The stock panel
+-- manager can still move it, so the dialogue checks every driver tick
+-- (Client.KeepQuestDialogueRootsParked).
+Client.QUEST_DIALOGUE_PARK = 4000
+
+function Client.IsQuestDialogueRootParked(frame)
+    if type(frame.GetPoint) ~= "function" then return false end
+    local park = Client.QUEST_DIALOGUE_PARK
+    local ok, point, _, _, x, y = pcall(frame.GetPoint, frame, 1)
+    return ok and point == "TOPLEFT" and x == -park and y == park
+end
+
+function Client.ConcealQuestDialogueRoot(frame)
+    if not frame then return end
+    if not frame.unrealQuestDialogueConcealed then
+        local saved = { alpha = Client.GetObjectAlpha(frame) or 1 }
+        if type(frame.GetPoint) == "function" then
+            local ok, point, relative, relativePoint, x, y = pcall(frame.GetPoint, frame, 1)
+            if ok and type(point) == "string" then
+                saved.point = { point, relative, relativePoint, x, y }
+            end
+        end
+        if type(frame.IsClampedToScreen) == "function" then
+            local ok, clamped = pcall(frame.IsClampedToScreen, frame)
+            if ok then saved.clamped = clamped and true or false end
+        end
+        frame.unrealQuestDialogueConcealed = saved
+    end
+    if Client.IsQuestDialogueRootParked(frame) then return end
+    if type(frame.SetScale) == "function" then pcall(frame.SetScale, frame, 1) end
+    if type(frame.SetClampedToScreen) == "function" then
+        pcall(frame.SetClampedToScreen, frame, false)
+    end
+    if type(frame.SetAlpha) == "function" then pcall(frame.SetAlpha, frame, 0) end
+    local park = Client.QUEST_DIALOGUE_PARK
+    Client.AnchorObject(frame, "TOPLEFT", ResolveObject("UIParent"), "TOPLEFT", -park, park)
+end
+
+-- Puts back any concealed stock root the client moved. Cheap enough for
+-- every driver tick: one GetPoint per concealed root, nothing otherwise.
+function Client.KeepQuestDialogueRootsParked()
+    local names = { "QuestFrame", "GossipFrame" }
+    local index = 1
+    while index <= 2 do
+        local frame = ResolveObject(names[index])
+        if frame and frame.unrealQuestDialogueConcealed
+            and frame.unrealQuestDialogueSuppress then
+            Client.ConcealQuestDialogueRoot(frame)
+        end
+        index = index + 1
+    end
+end
+
+function Client.RevealQuestDialogueRoot(frame)
+    local saved = frame and frame.unrealQuestDialogueConcealed
+    if not saved then return end
+    frame.unrealQuestDialogueConcealed = nil
+    local point = saved.point
+    if point then
+        Client.AnchorObject(frame, point[1], point[2] or ResolveObject("UIParent"),
+            point[3], point[4], point[5])
+    end
+    if saved.clamped ~= nil and type(frame.SetClampedToScreen) == "function" then
+        pcall(frame.SetClampedToScreen, frame, saved.clamped)
+    end
+    if type(frame.SetAlpha) == "function" then pcall(frame.SetAlpha, frame, saved.alpha) end
+end
+
+-- Asked by the OnShow guard, with "quest" or "gossip", whether the dialogue
+-- takes the interaction that root is opening. The suppress flag alone is set
+-- only by the dialogue's 0.1 s poll and cleared when a conversation ends, so
+-- every new conversation drew the stock window until that poll concealed it
+-- (flicker, user report, 2026-10-09). Deciding here conceals it before its
+-- first frame is drawn.
+Client.questDialogueShowDecider = nil
+
+function Client.SetQuestDialogueShowDecider(decide)
+    Client.questDialogueShowDecider = decide
+end
+
+-- One permanent OnShow guard per stock root.  The guard stays inert when the
+-- option is off; SetScript(type, nil) cannot remove it on this client. A root
+-- still concealed from an earlier conversation is revealed on its next show
+-- when the option no longer suppresses it.
+function Client.InstallQuestDialogueGuards()
+    local function Install(frame, key, kind)
+        if not frame or Client.IsScriptChained(frame, key) then
+            return
+        end
+        local installed = Client.ChainScript(frame, "OnShow", function()
+            frame.unrealQuestDialogueGeneration =
+                (frame.unrealQuestDialogueGeneration or 0) + 1
+            local decide = Client.questDialogueShowDecider
+            if not frame.unrealQuestDialogueSuppress and type(decide) == "function" then
+                local ok, takes = pcall(decide, kind)
+                if ok and takes then frame.unrealQuestDialogueSuppress = true end
+            end
+            if frame.unrealQuestDialogueSuppress then
+                Client.ConcealQuestDialogueRoot(frame)
+            else
+                Client.RevealQuestDialogueRoot(frame)
+            end
+        end)
+        if installed then
+            Client.MarkScriptChained(frame, key)
+            if Client.IsObjectShown(frame) then
+                frame.unrealQuestDialogueGeneration = 1
+            end
+        end
+    end
+    Install(ResolveObject("QuestFrame"), "unrealQuestDialogueGuard", "quest")
+    Install(ResolveObject("GossipFrame"), "unrealQuestDialogueGuard", "gossip")
+end
+
+function Client.GetQuestDialogueSignal()
+    local quest = ResolveObject("QuestFrame")
+    local gossip = ResolveObject("GossipFrame")
+    local questGeneration = quest and quest.unrealQuestDialogueGeneration or 0
+    local gossipGeneration = gossip and gossip.unrealQuestDialogueGeneration or 0
+    if quest and Client.IsObjectShown(quest) then
+        questGeneration = questGeneration + 1000000
+    end
+    if gossip and Client.IsObjectShown(gossip) then
+        gossipGeneration = gossipGeneration + 1000000
+    end
+    return questGeneration, gossipGeneration
+end
+
+-- Whether a stock root ("quest" or "gossip") is shown right now. A concealed
+-- root counts: concealing parks it, it never hides it.
+function Client.IsQuestDialogueRootShown(kind)
+    local name = kind == "gossip" and "GossipFrame" or "QuestFrame"
+    return Client.IsObjectShown(ResolveObject(name)) and true or false
+end
+
+-- suppress=true conceals one stock root. suppress=false only disarms the guard;
+-- restore=true additionally reveals a root this feature concealed, which is
+-- used when the player turns the replacement off mid-conversation.
+-- The HUD the quest dialogue hides while it is up (option
+-- dialogueHideInterface, Dialogue:SyncInterfaceHidden): unit frames, action,
+-- pet, stance and micro bars, the minimap, chat and the status overlays.
+--
+-- Hidden, not faded: this client does not propagate a parent's alpha to its
+-- children (rendering.parent_alpha_not_propagated) and its FontStrings ignore
+-- SetAlpha, so a faded unit frame kept its portrait, name and level (user
+-- report, 2026-10-12). Hiding a parent hides every descendant. UIParent itself
+-- cannot go: the dialogue, its tooltips and the game menu live under it.
+--
+-- Two lists. `native` is the stock HUD, always tried. `unrealUI` is only tried
+-- when unrealUI is loaded (Client.IsUnrealUILoaded). Either way a frame is only
+-- hidden when it is shown with an alpha above 0: unrealUI suppresses parts of
+-- the stock target family by alpha 0 alone and forbids Hide() on them (its
+-- core/compat.lua, the Tab-spam collapse), and an alpha-0 frame is invisible
+-- already. `units` gates the restore: a frame whose unit has gone since is
+-- left hidden for its owner to bring back, not shown empty.
+--
+-- Built and kept in functions of their own: the file's main chunk is at the
+-- 200-local limit, which even a do-block's locals count against.
+Client.QUEST_DIALOGUE_HIDDEN_FRAMES = (function()
+    local native = {
+        "PlayerFrame", "TargetFrame", "TargetofTargetFrame", "PetFrame", "ComboFrame",
+        "MainMenuBar", "MultiBarBottomLeft", "MultiBarBottomRight", "MultiBarLeft",
+        "MultiBarRight", "ShapeshiftBarFrame", "PetActionBarFrame", "BonusActionBarFrame",
+        "MinimapCluster", "QuestWatchFrame", "ChatFrameMenuButton", "ChatFrameEditBox",
+    }
+    local unrealUI = {
+        "UnrealUIUnitPlayer", "UnrealUIUnitTarget", "UnrealUIUnitTargetTarget",
+        "UnrealUIUnitPet", "UnrealUIPartyAnchor", "UnrealUIUnitPartyPlayer",
+        "UnrealUIPetBar", "UnrealUIPetBarAnchor", "UnrealUIStanceBar",
+        "UnrealUIMicroBarAnchor", "UnrealUIBagBarAnchor", "UnrealUIXPBarAnchor",
+        "UnrealUIReputationBarAnchor", "UnrealUIStatusAnchor",
+        "UnrealUIPopulationAnchor", "UnrealUIMinimapMail",
+    }
+    local units = {
+        TargetFrame = "target", TargetofTargetFrame = "targettarget",
+        PetFrame = "pet", ComboFrame = "target", PetActionBarFrame = "pet",
+        UnrealUIUnitTarget = "target", UnrealUIUnitTargetTarget = "targettarget",
+        UnrealUIUnitPet = "pet", UnrealUIPetBar = "pet", UnrealUIPetBarAnchor = "pet",
+    }
+    local index = 1
+    while index <= 7 do
+        table.insert(native, "ChatFrame" .. index)
+        table.insert(native, "ChatFrame" .. index .. "Tab")
+        index = index + 1
+    end
+    index = 1
+    while index <= 4 do
+        table.insert(native, "PartyMemberFrame" .. index)
+        table.insert(unrealUI, "UnrealUIUnitParty" .. index)
+        table.insert(unrealUI, "UnrealUIUnitPartyPet" .. index)
+        units["PartyMemberFrame" .. index] = "party" .. index
+        units["UnrealUIUnitParty" .. index] = "party" .. index
+        units["UnrealUIUnitPartyPet" .. index] = "partypet" .. index
+        index = index + 1
+    end
+    index = 1
+    while index <= 10 do
+        table.insert(unrealUI, "UnrealUIActionBar" .. index)
+        index = index + 1
+    end
+    return { native = native, unrealUI = unrealUI, units = units }
+end)()
+
+-- unrealUI's namespace table is there (the same global Core/Settings.lua
+-- reads to find its host).
+function Client.IsUnrealUILoaded()
+    return type(ResolveObject("UnrealUI")) == "table"
+end
+
+-- SetGameInterfaceHidden(hidden): hidden, hides every listed frame that is on
+-- screen and remembers it, and hides the world tooltip. Meant to be called on
+-- every poll while the dialogue is up: a frame that appeared since is hidden
+-- too. Not hidden, shows each remembered frame whose unit (if it has one)
+-- still exists, and forgets them all; with nothing remembered it does nothing.
+--
+-- KeepGameInterfaceHidden(): the per-frame half, for the dialogue's interval-0
+-- driver job. Re-hides only the frames already remembered, plus the world
+-- tooltip, so an owner that shows its frame again on its own clock is undone
+-- before the next poll: unrealUI's XP bar calls Show() from a 2 s refresh
+-- (its modules/xpbar.lua) and flashed for up to one 0.1 s poll (user report,
+-- 2026-10-12).
+--
+-- The world tooltip is GameTooltip while it belongs to UIParent or
+-- WorldFrame, the owner a world hover gets from its default anchor (unrealUI
+-- moves it to its cursor anchor but keeps that owner). The dialogue's own
+-- tooltips belong to its reward tiles, so they are left alone.
+Client.SetGameInterfaceHidden, Client.KeepGameInterfaceHidden = (function()
+    -- Name -> true, for every frame this hid.
+    local hiddenInterface = {}
+    local function HideWorldTooltip()
+        local tooltip = ResolveGameTooltip()
+        if not tooltip or not Client.IsObjectShown(tooltip)
+            or type(tooltip.IsOwned) ~= "function" then
+            return
+        end
+        local ok, owned = pcall(tooltip.IsOwned, tooltip, ResolveObject("UIParent"))
+        if not ok or not owned then
+            ok, owned = pcall(tooltip.IsOwned, tooltip, ResolveObject("WorldFrame"))
+        end
+        if ok and owned then Client.HideObject(tooltip) end
+    end
+    local function HideList(names)
+        local index = 1
+        while index <= table.getn(names) do
+            local name = names[index]
+            local frame = ResolveObject(name)
+            if frame and Client.IsObjectShown(frame) then
+                local alpha = 1
+                if type(frame.GetAlpha) == "function" then
+                    local ok, value = pcall(frame.GetAlpha, frame)
+                    if ok and type(value) == "number" then alpha = value end
+                end
+                if alpha > 0 and Client.HideObject(frame) then
+                    hiddenInterface[name] = true
+                end
+            end
+            index = index + 1
+        end
+    end
+    local function SetHidden(hidden)
+        local lists = Client.QUEST_DIALOGUE_HIDDEN_FRAMES
+        if hidden then
+            HideList(lists.native)
+            if Client.IsUnrealUILoaded() then HideList(lists.unrealUI) end
+            HideWorldTooltip()
+            return
+        end
+        for name in pairs(hiddenInterface) do
+            local unit = lists.units[name]
+            if not unit or Client.UnitExists(unit) then
+                Client.ShowObject(ResolveObject(name))
+            end
+            hiddenInterface[name] = nil
+        end
+    end
+    local function KeepHidden()
+        local any = false
+        for name in pairs(hiddenInterface) do
+            any = true
+            local frame = ResolveObject(name)
+            if Client.IsObjectShown(frame) then Client.HideObject(frame) end
+        end
+        if any then HideWorldTooltip() end
+    end
+    return SetHidden, KeepHidden
+end)()
+
+-- The game menu, read for the quest dialogue's Escape: an Escape that closes
+-- the card can also open the menu, and the dialogue polls for that menu and
+-- puts it away (Dialogue:CloseOnGameMenu, Client.SetQuestDialogueEscape).
+--
+-- Deliberately NOT a hook on GameMenuFrame's OnShow. The first version
+-- chained that script and called HideUIPanel on the menu from inside its own
+-- OnShow, i.e. in the middle of the client's ShowUIPanel; with it installed
+-- Escape no longer opened the game menu (user report, 2026-10-05). A script
+-- chained here can never be removed again (SetScript(type, nil) does not
+-- detach on this client), so the menu is only read and, outside any of its
+-- scripts, hidden through HideUIPanel -- the same call unrealUI's
+-- modules/gamemenu.lua makes from its menu rows (WORKING_SOURCE).
+function Client.IsGameMenuShown()
+    return Client.IsObjectShown(ResolveObject("GameMenuFrame"))
+end
+
+function Client.HideGameMenu()
+    local menu = ResolveObject("GameMenuFrame")
+    if not menu then return false end
+    local hide = Resolve("HideUIPanel")
+    if hide and pcall(hide, menu) then return true end
+    return Client.HideObject(menu)
+end
+
+function Client.SetNativeQuestDialogueSuppressed(kind, suppress, restore)
+    local name = kind == "gossip" and "GossipFrame" or "QuestFrame"
+    local frame = ResolveObject(name)
+    if not frame then
+        return false
+    end
+    if suppress then
+        frame.unrealQuestDialogueSuppress = true
+        if Client.IsObjectShown(frame) then Client.ConcealQuestDialogueRoot(frame) end
+        return true
+    end
+    frame.unrealQuestDialogueSuppress = nil
+    -- Revealing outside restore would flash the stock window between the
+    -- card closing and the client hiding the root; the OnShow guard reveals
+    -- it on its next show instead.
+    if restore then Client.RevealQuestDialogueRoot(frame) end
+    return true
+end
+
+function Client.PlaceQuestDialogueFlag(button, anchor, offsetX, offsetY)
+    if not button or not anchor then return false end
+    if type(button.SetParent) == "function" then pcall(button.SetParent, button, anchor) end
+    -- The flags keep their own size; only the inset is in dialogue units
+    -- (Client.GetQuestDialogueFlagInset).
+    return Client.AnchorObject(button, "TOPRIGHT", anchor, "TOPRIGHT",
+        offsetX or 0, offsetY or 0)
+end
+
+-- The dialogue's drawn size as a share of its design units. Every box,
+-- offset and font size in the dialogue below is written in design units and
+-- reaches the client through these helpers, which multiply by UNIT. The
+-- card cannot be shrunk with SetScale: that reached only the root's own
+-- textures, not its text or child frames
+-- (frames.root_scale_reaches_textures_not_text).
+Client.QUEST_DIALOGUE_UNIT = 0.6
+-- The dialogue's option rows: 15% taller than the first 32 (user request),
+-- with the same 3-unit gap between them.
+Client.QUEST_DIALOGUE_ROW_HEIGHT = 36.8
+Client.QUEST_DIALOGUE_ROW_PITCH = 39.8
+-- A theme whose row art reaches past the row (its layout's rowOutset, design
+-- units above and below) spaces its rows that much further apart and drops
+-- the first by the outset, so the gap between the art stays 3 units.
+function Client.GetQuestDialogueRowOutset(frame)
+    return Client.GetQuestDialogueLayout(frame).rowOutset or 0
+end
+
+function Client.GetQuestDialogueRowPitch(frame)
+    return Client.QUEST_DIALOGUE_ROW_PITCH + 2 * Client.GetQuestDialogueRowOutset(frame)
+end
+
+-- The top offset of the row in `slot` (0 for the first shown).
+function Client.GetQuestDialogueRowTop(frame, slot)
+    return -(slot * Client.GetQuestDialogueRowPitch(frame)
+        + Client.GetQuestDialogueRowOutset(frame))
+end
+-- The labels' share of their template sizes, larger than UNIT so the text
+-- stays readable (user request). Every dialogue label box is at least
+-- FONT_UNIT / UNIT times its template's size tall, so no line is clipped,
+-- and the page budgets (`text` in QUEST_DIALOGUE_LAYOUTS) are scaled down
+-- by the same ratio. The prose body uses the equivalently sized inherited
+-- GameFontNormalSmall instead: named Fonts ignore its left justification.
+Client.QUEST_DIALOGUE_FONT_UNIT = 0.8
+Client.QUEST_DIALOGUE_BASE_UNIT = Client.QUEST_DIALOGUE_UNIT
+Client.QUEST_DIALOGUE_BASE_FONT_UNIT = Client.QUEST_DIALOGUE_FONT_UNIT
+-- A theme drawn larger than the others: Alliance V2 is 29.6% bigger (20% twice,
+-- then 10% off), its text kept at the base size (user request); Horde V2 is a
+-- further 20% bigger than Alliance V2 (user request). SetScale cannot
+-- stand in (see above), so every dialogue object retains its design geometry
+-- and that geometry is reapplied when the active theme changes.
+Client.QUEST_DIALOGUE_THEME_SCALE = { ["alliance"] = 1.296, ["horde"] = 1.5552 }
+Client.QUEST_DIALOGUE_GEOMETRY = {}
+
+function Client.GetQuestDialogueThemeScale(theme)
+    return Client.QUEST_DIALOGUE_THEME_SCALE[theme or ""] or 1
+end
+
+-- Sets the frame unit for `theme`, never the font unit, and records it as
+-- the theme the card is built for (its portrait hole); called before
+-- Client.CreateQuestDialogueFrame.
+function Client.ApplyQuestDialogueThemeScale(theme)
+    local scale = Client.GetQuestDialogueThemeScale(theme)
+    Client.QUEST_DIALOGUE_BUILD_THEME = theme
+    Client.QUEST_DIALOGUE_UNIT = Client.QUEST_DIALOGUE_BASE_UNIT * scale
+    Client.QUEST_DIALOGUE_FONT_UNIT = Client.QUEST_DIALOGUE_BASE_FONT_UNIT
+    return scale
+end
+
+function Client.RememberQuestDialogueGeometry(object)
+    if not object then return end
+    if not object.unrealQuestDialogueGeometry then
+        object.unrealQuestDialogueGeometry = { points = {} }
+        table.insert(Client.QUEST_DIALOGUE_GEOMETRY, object)
+    end
+end
+
+function Client.SizeQuestDialogue(object, width, height)
+    Client.RememberQuestDialogueGeometry(object)
+    local geometry = object and object.unrealQuestDialogueGeometry
+    if geometry then
+        if type(width) == "number" then geometry.width = width end
+        if type(height) == "number" then geometry.height = height end
+    end
+    local unit = Client.QUEST_DIALOGUE_UNIT
+    return Client.SetObjectSize(object, type(width) == "number" and width * unit or width,
+        type(height) == "number" and height * unit or height)
+end
+
+-- Width-only sizing leaves a FontString's height content-driven. This avoids
+-- the ignored vertical-justification path centring short text inside a tall
+-- region while still fixing the wrap width and horizontal origin.
+function Client.WidthQuestDialogue(object, width)
+    if not object or type(object.SetWidth) ~= "function"
+        or type(width) ~= "number" then
+        return false
+    end
+    Client.RememberQuestDialogueGeometry(object)
+    object.unrealQuestDialogueGeometry.width = width
+    object.unrealQuestDialogueGeometry.height = nil
+    local ok = pcall(object.SetWidth, object, width * Client.QUEST_DIALOGUE_UNIT)
+    return ok and true or false
+end
+
+function Client.AnchorQuestDialogue(object, point, relative, relativePoint, offsetX, offsetY)
+    Client.RememberQuestDialogueGeometry(object)
+    if object and object.unrealQuestDialogueGeometry then
+        object.unrealQuestDialogueGeometry.points = {
+            { point, relative, relativePoint, offsetX, offsetY },
+        }
+    end
+    local unit = Client.QUEST_DIALOGUE_UNIT
+    return Client.AnchorObject(object, point, relative, relativePoint,
+        type(offsetX) == "number" and offsetX * unit or offsetX,
+        type(offsetY) == "number" and offsetY * unit or offsetY)
+end
+
+function Client.AddQuestDialogueAnchor(object, point, relative, relativePoint, offsetX, offsetY)
+    if not object or type(object.SetPoint) ~= "function" then return false end
+    Client.RememberQuestDialogueGeometry(object)
+    table.insert(object.unrealQuestDialogueGeometry.points,
+        { point, relative, relativePoint, offsetX, offsetY })
+    local unit = Client.QUEST_DIALOGUE_UNIT
+    return pcall(object.SetPoint, object, point, relative, relativePoint,
+        type(offsetX) == "number" and offsetX * unit or offsetX,
+        type(offsetY) == "number" and offsetY * unit or offsetY) and true or false
+end
+
+function Client.RescaleQuestDialogueGeometry()
+    local unit = Client.QUEST_DIALOGUE_UNIT
+    local objects = Client.QUEST_DIALOGUE_GEOMETRY
+    local index = 1
+    while index <= table.getn(objects) do
+        local object = objects[index]
+        local geometry = object and object.unrealQuestDialogueGeometry
+        if geometry then
+            Client.SetObjectSize(object,
+                type(geometry.width) == "number" and geometry.width * unit or nil,
+                type(geometry.height) == "number" and geometry.height * unit or nil)
+            local points = geometry.points or {}
+            if table.getn(points) > 0 and type(object.SetPoint) == "function" then
+                if type(object.ClearAllPoints) == "function" then
+                    pcall(object.ClearAllPoints, object)
+                end
+                local pointIndex = 1
+                while pointIndex <= table.getn(points) do
+                    local spec = points[pointIndex]
+                    pcall(object.SetPoint, object, spec[1], spec[2], spec[3],
+                        type(spec[4]) == "number" and spec[4] * unit or spec[4],
+                        type(spec[5]) == "number" and spec[5] * unit or spec[5])
+                    pointIndex = pointIndex + 1
+                end
+            end
+        end
+        index = index + 1
+    end
+end
+
+-- Puts a freshly created dialogue label on its stock face at FONT_UNIT of
+-- its template's size (or of `size`), through the named-Font route measured to
+-- change a label's rendered size (fonts.setfont_silent_failure, route F).
+-- Called before the label's colour, justification and shadow are set, so
+-- the new Font replaces nothing the caller applies. On any failure the
+-- label keeps its template's font. Returns true when the Font was attached.
+Client.QUEST_DIALOGUE_FONT = { count = 0, fallbackPath = "Fonts\\FRIZQT__.TTF", fallbackSize = 12 }
+
+function Client.ScaleQuestDialogueFont(label, size)
+    local createFont = Resolve("CreateFont")
+    if not label or not createFont or type(label.SetFontObject) ~= "function" then
+        return false
+    end
+    local fonts = Client.QUEST_DIALOGUE_FONT
+    local path, current = fonts.fallbackPath, fonts.fallbackSize
+    if type(label.GetFont) == "function" then
+        local ok, readPath, readSize = pcall(label.GetFont, label)
+        if ok and type(readPath) == "string"
+            and string.find(string.lower(readPath), "^fonts[\\/]") then
+            path = readPath
+        end
+        if ok and type(readSize) == "number" and readSize > 0 then current = readSize end
+    end
+    -- Preserve the stock/template size before attaching our scaled Font. A
+    -- theme can then supply an override and later return to the template size
+    -- in the same session without scaling an already-scaled face again.
+    if type(label.unrealQuestDefaultFontDesignSize) ~= "number" then
+        label.unrealQuestDefaultFontDesignSize = current
+    end
+    local designSize = type(size) == "number" and size
+        or label.unrealQuestDefaultFontDesignSize
+    local height = math.floor(designSize * Client.QUEST_DIALOGUE_FONT_UNIT + 0.5)
+    if height < 6 then height = 6 end
+    if label.unrealQuestFont and type(label.unrealQuestFont.SetFont) == "function"
+        and pcall(label.unrealQuestFont.SetFont, label.unrealQuestFont, path, height) then
+        return true
+    end
+    -- One Font per label, so a colour set through one cannot reach another.
+    fonts.count = fonts.count + 1
+    local ok, font = pcall(createFont, "UnrealQuestDialogueFont" .. tostring(fonts.count))
+    if not ok or not font or type(font.SetFont) ~= "function"
+        or not pcall(font.SetFont, font, path, height) then
+        return false
+    end
+    if not pcall(label.SetFontObject, label, font) then return false end
+    label.unrealQuestFont = font
+    return true
+end
+
+-- Justifies a dialogue label. A label on a named Font drew centred in game
+-- although SetJustifyH("LEFT") was called on it after the Font was attached
+-- (user report; fonts.named_font_justification_wins), so the Font object is
+-- justified too. That alone did not move short text left in game; single-line
+-- labels are also narrowed to their text (Client.FitQuestDialogueLabel).
+function Client.JustifyQuestDialogueText(label, horizontal, vertical)
+    if not label then return false end
+    local font = label.unrealQuestFont
+    if horizontal then
+        if type(label.SetJustifyH) == "function" then pcall(label.SetJustifyH, label, horizontal) end
+        if font and type(font.SetJustifyH) == "function" then
+            pcall(font.SetJustifyH, font, horizontal)
+        end
+    end
+    if vertical then
+        if type(label.SetJustifyV) == "function" then pcall(label.SetJustifyV, label, vertical) end
+        if font and type(font.SetJustifyV) == "function" then
+            pcall(font.SetJustifyV, font, vertical)
+        end
+    end
+    return true
+end
+
+-- Narrows a single-line, left-anchored label to its text's measured width,
+-- capped at its `box` (design units). Left justification is not honoured on
+-- these labels here: neither SetJustifyH on the label nor on its named Font
+-- moved short text off the centre (fonts.named_font_justification_wins). A
+-- box exactly as wide as its text has nowhere to centre it.
+-- GetStringWidth is clamped to the width set on the label and only settles
+-- the next frame (widgets.fontstring_stringwidth_clamped_by_setwidth), and
+-- text is cut to the width it has at SetText: measured in the same frame, a
+-- longer text than the last came back cut ("Miner's..") or wrapped at half
+-- the body. So a new text is laid out at the full width now and trimmed by
+-- Client.SettleQuestDialogueLabels once the width has settled.
+-- A text too long for its box is not left to the client to cut: a cut text
+-- kept the full box width, and the client centred it in that box, so a long
+-- NPC name started right of the role line above it. The measure is clamped
+-- to the box, so a text measuring the whole box is taken as too long and
+-- shortened here by a tenth of its bytes (to a UTF-8 character boundary,
+-- with "..") one settle at a time until it measures less, and the label hugs
+-- whatever is left. The box never widens, so nothing spills past it.
+Client.QUEST_DIALOGUE_FITS = { tick = 0, pending = {}, ELLIPSIS = ".." }
+
+-- Wrapped prose keeps its authored box in every language. Shrinking that box
+-- to a translated line's measured width made this client centre the next
+-- line visually, despite LEFT on both the FontString and its named Font.
+function Client.LockQuestDialogueWrappedLeft(label, box, widthInset)
+    if not label or not box then return false end
+    Client.JustifyQuestDialogueText(label, "LEFT", "TOP")
+    local inset = type(widthInset) == "number" and widthInset or 0
+    if inset > 0 then
+        Client.WidthQuestDialogue(label, box[3] - inset)
+    else
+        Client.SizeQuestDialogue(label, box[3], box[4])
+    end
+    local fits = Client.QUEST_DIALOGUE_FITS
+    fits.pending[label] = nil
+    label.unrealQuestFitText = nil
+    label.unrealQuestFitShown = nil
+    label.unrealQuestFitLimit = nil
+    label.unrealQuestFitTick = nil
+    return true
+end
+
+-- `sourceText`: the text the caller just set, for a label carrying escapes
+-- ("||", "|cff...|r"). GetText is documented to return the VISIBLE text
+-- (OFFICIAL_CLIENT_DOCUMENTATION), and this function sets what it read back
+-- again: the reward line lost its "||" separators and its white experience
+-- and reputation that way (user report, 2026-10-12; open question 39).
+function Client.FitQuestDialogueLabel(label, box, sourceText)
+    if not label or not box or type(label.GetStringWidth) ~= "function" then return false end
+    local limit = box[3] * Client.QUEST_DIALOGUE_UNIT
+    local text = type(sourceText) == "string" and sourceText or nil
+    if not text and type(label.GetText) == "function" then
+        local read, value = pcall(label.GetText, label)
+        if read then text = value end
+    end
+    -- Same text at the same limit: already laid out (and trimmed). The
+    -- caller's SetText put the full text back, so the shortened one returns.
+    if label.unrealQuestFitText == text and label.unrealQuestFitLimit == limit then
+        local shown = label.unrealQuestFitShown
+        if shown and shown ~= text and type(label.SetText) == "function" then
+            pcall(label.SetText, label, shown)
+        end
+        return true
+    end
+    label.unrealQuestFitText = text
+    label.unrealQuestFitLimit = limit
+    label.unrealQuestFitShown = text
+    label.unrealQuestFitRelaid = nil
+    label.unrealQuestSettledWidth = nil
+    local fits = Client.QUEST_DIALOGUE_FITS
+    Client.SetObjectSize(label, limit)
+    if type(text) == "string" and type(label.SetText) == "function" then
+        pcall(label.SetText, label, text)
+    end
+    label.unrealQuestFitTick = fits.tick
+    fits.pending[label] = true
+    return true
+end
+
+-- The first `bytes` bytes of `text`, backed off to a UTF-8 character start.
+function Client.CutQuestDialogueText(text, bytes)
+    if bytes >= string.len(text) then return text end
+    while bytes > 0 do
+        local nextByte = string.byte(text, bytes + 1)
+        if not nextByte or nextByte < 128 or nextByte >= 192 then break end
+        bytes = bytes - 1
+    end
+    return string.sub(text, 1, bytes)
+end
+
+-- Trims the labels FitQuestDialogueLabel laid out at least one full frame
+-- ago to their settled width, shortening a text that does not fit and
+-- measuring it again next frame. Called every frame from the shared driver.
+function Client.SettleQuestDialogueLabels()
+    local fits = Client.QUEST_DIALOGUE_FITS
+    fits.tick = fits.tick + 1
+    local again = {}
+    for label in pairs(fits.pending) do
+        if (label.unrealQuestFitTick or 0) < fits.tick - 1
+            and not label.unrealQuestFitRelaid then
+            -- The text is set once more first, now that the full width has
+            -- settled: set in the same frame as that width, it was cut by
+            -- the client to the label's previous, narrower width (a quest
+            -- title after the hugged "Conversation" drew "Cutting Te..", a
+            -- client cut: this trim never yields that string), and a cut
+            -- text measures as if it fitted. Measured the frame after.
+            label.unrealQuestFitRelaid = true
+            local shown = label.unrealQuestFitShown
+            if type(shown) == "string" and type(label.SetText) == "function" then
+                pcall(label.SetText, label, shown)
+            end
+            -- Due again on the very next settle.
+            label.unrealQuestFitTick = fits.tick - 1
+        elseif (label.unrealQuestFitTick or 0) < fits.tick - 1 then
+            fits.pending[label] = nil
+            local limit = label.unrealQuestFitLimit
+            local ok, width = pcall(label.GetStringWidth, label)
+            if limit and ok and type(width) == "number" and width > 0 then
+                width = math.ceil(width) + 2
+                local full = label.unrealQuestFitText
+                local shown = label.unrealQuestFitShown
+                -- A wrapping label (unrealQuestFitWraps) measures its whole
+                -- box when it runs to a second line; it is never shortened.
+                if label.unrealQuestFitWraps then
+                    if width < limit then Client.SetObjectSize(label, width) end
+                elseif width < limit or type(full) ~= "string" or type(shown) ~= "string" then
+                    Client.SetObjectSize(label, width)
+                    -- The width the client really draws the text at, read a
+                    -- frame after its text was set: what a card sized to its
+                    -- content trusts over a same-frame read
+                    -- (Client.FitQuestDialogueCardWidth).
+                    if shown == full then label.unrealQuestSettledWidth = width end
+                    -- A label placed by its measured width (an action button's
+                    -- LABEL_RIGHT) is told it.
+                    if type(label.unrealQuestOnFit) == "function" then
+                        label.unrealQuestOnFit(label, width)
+                    end
+                else
+                    -- Too long: drop a tenth of the bytes, at least one, and
+                    -- measure again next frame.
+                    local body = shown
+                    if body ~= full then
+                        body = string.sub(body, 1, string.len(body) - string.len(fits.ELLIPSIS))
+                    end
+                    local keep = math.floor(string.len(body) * 0.9)
+                    if keep >= string.len(body) then keep = string.len(body) - 1 end
+                    body = Client.CutQuestDialogueText(body, keep)
+                    if body == "" then
+                        label.unrealQuestFitShown = full
+                        Client.SetObjectSize(label, limit)
+                        pcall(label.SetText, label, full)
+                    else
+                        shown = body .. fits.ELLIPSIS
+                        label.unrealQuestFitShown = shown
+                        pcall(label.SetText, label, shown)
+                        label.unrealQuestFitTick = fits.tick
+                        table.insert(again, label)
+                    end
+                end
+            end
+        end
+    end
+    -- Re-queued after the walk: a key added during pairs is undefined.
+    local index = 1
+    while index <= table.getn(again) do
+        fits.pending[again[index]] = true
+        index = index + 1
+    end
+end
+
+-- The parchment card's geometry and nine slices
+-- (tools/make_dialogue_slices.py). SLICE_SIZE is the drawn corner square: 48
+-- units for the 200 px source grid, which leaves the gold brackets about 35
+-- units into the card. SLICE_OUTSET is the source's ~40 px transparent margin
+-- at that scale. PORTRAIT_* is the 3D portrait's box, kept inside the centre
+-- slice so the hole cut for it (see CreateQuestDialogueFrame) touches no edge.
+-- A field on Client rather than a file local: this chunk is at Lua's
+-- 200-local limit.
+Client.QUEST_DIALOGUE_CARD = {
+    WIDTH = 680,
+    -- As far below the portrait frame's outer edge (y 180) as the frame's
+    -- top (y 22) is below the card's top (user request).
+    HEIGHT = 180 + 22,
+    -- The quest card's TALL_HEIGHT is set under the layouts, from its footer
+    -- (Client.LayParchmentQuestFooter).
+    -- UQ_Divider cut into two end caps and a run of rule, 64x32 each
+    -- (tools/make_dialogue_divider.py; Client.LayQuestDialogueDivider).
+    DIVIDER = "Interface\\AddOns\\unrealQuest\\media\\Textures\\Dialogues\\Parchment\\UQ_Parchment_Divider_",
+    DIVIDER_ALPHA = 0.7,
+    SLICE_SIZE = 48,
+    SLICE_OUTSET = 10,
+    -- The hole starts on the centre slice's own edge (SLICE_SIZE -
+    -- SLICE_OUTSET): a border slice over it would hide the model.
+    PORTRAIT_INSET = 38,
+    PORTRAIT_SIZE = 130,
+    -- Quest pages: gap between the card and the reward panel under it, and
+    -- the panel padding below its last row.
+    ELEMENTS_GAP = 14,
+    ELEMENTS_PAD = 18,
+    -- The gossip rows are gold-framed parchment buttons, one 512x128 RLE
+    -- plate for idle and one for hover, no pressed look (user request;
+    -- Client.PaintQuestDialogueGossipPlate), each cap
+    -- sampling a quarter of the texture's width so the corner brackets keep
+    -- their shape. CROP ({ side inset, top, bottom } in texture pixels) cuts
+    -- the transparent margin so the frame spans the row's full height; idle
+    -- and hover share one crop so hovering never moves the frame.
+    GOSSIP_PLATE = "Interface\\AddOns\\unrealQuest\\media\\Textures\\Dialogues\\Parchment\\UQ_Parchment_",
+    GOSSIP_PLATE_CAP_U = 0.25,
+    GOSSIP_PLATES = {
+        normal = { TEXTURE = "Gossip", CROP = { 23, 10, 113 } },
+        hover = { TEXTURE = "Gossip_hover", CROP = { 23, 10, 113 } },
+    },
+    SLICE_PATH =
+    "Interface\\AddOns\\unrealQuest\\media\\Textures\\Dialogues\\Parchment\\UQ_Parchment_Slice_",
+}
+
+-- The progress page's turn-in panel (CreateQuestDialogueTurnIn): geometry in
+-- card units, the card's own ink, and the two status icons
+-- (tools/make_dialogue_status_icons.py). A field on Client for the same
+-- local-limit reason as the card.
+Client.QUEST_DIALOGUE_TURN_IN = {
+    WIDTH = 520,
+    -- The card's art stops 2 units above its frame and the panel's starts 1
+    -- unit below its own, so 1 leaves 4 units of visible seam: flush, then 8
+    -- pixels lower as on the Cinematic theme, then 4 back up (user requests).
+    GAP = 1,
+    PAD = 24,
+    HEADER = 44,
+    LABEL = 18,
+    LINE = 16,
+    HEADER_TEXT_WIDTH = 250,
+    TILE_WIDTH = 230,
+    -- Parchment's tile and item icon (the other themes read their own
+    -- REWARD_TILE_HEIGHT / REWARD_ICON): the icon grown 20% from the first
+    -- 26 to 31, then 25% to 39, and the tile grown with it from the first 38
+    -- to keep the same 12-unit margin around it (user requests).
+    TILE_HEIGHT = 51,
+    TILE_GAP = 12,
+    ROW_GAP = 5,
+    ICON = 39,
+    -- The plates' own parchment, tinted darker and warmer than the panel's so
+    -- the item frames stand apart from the background.
+    TILE_TINT = { 0.80, 0.66, 0.48 },
+    -- The plate under the cursor, about 15% brighter (user request).
+    TILE_HOVER_TINT = { 0.92, 0.76, 0.55 },
+    -- Each tile sits on a framed plate (tools/make_reward_tile.py), drawn as
+    -- three parts so the gold corners keep their shape: caps half the tile's
+    -- height wide, the centre stretched between them.
+    TILE_PLATE = "Interface\\AddOns\\unrealQuest\\media\\Textures\\Dialogues\\Parchment\\UQ_Parchment_Reward_Tile",
+    TILE_PLATE_SELECTED =
+        "Interface\\AddOns\\unrealQuest\\media\\Textures\\Dialogues\\Parchment\\UQ_Parchment_Reward_Tile_Selected",
+    MAX_TILES = 10,
+    MAX_LINES = 6,
+    SLICE_SIZE = 32,
+    SLICE_OUTSET = 7,
+    ICON_DONE = "Interface\\AddOns\\unrealQuest\\media\\Textures\\Dialogues\\UQ_Dialogue_StatusDone",
+    ICON_MISSING = "Interface\\AddOns\\unrealQuest\\media\\Textures\\Dialogues\\UQ_Dialogue_StatusMissing",
+    INK = {
+        done = { 0.10, 0.45, 0.08 },
+        missing = { 0.66, 0.12, 0.05 },
+        label = { 0.38, 0.25, 0.10 },
+        text = { 0.20, 0.12, 0.04 },
+        title = { 0.55, 0.33, 0.02 },
+    },
+    -- Header height of the "Rewards" panel on the accept and completion
+    -- pages, which has a title instead of the progress page's status line.
+    TITLE_HEADER = 38,
+}
+
+-- The Cinematic theme's card (tools/make_dialogue_horde_light.py): the bronze
+-- frame with a wood title band and the portrait box, drawn as four 512x256
+-- tiles of one composed image -- no texture above 512 px is proven here.
+-- Every box below is in card units, measured on that image at WIDTH 680; the
+-- tool's constants and these move together. The card has no transparent
+-- margin to swallow, so SLICE_OUTSET is 0. A field on Client for the same
+-- local-limit reason as the classic card.
+Client.QUEST_DIALOGUE_HORDE_LIGHT = {
+    WIDTH = 680,
+    -- The body cut below the portrait (BODY_CUT) leaves it as deep under the
+    -- portrait frame as above it.
+    HEIGHT = 305.7,
+    -- The quest-page card (CardTall_*): the same art made taller below the
+    -- portrait for the objectives strip (tools/make_dialogue_horde_light.py).
+    TALL_HEIGHT = 373.9,
+    -- The quest card grows with a long objective (as Alliance V2's: see its
+    -- GROW_SEAM) at these art rows, y 388..418 of 512: both wood rails plain
+    -- between their knots and their bronze corner pieces, below the portrait
+    -- hole (bottom 255.8) (user request). Alliance light shares the card's
+    -- pieces and this seam: its art is cut from the same frame, its steel
+    -- and enamel rails plain at the same rows.
+    GROW_SEAM = { 283, 305 },
+    SLICE_OUTSET = 0,
+    ELEMENTS_GAP = 14,
+    ELEMENTS_PAD = 18,
+    PATH = "Interface\\AddOns\\unrealQuest\\media\\Textures\\Dialogues\\HordeLight\\UQ_HordeLight_",
+    CONVERSATION_CARD = "Card_",
+    QUEST_CARD = "CardTall_",
+    -- Nine-slice of the ornate parchment frame: the panel under the card
+    -- and the reward inspector.
+    PANEL_SLICE = 36,
+    PANEL_OUTSET = 8,
+    INSPECTOR_SLICE = 56,
+    INSPECTOR_OUTSET = 12,
+    -- Banners drawn in three parts: caps CAP_SHARE of the drawn height wide,
+    -- sampling CAP_U of the texture's width (printed by the tool).
+    CAP_SHARE = 0.55,
+    CAP_U = { Plate = 0.1118, Plate_Selected = 0.1217, Button = 0.1083, Gossip_Frame = 0.1083 },
+    -- The wood inside a gossip row's frame, in design units of a 330x36.8
+    -- row: Gossip_Wood is drawn at the aspect of a 316x23 box, so the taller
+    -- box samples only GOSSIP_WOOD_U of its width and its grain is never
+    -- stretched. The frame's outline covers its edges.
+    GOSSIP_WOOD = { 7, 5.2, 316, 26.4 },
+    GOSSIP_WOOD_U = 23 / 26.4,
+    -- The rewards panel's item tiles: taller than the classic ones, for a
+    -- larger item icon (Client.SizeQuestDialogueTurnInTile).
+    REWARD_TILE_HEIGHT = 52,
+    REWARD_ICON = 40,
+    -- The rewards panel tucked under the card's bottom edge rather than
+    -- hanging GAP below it: the card art stops ~8.8 units above its frame,
+    -- so -10 closes the seam and slides the panel's top border behind the
+    -- card; then 8 pixels lower (user requests).
+    REWARD_PANEL_GAP = -2,
+    REWARD_PANEL_UNDER_CARD = true,
+    -- A hovered reward tile's plate swapped for its copy with this suffix,
+    -- 20% brighter (tools/make_reward_hover.py) (user request; Alliance
+    -- light has its own copies).
+    REWARD_HOVER = "_Hover",
+}
+
+-- Alliance uses the Cinematic geometry with its own complete texture set.
+Client.QUEST_DIALOGUE_ALLIANCE_LIGHT = {
+    WIDTH = Client.QUEST_DIALOGUE_HORDE_LIGHT.WIDTH,
+    HEIGHT = Client.QUEST_DIALOGUE_HORDE_LIGHT.HEIGHT,
+    TALL_HEIGHT = Client.QUEST_DIALOGUE_HORDE_LIGHT.TALL_HEIGHT,
+    SLICE_OUTSET = Client.QUEST_DIALOGUE_HORDE_LIGHT.SLICE_OUTSET,
+    ELEMENTS_GAP = Client.QUEST_DIALOGUE_HORDE_LIGHT.ELEMENTS_GAP,
+    ELEMENTS_PAD = Client.QUEST_DIALOGUE_HORDE_LIGHT.ELEMENTS_PAD,
+    PATH = "Interface\\AddOns\\unrealQuest\\media\\Textures\\Dialogues\\AllianceLight\\UQ_AllianceLight_",
+    CONVERSATION_CARD = Client.QUEST_DIALOGUE_HORDE_LIGHT.CONVERSATION_CARD,
+    QUEST_CARD = Client.QUEST_DIALOGUE_HORDE_LIGHT.QUEST_CARD,
+    -- Its quest card grows at Horde light's seam (user request).
+    GROW_SEAM = Client.QUEST_DIALOGUE_HORDE_LIGHT.GROW_SEAM,
+    PANEL_SLICE = Client.QUEST_DIALOGUE_HORDE_LIGHT.PANEL_SLICE,
+    PANEL_OUTSET = Client.QUEST_DIALOGUE_HORDE_LIGHT.PANEL_OUTSET,
+    INSPECTOR_SLICE = Client.QUEST_DIALOGUE_HORDE_LIGHT.INSPECTOR_SLICE,
+    INSPECTOR_OUTSET = Client.QUEST_DIALOGUE_HORDE_LIGHT.INSPECTOR_OUTSET,
+    CAP_SHARE = Client.QUEST_DIALOGUE_HORDE_LIGHT.CAP_SHARE,
+    CAP_U = Client.QUEST_DIALOGUE_HORDE_LIGHT.CAP_U,
+    GOSSIP_WOOD = Client.QUEST_DIALOGUE_HORDE_LIGHT.GOSSIP_WOOD,
+    GOSSIP_WOOD_U = Client.QUEST_DIALOGUE_HORDE_LIGHT.GOSSIP_WOOD_U,
+    REWARD_TILE_HEIGHT = Client.QUEST_DIALOGUE_HORDE_LIGHT.REWARD_TILE_HEIGHT,
+    REWARD_ICON = Client.QUEST_DIALOGUE_HORDE_LIGHT.REWARD_ICON,
+    -- The reward plate drawn this many units past its tile above and below,
+    -- so its rails (rows 20..107 of the 128-pixel art) reach 4 units past
+    -- the item icon above and below, rather than 6 units inside it; then 2
+    -- pixels taller, one each way (user requests).
+    REWARD_PLATE_OUTSET = ((Client.QUEST_DIALOGUE_HORDE_LIGHT.REWARD_ICON + 2 * 4
+        + 2 / Client.QUEST_DIALOGUE_BASE_UNIT) * 128 / 88
+        - Client.QUEST_DIALOGUE_HORDE_LIGHT.REWARD_TILE_HEIGHT) / 2,
+    -- The item icon 3 pixels right of the default 10 units; its name stays
+    -- where the default put it (10 + icon + 8) (user request).
+    REWARD_ICON_OFFSET = 10 + 3 / Client.QUEST_DIALOGUE_BASE_UNIT,
+    REWARD_NAME_LEFT = 10 + Client.QUEST_DIALOGUE_HORDE_LIGHT.REWARD_ICON + 8,
+    REWARD_HOVER = Client.QUEST_DIALOGUE_HORDE_LIGHT.REWARD_HOVER,
+    -- The rewards panel borrows Alliance V2's border (user request); both
+    -- sets share the Cinematic PANEL_SLICE / PANEL_OUTSET geometry.
+    REWARD_PANEL = "Panel_",
+    REWARD_PANEL_PATH = "Interface\\AddOns\\unrealQuest\\media\\Textures\\Dialogues\\Alliance\\UQ_Alliance_",
+    -- Then 5 pixels lower (user request): a design unit renders at
+    -- QUEST_DIALOGUE_BASE_UNIT pixels on this unscaled theme.
+    REWARD_PANEL_GAP = -10 + 5 / Client.QUEST_DIALOGUE_BASE_UNIT,
+    REWARD_PANEL_UNDER_CARD = true,
+}
+
+-- Alliance V2 uses the screenshot-authored silver, gold, blue and lion skin.
+Client.QUEST_DIALOGUE_ALLIANCE = {
+    WIDTH = Client.QUEST_DIALOGUE_HORDE_LIGHT.WIDTH,
+    HEIGHT = Client.QUEST_DIALOGUE_HORDE_LIGHT.HEIGHT,
+    TALL_HEIGHT = Client.QUEST_DIALOGUE_HORDE_LIGHT.TALL_HEIGHT,
+    -- The quest card grows by the objective lines past its layout's
+    -- objectiveFit (Client.QuestDialogueObjectiveGrow), so a long objective
+    -- never runs under the action button (user request). Only these art rows
+    -- stretch: y 353..372 of 512, where both rails are the plain stone shaft
+    -- (under the banners' tips, above the gold collars) and the parchment is
+    -- plain, below the portrait hole (bottom 254.13). The content keeps its
+    -- top anchors; the button, the bottom band and the rewards panel follow
+    -- the frame's bottom edge.
+    GROW_SEAM = { 258, 272 },
+    SLICE_OUTSET = Client.QUEST_DIALOGUE_HORDE_LIGHT.SLICE_OUTSET,
+    ELEMENTS_GAP = Client.QUEST_DIALOGUE_HORDE_LIGHT.ELEMENTS_GAP,
+    ELEMENTS_PAD = Client.QUEST_DIALOGUE_HORDE_LIGHT.ELEMENTS_PAD,
+    PATH = "Interface\\AddOns\\unrealQuest\\media\\Textures\\Dialogues\\Alliance\\UQ_Alliance_",
+    CONVERSATION_CARD = "Conversation_",
+    QUEST_CARD = "Quest_",
+    PORTRAIT = "Portrait_Frame",
+    PANEL_SLICE = Client.QUEST_DIALOGUE_HORDE_LIGHT.PANEL_SLICE,
+    PANEL_OUTSET = Client.QUEST_DIALOGUE_HORDE_LIGHT.PANEL_OUTSET,
+    INSPECTOR_SLICE = Client.QUEST_DIALOGUE_HORDE_LIGHT.INSPECTOR_SLICE,
+    INSPECTOR_OUTSET = Client.QUEST_DIALOGUE_HORDE_LIGHT.INSPECTOR_OUTSET,
+    CAP_SHARE = Client.QUEST_DIALOGUE_HORDE_LIGHT.CAP_SHARE,
+    CAP_U = { Reward_Item_Plate_Unified = 0.25,
+        Reward_Item_Plate_Unified_Selected = 0.25,
+        Button = Client.QUEST_DIALOGUE_HORDE_LIGHT.CAP_U.Button,
+        Gossip_Frame = Client.QUEST_DIALOGUE_HORDE_LIGHT.CAP_U.Gossip_Frame },
+    REWARD_PLATE = "Reward_Item_Plate_Unified",
+    REWARD_PLATE_SELECTED = "Reward_Item_Plate_Unified_Selected",
+    REWARD_CAP_SHARE = 1,
+    REWARD_INK = { 0.92, 0.90, 0.84 },
+    REWARD_MISSING_INK = { 1, 0.38, 0.28 },
+    GOSSIP_WOOD = Client.QUEST_DIALOGUE_HORDE_LIGHT.GOSSIP_WOOD,
+    GOSSIP_WOOD_U = Client.QUEST_DIALOGUE_HORDE_LIGHT.GOSSIP_WOOD_U,
+    REWARD_TILE_HEIGHT = 46,
+    REWARD_ICON = 40,
+    REWARD_ICON_OFFSET = 4,
+    REWARD_LEFT_EDGE = "Reward_Plate_Left_Edge",
+    REWARD_NAME_LEFT = 54,
+    -- The rewards panel's header, section labels and text lines drawn this
+    -- many rendered pixels larger, their row pitch grown to match; the item
+    -- names keep their size (user request; Horde V2 inherits it).
+    REWARD_FONT_GROW = 2,
+    REWARD_PANEL_GAP = -10,
+    REWARD_PANEL_UNDER_CARD = true,
+    -- A hovered reward tile's plate and left edge swapped for their copies
+    -- with this suffix, 20% brighter (tools/make_reward_hover.py) (user
+    -- request; Horde V2 inherits it).
+    REWARD_HOVER = "_Hover",
+    -- The quest page's action button (Accept / Complete) centred on the card's
+    -- bottom band (Client.RenderQuestDialogueActionButton). One 512x512 atlas
+    -- (tools/make_dialogue_action_button.py): three 512x104 cells 106 px
+    -- apart -- normal, pressed, disabled -- then the four matching normal,
+    -- hover, pressed and disabled 64x80 chevrons at y 318, 66 px apart.
+    -- The box keeps the cell's aspect.
+    -- `band` is the bottom band's centre above the card's bottom edge,
+    -- measured on the card art: y 480 of 512 on the quest card (23.4 of
+    -- 373.9 units) and y 468 on the conversation card (26.3 of 305.7). The
+    -- face's centre sits 12.5 of the cell's 239 source pixels above the
+    -- cell's (3.4 units); the chevron, 42% of the height at its cell's 0.8
+    -- aspect, ends at 86% of the width, inside the face. The rewards panel
+    -- starts PANEL_OVERLAP above the button's bottom, so the button's notch
+    -- overlaps its top border.
+    ACTION_BUTTON = {
+        TEXTURE = "Action_Button",
+        -- Drawn at 80% of the measured size (user request): every box, the
+        -- label and the hover bloom scaled by 0.8, the bands unchanged.
+        WIDTH = 320 * 0.8,
+        HEIGHT = 320 * 0.8 * 104 / 512,
+        BAND = 23.4,
+        CONVERSATION_BAND = 26.3,
+        FACE_LIFT = 3.4 * 0.8,
+        CHEVRON = { 104.3 * 0.8, 21.8 * 0.8, 27.3 * 0.8 },
+        -- 16 design units: a 13 px face, 2 px above the scaled-down 14's
+        -- 11 px (QUEST_DIALOGUE_FONT_UNIT 0.8) (user request).
+        LABEL_SIZE = 16,
+        PANEL_OVERLAP = 5 * 0.8,
+        -- The label 2 pixels lower than the face's centre at the theme's
+        -- 1.296 scale (user requests).
+        LABEL_DROP = 2 * 10.29 / 8,
+        -- The label may span the whole button rather than stop short of the
+        -- chevron, so the longest locale's Accept / Complete stays on one
+        -- line (user request).
+        LABEL_WIDTH = 320 * 0.8,
+        CELL_PITCH = 106 / 512,
+        CELL_HEIGHT = 104 / 512,
+        FACE_CELLS = { [0] = 0, [1] = 0, [2] = 1, [3] = 2 },
+        HOVER_CHEVRON = true,
+        CHEVRON_PITCH = 66 / 512,
+        CHEVRON_WIDTH = 64 / 512,
+        CHEVRON_TOP = 318 / 512,
+        CHEVRON_BOTTOM = 398 / 512,
+        -- Hover keeps the normal cell and adds Horde V2's bloom tinted blue
+        -- (user request), at Horde V2's final proportions to its inner face
+        -- (1.023 x its width, 2.1 x its height). The inner blue face is x
+        -- 60..451, y 24..66 of the 512x104 cell: 244.4 x 26.25 units,
+        -- centred 4.4 units above the cell's (at full size).
+        HOVER_GLOW = {
+            TEXTURE = "Action_Button_Hover",
+            -- Then 52 pixels wider and 6 taller at the theme's 1.296 scale
+            -- (user requests).
+            WIDTH = 250 * 0.8 + 52 * 10.29 / 8,
+            HEIGHT = 55 * 0.8 + 6 * 10.29 / 8,
+            X = 0,
+            Y = 4.4 * 0.8,
+            INTENSITY = 0.8,
+        },
+        INK = { 1, 0.94, 0.80 },
+        DISABLED_INK = { 0.66, 0.66, 0.66 },
+    },
+}
+
+-- Minimal is the smallest card the dialogue draws (user reference
+-- screenshot, 2026-10-12): a translucent dark card inside a thin stone
+-- border, the portrait, the name and the quest title, one objectives line, a
+-- one-line reward summary beside two flat buttons -- and no quest text. Its
+-- authored textures are a low-contrast grain and the border pieces; every
+-- other fill and state colour is a Lua-owned flat texture.
+Client.QUEST_DIALOGUE_MINIMAL = {
+    WIDTH = 700,
+    -- The conversation card: header, three lines of talk, the rows below.
+    HEIGHT = 150,
+    -- The quest card: header, two objective lines, the reward icon row, the
+    -- reward summary, and the buttons on its bottom border.
+    TALL_HEIGHT = 190,
+    SLICE_OUTSET = 0,
+    ELEMENTS_GAP = 10,
+    ELEMENTS_PAD = 14,
+    PATH = "Interface\\AddOns\\unrealQuest\\media\\Textures\\Dialogues\\Minimal\\UQ_Minimal_",
+    GRAIN = "Grain",
+    -- The card fill: the grain tinted near-black, translucent through the
+    -- vertex colour's alpha (rendering.texture_setalpha_darkens_not_translucent),
+    -- inset so its edges and corners lie under the border's opaque line: the
+    -- line runs 3-8 units in from each edge and its bevelled corner passes
+    -- through (7, 7), so at 7 the fill's square corners no longer show past
+    -- the bevel (user report, 2026-10-12: it drew a little outside at 4).
+    -- Alpha 30% more opaque than the first 0.62 (user request, 2026-10-12).
+    FILL_COLOR = { 0.13, 0.12, 0.11, 0.81 },
+    FILL_INSET = 7,
+    -- The card border: unrealUI's thin border, eight 32x32 pieces built from
+    -- its bottom-left corner and bottom edge (tools/make_dialogue_minimal.py),
+    -- drawn at one unit per texel with the line on the card's outer side.
+    BORDER = "Border_",
+    BORDER_SIZE = 32,
+    PORTRAIT_BACKGROUND_COLOR = { 0.08, 0.065, 0.045, 1 },
+    PANEL_SLICE = 1,
+    PANEL_OUTSET = 0,
+    INSPECTOR_SLICE = 1,
+    INSPECTOR_OUTSET = 0,
+    CAP_SHARE = 0.5,
+    CAP_U = { Grain = 0.25 },
+    REWARD_PLATE = "Grain",
+    REWARD_PLATE_SELECTED = "Grain",
+    REWARD_CAP_SHARE = 0.5,
+    REWARD_INK = { 0.90, 0.86, 0.76 },
+    REWARD_MISSING_INK = { 1, 0.42, 0.30 },
+    REWARD_TILE_HEIGHT = 44,
+    REWARD_ICON = 34,
+    REWARD_ICON_OFFSET = 5,
+    REWARD_NAME_LEFT = 47,
+    REWARD_PANEL_GAP = 6,
+    REWARD_PANEL_UNDER_CARD = true,
+    -- Both buttons (Accept / Complete and Decline / Cancel) wear unrealUI's
+    -- key-binding face (user request, 2026-10-12): the silver stretch button
+    -- its Game Settings draws on every binding (unrealUI core/media.lua,
+    -- M.foreverWow.control.binding), copied in by tools/make_dialogue_minimal.py.
+    -- SHORT_LABEL takes the view's one-word label; a button with a key `hint`
+    -- draws its label from the left with the key name after it, dimmer.
+    ACTION_BUTTON = {
+        SHORT_LABEL = true,
+        -- Client.BuildQuestDialogueSilverFace / PaintQuestDialogueActionButton.
+        -- UP and DOWN are one 128x32 sheet each, cut nine ways in unrealUI's
+        -- own texture coordinates (the art covers x 0..80, y 0..26); a piece
+        -- keeps its coordinates when the sheet is swapped for the pressed
+        -- one. CORNER is a corner's drawn size in design units: the binding's
+        -- 12x6 at its 22-unit height, scaled to this 28. HIGHLIGHT is drawn
+        -- whole over the button, additive, at HIGHLIGHT_COORDS, while hovered.
+        SILVER = {
+            UP = "Button_Up",
+            DOWN = "Button_Down",
+            HIGHLIGHT = "Button_Highlight",
+            CORNER = { 15, 8 },
+            COORDS = {
+                TL = { 0, 0.09375, 0, 0.1875 },
+                T = { 0.09375, 0.53125, 0, 0.1875 },
+                TR = { 0.53125, 0.625, 0, 0.1875 },
+                L = { 0, 0.09375, 0.1875, 0.625 },
+                C = { 0.09375, 0.53125, 0.1875, 0.625 },
+                R = { 0.53125, 0.625, 0.1875, 0.625 },
+                BL = { 0, 0.09375, 0.625, 0.8125 },
+                B = { 0.09375, 0.53125, 0.625, 0.8125 },
+                BR = { 0.53125, 0.625, 0.625, 0.8125 },
+            },
+            HIGHLIGHT_COORDS = { 0, 1, 0.03, 0.7175 },
+            -- The disabled face: the up sheet, dimmed through the vertex colour.
+            DISABLED_SHADE = 0.55,
+        },
+        WIDTH = 120,
+        HEIGHT = 28,
+        BAND = 16,
+        CONVERSATION_BAND = 16,
+        FACE_LIFT = 0,
+        LABEL_SIZE = 12,
+        LABEL_DROP = 1,
+        LABEL_WIDTH = 104,
+        HINT_SIZE = 10,
+        HINT_PAD = 14,
+        HINT_GAP = 8,
+        HINT_INK = { 0.55, 0.52, 0.46 },
+        PANEL_OVERLAP = 0,
+        -- The binding template's fonts: GameFontHighlightSmall / GameFontDisableSmall.
+        INK = { 1, 1, 1 },
+        DISABLED_INK = { 0.5, 0.5, 0.5 },
+    },
+}
+
+-- The per-zone portrait backdrops: one set, shared by every theme
+-- (Data/DialogueBackdrops.lua, tools/make_dialogue_backdrops.py).
+Client.QUEST_DIALOGUE_ZONE_BACKDROPS =
+    "Interface\\AddOns\\unrealQuest\\media\\Textures\\Dialogues\\Portrait_Background\\"
+-- The default backdrop behind the model when the zone has none: one wide
+-- woodland glade shared by every theme but Classic, whose square hole keeps
+-- UQ_Parchment_Portrait_Background (tools/make_dialogue_horde_light.py).
+Client.QUEST_DIALOGUE_PORTRAIT_BACKGROUND =
+    "Interface\\AddOns\\unrealQuest\\media\\Textures\\Dialogues\\UQ_Portrait_Background_Wide"
+
+-- What a theme changes on the dialogue, read by Client.SetQuestDialogueTheme
+-- and the renderers. Boxes are { left, top, width, height } in card units
+-- from the card's TOPLEFT; `portrait` is where the portrait frame art is
+-- drawn, `opening` the inside of that frame, `hole` the part of the card cut
+-- away so the model shows (a little past the opening, under the frame's
+-- border, which draws above the model), filled by the model's backdrop, and
+-- `model` the model's size: a square side, or { width, height }. `text` is the
+-- page budget Quest/Dialogue.lua paginates to: the classic 64 x 9 scaled to
+-- the cinematic body box, and rounded down.
+-- The two cards every layout may override keys for (see "CONVERSATION CARD
+-- AND QUEST CARD" at Client.GetQuestDialogueLayout).
+Client.QUEST_DIALOGUE_CARD_KINDS = { conversation = true, quest = true }
+Client.QUEST_DIALOGUE_LAYOUTS = {
+    parchment = {
+        card = Client.QUEST_DIALOGUE_CARD,
+        -- The square frame art drawn so its outer edge (x 18..493, y 25..485
+        -- of 512 px) spans x 23..181 and y 22..180, the text column's height
+        -- down to the body's bottom; the model fills the frame's opening (x
+        -- 64..448, y 72..440 px) at that scale. The hole (and the backdrop
+        -- in it) covers the opening and ends under the frame's border.
+        portrait = { 17.0, 13.4, 170.3, 175.9 },
+        opening = { 38.3, 38.1, 127.7, 126.4 },
+        hole = { 38, 38, 130, 130 },
+        model = { 127.7, 126.4 },
+        portraitArt = "Interface\\AddOns\\unrealQuest\\media\\Textures\\Dialogues\\Parchment\\UQ_Parchment_Portrait_Frame_Square_Dark",
+        portraitBackground =
+            "Interface\\AddOns\\unrealQuest\\media\\Textures\\Dialogues\\Parchment\\UQ_Parchment_Portrait_Background",
+        -- The zone art is cut to the cinematic hole's aspect; the square hole
+        -- shows its centre instead of squeezing it (164.5 / 150.2 wide).
+        zoneBackdrops = Client.QUEST_DIALOGUE_ZONE_BACKDROPS,
+        zoneBackdropCoords = { 0.0435, 0.9565, 0, 1 },
+        -- The NPC name 2 pixels right, 4 pixels lower and 6 rendered pixels
+        -- larger than its template (user request); its box grows by the same
+        -- 6 pixels.
+        speaker = { 188 + 2 / Client.QUEST_DIALOGUE_BASE_UNIT,
+            14 + 4 / Client.QUEST_DIALOGUE_BASE_UNIT, 450,
+            20 + 6 / Client.QUEST_DIALOGUE_BASE_UNIT },
+        speakerFontGrow = 6,
+        -- Conversation card only (see Client.GetQuestDialogueLayout): the
+        -- "Conversation" title 1 rendered pixel smaller than its template
+        -- (user request); the quest card's title keeps it.
+        conversation = {
+            titleFontGrow = -1,
+        },
+        -- Quest card only: the language flags (a quest's, so drawn on this
+        -- card alone) 4 pixels further left (user request).
+        quest = {
+            flag = { -15 - 4 / Client.QUEST_DIALOGUE_BASE_UNIT, -14 },
+            -- The pagination flush right under the flags (user request): the
+            -- arrow's drawn right edge (UQ_Continue_Indicator's art ends at x
+            -- 215 of 256, 2.88 units inside its 18-unit box) on the flag
+            -- row's right edge (flag[1]).
+            indicator = { -15 - 4 / Client.QUEST_DIALOGUE_BASE_UNIT + 2.88, -35 },
+            -- "Page 1 / 2" hugs its text and hangs off the arrow's left, so
+            -- it follows the arrow whatever its length. The drawn gap stays
+            -- the 10.3 units the arrow was brought to (60% closer than 25.8,
+            -- user request): 4 between the boxes, plus the arrow's 2.95-unit
+            -- left margin and the label's 2-pixel hug. Its centre stays 4
+            -- units under the arrow's, where the old boxes put it.
+            pageBeforeIndicator = { -4, -4 },
+            -- The objectives rule is Horde's geometry in Alliance V2's brown
+            -- (user request): Parchment-local copies of its centred diamond
+            -- and line, drawn at Horde's 12-unit diamond and 3-unit line size
+            -- at 1.5552 scale, centred on the objectiveDivider box.
+            objectiveRuleArt =
+                "Interface\\AddOns\\unrealQuest\\media\\Textures\\Dialogues\\Parchment\\UQ_Parchment_",
+            objectiveDiamond = 12 * 1.5552,
+            objectiveLine = 3 * 1.5552,
+        },
+        speakerJustify = "LEFT",
+        -- The text column's header, as on the Cinematic card: the quest
+        -- kicker ("!" badge and label, quest pages only), the page label and
+        -- the continue indicator ending that row, the title, and a divider
+        -- between it and the body.
+        kickerIcon = { 188, 35, 18, 18 },
+        kicker = { 212, 38, 60, 14 },
+        -- Its right edge 4 units short of the continue indicator.
+        page = { 544, 41, 90, 14 },
+        -- 2 pixels higher than the kicker row's spacing put it (user request).
+        title = { 188, 56 - 2 / Client.QUEST_DIALOGUE_BASE_UNIT, 450, 24 },
+        -- Flush with the title's left edge and ending a little before it, as
+        -- on Alliance V2; 3 pixels closer under the title (user request).
+        titleDivider = { 188, 82 - 3 / Client.QUEST_DIALOGUE_BASE_UNIT, 429.57, 13 },
+        titleDividerTexture =
+            "Interface\\AddOns\\unrealQuest\\media\\Textures\\Dialogues\\Parchment\\UQ_Parchment_Title_Divider",
+        -- 1 pixel further under the title divider than first laid out (user
+        -- request), and raised with the divider so that gap holds; its bottom
+        -- stays on the portrait frame's (y 180) so the shorter card's bottom
+        -- border stays clear. Taller than the original 82, so 6 lines fit.
+        body = { 188, 98 - 2 / Client.QUEST_DIALOGUE_BASE_UNIT, 468,
+            82 + 2 / Client.QUEST_DIALOGUE_BASE_UNIT },
+        -- The objectives strip a quest page adds under the portrait and the
+        -- body (the card grows to TALL_HEIGHT): a divider across both, then
+        -- the crosshair badge, the "Objectives" heading and the quest's
+        -- objective text, the text's left edge on the heading's.
+        objectiveDivider = { 40, 188, 600, 14 },
+        objectiveIcon = { 48, 206, 22, 22 },
+        objectiveHeading = { 76, 208, 300, 18 },
+        objective = { 76, 228, 556, 38 },
+        indicator = { -24, -35 },
+        flag = { -15, -14 },
+        text = { columns = 48, lines = 6 },
+        -- An option row's icon side (drawn from x 8) and where its label
+        -- starts, right of the icon: half the drawn gap the first 42 left
+        -- between a quest mark and its text (user screenshot 2026-10-11, a
+        -- 15.6-unit gap, so 7.8 units closer).
+        rowIcon = 26,
+        rowLabelX = 42 - 7.8,
+        optionsPanel = true,
+        ink = {
+            speaker = { 0.45, 0.12, 0.04 },
+            title = { 0.24, 0.12, 0.02 },
+            body = { 0.17, 0.11, 0.05 },
+            page = { 0.38, 0.25, 0.10 },
+            kicker = { 0.42, 0.30, 0.18 },
+            objectiveHeading = { 0.30, 0.18, 0.06 },
+            objective = { 0.17, 0.11, 0.05 },
+            inspectorTitle = { 0.96, 0.78, 0.30 },
+            inspectorPage = { 0.76, 0.58, 0.24 },
+            action = { 0.92, 0.76, 0.32 },
+            -- Dark ink on the light parchment gossip plates.
+            row = { 0.17, 0.11, 0.05 },
+            rowDisabled = { 0.45, 0.38, 0.30 },
+        },
+        -- Item qualities below this keep the row ink: common white is
+        -- unreadable on the light plates.
+        rowQualityInkFrom = 2,
+        -- The gossip plates stand 8 pixels taller than the row, 4 above and
+        -- 4 below (user request); pixels at the theme's fixed unit.
+        rowOutset = 4 / Client.QUEST_DIALOGUE_BASE_UNIT,
+    },
+    ["horde-light"] = {
+        card = Client.QUEST_DIALOGUE_HORDE_LIGHT,
+        -- The standalone gold frame (UQ_HordeLight_Portrait) and its opening, as
+        -- tools/make_dialogue_horde_light.py prints them; the model fills the
+        -- opening and the hole runs 3 units under the border.
+        portrait = { 46, 90.8, 187.6, 175.4 },
+        opening = { 60.4, 108.6, 158.5, 144.2 },
+        hole = { 57.4, 105.6, 164.5, 150.2 },
+        model = { 158.5, 144.2 },
+        portraitArt = Client.QUEST_DIALOGUE_HORDE_LIGHT.PATH .. "Portrait",
+        -- The woodland glade behind the model (tools/make_dialogue_horde_light.py).
+        portraitBackground = Client.QUEST_DIALOGUE_PORTRAIT_BACKGROUND,
+        zoneBackdrops = Client.QUEST_DIALOGUE_ZONE_BACKDROPS,
+        -- The card's own larger speaker and title labels
+        -- (CreateQuestDialogueFrame); the classic pair is hidden.
+        speakerField = "unrealQuestCineSpeaker",
+        titleField = "unrealQuestCineTitle",
+        -- The wood band: the role line over the NPC's name, both left.
+        role = { 48, 29.33, 440, 14 },
+        speaker = { 48, 43.33, 440, 28 },
+        speakerJustify = "LEFT",
+        -- The text column: the quest kicker ("!" badge, label, line), the
+        -- title over the baked divider (y 143..156), then the body.
+        kickerIcon = { 252, 91, 20, 20 },
+        kicker = { 278, 95, 60, 14 },
+        title = { 252, 115, 396, 28 },
+        -- 4 units left of the title, whose larger glyphs start further in, so
+        -- the two read as one left edge.
+        body = { 248, 159, 400, 98 },
+        -- Top right of the text column, on the kicker row above the title,
+        -- just left of the continue indicator. No arrows: a left click pages
+        -- forward and a right click back.
+        page = { 536, 95, 90, 14 },
+        -- The objectives strip at the bottom of the tall card, under the
+        -- portrait and the body: a rule across both, then the crosshair
+        -- badge, the "Objectives" heading and the quest's objective text.
+        -- The rule: two runs of line (Objective_Line, the same in every
+        -- column, so stretching never changes it) either side of a square
+        -- diamond drawn at its own aspect, centred on the rule.
+        objectiveDivider = { 46, 271, 602, 8 },
+        objectiveDiamond = 12,
+        objectiveLine = 3,
+        objectiveIcon = { 54, 283, 26, 26 },
+        objectiveHeading = { 88, 285, 300, 22 },
+        -- The text and heading share one authored left edge in every language;
+        -- the narrower width keeps the text's existing right edge.
+        objective = { 88, 307, 520, 38 },
+        objectiveHeadingSize = 18,
+        -- The continue indicator ends the kicker row, right of the page
+        -- label, its right edge flush with the title's (680 - 648).
+        indicator = { -32, -93 },
+        flag = { -36, -35.33 },
+        -- 7 lines held 140 units of body; 98 holds 4 with more headroom
+        -- for word wrap.
+        text = { columns = 48, lines = 4 },
+        -- A smaller option row icon (8..27.5), its label a short gap right
+        -- of it.
+        rowIcon = 19.5,
+        rowLabelX = 31.5,
+        -- Design sizes for the two labels (Client.ScaleQuestDialogueFont).
+        speakerSize = 18,
+        titleSize = 20,
+        -- The plank rows carry their own background.
+        optionsPanel = false,
+        ink = {
+            role = { 0.96, 0.78, 0.30 },
+            speaker = { 0.98, 0.90, 0.74 },
+            kicker = { 0.42, 0.30, 0.18 },
+            title = { 0.12, 0.07, 0.03 },
+            body = { 0.17, 0.11, 0.05 },
+            page = { 0.38, 0.25, 0.10 },
+            objectiveHeading = { 0.30, 0.18, 0.06 },
+            objective = { 0.17, 0.11, 0.05 },
+            inspectorTitle = { 0.30, 0.15, 0.03 },
+            inspectorPage = { 0.38, 0.25, 0.10 },
+            action = { 0.24, 0.12, 0.02 },
+            row = { 0.95, 0.93, 0.88 },
+            rowDisabled = { 0.62, 0.56, 0.48 },
+        },
+    },
+}
+
+-- The Alliance skin is geometry-compatible with Cinematic; texture paths are
+-- selected by Client.SetQuestDialogueTheme and Client.SetQuestDialogueBackdrop.
+-- (Copied below Client.CopyQuestDialogueLayout, with its own quest card.)
+-- Alliance V2 shares that geometry except for its header: the blue band
+-- inside the silver rails and gold posts spans x 70..612 and y 40..92.5
+-- (measured on the card art), so the role and name block and the flag row
+-- are both centred on its y 66, each 6 units inside its post. The name
+-- stops short of the lion crest's wings (x 262).
+-- (A function rather than a do block: the file's main chunk is at the
+-- 200-local limit.)
+-- Parchment's quest card: the kicker ("Quest" badge and label) and
+-- everything under it -- title, title rule, body and the objectives strip --
+-- 8 pixels lower than the shared boxes (user request); the page label beside
+-- the kicker stays. The quest card grows by the same 8 pixels (TALL_HEIGHT),
+-- so the action button and the rewards under the card follow.
+-- (A function, not a do block: this file's main chunk is at Lua's 200-local
+-- limit.)
+-- Drops are cumulative: a box the card already overrides drops from there.
+function Client.DropQuestDialogueBoxes(layout, card, keys, drop)
+    layout[card] = layout[card] or {}
+    local index = 1
+    while index <= table.getn(keys) do
+        local box = layout[card][keys[index]] or layout[keys[index]]
+        layout[card][keys[index]] = { box[1], box[2] + drop, box[3], box[4] }
+        index = index + 1
+    end
+end
+Client.DropQuestDialogueBoxes(Client.QUEST_DIALOGUE_LAYOUTS.parchment, "quest",
+    { "kickerIcon", "kicker", "title", "titleDivider", "body",
+        "objectiveDivider", "objectiveIcon", "objectiveHeading", "objective" },
+    8 / Client.QUEST_DIALOGUE_BASE_UNIT)
+-- Then the quest's name 5 pixels lower again, everything under it following
+-- (user request); the kicker above it stays. The footer, the action button
+-- and the card's height follow from these boxes (LayParchmentQuestFooter).
+Client.DropQuestDialogueBoxes(Client.QUEST_DIALOGUE_LAYOUTS.parchment, "quest",
+    { "title", "titleDivider", "body",
+        "objectiveDivider", "objectiveIcon", "objectiveHeading", "objective" },
+    5 / Client.QUEST_DIALOGUE_BASE_UNIT)
+-- Parchment's quest footer in two columns (user request): the objectives
+-- heading and text on the left, ending 14 units short of the action button,
+-- which sits on the right, centred on that block (the heading's top to the
+-- objective box's bottom) with its right edge where the corner put it
+-- (ACTION_BUTTON.CORNER). The quest card (TALL_HEIGHT) then ends 16 units
+-- under the objective box: the button no longer needs a row of its own.
+function Client.LayParchmentQuestFooter()
+    local card = Client.QUEST_DIALOGUE_CARD
+    local quest = Client.QUEST_DIALOGUE_LAYOUTS.parchment.quest
+    local spec = card.ACTION_BUTTON
+    local buttonRight = card.WIDTH - spec.CORNER[1]
+    local blockTop = quest.objectiveHeading[2]
+    local blockBottom = quest.objective[2] + quest.objective[4]
+    quest.actionButtonCentre = { buttonRight - spec.WIDTH / 2, (blockTop + blockBottom) / 2 }
+    quest.objective[3] = buttonRight - spec.WIDTH - 14 - quest.objective[1]
+    card.TALL_HEIGHT = blockBottom + 16
+end
+
+function Client.CopyQuestDialogueLayout(source, overrides)
+    local copy = {}
+    local key, value = next(source)
+    while key ~= nil do
+        copy[key] = value
+        key, value = next(source, key)
+    end
+    key, value = next(overrides)
+    while key ~= nil do
+        -- A card's own table (`conversation`, `quest`) merges with the
+        -- source's, so a copy overrides single keys without dropping the rest.
+        if Client.QUEST_DIALOGUE_CARD_KINDS[key]
+            and type(value) == "table" and type(source[key]) == "table" then
+            copy[key] = Client.CopyQuestDialogueLayout(source[key], value)
+        else
+            copy[key] = value
+        end
+        key, value = next(overrides, key)
+    end
+    return copy
+end
+-- Alliance light's quest card alone keeps the continue indicator in its
+-- corner (flush with the title's right edge) and hangs the page label, which
+-- hugs its text, 2 units off the arrow's left, so the pair sits right-aligned
+-- (user requests). Both boxes are centred on y 102, hence no vertical offset.
+-- Its "Quest" label hangs 4 units right of its badge, hugging its text, as
+-- on Horde light (user request). Its card grows with a long objective by
+-- Horde light's objectiveFit (see Client.QUEST_DIALOGUE_LAYOUTS["horde-light"].quest):
+-- the same objective box and button, so the same numbers (user request).
+-- Its objectives rule is Parchment's brown one rather than its own blue
+-- (user request), at Parchment's size: both themes draw at scale 1.
+Client.QUEST_DIALOGUE_LAYOUTS["alliance-light"] = Client.CopyQuestDialogueLayout(
+    Client.QUEST_DIALOGUE_LAYOUTS["horde-light"],
+    { quest = { pageBeforeIndicator = { -2, 0 }, kickerGap = 4,
+        objectiveFit = { columns = 62, lineHeight = 19, bottom = 307 + 2 * 19 - 10 },
+        objectiveRuleArt =
+            "Interface\\AddOns\\unrealQuest\\media\\Textures\\Dialogues\\Parchment\\UQ_Parchment_",
+        objectiveDiamond = 12 * 1.5552,
+        objectiveLine = 3 * 1.5552 } })
+Client.QUEST_DIALOGUE_HORDE = Client.CopyQuestDialogueLayout(
+    Client.QUEST_DIALOGUE_ALLIANCE, {
+        PATH = "Interface\\AddOns\\unrealQuest\\media\\Textures\\Dialogues\\Horde\\UQ_Horde_",
+        TITLE_DIVIDER = "Title_Divider",
+        REWARD_PANEL = "RewardPanel_",
+        GOSSIP_WOOD = { 2, 5.2, 326, 26.4 },
+        -- The quest card 13 units taller than its art, so a second objective
+        -- line clears the action button's top spike (user request). Only the
+        -- art rows 254..265 grow: there both side rails are plain wood,
+        -- under the portrait hole (bottom 251.34) and above the iron bands
+        -- and horns; the content keeps its top anchors, the button and the
+        -- bottom band move down with the frame's bottom edge.
+        TALL_SEAM = { 254, 265, 13 },
+        TALL_HEIGHT = Client.QUEST_DIALOGUE_HORDE_LIGHT.TALL_HEIGHT + 13,
+        -- Its fixed seam above instead of Alliance V2's growing one.
+        GROW_SEAM = false,
+        -- The spiked Horde button (tools/make_dialogue_action_button.py from
+        -- HordeV2/buttons.png), one 512x512 atlas like Alliance V2's. Hover
+        -- keeps the normal face and chevron pixels and adds a separate red
+        -- bloom, following the 128RedButton treatment. Too
+        -- tall for four 512-wide cells, so four 410x125 button cells 127 px
+        -- apart at x 0 (CELL_WIDTH) and the four 80x96 chevrons in a column
+        -- at x 420, 98 px apart (CHEVRON_LEFT, CHEVRON_ROW_PITCH). The box
+        -- keeps the cell's aspect. `band` is the bottom wood
+        -- band's centre above the card's bottom edge, measured on the card
+        -- art: y 450..480 of 512 on the quest card (34.3 of 373.9 units) and
+        -- y 437..475 on the conversation card (33.4 of 305.7). The 906 source
+        -- pixels across map to 300 units; the red face's centre sits 20.5
+        -- of the cell's 276 source pixels above the cell's (6.8 units) and
+        -- its right edge 93.7 units from the centre; the chevron, about 55%
+        -- of the face's height, ends inside it. The bottom spike hangs 17.9
+        -- units under the frame, so the rewards panel starts PANEL_OVERLAP
+        -- above the button's bottom and its top border runs behind the spike.
+        ACTION_BUTTON = {
+            TEXTURE = "Action_Button",
+            -- Drawn at 70% of the measured size (user request): every box
+            -- and the label scaled by 0.7, the bands unchanged.
+            WIDTH = 300 * 0.7,
+            HEIGHT = 300 * 0.7 * 125 / 410,
+            BAND = 34.3,
+            CONVERSATION_BAND = 33.4,
+            FACE_LIFT = 6.8 * 0.7,
+            CHEVRON = { 76 * 0.7, 18.3 * 0.7, 22 * 0.7 },
+            -- 2 rendered pixels larger than the former 13 (user request):
+            -- a design unit renders at QUEST_DIALOGUE_FONT_UNIT (0.8).
+            LABEL_SIZE = 13 + 2 / 0.8,
+            -- The label is never cut (user report: "Complete Que.."): it
+            -- may take the whole button, and stays centred while it ends 4
+            -- units short of the chevron's left edge (LABEL_RIGHT, from the
+            -- button's centre), moving left past that. The face's left edge
+            -- is 88.9 units from the centre, so 125 units (the longest
+            -- locale, "Zavershit' zadanie", is about 122) fit on the face.
+            LABEL_WIDTH = 300 * 0.7,
+            LABEL_RIGHT = 76 * 0.7 - 18.3 * 0.7 / 2 - 4,
+            PANEL_OVERLAP = 11 * 0.7,
+            -- The label 2 pixels and the chevron 1 pixel lower than the
+            -- face's centre at the theme's 1.296 scale (user requests).
+            LABEL_DROP = 2 * 10.29 / 8,
+            CHEVRON_DROP = 10.29 / 8,
+            CELL_PITCH = 127 / 512,
+            CELL_HEIGHT = 125 / 512,
+            CELL_WIDTH = 410 / 512,
+            CHEVRON_PITCH = 0,
+            CHEVRON_ROW_PITCH = 98 / 512,
+            CHEVRON_LEFT = 420 / 512,
+            CHEVRON_WIDTH = 80 / 512,
+            CHEVRON_TOP = 0,
+            CHEVRON_BOTTOM = 96 / 512,
+            -- Sized so the bloom's visible part (x 57..456, y 20..109 of
+            -- its 512x128 texture) stays inside the inner red face, not its
+            -- gold border (x 32..379, y 32..76 of the 410x125 cell: 177.7 x
+            -- 23 units, centred 4.35 units above the cell's): its visible
+            -- width about 160 units, well inside the face's ends, and its
+            -- height a little taller than the face; then 18 pixels narrower
+            -- and 8 taller at the theme's 1.296 scale (user requests).
+            HOVER_GLOW = {
+                TEXTURE = "Action_Button_Hover",
+                WIDTH = 205 - 18 * 10.29 / 8,
+                HEIGHT = 38 + 8 * 10.29 / 8,
+                X = 0,
+                Y = 4.35,
+                INTENSITY = 0.8,
+            },
+            INK = { 1, 0.94, 0.80 },
+            DISABLED_INK = { 0.66, 0.66, 0.66 },
+        },
+    })
+
+-- Horde light, Alliance light and Parchment share one action-button geometry,
+-- built from media/Textures/QuestLog/128RedButton (the quest log's red bar) by
+-- tools/make_dialogue_action_button.py into 512x512 RLE atlases: Horde light
+-- and Parchment keep the red face; Alliance light uses the brighter cobalt
+-- recolour in its own path. Each has three 512x107 cells 109 px apart --
+-- normal, pressed (the recessed row), disabled (the grey row) -- and no
+-- chevron. Hover keeps the normal face and adds the matching bloom cell
+-- (Action_Button_Hover), as Horde V2 does. `band` is the bottom border's
+-- centre above the card's
+-- bottom edge, measured on the card art: y 478..498 of 512 on the light
+-- quest cards (17.5 of 373.9 units) and y 471..496 on the conversation cards
+-- (17.0 of 305.7); Parchment's is in Client.QUEST_DIALOGUE_CARD below. The
+-- rewards panel hangs where it did: PANEL_OVERLAP keeps the returned gap
+-- under both light themes' REWARD_PANEL_GAP, so the button sits over the
+-- panel's top border.
+Client.QUEST_DIALOGUE_RED_ACTION_BUTTON = {
+    PATH = "Interface\\AddOns\\unrealQuest\\media\\Textures\\Dialogues\\UQ_Red_",
+    TEXTURE = "Action_Button",
+    WIDTH = 192,
+    HEIGHT = 192 * 107 / 512,
+    BAND = 17.5,
+    CONVERSATION_BAND = 17.0,
+    FACE_LIFT = 0,
+    LABEL_SIZE = 16,
+    -- The label a little below centre: this client centres the font's line
+    -- box, descender included, so a capital word draws high.
+    LABEL_DROP = 2,
+    LABEL_WIDTH = 192 - 2 * 12,
+    PANEL_OVERLAP = 13,
+    CELL_PITCH = 109 / 512,
+    CELL_HEIGHT = 107 / 512,
+    FACE_CELLS = { [0] = 0, [1] = 0, [2] = 1, [3] = 2 },
+    -- The bloom's 409x72 cell centred in a 512x128 texture, sized so its
+    -- bright core stays inside the face's bevel.
+    HOVER_GLOW = {
+        TEXTURE = "Action_Button_Hover",
+        WIDTH = 200,
+        HEIGHT = 48,
+        X = 0,
+        Y = 0,
+        INTENSITY = 0.8,
+    },
+    INK = { 1, 0.94, 0.80 },
+    DISABLED_INK = { 0.66, 0.66, 0.66 },
+}
+-- Horde light's label 2 pixels smaller than the shared 16 (user request): a
+-- design unit renders at QUEST_DIALOGUE_FONT_UNIT (0.8).
+Client.QUEST_DIALOGUE_HORDE_LIGHT.ACTION_BUTTON = Client.CopyQuestDialogueLayout(
+    Client.QUEST_DIALOGUE_RED_ACTION_BUTTON, { LABEL_SIZE = 16 - 2 / 0.8 })
+-- Alliance light's label at Horde light's size (user request).
+Client.QUEST_DIALOGUE_ALLIANCE_LIGHT.ACTION_BUTTON = Client.CopyQuestDialogueLayout(
+    Client.QUEST_DIALOGUE_RED_ACTION_BUTTON, {
+        PATH = "Interface\\AddOns\\unrealQuest\\media\\Textures\\Dialogues\\AllianceLight\\UQ_AllianceLight_",
+        LABEL_SIZE = Client.QUEST_DIALOGUE_HORDE_LIGHT.ACTION_BUTTON.LABEL_SIZE,
+    })
+-- Parchment's bottom slice draws its gold rule 29.3 of the slice's 48 units
+-- down (y 36..42 of 64), and the slice ends SLICE_OUTSET below the card: the
+-- rule sits 8.7 units above the card's bottom edge on either card height.
+-- On the quest card the button sits instead inside the card's bottom-right
+-- corner, under the objectives (CORNER: right and bottom insets, clear of
+-- the corner bracket), so it no longer reaches below the card. The corner
+-- is 13 pixels further right than first placed (5 then 8; units at the 0.6
+-- unit). The button is drawn 15% smaller than the red button (face, label
+-- box and hover bloom alike, its bottom-right corner held) and its label
+-- 4 pixels smaller (11.25 x FONT_UNIT 0.8 = 9 px, against 16 x 0.8 = 13)
+-- (user requests).
+Client.QUEST_DIALOGUE_CARD.ACTION_BUTTON = Client.CopyQuestDialogueLayout(
+    Client.QUEST_DIALOGUE_RED_ACTION_BUTTON, { BAND = 8.7, CONVERSATION_BAND = 8.7,
+        CORNER = { 44 - 13 / 0.6, 16 }, LABEL_SIZE = 11.25,
+        WIDTH = 192 * 0.85,
+        HEIGHT = 192 * 107 / 512 * 0.85,
+        LABEL_WIDTH = (192 - 2 * 12) * 0.85,
+        HOVER_GLOW = {
+            TEXTURE = "Action_Button_Hover",
+            WIDTH = 200 * 0.85,
+            HEIGHT = 48 * 0.85,
+            X = 0,
+            Y = 0,
+            INTENSITY = 0.8,
+        } })
+Client.LayParchmentQuestFooter()
+
+Client.QUEST_DIALOGUE_LAYOUTS.alliance =Client.CopyQuestDialogueLayout(
+    Client.QUEST_DIALOGUE_LAYOUTS["horde-light"], {
+        -- The role sits 4 units closer to the name than a 14-unit row would
+        -- put it, and the pair is 5.14 units (4 pixels at the theme's 1.296
+        -- scale) below the band's centre (user requests).
+        -- The portrait border drawn at 80% of its thickness (user request):
+        -- the 256 px art's 48 px corners as a nine-slice, and the opening,
+        -- hole and model grown into the freed border (20% of its 16.85-unit
+        -- sides, 17.13-unit top and 20.56-unit bottom). Then the whole
+        -- portrait scaled by 0.85 about the cinematic box's centre
+        -- (139.8, 178.5) and moved 8 pixels right and 5 down at the theme's
+        -- 1.296 scale (10.29 and 6.43 units) (user request).
+        portrait = { 70.36, 110.39, 159.46, 149.09 },
+        portraitSlice = { margin = 48 / 256, width = 48 * 187.6 / 256 * 0.8 * 0.85,
+            height = 48 * 175.4 / 256 * 0.8 * 0.85 },
+        opening = { 79.73, 122.6, 140.45, 128.98 },
+        hole = { 77.18, 120.05, 145.55, 134.08 },
+        model = { 140.45, 128.98 },
+        -- The objectives strip starts on the moved portrait frame's left
+        -- edge (70.36) instead of the cinematic one's (46), keeping its own
+        -- insets and its right edge (user request). The rule above it spans
+        -- that same 70.36 to its mirror, 609.64: the cinematic rule (46..648)
+        -- ran past this frame's parchment (x 54.5..625, measured on
+        -- CardTall). The text shares the heading's exact left edge in every
+        -- language, sits 5 rendered pixels lower to leave breathing room below
+        -- the heading, and ends 5 rendered pixels earlier at the right frame.
+        objectiveDivider = { 70.36, 263.28, 539.28, 8 },
+        objectiveIcon = { 78.36, 275.28, 26, 26 },
+        objectiveHeading = { 112.36, 277.28, 300, 22 },
+        -- 6.43 design units lower than the aligned position above: exactly
+        -- 5 rendered pixels at Alliance V2's 0.7776 unit. Its width is also
+        -- 6.43 design units shorter, leaving the same 5px inset on the right.
+        objective = { 112.36, 295.57, 489.21, 43 },
+        -- The text column's header: the kicker row (badge, label, page and
+        -- the continue indicator ending it) 8 pixels down (10.29 units at
+        -- 1.296), the quest title 6 down and 4 left (7.72 and 5.14 units)
+        -- (user request).
+        -- The badge and its label then on the title's left edge (246.86).
+        -- Then the badge drawn 20% larger (24 units) about the same vertical
+        -- centre, its left edge kept (user request).
+        kickerIcon = { 239.14, 109.58, 24, 24 },
+        -- The label 0.71 units from the badge instead of 6 (user request).
+        kicker = { 263.85, 115.58, 60, 14 },
+        -- The page label 6 pixels left (7.72 units), hugging its text,
+        -- and the continue indicator 1 unit right of it rather than at the
+        -- card's edge (user request).
+        page = { 520.56, 115.58, 90, 14 },
+        indicator = { -32, -103.29 },
+        indicatorGap = 1,
+        title = { 239.14, 133.01, 396, 28 },
+        -- The kicker label and the page label larger than the template's
+        -- small font (user request; Client.ScaleQuestDialogueFont).
+        kickerSize = 13,
+        pageSize = 13,
+        -- The Cinematic ornament is baked into the card here in the same
+        -- brown as the lower divider; the body begins beneath it and keeps
+        -- its former bottom edge.
+        -- It ends 8 pixels short of the parchment's right edge and sits 5
+        -- pixels higher (tools/make_dialogue_alliance.py).
+        titleDivider = { 239.14, 155.57, 375.57, 13 },
+        -- The body fills the parchment from under the raised divider to just
+        -- above the objectives rule (y 263.28), and pages hold 5 lines of 60
+        -- columns: a measured line here is ~70 characters and ~14.7 units
+        -- tall, so the budget keeps headroom for word wrap (user request).
+        -- Then its top 4 pixels lower (5.14 units at 1.296), its bottom kept
+        -- (user request).
+        -- Its text then stops at the title divider's end (614.71) on both
+        -- cards, short of the right rail (user requests).
+        body = { 240.28, 177.14, 382.43, 84.86 },
+        text = { columns = 60, lines = 5 },
+        -- The Alliance crest (UQ_Alliance_Emblem, 256x256), faint under the
+        -- text and the header, as Horde V2's: its right edge on the title
+        -- rule's end (614.71) and its top Horde V2's 120.72 raised with this
+        -- theme's header (4.29 units higher) (user request).
+        emblem = { 518.71, 116.43, 96, 96 },
+        role = { 76, 54.14, 186, 14 },
+        speaker = { 76, 64.14, 186, 28 },
+        -- The conversation card's own frame sits its band a little lower, so
+        -- there the role and name drop a further 3 pixels (3.86 units at
+        -- 1.296); the quest card keeps them where they are (user request).
+        conversation = {
+            headerDrop = 3.86,
+        },
+        -- Quest card only: the crest 30% larger (124.8 units), its right
+        -- edge and top kept (user request).
+        quest = {
+            emblem = { 489.91, 116.43, 124.8, 124.8 },
+            -- The objective text 6 pixels further below the "Objectives"
+            -- heading (7.72 units at the theme's 0.7776 unit) (user request).
+            objective = { 112.36, 295.57 + 7.72, 489.21, 43 },
+            -- The objective text must end above `bottom`, the action button's
+            -- top; the card grows at the art's GROW_SEAM by whatever its
+            -- lines, `lineHeight` each, run past it
+            -- (Client.QuestDialogueObjectiveGrow) (user request). Two lines
+            -- from the former y 295.57 cleared the button (user screenshot);
+            -- a third ran under it. Lines are counted the way the body is
+            -- paged, at `columns` for the strip's 489-unit width: the body's
+            -- 60 columns over 382 units, scaled, so the count errs long,
+            -- never short.
+            objectiveFit = { columns = 76, lineHeight = 14.7, bottom = 295.57 + 2 * 14.7 },
+            -- The objectives rule is Parchment's (UQ_Parchment_Objective_Diamond
+            -- and _Line in Parchment/, Horde's rule in Alliance V2's brown)
+            -- (user request), drawn at the same rendered size as there: its
+            -- 12 x 1.5552-unit diamond and 3 x 1.5552-unit line at scale 1,
+            -- divided by this theme's 1.296 scale.
+            objectiveRuleArt =
+                "Interface\\AddOns\\unrealQuest\\media\\Textures\\Dialogues\\Parchment\\UQ_Parchment_",
+            objectiveDiamond = 12 * 1.5552 / 1.296,
+            objectiveLine = 3 * 1.5552 / 1.296,
+        },
+        -- The role and name 2 pixels larger (user request).
+        headerFontGrow = 2,
+        flagRight = 76,
+        flagCentre = 66,
+    })
+-- Horde V2 shares Alliance V2's geometry except where its own art differs.
+-- One pixel is 1.0717 design units at its 1.5552 scale. The role and name 10
+-- pixels right and 6 down, then 5 right and 1 down again, the role a further
+-- 2 down to close the gap to the
+-- name; the flag row 13 pixels left and 10 down (user requests). Its parchment
+-- ends near x 606 beside the body and x 598 beside the objectives (measured
+-- on the Quest card art, against Alliance V2's 622), so both texts end short
+-- of the iron rail. The body then ends 12 pixels earlier still (x 583):
+-- the scorched parchment darkens from about x 596, and a CJK glyph at a
+-- line's end was drawn into it (user report). The title rule ends there too,
+-- and its texture is laid out at this box's aspect so the diamonds are not
+-- stretched (TITLE_DIVIDER_BOX in tools/make_dialogue_horde.py).
+Client.QUEST_DIALOGUE_LAYOUTS.horde = Client.CopyQuestDialogueLayout(
+    Client.QUEST_DIALOGUE_LAYOUTS.alliance, {
+        role = { 92.08, 63.78, 186, 14 },
+        speaker = { 92.08, 71.64, 186, 28 },
+        -- The role and name 2 pixels larger, then the name 2 more (user
+        -- requests).
+        headerFontGrow = 2,
+        speakerFontGrow = 2,
+        flagRight = 89.93,
+        flagCentre = 76.71,
+        -- The portrait 6 pixels narrower (6.43 units), scaled by 0.95968
+        -- about its centre (150.09, 184.94) so it keeps its aspect (user
+        -- request), then 6 pixels right (6.43 units). The cards are cut
+        -- around this hole (unrealQuestCineCardsByHole and PORTRAIT_HOLE in
+        -- tools/make_dialogue_horde.py), never Alliance V2's.
+        portrait = { 80.01, 113.4, 153.03, 143.08 },
+        portraitSlice = { margin = 48 / 256,
+            width = 48 * 187.6 / 256 * 0.8 * 0.85 * 0.95968,
+            height = 48 * 175.4 / 256 * 0.8 * 0.85 * 0.95968 },
+        opening = { 89, 125.11, 134.79, 123.78 },
+        hole = { 86.55, 122.67, 139.68, 128.67 },
+        model = { 134.79, 123.78 },
+        -- The text column's header (kicker badge and label, page label and
+        -- the continue indicator anchored to it, title, title rule) and the
+        -- body's top 4 pixels lower (4.29 units); the body keeps its bottom,
+        -- above the objectives rule (user request).
+        kickerIcon = { 239.14, 113.87, 24, 24 },
+        kicker = { 263.85, 119.87, 60, 14 },
+        page = { 520.56, 119.87, 90, 14 },
+        title = { 239.14, 137.3, 396, 28 },
+        titleDivider = { 239.14, 159.86, 354.58, 13 },
+        -- Conversation card only (see Client.GetQuestDialogueLayout); the
+        -- quest card keeps the keys above.
+        conversation = {
+            -- Alliance V2's drop for the role and name (merged from its
+            -- table), then the role 2 pixels and the name 1 pixel higher than
+            -- that 3.86-unit drop puts them (2.14 and 1.07 units) (user
+            -- request).
+            roleDrop = 1.72,
+            speakerDrop = 2.79,
+            -- The conversation card's portrait 10% smaller about the same centre
+            -- (156.53, 184.94), then 5 pixels left and up (5.36 units), then 6
+            -- pixels narrower (scaled by 0.95331 about its centre, 151.17,
+            -- 179.58), then 2 pixels left and 3 up (2.14 and 3.21 units), then 1
+            -- left and 1 down (1.07 units) (user requests); its card art is cut
+            -- around this hole
+            -- (CONVERSATION_PORTRAIT_HOLE in tools/make_dialogue_horde.py).
+            portrait = { 82.31, 116.06, 131.3, 122.76 },
+            portraitSlice = { margin = 48 / 256,
+                width = 48 * 187.6 / 256 * 0.8 * 0.85 * 0.95968 * 0.9 * 0.95331,
+                height = 48 * 175.4 / 256 * 0.8 * 0.85 * 0.95968 * 0.9 * 0.95331 },
+            opening = { 90.02, 126.1, 115.65, 106.2 },
+            hole = { 87.92, 124.02, 119.84, 110.39 },
+            model = { 115.65, 106.2 },
+            -- The title, its rule and the body start 10 pixels further left
+            -- (10.72 units), their right edges kept (user request). The
+            -- rule's texture is laid out for the quest card's width, so it
+            -- draws 3% wider here.
+            title = { 228.42, 137.3, 406.72, 28 },
+            titleDivider = { 228.42, 159.86, 365.3, 13 },
+            body = { 229.56, 181.43, 353.58, 75.05 },
+        },
+        -- The Horde crest (UQ_Horde_Emblem, 256x256) in the parchment's top
+        -- right corner, its right edge on the body's and its top on the
+        -- parchment's, drawn under the text and the title rule and faint so
+        -- they read over it. Then 25% larger, its right edge kept, and 10
+        -- pixels lower (10.72 units), then 20% larger again with the same
+        -- right edge and top (user requests).
+        emblem = { 487, 120.72, 96, 96 },
+        -- The quest card's table is merged from Alliance V2's, so its larger
+        -- crest is put back to Horde's own box here, its card keeps the
+        -- fixed height of its own TALL_SEAM rather than growing, and its
+        -- objective text keeps its own box (Alliance V2's quest card drops
+        -- its own 6 pixels). The objectives rule is Parchment's, as on
+        -- Alliance V2 (user request), at its 12-unit diamond and 3-unit line:
+        -- at this theme's 1.5552 scale that is Parchment's own rendered size.
+        quest = {
+            emblem = { 487, 120.72, 96, 96 },
+            objectiveFit = false,
+            objective = { 112.36, 295.57, 471.21, 43 },
+            -- The "Quest" badge 15% smaller (20.4 units), its left edge on
+            -- the title's and its vertical centre kept; the label beside it
+            -- follows, keeping its 0.71-unit gap (user request).
+            kickerIcon = { 239.14, 113.87 + 1.8, 20.4, 20.4 },
+            kicker = { 263.85 - 3.6, 119.87, 60, 14 },
+            objectiveDiamond = 12,
+            objectiveLine = 3,
+        },
+        -- The body then ends on the portrait frame's bottom (256.48), and a
+        -- page holds 6 lines: a line is ~12.25 units at this scale (the
+        -- 11.4-pixel line measured on Alliance V2), so 6 take 73.5 of its
+        -- 75.05 (user request).
+        body = { 240.28, 181.43, 342.86, 75.05 },
+        text = { columns = 60, lines = 6 },
+        -- The objective text 6 pixels narrower on the right (6.43 units)
+        -- (user request).
+        objective = { 112.36, 295.57, 471.21, 43 },
+    })
+
+-- Minimal: every box hangs off one 12-unit margin. The header is the
+-- portrait with the name and, under it, the quest title (quest card) or the
+-- role (conversation card). The quest card has no body (`hideBody`, read by
+-- Quest/Dialogue.lua): the objectives line runs inline after its heading
+-- (`objectiveInline`), and the bottom row carries the reward summary
+-- (`rewardLine`) left of the two buttons.
+Client.QUEST_DIALOGUE_LAYOUTS.minimal = Client.CopyQuestDialogueLayout(
+    Client.QUEST_DIALOGUE_LAYOUTS["horde-light"], {
+        card = Client.QUEST_DIALOGUE_MINIMAL,
+        portrait = { 12, 12, 52, 52 },
+        -- The model fills the chamfered gold frame (the tracker sheet's
+        -- itemFrame) up to the inner edge of its 3-unit stroke (user request,
+        -- 2026-10-12); its square corners stay under the stroke's cut corners.
+        opening = { 15, 15, 46, 46 },
+        hole = { 15, 15, 46, 46 },
+        model = { 46, 46 },
+        hidePortraitArt = true,
+        portraitBackgroundColor = { 0.08, 0.065, 0.045, 1 },
+        zoneBackdrops = false,
+        -- The gold divider between the header (portrait bottom at 64) and the
+        -- body (from 76), on both cards; built with the card art. One unit
+        -- tall (user request, 2026-10-12): drawn from the glow's two brightest
+        -- rows only (headerDividerRows: offset and count within the cell), so
+        -- squeezing the 11-row glow into one does not average it dim. The
+        -- card's full width (user request): the glow's own tapered ends fade
+        -- out over the border.
+        headerDivider = { 0, 70, 700, 1 },
+        headerDividerRows = { 4, 2 },
+        -- Drawn at 70% opacity through the vertex colour's alpha, never
+        -- SetAlpha (rendering.texture_setalpha_darkens_not_translucent).
+        headerDividerAlpha = 0.7,
+        -- Both cards as wide as their content needs, the design WIDTH at most
+        -- (user request, 2026-10-12; Client.FitQuestDialogueCardWidth): never
+        -- under `min`; `margin` right of the widest text; the header keeps
+        -- `headerGap` between the name or title and `flags`, the room the
+        -- language flag row takes from the right edge (four 13-pixel flags
+        -- 2 apart, 58 pixels = 96.7 units, plus the row's 14-unit inset).
+        fitWidth = { min = 300, margin = 12, headerGap = 16, flags = 111, max = 860 },
+        -- No full-screen veil behind the small card (Client.GetQuestDialogueDimAlpha).
+        screenDim = 0,
+        -- Both cards centred two thirds down the screen rather than at its
+        -- middle (user request, 2026-10-12; Client.LayoutQuestDialogue).
+        screenFromTop = 2 / 3,
+        -- Opening rises this many UIParent units from below its place, over
+        -- openSlideTime seconds, fading in over the same time so it is fully
+        -- opaque as it lands (Client.UpdateQuestDialogueAnimation). Short and
+        -- quick (user request). Only an opening: a page change with the card
+        -- up fades in place at the default pace.
+        openSlide = 24,
+        openSlideTime = 0.2,
+        role = { 76, 37, 420, 16 },
+        speaker = { 76, 15, 420, 20 },
+        speakerSize = 14,
+        title = { 76, 37, 420, 18 },
+        titleSize = 12,
+        -- Applies titleSize (Client.LayQuestDialogueCard).
+        titleFontGrow = 0,
+        body = { 12, 76, 676, 60 },
+        page = { 600, 128, 70, 14 },
+        indicator = { -12, -126 },
+        pageBeforeIndicator = { -4, 0 },
+        flag = { -14, -14 },
+        hideKicker = true,
+        kickerIcon = { 0, 0, 1, 1 },
+        kicker = { 0, 0, 1, 1 },
+        hideObjectiveRule = true,
+        objectiveDivider = { 12, 72, 676, 1 },
+        objectiveDiamond = 1,
+        objectiveLine = 1,
+        hideObjectiveIcon = true,
+        objectiveIcon = { 12, 76, 1, 1 },
+        objectiveHeading = { 12, 76, 120, 18 },
+        objectiveHeadingSize = 12,
+        objectiveHeadingText = "DIALOGUE_OBJECTIVES_INLINE",
+        -- The text starts `objectiveInline[1]` units after the heading's
+        -- hugged right edge, `[2]` lower to share its baseline, and wraps at
+        -- `objective[3]`: the box less the heading's cap, so two lines fit
+        -- whatever the language.
+        objectiveInline = { 6, 1 },
+        objective = { 12, 76, 550, 40 },
+        text = { columns = 84, lines = 3 },
+        rowIcon = 19.5,
+        rowLabelX = 31.5,
+        optionsPanel = false,
+        conversation = {
+            -- "Conversation" says nothing the name and the rows do not.
+            hideTitle = true,
+            -- The name and role together centred on the portrait's middle
+            -- (user request, 2026-10-12): measured on a screenshot at 1.06
+            -- pixels a unit, their ink ran 25..62 against the frame's 23..78,
+            -- 7 pixels high of centre.
+            headerDrop = 6.5,
+            -- Clear of the page label and arrow in the bottom right corner.
+            body = { 12, 76, 590, 60 },
+            text = { columns = 74, lines = 3 },
+            -- A quest giver's gossip page shows its options instead of the
+            -- NPC's talk (user request, 2026-10-12): one per line inside the
+            -- card, under the header divider, each on the Accept / Decline
+            -- buttons' silver face (ACTION_BUTTON.SILVER); the card grows to
+            -- hold them (Client.RenderQuestDialogueOptionButtons). x, y: the
+            -- first button's top left; width: the widest a button may be,
+            -- height: each button's; gap between two; bottom: the card's
+            -- margin under the last; icon: the row icon's side, inset iconX;
+            -- labelX: where the label starts. Not full width (user request,
+            -- 2026-10-12): every button is as wide as the longest label needs
+            -- (labelX, the label, rightPad), never under minWidth.
+            -- The card itself narrows to the buttons, never under
+            -- cardMinWidth: half the card, room for a long NPC name.
+            optionButtons = { x = 12, y = 80, width = 676, height = 28, gap = 6,
+                bottom = 14, icon = 18, iconX = 10, labelX = 36, rightPad = 14,
+                minWidth = 160, cardMinWidth = 350 },
+        },
+        quest = {
+            hideBody = true,
+            hideRole = true,
+            -- The NPC name and the quest title 3 pixels lower than the
+            -- shared boxes (user request, 2026-10-12).
+            speaker = { 76, 15 + 3 / Client.QUEST_DIALOGUE_BASE_UNIT, 420, 20 },
+            title = { 76, 37 + 3 / Client.QUEST_DIALOGUE_BASE_UNIT, 420, 18 },
+            -- The "!" / "?" badge alone, without its "Quest" label, under
+            -- the language flags (user request, 2026-10-12): centred under
+            -- the rightmost flag (13 x 10 pixels, 21.7 x 16.7 units, its row
+            -- ending at x 686 from flag), 5 units below it. Horde light's
+            -- badge art (Client.RenderQuestDialogue).
+            kickerIconAlone = true,
+            kickerIcon = { 665.2, 36, 20, 20 },
+            -- The objectives 4 units further from the header divider (user
+            -- requests, 2026-10-12): 9 units under its line rather than 5.
+            objectiveHeading = { 12, 80, 120, 18 },
+            -- Two lines need the full 40: at 28 the client dropped the second
+            -- line (user report, 2026-10-12). The reward row starts under it.
+            objective = { 12, 80, 550, 40 },
+            -- An objective on one line leaves the box's second line empty:
+            -- everything under it moves up by lineHeight (user request,
+            -- 2026-10-12; Client.QuestDialogueObjectiveSlack). `lines` is what
+            -- the box holds; `columns` is text's 84 per 676 units scaled to
+            -- the 550-unit box (68), rounded down so a nearly full line is
+            -- counted as wrapping rather than lifting the row into it.
+            objectiveFit = { columns = 64, lineHeight = 20, lines = 2 },
+            body = { 12, 76, 676, 40 },
+            text = { columns = 84, lines = 2 },
+            -- The item rewards on one line under the objectives (user
+            -- request, 2026-10-12): the section label ("Choose your reward",
+            -- "You will receive", ...), then each item's icon alone, no name;
+            -- a second section follows on the same line. Hovering an icon
+            -- shows its tooltip and clicking a choice picks it, as on the
+            -- panel's tiles (Client.RenderQuestDialogueInlineRewards).
+            -- x, y: the row's top left; icon: the icon's size; gap between
+            -- icons; labelGap after a label; sectionGap before the next label.
+            -- selectFrame: the picked choice wears the portrait's gold frame
+            -- over its icon, this many units outside it, in place of the
+            -- glow under it (user request, 2026-10-12).
+            rewardIcons = { x = 12, y = 122, icon = 26, gap = 4, labelGap = 20,
+                sectionGap = 16, labelSize = 12, selectFrame = 2 },
+            -- With no item to show, the icon row is not kept empty (user
+            -- request, 2026-10-12): the card is this many units shorter and
+            -- the summary and buttons move up by as much -- the icon row's
+            -- top (122) to the summary's (154)
+            -- (Client.QuestDialogueRewardRowCollapse).
+            rewardRowCollapse = 32,
+            -- The reward summary alone on the bottom row, the card's width.
+            rewardLine = { 12, 154, 676, 16 },
+            rewardLineSize = 11,
+            -- Decline and Accept on the card's bottom border, straddling it
+            -- (user requests, 2026-10-12): flush right where the bottom row
+            -- had them, 8 units apart, centred on the border line (6.5 units
+            -- up from the card's bottom edge), so half of each hangs below.
+            secondaryButtonCentre = { 500, 184 },
+            actionButtonCentre = { 628, 184 },
+        },
+        ink = {
+            -- "Quest Giver" on the conversation card in the quest card's
+            -- title colour (user request, 2026-10-12): keep the two equal.
+            role = { 0.70, 0.66, 0.58 },
+            speaker = { 0.96, 0.78, 0.26 },
+            kicker = { 0.72, 0.62, 0.42 },
+            title = { 0.70, 0.66, 0.58 },
+            body = { 0.85, 0.82, 0.75 },
+            page = { 0.62, 0.57, 0.49 },
+            -- The NPC name's gold (user request). Only the quest card draws it.
+            objectiveHeading = { 0.96, 0.78, 0.26 },
+            -- White (user request, 2026-10-12).
+            objective = { 1, 1, 1 },
+            rewardLine = { 0.66, 0.62, 0.55 },
+            inspectorTitle = { 0.95, 0.75, 0.25 },
+            inspectorPage = { 0.68, 0.62, 0.52 },
+            action = { 0.92, 0.78, 0.38 },
+            row = { 0.88, 0.84, 0.76 },
+            rowDisabled = { 0.48, 0.45, 0.40 },
+        },
+    })
+-- Minimal's quest card swaps the header's two colours (user request,
+-- 2026-10-12): the NPC's name in the grey the quest title had, the quest
+-- title in the name's gold. The rest of its ink is the theme's. A function,
+-- not a block: this file's main chunk is at Lua's 200-local limit.
+function Client.SwapQuestDialogueHeaderInk(source)
+    local ink = {}
+    for key, value in pairs(source) do ink[key] = value end
+    ink.speaker, ink.title = source.title, source.speaker
+    return ink
+end
+Client.QUEST_DIALOGUE_LAYOUTS.minimal.quest.ink =
+    Client.SwapQuestDialogueHeaderInk(Client.QUEST_DIALOGUE_LAYOUTS.minimal.ink)
+-- Horde light's quest card: the "Quest" label hangs 4 units right of its
+-- badge and the page label 2 units off the arrow's left, each hugging its
+-- text, so both pairs sit side by side (user request); both labels were
+-- drawn centred in their wide boxes. Set after every copy of this layout,
+-- so the themes copied from it keep their own header.
+Client.QUEST_DIALOGUE_LAYOUTS["horde-light"].quest = {
+    kickerGap = 4,
+    pageBeforeIndicator = { -2, 0 },
+    -- The card grows when the objective text would end past `bottom`
+    -- (Client.QuestDialogueObjectiveGrow) (user request). A line is the
+    -- 11.4 pixels measured on Alliance V2, 19 units at this theme's 0.6 unit;
+    -- the strip's 520 units hold 62 columns at Alliance V2's conservative
+    -- 76 per 380 pixels. Two lines from y 307 ended too close above the
+    -- button (user screenshot), so `bottom` sits 10 units (6 pixels) above
+    -- where they ended: a two-line objective grows the card by 10 units, a
+    -- one-line one not at all.
+    objectiveFit = { columns = 62, lineHeight = 19, bottom = 307 + 2 * 19 - 10 },
+}
+
+-- Lays the objectives rule (two line runs either side of the centred
+-- diamond) in `layout`'s objectiveDivider box. Built once from the cinematic
+-- box; a theme switch calls this so the rule follows that theme's frame.
+-- `pieces` ({ diamond, left line, right line }) defaults to the cinematic
+-- skin's; Parchment's quest card passes its own.
+function Client.PlaceQuestDialogueObjectiveRule(frame, layout, pieces)
+    local rule = layout.objectiveDivider
+    if not frame or not rule then return end
+    pieces = pieces or { frame.unrealQuestCineObjectiveDivider,
+        frame.unrealQuestCineObjectiveLineLeft, frame.unrealQuestCineObjectiveLineRight }
+    local diamond = layout.objectiveDiamond
+    local lineHeight = layout.objectiveLine
+    local middleY = rule[2] + rule[4] / 2
+    local middleX = rule[1] + rule[3] / 2
+    local gap = diamond / 2 + 2
+    local boxes = {
+        { pieces[1], middleX - diamond / 2, middleY - diamond / 2, diamond, diamond },
+        { pieces[2], rule[1], middleY - lineHeight / 2, middleX - gap - rule[1], lineHeight },
+        { pieces[3], middleX + gap, middleY - lineHeight / 2,
+            rule[1] + rule[3] - middleX - gap, lineHeight },
+    }
+    local index = 1
+    while index <= 3 do
+        local piece = boxes[index]
+        if piece[1] then
+            Client.SizeQuestDialogue(piece[1], piece[4], piece[5])
+            Client.AnchorQuestDialogue(piece[1], "TOPLEFT", frame, "TOPLEFT",
+                piece[2], -piece[3])
+        end
+        index = index + 1
+    end
+end
+
+function Client.GetQuestDialogueArt(theme)
+    if theme == "alliance-light" then return Client.QUEST_DIALOGUE_ALLIANCE_LIGHT end
+    if theme == "alliance" then return Client.QUEST_DIALOGUE_ALLIANCE end
+    if theme == "horde" then return Client.QUEST_DIALOGUE_HORDE end
+    if theme == "minimal" then return Client.QUEST_DIALOGUE_MINIMAL end
+    return Client.QUEST_DIALOGUE_HORDE_LIGHT
+end
+
+-- Cinematic and Alliance share region geometry. Remember each texture's
+-- suffix so switching themes only retargets the already-built regions.
+function Client.SetQuestDialogueArtTexture(texture, path)
+    if not texture then return end
+    pcall(texture.SetTexture, texture, path)
+    texture.unrealQuestDialogueTexture = nil
+    local sources = { Client.QUEST_DIALOGUE_HORDE_LIGHT, Client.QUEST_DIALOGUE_ALLIANCE_LIGHT,
+        Client.QUEST_DIALOGUE_ALLIANCE, Client.QUEST_DIALOGUE_HORDE }
+    local index = 1
+    while index <= table.getn(sources) do
+        local prefix = sources[index].PATH
+        if string.sub(path, 1, string.len(prefix)) == prefix then
+            texture.unrealQuestDialogueTexture = string.sub(path, string.len(prefix) + 1)
+            return
+        end
+        index = index + 1
+    end
+end
+
+-- CONVERSATION CARD AND QUEST CARD. The dialogue draws two different
+-- frames, and every theme lays them out separately:
+--   "conversation": gossip and greeting pages -- the NPC's talk under the
+--     "Conversation" title, with the gossip option rows;
+--   "quest": detail, progress and reward pages -- the quest's title and
+--     kicker, the objectives strip, rewards and the action button.
+-- Quest/Dialogue.lua BuildView names the card of every page (view.card);
+-- RenderQuestDialogue records it on the frame (unrealQuestCard) and lays the
+-- card out again whenever it changes (Client.LayQuestDialogueCard).
+-- A theme layout's top-level keys are what BOTH cards use. Its
+-- `conversation` and `quest` tables override any of those keys for that card
+-- alone, and GetQuestDialogueLayout resolves them for the card shown, so a
+-- reader never has to ask which card it is. A change asked for one card goes
+-- in that card's table, never in the shared keys.
+Client.QUEST_DIALOGUE_CARD_VIEWS = {}
+
+-- `card` ("conversation" or "quest") read from a view; anything else is a
+-- conversation, the dialogue's resting card.
+function Client.GetQuestDialogueCardKind(view)
+    local card = type(view) == "table" and view.card
+    if card == "quest" then return "quest" end
+    return "conversation"
+end
+
+-- `layout` as `card` sees it: the card's own table over the shared keys. One
+-- view per layout and card, made once, so it is safe to compare and cache.
+function Client.ResolveQuestDialogueLayout(layout, card)
+    local own = layout and Client.QUEST_DIALOGUE_CARD_KINDS[card or ""] and layout[card]
+    if type(own) ~= "table" then return layout end
+    local views = Client.QUEST_DIALOGUE_CARD_VIEWS
+    views[layout] = views[layout] or {}
+    local resolved = views[layout][card]
+    if not resolved then
+        resolved = setmetatable({}, { __index = function(_, key)
+            local value = own[key]
+            if value ~= nil then return value end
+            return layout[key]
+        end })
+        views[layout][card] = resolved
+    end
+    return resolved
+end
+
+-- The active theme's layout for `card`, or for the card the frame shows.
+function Client.GetQuestDialogueLayout(frame, card)
+    local layouts = Client.QUEST_DIALOGUE_LAYOUTS
+    local layout = frame and layouts[frame.unrealQuestTheme] or layouts.parchment
+    return Client.ResolveQuestDialogueLayout(layout,
+        card or (frame and frame.unrealQuestCard) or "conversation")
+end
+
+-- Columns and lines one page of `card`'s body holds under its theme.
+function Client.GetQuestDialogueTextBudget(frame, card)
+    local text = Client.GetQuestDialogueLayout(frame, card).text
+    return text.columns, text.lines
+end
+
+-- Whether `card` under the current theme draws the quest objective in a
+-- strip of its own, so the body need not carry it.
+function Client.QuestDialogueHasObjectiveStrip(frame, card)
+    return Client.GetQuestDialogueLayout(frame, card).objective ~= nil
+end
+
+-- The columns `card`'s objective line wraps at when the card grows with it
+-- (`objectiveFit`), or nil: Quest/Dialogue.lua then counts no lines.
+function Client.GetQuestDialogueObjectiveColumns(frame, card)
+    local fit = Client.GetQuestDialogueLayout(frame, card).objectiveFit
+    return fit and fit.columns or nil
+end
+
+-- How many units the shown card grows for `view`'s objective: as far as its
+-- lines run past its objectiveFit's `bottom`, on a theme whose art has a
+-- GROW_SEAM.
+function Client.QuestDialogueObjectiveGrow(frame, view)
+    local layout = Client.GetQuestDialogueLayout(frame)
+    local fit = layout.objectiveFit
+    local lines = type(view) == "table" and view.objectiveLines or nil
+    if not fit or type(lines) ~= "number" or not layout.objective
+        or frame.unrealQuestTheme == "parchment"
+        or not Client.GetQuestDialogueArt(frame.unrealQuestTheme).GROW_SEAM then
+        return 0
+    end
+    local grow = layout.objective[2] + lines * fit.lineHeight - fit.bottom
+    if grow < 0 then return 0 end
+    return grow
+end
+
+-- The units the objective box leaves empty under `view`'s objective, on a
+-- card whose objectiveFit says how many lines the box holds (`lines`):
+-- each line it does not use, lineHeight. 0 when the lines were not counted.
+function Client.QuestDialogueObjectiveSlack(frame, view)
+    local fit = Client.GetQuestDialogueLayout(frame).objectiveFit
+    local lines = type(view) == "table" and view.objectiveLines or nil
+    if not fit or not fit.lines or type(lines) ~= "number" or lines >= fit.lines then
+        return 0
+    end
+    return (fit.lines - lines) * fit.lineHeight
+end
+
+-- How many units the shown card gives up for `view`: the objective box's
+-- unused lines (Client.QuestDialogueObjectiveSlack), plus its layout's
+-- rewardRowCollapse when the page has no item reward for the icon row
+-- (Client.RenderQuestDialogueInlineRewards).
+function Client.QuestDialogueRewardRowCollapse(frame, view)
+    local slack = Client.QuestDialogueObjectiveSlack(frame, view)
+    local collapse = Client.GetQuestDialogueLayout(frame).rewardRowCollapse
+    if not collapse then return slack end
+    local turnIn = type(view) == "table" and view.turnIn or nil
+    if type(turnIn) == "table" and (table.getn(turnIn.choices or {}) > 0
+        or table.getn(turnIn.rewards or {}) > 0) then
+        return slack
+    end
+    return slack + collapse
+end
+
+-- `art`'s GROW_SEAM as the { top, bottom, grow } seam LayCard stretches.
+function Client.GrowQuestDialogueSeam(art, grow)
+    return { art.GROW_SEAM[1], art.GROW_SEAM[2], grow }
+end
+
+-- Whether `card` under the current theme shows the page's text at all; a
+-- card with `hideBody` (Minimal's quest card) is given none to page.
+function Client.QuestDialogueShowsBody(frame, card)
+    return not Client.GetQuestDialogueLayout(frame, card).hideBody
+end
+
+-- Whether `card` reads the money, experience and reputation on one line of
+-- its own (`rewardLine`), leaving only the item tiles to the rewards panel.
+function Client.QuestDialogueHasRewardLine(frame, card)
+    return Client.GetQuestDialogueLayout(frame, card).rewardLine ~= nil
+end
+
+-- The framed flags are 14 pixels tall at any unit (CINEMATIC_FLAG_HEIGHT in
+-- Quest/QuestLanguageFlags.lua), so a layout's flagCentre lifts the row by
+-- half that rather than by design units.
+Client.QUEST_DIALOGUE_FLAG_HALF_HEIGHT = 7
+
+function Client.GetQuestDialogueFlagInset(frame)
+    local layout = Client.GetQuestDialogueLayout(frame)
+    local unit = Client.QUEST_DIALOGUE_UNIT
+    if layout.flagRight and layout.flagCentre then
+        return -layout.flagRight * unit,
+            Client.QUEST_DIALOGUE_FLAG_HALF_HEIGHT - layout.flagCentre * unit
+    end
+    local flag = layout.flag
+    return flag[1] * unit, flag[2] * unit
+end
+
+-- Draws the portrait frame `path` over the overlay as a nine-slice when
+-- `slice` is given ({ margin = texture share of each corner, width and
+-- height = a corner's drawn size in design units }), so the border can be
+-- drawn thinner than the art's own scale while the corners keep their shape.
+-- Returns false (slices hidden) without one, and the caller shows the
+-- single-texture art instead.
+function Client.LayQuestDialoguePortraitSlices(frame, path, slice)
+    local slices = frame and frame.unrealQuestPortraitSlices
+    local overlay = frame and frame.unrealQuestPortraitOverlay
+    if not slices then return false end
+    local names = { "TL", "T", "TR", "L", "C", "R", "BL", "B", "BR" }
+    local index = 1
+    if not slice or not overlay then
+        while index <= 9 do
+            Client.HideObject(slices[names[index]])
+            index = index + 1
+        end
+        return false
+    end
+    local m = slice.margin
+    local w, h = slice.width, slice.height
+    -- Per column and row: its texture span (indexes into u), then the
+    -- overlay edges its TOPLEFT and BOTTOMRIGHT follow, with their insets.
+    local u = { 0, m, 1 - m, 1 }
+    local columns = { { 1, 2, "LEFT", 0, "LEFT", w }, { 2, 3, "LEFT", w, "RIGHT", -w },
+        { 3, 4, "RIGHT", -w, "RIGHT", 0 } }
+    local rows = { { 1, 2, "TOP", 0, "TOP", -h }, { 2, 3, "TOP", -h, "BOTTOM", h },
+        { 3, 4, "BOTTOM", h, "BOTTOM", 0 } }
+    local row = 1
+    while row <= 3 do
+        local column = 1
+        while column <= 3 do
+            local texture = slices[names[index]]
+            local c, r = columns[column], rows[row]
+            if texture then
+                pcall(texture.SetTexture, texture, path)
+                pcall(texture.SetTexCoord, texture, u[c[1]], u[c[2]], u[r[1]], u[r[2]])
+                Client.AnchorQuestDialogue(texture, "TOPLEFT", overlay,
+                    r[3] .. c[3], c[4], r[4])
+                Client.AddQuestDialogueAnchor(texture, "BOTTOMRIGHT", overlay,
+                    r[5] .. c[5], c[6], r[6])
+                Client.ShowObject(texture)
+            end
+            column = column + 1
+            index = index + 1
+        end
+        row = row + 1
+    end
+    return true
+end
+
+-- Registers a region that draws only under `theme` (Client.SetQuestDialogueTheme
+-- shows it under that theme and hides it under the other).
+function Client.AddQuestDialogueSkin(frame, theme, region)
+    if not frame or not region then return region end
+    frame.unrealQuestSkins = frame.unrealQuestSkins
+        or { parchment = {}, ornate = {}, minimal = {} }
+    frame.unrealQuestSkins[theme] = frame.unrealQuestSkins[theme] or {}
+    table.insert(frame.unrealQuestSkins[theme], region)
+    return region
+end
+
+-- Lays one texture over a card-unit box with `hole` (also a box) cut out of
+-- it, as up to four pieces that each sample their share of the texture, so
+-- the art reads as one surface around the hole. The card needs the hole for
+-- its portrait model (see CreateQuestDialogueFrame). Pieces register under
+-- `theme`, and are appended to `pieces` when given. `rows` ({ top, bottom },
+-- card units) optionally keeps only that horizontal band of the box, still
+-- sampled as the whole box would be, so one texture can be laid in sections.
+-- `reuse` ({ pieces, next }) lays the pieces an earlier call made again, in
+-- the same order, instead of creating new ones: a card drawn taller by a
+-- seam (LayCard in CreateQuestDialogueFrame) is re-laid this way.
+function Client.LayQuestDialogueArt(frame, theme, path, layer, box, hole, pieces, rows, reuse)
+    if not frame or type(frame.CreateTexture) ~= "function" then return end
+    local left, top = box[1], box[2]
+    local right, bottom = left + box[3], top + box[4]
+    local function Piece(pieceLeft, pieceTop, pieceRight, pieceBottom)
+        if rows then
+            pieceTop = math.max(pieceTop, rows[1])
+            pieceBottom = math.min(pieceBottom, rows[2])
+        end
+        if pieceRight <= pieceLeft or pieceBottom <= pieceTop then return end
+        local texture
+        if reuse then
+            texture = reuse.pieces[reuse.next]
+            reuse.next = reuse.next + 1
+            if not texture then return end
+        else
+            local made, created = pcall(frame.CreateTexture, frame, nil, layer)
+            if not made or not created then return end
+            texture = created
+            Client.SetQuestDialogueArtTexture(texture, path)
+        end
+        Client.SizeQuestDialogue(texture, pieceRight - pieceLeft, pieceBottom - pieceTop)
+        Client.AnchorQuestDialogue(texture, "TOPLEFT", frame, "TOPLEFT", pieceLeft, -pieceTop)
+        if type(texture.SetTexCoord) == "function" then
+            pcall(texture.SetTexCoord, texture,
+                (pieceLeft - left) / box[3], (pieceRight - left) / box[3],
+                (pieceTop - top) / box[4], (pieceBottom - top) / box[4])
+        end
+        if reuse then return end
+        Client.HideObject(texture)
+        Client.AddQuestDialogueSkin(frame, theme, texture)
+        if pieces then table.insert(pieces, texture) end
+    end
+    local holeLeft, holeTop = hole[1], hole[2]
+    local holeRight, holeBottom = holeLeft + hole[3], holeTop + hole[4]
+    if holeRight <= left or holeLeft >= right or holeBottom <= top or holeTop >= bottom then
+        Piece(left, top, right, bottom)
+        return
+    end
+    holeLeft = math.max(holeLeft, left)
+    holeRight = math.min(holeRight, right)
+    holeTop = math.max(holeTop, top)
+    holeBottom = math.min(holeBottom, bottom)
+    Piece(left, top, right, holeTop)
+    Piece(left, holeBottom, right, bottom)
+    Piece(left, holeTop, holeLeft, holeBottom)
+    Piece(holeRight, holeTop, right, holeBottom)
+end
+
+-- A divider over a card-unit box. The optional complete texture is used by
+-- Classic's under-title ornament. Otherwise the legacy divider's
+-- two end caps keep their own 2:1 aspect and the rule stretches between them
+-- (tools/make_dialogue_divider.py). Hidden; returns its texture pieces.
+function Client.LayQuestDialogueDivider(frame, box, completeTexture)
+    if not frame or type(frame.CreateTexture) ~= "function" then return {} end
+    if type(completeTexture) == "string" and completeTexture ~= "" then
+        local made, texture = pcall(frame.CreateTexture, frame, nil, "ARTWORK")
+        if not made or not texture then return {} end
+        pcall(texture.SetTexture, texture, completeTexture)
+        Client.SizeQuestDialogue(texture, box[3], box[4])
+        Client.AnchorQuestDialogue(texture, "TOPLEFT", frame, "TOPLEFT", box[1], -box[2])
+        Client.HideObject(texture)
+        return { texture }
+    end
+    local cap = box[4] * 2
+    local spans = {
+        { "CapL", box[1], cap },
+        { "Line", box[1] + cap, box[3] - 2 * cap },
+        { "CapR", box[1] + box[3] - cap, cap },
+    }
+    local pieces = {}
+    local index = 1
+    while index <= 3 do
+        local spec = spans[index]
+        local made, texture = pcall(frame.CreateTexture, frame, nil, "ARTWORK")
+        if made and texture then
+            pcall(texture.SetTexture, texture, Client.QUEST_DIALOGUE_CARD.DIVIDER .. spec[1])
+            -- Translucent through the vertex colour's alpha: SetAlpha on a
+            -- texture darkens it here (rendering.texture_setalpha_darkens_not_translucent).
+            if type(texture.SetVertexColor) == "function" then
+                pcall(texture.SetVertexColor, texture, 1, 1, 1,
+                    Client.QUEST_DIALOGUE_CARD.DIVIDER_ALPHA)
+            end
+            Client.SizeQuestDialogue(texture, spec[3], box[4])
+            Client.AnchorQuestDialogue(texture, "TOPLEFT", frame, "TOPLEFT", spec[2], -box[2])
+            Client.HideObject(texture)
+            table.insert(pieces, texture)
+        end
+        index = index + 1
+    end
+    return pieces
+end
+
+-- Lays a divider made by Client.LayQuestDialogueDivider at `box` again: a
+-- complete texture fills it, a three-piece rule keeps its caps' width.
+function Client.PlaceQuestDialogueDivider(frame, pieces, box)
+    if not frame or not pieces or not box then return end
+    if table.getn(pieces) == 1 then
+        Client.SizeQuestDialogue(pieces[1], box[3], box[4])
+        Client.AnchorQuestDialogue(pieces[1], "TOPLEFT", frame, "TOPLEFT", box[1], -box[2])
+        return
+    end
+    if table.getn(pieces) ~= 3 then return end
+    local cap = box[4] * 2
+    local spans = { { box[1], cap }, { box[1] + cap, box[3] - 2 * cap },
+        { box[1] + box[3] - cap, cap } }
+    local index = 1
+    while index <= 3 do
+        Client.SizeQuestDialogue(pieces[index], spans[index][2], box[4])
+        Client.AnchorQuestDialogue(pieces[index], "TOPLEFT", frame, "TOPLEFT",
+            spans[index][1], -box[2])
+        index = index + 1
+    end
+end
+
+-- A banner drawn in three parts on `owner`: caps that keep the ornaments'
+-- shape, the centre stretched between them. Returns the parts so a later
+-- Client.SkinQuestDialoguePlate can re-texture them.
+function Client.CreateQuestDialoguePlate(owner, layer)
+    if not owner or type(owner.CreateTexture) ~= "function" then return nil end
+    local parts = {}
+    local index = 1
+    while index <= 3 do
+        local made, part = pcall(owner.CreateTexture, owner, nil, layer)
+        if made and part then parts[index] = part end
+        index = index + 1
+    end
+    if not parts[1] or not parts[2] or not parts[3] then return nil end
+    return parts
+end
+
+-- Textures a three-part plate: `capU` of the texture's width per cap, caps
+-- `capWidth` units wide, `tint` an optional vertex colour, `outset` optional
+-- design units the plate reaches above and below its owner.
+function Client.SkinQuestDialoguePlate(owner, parts, path, capU, capWidth, tint, outset)
+    if not owner or not parts or not parts[1] or not parts[2] or not parts[3] then
+        return false
+    end
+    local coords = { { 0, capU }, { 1 - capU, 1 }, { capU, 1 - capU } }
+    local index = 1
+    while index <= 3 do
+        local part = parts[index]
+        Client.SetQuestDialogueArtTexture(part, path)
+        pcall(part.SetTexCoord, part, coords[index][1], coords[index][2], 0, 1)
+        if type(part.SetVertexColor) == "function" then
+            pcall(part.SetVertexColor, part, tint and tint[1] or 1, tint and tint[2] or 1,
+                tint and tint[3] or 1)
+        end
+        index = index + 1
+    end
+    local out = outset or 0
+    Client.WidthQuestDialogue(parts[1], capWidth)
+    Client.AnchorQuestDialogue(parts[1], "TOPLEFT", owner, "TOPLEFT", 0, out)
+    Client.AddQuestDialogueAnchor(parts[1], "BOTTOMLEFT", owner, "BOTTOMLEFT", 0, -out)
+    Client.WidthQuestDialogue(parts[2], capWidth)
+    Client.AnchorQuestDialogue(parts[2], "TOPRIGHT", owner, "TOPRIGHT", 0, out)
+    Client.AddQuestDialogueAnchor(parts[2], "BOTTOMRIGHT", owner, "BOTTOMRIGHT", 0, -out)
+    Client.AnchorQuestDialogue(parts[3], "TOPLEFT", owner, "TOPLEFT", capWidth, out)
+    Client.AddQuestDialogueAnchor(parts[3], "BOTTOMRIGHT", owner, "BOTTOMRIGHT",
+        -capWidth, -out)
+    return true
+end
+
+-- One clickable row or card's look under each theme: the background drawn
+-- under it and the hover and selected overlays its scripts show
+-- (row.unrealQuestHover / row.unrealQuestSelected). Classic keeps its colour
+-- fills; Cinematic is the wood plank with warm glows over it, the glows on
+-- `overlayLayer` so they draw above the opaque plank. With `banner` (the
+-- gossip rows) the row is the slim banner's ornate frame, in three parts so
+-- its caps keep their shape (`bannerHeight` design units), over the wood
+-- plank drawn at its own aspect in GOSSIP_WOOD.
+function Client.CreateQuestDialogueRowSkin(frame, row, overlayLayer, banner, bannerHeight)
+    if not row or type(row.CreateTexture) ~= "function" then return end
+    local cine = Client.QUEST_DIALOGUE_HORDE_LIGHT
+    local path = cine.PATH
+    local function Fill(layer, texture)
+        local made, region = pcall(row.CreateTexture, row, nil, layer)
+        if not made or not region then return nil end
+        Client.SetQuestDialogueArtTexture(region, texture)
+        pcall(region.SetAllPoints, region, row)
+        Client.HideObject(region)
+        return region
+    end
+    local function MinimalFill(layer, color, textured)
+        local made, region = pcall(row.CreateTexture, row, nil, layer)
+        if not made or not region then return nil end
+        if textured then
+            pcall(region.SetTexture, region,
+                Client.QUEST_DIALOGUE_MINIMAL.PATH .. Client.QUEST_DIALOGUE_MINIMAL.GRAIN)
+            if type(region.SetVertexColor) == "function" then
+                pcall(region.SetVertexColor, region, color[1], color[2], color[3], color[4])
+            end
+        else
+            pcall(region.SetTexture, region, color[1], color[2], color[3], color[4])
+        end
+        pcall(region.SetAllPoints, region, row)
+        Client.HideObject(region)
+        return region
+    end
+    if banner then
+        local made, wood = pcall(row.CreateTexture, row, nil, "BACKGROUND")
+        if made and wood then
+            local box = cine.GOSSIP_WOOD
+            Client.SetQuestDialogueArtTexture(wood, path .. "Gossip_Wood")
+            local inset = (1 - cine.GOSSIP_WOOD_U) / 2
+            pcall(wood.SetTexCoord, wood, inset, 1 - inset, 0, 1)
+            Client.SizeQuestDialogue(wood, box[3], box[4])
+            Client.AnchorQuestDialogue(wood, "TOPLEFT", row, "TOPLEFT", box[1], -box[2])
+            Client.HideObject(wood)
+            Client.AddQuestDialogueSkin(frame, "ornate", wood)
+            row.unrealQuestGossipWood = wood
+        end
+        local parts = Client.CreateQuestDialoguePlate(row, "BORDER")
+        if parts and Client.SkinQuestDialoguePlate(row, parts, path .. "Gossip_Frame",
+            cine.CAP_U.Gossip_Frame, cine.CAP_SHARE * bannerHeight) then
+            local index = 1
+            while index <= 3 do
+                Client.HideObject(parts[index])
+                Client.AddQuestDialogueSkin(frame, "ornate", parts[index])
+                index = index + 1
+            end
+        end
+        -- Parchment draws each row as a gold-framed parchment button, one
+        -- plate for idle and one for hover (user request). Only one shows at
+        -- a time, so the hover plate never lets the idle rim show around it;
+        -- Client.PaintQuestDialogueGossipPlate picks it.
+        local plates = {
+            normal = Client.CreateQuestDialoguePlate(row, "BACKGROUND"),
+            hover = Client.CreateQuestDialoguePlate(row, "BACKGROUND"),
+        }
+        if plates.normal and plates.hover then
+            row.unrealQuestGossipPlates = plates
+            row.unrealQuestDialogueFrame = frame
+            row.unrealQuestPlateHeight = bannerHeight
+            Client.SkinQuestDialogueGossipPlates(frame, row)
+            -- The classic hover "region" becomes a flag the painter reads:
+            -- the row's scripts and the renderer only ever call Show and
+            -- Hide on it. Selection has no plate of its own; the reward
+            -- glow marks a selected row.
+            row.unrealQuestHover = {
+                Show = function()
+                    row.unrealQuestPlateHovered = true
+                    Client.PaintQuestDialogueGossipPlate(row)
+                end,
+                Hide = function()
+                    row.unrealQuestPlateHovered = nil
+                    Client.PaintQuestDialogueGossipPlate(row)
+                end,
+            }
+            row.unrealQuestSelected = {
+                Show = function() Client.PaintQuestDialogueGossipPlate(row) end,
+                Hide = function() Client.PaintQuestDialogueGossipPlate(row) end,
+            }
+        end
+    else
+        Client.AddQuestDialogueSkin(frame, "ornate", Fill("BACKGROUND", path .. "Row"))
+    end
+    Client.AddQuestDialogueSkin(frame, "minimal",
+        MinimalFill("BACKGROUND", { 0.46, 0.39, 0.30, 0.92 }, true))
+    row.unrealQuestStates = row.unrealQuestStates or {}
+    row.unrealQuestStates.parchment = {
+        hover = row.unrealQuestHover,
+        selected = row.unrealQuestSelected,
+    }
+    row.unrealQuestStates.ornate = {
+        hover = Fill(overlayLayer, path .. "Row_Hover"),
+        selected = Fill(overlayLayer, path .. "Row_Selected"),
+    }
+    row.unrealQuestStates.minimal = {
+        hover = MinimalFill(overlayLayer, { 0.34, 0.25, 0.11, 0.82 }),
+        selected = MinimalFill(overlayLayer, { 0.48, 0.36, 0.13, 0.88 }),
+    }
+end
+
+-- Textures and places a row's Parchment gossip plates for the card shown:
+-- each plate's visible frame is cropped to fill the row's height plus the
+-- card's rowOutset above and below, and the caps widen by the same scale so
+-- they keep their shape. Run when the row is made and on every change of
+-- card (Client.LayQuestDialogueCard), so each card keeps its own outset.
+function Client.SkinQuestDialogueGossipPlates(frame, row)
+    local plates = row and row.unrealQuestGossipPlates
+    if not plates or not row.unrealQuestPlateHeight then return end
+    local card = Client.QUEST_DIALOGUE_CARD
+    local layout = Client.ResolveQuestDialogueLayout(Client.QUEST_DIALOGUE_LAYOUTS.parchment,
+        frame and frame.unrealQuestCard or "conversation")
+    local outset = layout.rowOutset or 0
+    local states = { "normal", "hover" }
+    local index = 1
+    while index <= 2 do
+        local spec = card.GOSSIP_PLATES[states[index]]
+        local parts = plates[states[index]]
+        local crop = spec.CROP
+        local capU = card.GOSSIP_PLATE_CAP_U
+        local scale = (row.unrealQuestPlateHeight + 2 * outset) / (crop[3] - crop[2])
+        local capWidth = (capU * 512 - crop[1]) * scale
+        if Client.SkinQuestDialoguePlate(row, parts,
+            card.GOSSIP_PLATE .. spec.TEXTURE, capU, capWidth, nil, outset) then
+            local top, bottom = crop[2] / 128, crop[3] / 128
+            local edge = crop[1] / 512
+            local coords = { { edge, capU }, { 1 - capU, 1 - edge }, { capU, 1 - capU } }
+            local part = 1
+            while part <= 3 do
+                pcall(parts[part].SetTexCoord, parts[part],
+                    coords[part][1], coords[part][2], top, bottom)
+                part = part + 1
+            end
+        end
+        index = index + 1
+    end
+    Client.PaintQuestDialogueGossipPlate(row)
+end
+
+-- Shows the one Parchment gossip plate a row's state calls for (hover while
+-- the mouse is over an enabled row, normal otherwise), and none under any
+-- other theme.
+function Client.PaintQuestDialogueGossipPlate(row)
+    local plates = row and row.unrealQuestGossipPlates
+    if not plates then return end
+    local frame = row.unrealQuestDialogueFrame
+    local shown = nil
+    if frame and frame.unrealQuestTheme == "parchment" then
+        if row.unrealQuestPlateHovered and row.unrealQuestEnabled ~= false then
+            shown = "hover"
+        else
+            shown = "normal"
+        end
+    end
+    local names = { "normal", "hover" }
+    local index = 1
+    while index <= 2 do
+        local parts = plates[names[index]]
+        local part = 1
+        while part <= 3 do
+            if names[index] == shown then Client.ShowObject(parts[part])
+            else Client.HideObject(parts[part]) end
+            part = part + 1
+        end
+        index = index + 1
+    end
+end
+
+-- Points a row's hover and selected fields at `theme`'s overlays, hiding
+-- both themes' copies; the next render or hover shows the right one.
+function Client.ApplyQuestDialogueRowTheme(row, theme)
+    local states = row and row.unrealQuestStates
+    if not states then return end
+    local names = { "parchment", "ornate", "minimal" }
+    local index = 1
+    while index <= 3 do
+        local set = states[names[index]]
+        if set then
+            Client.HideObject(set.hover)
+            Client.HideObject(set.selected)
+        end
+        index = index + 1
+    end
+    local stateTheme = theme == "minimal" and "minimal"
+        or (theme ~= "parchment" and "ornate" or "parchment")
+    local active = states[stateTheme] or states.parchment
+    row.unrealQuestHover = active.hover
+    row.unrealQuestSelected = active.selected
+    local wood = row.unrealQuestGossipWood
+    if wood then
+        local art = theme ~= "parchment" and theme ~= "minimal"
+            and Client.GetQuestDialogueArt(theme) or nil
+        local box = art and art.GOSSIP_WOOD or Client.QUEST_DIALOGUE_HORDE_LIGHT.GOSSIP_WOOD
+        Client.SizeQuestDialogue(wood, box[3], box[4])
+        Client.AnchorQuestDialogue(wood, "TOPLEFT", row, "TOPLEFT", box[1], -box[2])
+    end
+    if row.unrealQuestFocused and row.unrealQuestHover then
+        Client.ShowObject(row.unrealQuestHover)
+    end
+end
+
+-- Shows every region registered for `theme` and hides the other theme's.
+function Client.ShowQuestDialogueSkin(frame, theme)
+    local skins = frame and frame.unrealQuestSkins
+    if not skins then return end
+    -- Hide every skin left out first, then show the ones in use: a region
+    -- two skins share (Minimal reuses the cinematic speaker and title) must
+    -- not be hidden again by the skin walked after it, or the NPC's name
+    -- disappears from Horde light's header.
+    local names = { "parchment", "ornate", "minimal" }
+    local pass = 1
+    while pass <= 2 do
+        local nameIndex = 1
+        while nameIndex <= 3 do
+            local regions = skins[names[nameIndex]] or {}
+            local shown = names[nameIndex] == theme
+                or (theme ~= "parchment" and theme ~= "minimal"
+                    and names[nameIndex] == "ornate")
+            local index = 1
+            while index <= table.getn(regions) do
+                if pass == 1 and not shown then Client.HideObject(regions[index])
+                elseif pass == 2 and shown then Client.ShowObject(regions[index]) end
+                index = index + 1
+            end
+            nameIndex = nameIndex + 1
+        end
+        pass = pass + 1
+    end
+end
+
+-- Puts the dialogue under `theme` (Classic or one of the complete skins; anything else
+-- is classic): the skin regions, the card's size, the portrait box, where
+-- the speaker, title, body and page sit and their ink, and the rows' and
+-- inspector cards' overlays. Both themes' art is made once with the frame,
+-- so a switch only shows, hides and moves. Returns true when the theme
+-- changed, so the caller re-paginates and redraws.
+-- Lays the portrait (holder, zone backdrop in the hole, model in the
+-- opening, frame art and its nine-slice) from `geometry`'s portrait, opening,
+-- hole, model and portraitSlice: the layout of the card shown, so a theme's
+-- conversation card may draw it smaller (Client.LayQuestDialogueCard).
+function Client.PlaceQuestDialoguePortrait(frame, geometry)
+    local holder = frame and frame.unrealQuestPortraitHolder
+    if not holder or type(geometry) ~= "table" then return false end
+    local box = geometry.portrait
+    local opening = geometry.opening
+    local hole = geometry.hole
+    Client.SizeQuestDialogue(holder, box[3], box[4])
+    Client.AnchorQuestDialogue(holder, "TOPLEFT", frame, "TOPLEFT", box[1], -box[2])
+    local background = frame.unrealQuestPortraitBackground
+    if background then
+        Client.SizeQuestDialogue(background, hole[3], hole[4])
+        Client.AnchorQuestDialogue(background, "TOPLEFT", holder, "TOPLEFT",
+            hole[1] - box[1], box[2] - hole[2])
+    end
+    local model = frame.unrealQuestPortraitModel
+    if model then
+        local size = geometry.model
+        if type(size) == "table" then
+            Client.SizeQuestDialogue(model, size[1], size[2])
+        else
+            Client.SizeQuestDialogue(model, size, size)
+        end
+        Client.AnchorQuestDialogue(model, "CENTER", holder, "CENTER",
+            opening[1] + opening[3] / 2 - (box[1] + box[3] / 2),
+            (box[2] + box[4] / 2) - (opening[2] + opening[4] / 2))
+    end
+    local overlay = frame.unrealQuestPortraitOverlay
+    if overlay then
+        Client.SizeQuestDialogue(overlay, box[3], box[4])
+        Client.AnchorQuestDialogue(overlay, "CENTER", holder, "CENTER", 0, 0)
+    end
+    local art = frame.unrealQuestPortraitArt
+    local path = frame.unrealQuestPortraitArtPath
+    if geometry.hidePortraitArt then
+        Client.LayQuestDialoguePortraitSlices(frame, nil, nil)
+        Client.HideObject(art)
+    elseif path and Client.LayQuestDialoguePortraitSlices(frame, path, geometry.portraitSlice) then
+        Client.HideObject(art)
+    else
+        Client.ShowObject(art)
+    end
+    frame.unrealQuestPortraitGeometry = geometry
+    return true
+end
+
+function Client.SetQuestDialogueTheme(frame, theme)
+    if not frame then return false end
+    if theme ~= "horde-light" and theme ~= "alliance-light" and theme ~= "alliance"
+        and theme ~= "horde" and theme ~= "minimal" then
+        theme = "parchment"
+    end
+    if frame.unrealQuestTheme == theme then return false end
+    local previousUnit = Client.QUEST_DIALOGUE_UNIT
+    Client.ApplyQuestDialogueThemeScale(theme)
+    if previousUnit ~= Client.QUEST_DIALOGUE_UNIT then
+        Client.RescaleQuestDialogueGeometry()
+    end
+    frame.unrealQuestTheme = theme
+    -- A theme switched with the card up takes its own veil at once.
+    if Client.IsObjectShown(frame) then
+        Client.FadeQuestDialogueDim(frame, Client.GetQuestDialogueDimAlpha(frame))
+    end
+    -- The layout of the card shown now; Client.LayQuestDialogueCard places
+    -- everything that depends on it, here and on every change of card.
+    local layout = Client.GetQuestDialogueLayout(frame)
+    local art = Client.GetQuestDialogueArt(theme)
+    local function Retarget(region)
+        if region and region.unrealQuestDialogueTexture then
+            local suffix = region.unrealQuestDialogueTexture
+            local path = art.PATH
+            if string.sub(suffix, 1, 9) == "CardTall_" then
+                suffix = (art.QUEST_CARD or "CardTall_") .. string.sub(suffix, 10)
+            elseif string.sub(suffix, 1, 5) == "Card_" then
+                suffix = (art.CONVERSATION_CARD or "Card_") .. string.sub(suffix, 6)
+            elseif region.unrealQuestDialoguePanel == "reward"
+                and art.REWARD_PANEL and string.sub(suffix, 1, 6) == "Panel_" then
+                suffix = art.REWARD_PANEL .. string.sub(suffix, 7)
+                path = art.REWARD_PANEL_PATH or path
+            end
+            pcall(region.SetTexture, region, path .. suffix)
+        end
+    end
+    Client.ShowQuestDialogueSkin(frame, theme)
+    local cardSets = frame.unrealQuestCineCardsByHole
+    if cardSets then
+        local holeKeys = { "horde-light", "alliance", "horde" }
+        local holeIndex = 1
+        while holeIndex <= table.getn(holeKeys) do
+            local set = cardSets[holeKeys[holeIndex]] or {}
+            local names = { "card", "cardTall" }
+            local nameIndex = 1
+            while nameIndex <= 2 do
+                local pieces = set[names[nameIndex]] or {}
+                local pieceIndex = 1
+                while pieceIndex <= table.getn(pieces) do
+                    Client.HideObject(pieces[pieceIndex])
+                    pieceIndex = pieceIndex + 1
+                end
+                nameIndex = nameIndex + 1
+            end
+            holeIndex = holeIndex + 1
+        end
+        local holeKey = "horde-light"
+        if theme == "alliance" or theme == "horde" then holeKey = theme end
+        local active = cardSets[holeKey]
+        frame.unrealQuestCineCard = active and active.card or {}
+        frame.unrealQuestCineCardTall = active and active.cardTall or {}
+        frame.unrealQuestCineCardHole = holeKey
+    end
+    local minimalCards = frame.unrealQuestMinimalCards
+    if minimalCards then
+        local names = { "card", "cardTall" }
+        local nameIndex = 1
+        while nameIndex <= 2 do
+            local pieces = minimalCards[names[nameIndex]] or {}
+            local pieceIndex = 1
+            while pieceIndex <= table.getn(pieces) do
+                Client.HideObject(pieces[pieceIndex])
+                pieceIndex = pieceIndex + 1
+            end
+            nameIndex = nameIndex + 1
+        end
+        if theme == "minimal" then
+            frame.unrealQuestCineCard = minimalCards.card
+            frame.unrealQuestCineCardTall = minimalCards.cardTall
+            frame.unrealQuestCineCardHole = "minimal"
+        end
+    end
+    if theme ~= "parchment" and theme ~= "minimal" then
+        local regions = frame.unrealQuestSkins and frame.unrealQuestSkins.ornate or {}
+        local textureIndex = 1
+        while textureIndex <= table.getn(regions) do
+            Retarget(regions[textureIndex])
+            textureIndex = textureIndex + 1
+        end
+    end
+    local function Ink(region, color)
+        if region and type(region.SetTextColor) == "function" then
+            pcall(region.SetTextColor, region, color[1], color[2], color[3])
+        end
+    end
+
+    -- The art only a theme switch changes; where it sits is the card's
+    -- (Client.LayQuestDialogueCard).
+    local titleDivider = frame.unrealQuestHordeTitleDivider
+    if theme == "horde" and titleDivider and layout.titleDivider then
+        pcall(titleDivider.SetTexture, titleDivider, art.PATH .. art.TITLE_DIVIDER)
+        Client.ShowObject(titleDivider)
+    else
+        Client.HideObject(titleDivider)
+    end
+    -- The faction crest (Alliance V2, Horde V2), faint under the text and the
+    -- header art; only a layout with an `emblem` box draws one.
+    local emblem = frame.unrealQuestDialogueEmblem
+    if emblem and layout.emblem then
+        -- Its faintness is baked into the texture's alpha (EMBLEM_ALPHA in
+        -- tools/make_dialogue_horde.py): Texture:SetAlpha darkens rather
+        -- than fades here (rendering.texture_setalpha_darkens_not_translucent).
+        pcall(emblem.SetTexture, emblem, art.PATH .. "Emblem")
+        Client.ShowObject(emblem)
+    else
+        Client.HideObject(emblem)
+    end
+
+    local rulePieces = { frame.unrealQuestCineObjectiveDivider,
+        frame.unrealQuestCineObjectiveLineLeft, frame.unrealQuestCineObjectiveLineRight }
+    local ruleNames = { "Objective_Diamond", "Objective_Line", "Objective_Line" }
+    local ruleIndex = 1
+    while ruleIndex <= 3 do
+        local piece = rulePieces[ruleIndex]
+        if piece then
+            if theme == "minimal" then
+                pcall(piece.SetTexture, piece, 0.45, 0.32, 0.12, 0.92)
+            elseif theme ~= "parchment" then
+                Client.SetQuestDialogueArtTexture(piece, art.PATH .. ruleNames[ruleIndex])
+            end
+        end
+        ruleIndex = ruleIndex + 1
+    end
+
+    if frame.unrealQuestPortraitHolder then
+        local background = frame.unrealQuestPortraitBackground
+        if background then
+            local portraitBackground = layout.portraitBackground
+            if theme == "minimal" and art.PORTRAIT_BACKGROUND_COLOR then
+                local color = art.PORTRAIT_BACKGROUND_COLOR
+                pcall(background.SetTexture, background,
+                    color[1], color[2], color[3], color[4])
+            elseif theme ~= "parchment" then
+                portraitBackground = Client.QUEST_DIALOGUE_PORTRAIT_BACKGROUND
+                pcall(background.SetTexture, background, portraitBackground)
+            else
+                pcall(background.SetTexture, background, portraitBackground)
+            end
+            pcall(background.SetTexCoord, background, 0, 1, 0, 1)
+            frame.unrealQuestBackdrop = nil
+        end
+        local portraitArt = layout.portraitArt
+        if theme ~= "parchment" and theme ~= "minimal" then
+            portraitArt = art.PATH .. (art.PORTRAIT or "Portrait")
+        end
+        local portraitTexture = frame.unrealQuestPortraitArt
+        if portraitTexture and portraitArt then
+            pcall(portraitTexture.SetTexture, portraitTexture, portraitArt)
+        elseif portraitTexture then
+            Client.HideObject(portraitTexture)
+        end
+        frame.unrealQuestPortraitArtPath = portraitArt
+    end
+    frame.unrealQuestPortraitGeometry = nil
+    Client.LayQuestDialogueCard(frame)
+    local ink = layout.ink
+
+    local rows = frame.unrealQuestRows or {}
+    local index = 1
+    while index <= table.getn(rows) do
+        local states = rows[index].unrealQuestStates
+        local cinematicStates = states and states.ornate
+        if theme ~= "parchment" and theme ~= "minimal" and cinematicStates then
+            Retarget(cinematicStates.hover)
+            Retarget(cinematicStates.selected)
+        end
+        Client.ApplyQuestDialogueRowTheme(rows[index], theme)
+        index = index + 1
+    end
+    local inspector = frame.unrealQuestInspector
+    if inspector then
+        local cards = inspector.unrealQuestCards or {}
+        index = 1
+        while index <= table.getn(cards) do
+            local states = cards[index].unrealQuestStates
+            local cinematicStates = states and states.ornate
+            if theme ~= "parchment" and theme ~= "minimal" and cinematicStates then
+                Retarget(cinematicStates.hover)
+                Retarget(cinematicStates.selected)
+            end
+            Client.ApplyQuestDialogueRowTheme(cards[index], theme)
+            index = index + 1
+        end
+        Ink(inspector.unrealQuestTitle, ink.inspectorTitle)
+        Ink(inspector.unrealQuestPage, ink.inspectorPage)
+        local actions = inspector.unrealQuestActions or {}
+        index = 1
+        while index <= table.getn(actions) do
+            Ink(actions[index].unrealQuestLabel, ink.action)
+            index = index + 1
+        end
+    end
+    return true
+end
+
+-- Lays out the card the frame shows (frame.unrealQuestCard, "conversation"
+-- or "quest") under its theme: the card's size and art, the portrait, the
+-- name, role, title and their rules, the body, the page label and kicker,
+-- the objectives strip and the gossip plates, all from
+-- Client.GetQuestDialogueLayout, so each card takes its own overrides.
+-- Called by SetQuestDialogueTheme and by RenderQuestDialogue whenever the
+-- card changes; only positions, sizes, fonts and ink change here, never
+-- textures, so the two cards cannot leak into each other.
+function Client.LayQuestDialogueCard(frame)
+    if not frame then return end
+    local theme = frame.unrealQuestTheme or "parchment"
+    local layout = Client.GetQuestDialogueLayout(frame)
+    local function Place(region, box)
+        if not region then return end
+        Client.SizeQuestDialogue(region, box[3], box[4])
+        Client.AnchorQuestDialogue(region, "TOPLEFT", frame, "TOPLEFT", box[1], -box[2])
+    end
+    local function Ink(region, color)
+        if region and type(region.SetTextColor) == "function" then
+            pcall(region.SetTextColor, region, color[1], color[2], color[3])
+        end
+    end
+    Client.ShowQuestDialogueCardArt(frame)
+
+    local titleDivider = frame.unrealQuestHordeTitleDivider
+    if theme == "horde" and titleDivider and layout.titleDivider then
+        Place(titleDivider, layout.titleDivider)
+    end
+    local emblem = frame.unrealQuestDialogueEmblem
+    if emblem and layout.emblem then
+        Place(emblem, layout.emblem)
+    end
+    -- Parchment's own title rule and its objectives strip's rule and badge
+    -- (the strip's labels are anchored by RenderQuestDialogue).
+    if theme == "parchment" then
+        Client.PlaceQuestDialogueDivider(frame, frame.unrealQuestTitleDivider,
+            layout.titleDivider)
+        local rule = frame.unrealQuestObjectiveDivider
+        if layout.objectiveDiamond and rule and table.getn(rule) == 3 then
+            Client.PlaceQuestDialogueObjectiveRule(frame, layout, rule)
+        end
+        if layout.objectiveIcon then Place(frame.unrealQuestObjectiveIcon, layout.objectiveIcon) end
+    end
+
+    if frame.unrealQuestPortraitHolder and frame.unrealQuestPortraitGeometry ~= layout then
+        Client.PlaceQuestDialoguePortrait(frame, layout)
+    end
+
+    local ink = layout.ink
+    local speaker = frame[layout.speakerField or "unrealQuestSpeaker"] or frame.unrealQuestSpeaker
+    local title = frame[layout.titleField or "unrealQuestTitle"] or frame.unrealQuestTitle
+    -- A card may drop the name and the role below their boxes
+    -- (`headerDrop`, or `speakerDrop` / `roleDrop` for one of them); the
+    -- boxes keep their size, only the anchor moves.
+    local function PlaceDropped(region, box, drop)
+        if not region or not box then return end
+        Client.SizeQuestDialogue(region, box[3], box[4])
+        Client.AnchorQuestDialogue(region, "TOPLEFT", frame, "TOPLEFT",
+            box[1], -(box[2] + (drop or 0)))
+    end
+    PlaceDropped(speaker, layout.speaker, layout.speakerDrop or layout.headerDrop)
+    if speaker then speaker.unrealQuestFitText = nil end
+    -- The role hugs its text (Client.FitQuestDialogueLabel); a new box makes
+    -- it fit afresh.
+    local role = frame.unrealQuestCineRole
+    if layout.role and role then
+        PlaceDropped(role, layout.role, layout.roleDrop or layout.headerDrop)
+        role.unrealQuestFitText = nil
+    end
+    -- A theme may draw the role and name larger by `headerFontGrow` rendered
+    -- pixels, and the name alone by a further `speakerFontGrow`; every switch
+    -- reapplies both sizes so leaving it shrinks them back.
+    local grow = (layout.headerFontGrow or 0) / Client.QUEST_DIALOGUE_FONT_UNIT
+    local speakerGrow = grow + (layout.speakerFontGrow or 0) / Client.QUEST_DIALOGUE_FONT_UNIT
+    if speaker and (theme ~= "parchment" or layout.speakerFontGrow)
+        and type(layout.speakerSize or speaker.unrealQuestDefaultFontDesignSize) == "number" then
+        Client.ScaleQuestDialogueFont(speaker,
+            (layout.speakerSize or speaker.unrealQuestDefaultFontDesignSize) + speakerGrow)
+    end
+    -- The role's ink follows the theme too: set once at creation from
+    -- Cinematic's gold, Minimal's own colour never reached it (user report,
+    -- 2026-10-12). Only Minimal has a role ink of its own; Parchment has none.
+    if ink.role then Ink(role, ink.role) end
+    if role and type(role.unrealQuestDefaultFontDesignSize) == "number" then
+        Client.ScaleQuestDialogueFont(role, role.unrealQuestDefaultFontDesignSize + grow)
+    end
+    -- The objectives strip moves with a theme's portrait; its labels fit
+    -- afresh in their new boxes.
+    if theme ~= "parchment" then
+        Client.PlaceQuestDialogueObjectiveRule(frame, layout)
+        -- A card may draw its rule from other art (`objectiveRuleArt`, a
+        -- path prefix): Alliance V2's quest card draws Parchment's. Laid per
+        -- card, after Client.SetQuestDialogueTheme put the theme's own back.
+        if theme ~= "minimal" then
+            local ruleArt = layout.objectiveRuleArt or Client.GetQuestDialogueArt(theme).PATH
+            local rulePieces = { frame.unrealQuestCineObjectiveDivider,
+                frame.unrealQuestCineObjectiveLineLeft, frame.unrealQuestCineObjectiveLineRight }
+            local ruleNames = { "Objective_Diamond", "Objective_Line", "Objective_Line" }
+            local ruleIndex = 1
+            while ruleIndex <= 3 do
+                if rulePieces[ruleIndex] then
+                    Client.SetQuestDialogueArtTexture(rulePieces[ruleIndex],
+                        ruleArt .. ruleNames[ruleIndex])
+                end
+                ruleIndex = ruleIndex + 1
+            end
+        end
+        Place(frame.unrealQuestCineObjectiveIcon, layout.objectiveIcon)
+        local strip = { { frame.unrealQuestCineObjectiveHeading, layout.objectiveHeading },
+            { frame.unrealQuestCineObjective, layout.objective } }
+        local stripIndex = 1
+        while stripIndex <= 2 do
+            local label = strip[stripIndex][1]
+            if label then
+                Place(label, strip[stripIndex][2])
+                label.unrealQuestFitText = nil
+            end
+            stripIndex = stripIndex + 1
+        end
+        -- And their ink: set once at creation from Cinematic's, it never
+        -- followed a theme, so Minimal's own colours were ignored (user
+        -- report, 2026-10-12). The themes copied from Cinematic carry its
+        -- values, so for them this is the same colour.
+        Ink(frame.unrealQuestCineObjectiveHeading, ink.objectiveHeading)
+        Ink(frame.unrealQuestCineObjective, ink.objective)
+        -- The heading's size follows the theme (Minimal's inline heading is
+        -- the body's size, the strips' a heading's).
+        if type(layout.objectiveHeadingSize) == "number" then
+            Client.ScaleQuestDialogueFont(frame.unrealQuestCineObjectiveHeading,
+                layout.objectiveHeadingSize)
+        end
+    end
+    -- The one-line reward summary, on a card with a rewardLine box only
+    -- (RenderQuestDialogue shows it per page).
+    local rewardLine = frame.unrealQuestRewardLine
+    if rewardLine and layout.rewardLine then
+        Place(rewardLine, layout.rewardLine)
+        Client.ScaleQuestDialogueFont(rewardLine, layout.rewardLineSize)
+        Ink(rewardLine, ink.rewardLine or ink.page)
+        rewardLine.unrealQuestFitText = nil
+        local tail = frame.unrealQuestRewardLineTail
+        if tail then
+            Client.ScaleQuestDialogueFont(tail, layout.rewardLineSize)
+            Ink(tail, ink.rewardLine or ink.page)
+            tail.unrealQuestFitText = nil
+        end
+    end
+    Ink(speaker, ink.speaker)
+    Client.JustifyQuestDialogueText(speaker, layout.speakerJustify)
+    Place(title, layout.title)
+    frame.unrealQuestTitleBox = layout.title
+    if title then title.unrealQuestFitText = nil end
+    Client.JustifyQuestDialogueText(title, "LEFT", "TOP")
+    Ink(title, ink.title)
+    -- `titleFontGrow` draws the title that many rendered pixels larger (or
+    -- smaller) than `titleSize` or its template; a card without it returns
+    -- a grown title to that size.
+    if title and (layout.titleFontGrow or title.unrealQuestTitleFontGrown) then
+        local base = layout.titleSize or title.unrealQuestDefaultFontDesignSize
+        if type(base) == "number" then
+            Client.ScaleQuestDialogueFont(title,
+                base + (layout.titleFontGrow or 0) / Client.QUEST_DIALOGUE_FONT_UNIT)
+        end
+        title.unrealQuestTitleFontGrown = layout.titleFontGrow and true or nil
+    end
+    -- The body box; `bodyWidth` may narrow its text column.
+    local bodyBox = layout.body
+    local bodyWidth = layout.bodyWidth or bodyBox[3]
+    Place(frame.unrealQuestBodyScroll, { bodyBox[1], bodyBox[2], bodyWidth, bodyBox[4] })
+    Client.SizeQuestDialogue(frame.unrealQuestBodyChild, bodyWidth, bodyBox[4])
+    Place(frame.unrealQuestBodyAnimation, { bodyBox[1], bodyBox[2], bodyWidth, bodyBox[4] })
+    local body = frame.unrealQuestBody
+    Client.WidthQuestDialogue(body, bodyWidth - 8)
+    frame.unrealQuestBodyWidth = bodyWidth
+    frame.unrealQuestBodyLeft = bodyBox[1]
+    Ink(body, ink.body)
+    Place(frame.unrealQuestPage, layout.page)
+    Client.ScaleQuestDialogueFont(frame.unrealQuestPage, layout.pageSize)
+    Ink(frame.unrealQuestPage, ink.page)
+    Place(frame.unrealQuestCineKicker, layout.kicker)
+    Client.ScaleQuestDialogueFont(frame.unrealQuestCineKicker, layout.kickerSize)
+    Ink(frame.unrealQuestCineKicker, ink.kicker)
+    Place(frame.unrealQuestCineKickerIcon, layout.kickerIcon)
+    -- `kickerGap` hangs the kicker label that many units right of its badge,
+    -- hugging its text (RenderQuestDialogue fits it), rather than in its box;
+    -- the label's centre stays 1 unit under the badge's, as the boxes put it.
+    local kicker = frame.unrealQuestCineKicker
+    if layout.kickerGap and kicker and frame.unrealQuestCineKickerIcon then
+        Client.AnchorQuestDialogue(kicker, "LEFT", frame.unrealQuestCineKickerIcon, "RIGHT",
+            layout.kickerGap, -1)
+        kicker.unrealQuestFitText = nil
+    end
+    if layout.indicatorGap then
+        -- Just right of the page label, which hugs its text (RenderQuestDialogue).
+        Client.AnchorQuestDialogue(frame.unrealQuestContinueIndicator, "LEFT",
+            frame.unrealQuestPage, "RIGHT", layout.indicatorGap, 0)
+    else
+        Client.AnchorQuestDialogue(frame.unrealQuestContinueIndicator, "TOPRIGHT", frame,
+            "TOPRIGHT", layout.indicator[1], layout.indicator[2])
+        -- Or the page label to the arrow's left, hugging its text
+        -- (RenderQuestDialogue fits it).
+        local before = layout.pageBeforeIndicator
+        if before and frame.unrealQuestPage then
+            Client.AnchorQuestDialogue(frame.unrealQuestPage, "RIGHT",
+                frame.unrealQuestContinueIndicator, "LEFT", before[1], before[2])
+        end
+    end
+    if frame.unrealQuestPage then frame.unrealQuestPage.unrealQuestFitText = nil end
+    if not layout.optionsPanel then Client.HideObject(frame.unrealQuestOptionsPanel) end
+    -- Parchment's gossip plates reach the card's rowOutset past their row.
+    local rows = frame.unrealQuestRows or {}
+    local rowIndex = 1
+    while rowIndex <= table.getn(rows) do
+        Client.SkinQuestDialogueGossipPlates(frame, rows[rowIndex])
+        rowIndex = rowIndex + 1
+    end
+end
+
+-- Sizes the frame to the card it shows and draws that card's art: the
+-- quest card is the taller one (TALL_HEIGHT), with room for the objectives
+-- strip and the action button; the conversation card is HEIGHT tall.
+function Client.ShowQuestDialogueCardArt(frame)
+    if not frame then return end
+    local quest = frame.unrealQuestCard == "quest"
+    if frame.unrealQuestTheme == "parchment" or not frame.unrealQuestTheme then
+        local classicCard = Client.QUEST_DIALOGUE_CARD
+        local height = quest and classicCard.TALL_HEIGHT or classicCard.HEIGHT
+        Client.SizeQuestDialogue(frame, classicCard.WIDTH, height)
+        if frame.unrealQuestLayClassicCard then frame.unrealQuestLayClassicCard(height) end
+        return
+    end
+    local cineCard = Client.GetQuestDialogueArt(frame.unrealQuestTheme)
+    -- A quest card with a GROW_SEAM is drawn taller by a long objective
+    -- (unrealQuestCardGrow, set by Client.RenderQuestDialogue). A theme
+    -- without one that shares a growing set puts it back to a growth of 0.
+    local grow = 0
+    if quest and frame.unrealQuestGrowCardTall then
+        if cineCard.GROW_SEAM then grow = frame.unrealQuestCardGrow or 0 end
+        frame.unrealQuestGrowCardTall(frame.unrealQuestCineCardHole, grow)
+    end
+    -- Minimal's conversation card grows to hold a quest giver's options as
+    -- buttons (unrealQuestConversationHeight, set by Client.RenderQuestDialogue)
+    -- and narrows to them (unrealQuestConversationWidth, set by
+    -- Client.SizeQuestDialogueOptionButtons).
+    -- A quest card without item rewards drops its empty icon row
+    -- (unrealQuestCardCollapse, set by Client.RenderQuestDialogue).
+    local collapse = quest and frame.unrealQuestCardCollapse or 0
+    local height = quest and cineCard.TALL_HEIGHT + grow - collapse or cineCard.HEIGHT
+    local width = cineCard.WIDTH
+    -- Minimal's cards are as wide as their content (unrealQuestFitWidth, set
+    -- by Client.FitQuestDialogueCardWidth).
+    if frame.unrealQuestTheme == "minimal" then
+        width = frame.unrealQuestFitWidth or cineCard.WIDTH
+        if quest and frame.unrealQuestLayMinimalTallCard then
+            frame.unrealQuestLayMinimalTallCard(height, width)
+        elseif not quest and frame.unrealQuestLayMinimalCard then
+            height = frame.unrealQuestConversationHeight or cineCard.HEIGHT
+            frame.unrealQuestLayMinimalCard(height, width)
+        end
+    end
+    Client.SizeQuestDialogue(frame, width, height)
+    local function ShowSet(set, shown)
+        local index = 1
+        while index <= table.getn(set or {}) do
+            if shown then Client.ShowObject(set[index])
+            else Client.HideObject(set[index]) end
+            index = index + 1
+        end
+    end
+    ShowSet(frame.unrealQuestCineCard, not quest)
+    ShowSet(frame.unrealQuestCineCardTall, quest)
+end
+
+-- Draws the zone backdrop `name` (a file under the shared zoneBackdrops
+-- folder, from Data/DialogueBackdrops.lua) behind the portrait, or the
+-- shared default for nil or a theme without zone backdrops. Only a change
+-- touches the texture; SetQuestDialogueTheme resets it with the default.
+function Client.SetQuestDialogueBackdrop(frame, name)
+    local background = frame and frame.unrealQuestPortraitBackground
+    if not background then return end
+    local layout = Client.QUEST_DIALOGUE_LAYOUTS[frame.unrealQuestTheme or ""]
+    if not layout then return end
+    if not layout.zoneBackdrops then name = nil end
+    local key = name or ""
+    if frame.unrealQuestBackdrop == key then return end
+    frame.unrealQuestBackdrop = key
+    if frame.unrealQuestTheme == "minimal" then
+        local color = Client.QUEST_DIALOGUE_MINIMAL.PORTRAIT_BACKGROUND_COLOR
+        pcall(background.SetTexture, background, color[1], color[2], color[3], color[4])
+        pcall(background.SetTexCoord, background, 0, 1, 0, 1)
+        return
+    end
+    local portraitBackground = layout.portraitBackground
+    if frame.unrealQuestTheme ~= "parchment" then
+        portraitBackground = Client.QUEST_DIALOGUE_PORTRAIT_BACKGROUND
+    end
+    local path = name and (layout.zoneBackdrops .. name) or portraitBackground
+    local coords = name and layout.zoneBackdropCoords or { 0, 1, 0, 1 }
+    pcall(background.SetTexture, background, path)
+    pcall(background.SetTexCoord, background, coords[1], coords[2], coords[3], coords[4])
+end
+
+-- The screen veil's fades: in to QUEST_DIALOGUE_DIM_ALPHA when the card
+-- shows, out to clear when it hides, each over QUEST_DIALOGUE_DIM_FADE seconds
+-- of GetTime, stepped from the dialogue's every-tick driver job. A fade starts
+-- from whatever alpha the veil has now, so a reopen mid fade-out turns back
+-- without a jump. The veil hides itself only once a closing fade lands
+-- (`closing`, the card's OnHide) -- not on any fade that ends at 0: minimal's
+-- veil fades IN to 0 and must stay up to take the click that closes the
+-- conversation (user report, 2026-10-12). The
+-- colour texture's own alpha is what moves, never SetAlpha, which darkens
+-- rather than fades here (rendering.texture_setalpha_darkens_not_translucent).
+Client.QUEST_DIALOGUE_DIM_ALPHA = 0.7
+Client.QUEST_DIALOGUE_DIM_FADE = 0.40
+
+-- The veil's alpha for the theme shown: the layout's `screenDim` (shared by
+-- both cards), else QUEST_DIALOGUE_DIM_ALPHA. Minimal sets 0: the veil still
+-- comes up and still takes the click that closes the conversation, it just
+-- draws nothing.
+function Client.GetQuestDialogueDimAlpha(frame)
+    local layout = frame and Client.QUEST_DIALOGUE_LAYOUTS[frame.unrealQuestTheme or ""]
+    if layout and type(layout.screenDim) == "number" then return layout.screenDim end
+    return Client.QUEST_DIALOGUE_DIM_ALPHA
+end
+
+function Client.QuestDialogueEase(progress)
+    if progress <= 0 then return 0 end
+    if progress >= 1 then return 1 end
+    return progress * progress * (3 - 2 * progress)
+end
+
+function Client.FadeQuestDialogueDim(frame, target, closing)
+    local dim = frame and frame.unrealQuestDim
+    if not dim then return end
+    dim.unrealQuestClosing = closing and true or nil
+    dim.unrealQuestFadeFrom = dim.unrealQuestFadeAlpha or 0
+    dim.unrealQuestFadeTo = target
+    dim.unrealQuestFadeStart = Client.Now() or 0
+    Client.StepQuestDialogueDim(frame)
+end
+
+function Client.StepQuestDialogueDim(frame)
+    local dim = frame and frame.unrealQuestDim
+    local shade = dim and dim.unrealQuestShade
+    local start = dim and dim.unrealQuestFadeStart
+    if not shade or not start then return end
+    local now = Client.Now()
+    local progress = 1
+    if type(now) == "number" and now >= start then
+        progress = (now - start) / Client.QUEST_DIALOGUE_DIM_FADE
+    end
+    if progress >= 1 then
+        progress = 1
+        dim.unrealQuestFadeStart = nil
+    end
+    progress = Client.QuestDialogueEase(progress)
+    local from = dim.unrealQuestFadeFrom or 0
+    local to = dim.unrealQuestFadeTo or 0
+    local alpha = from + (to - from) * progress
+    if dim.unrealQuestFadeAlpha ~= alpha then
+        dim.unrealQuestFadeAlpha = alpha
+        pcall(shade.SetTexture, shade, 0, 0, 0, alpha)
+    end
+    if progress >= 1 and dim.unrealQuestClosing then Client.HideObject(dim) end
+end
+
+function Client.CreateQuestDialogueFrame()
+    local create = Resolve("CreateFrame")
+    local parent = ResolveObject("UIParent")
+    if not create or not parent then
+        return nil
+    end
+    local ok, frame = pcall(create, "Frame", "UnrealQuestDialogueFrame", parent)
+    if not ok or not frame then
+        return nil
+    end
+    local card = Client.QUEST_DIALOGUE_CARD
+    Client.SizeQuestDialogue(frame, card.WIDTH, card.HEIGHT)
+    Client.AnchorObject(frame, "CENTER", parent, "CENTER", 0, 0)
+    if type(frame.SetFrameStrata) == "function" then
+        pcall(frame.SetFrameStrata, frame, "DIALOG")
+    end
+    -- Leave one level below the card for an attached panel that must tuck
+    -- behind its border. Child controls normally remain above their parent.
+    if type(frame.GetFrameLevel) == "function"
+        and type(frame.SetFrameLevel) == "function" then
+        local levelOk, level = pcall(frame.GetFrameLevel, frame)
+        if levelOk and type(level) == "number" and level < 2 then
+            pcall(frame.SetFrameLevel, frame, 2)
+        end
+    end
+    if type(frame.EnableMouse) == "function" then
+        pcall(frame.EnableMouse, frame, true)
+    end
+
+    -- The card is a nine-slice parchment cut from UQ_Dialogue_9Slice_Master by
+    -- tools/make_dialogue_slices.py (see its header for the grid). Corners are
+    -- fixed squares that keep the gold brackets undistorted; the four edges
+    -- stretch along their length and the centre both ways. The slices
+    -- overhang the card by SLICE_OUTSET to swallow the art's
+    -- transparent margin, so the torn edge sits on the card's own bounds.
+    -- Plain textures on the card, not child frames, so they stay under the
+    -- portrait and text. RLE type 10 like every other large addon TGA here
+    -- (textures.uncompressed_512_tga_atlas_corrupts).
+    if type(frame.CreateTexture) == "function" then
+        local size = card.SLICE_SIZE
+        local out = card.SLICE_OUTSET
+        local width = card.WIDTH
+        local function Slice(name, layer)
+            local made, texture = pcall(frame.CreateTexture, frame, nil, layer)
+            if not made or not texture then return nil end
+            pcall(texture.SetTexture, texture, card.SLICE_PATH .. name)
+            return Client.AddQuestDialogueSkin(frame, "parchment", texture)
+        end
+        -- Every slice is a box given by its top-left corner and size in the
+        -- card's own TOPLEFT space, so all nine share one coordinate frame.
+        local function Place(texture, left, top, boxWidth, boxHeight)
+            if not texture then return end
+            Client.SizeQuestDialogue(texture, boxWidth, boxHeight)
+            Client.AnchorQuestDialogue(texture, "TOPLEFT", frame, "TOPLEFT", left, -top)
+        end
+        local inner = size - out
+        local spanX = width + 2 * out - 2 * size
+        local names = { "TL", "TR", "BL", "BR", "T", "B", "L", "R" }
+        local slices = {}
+        local index = 1
+        while index <= table.getn(names) do
+            slices[index] = Slice(names[index], "BORDER")
+            index = index + 1
+        end
+        -- The centre is laid as four pieces around the portrait box, leaving
+        -- a hole there. A Model draws over its own parent's textures but
+        -- cannot be raised above another frame's 2D art
+        -- (rendering.model_m2_spell_fx_in_ui), so an opaque centre slice on
+        -- the card hid the portrait model entirely. Through the hole the
+        -- model's only backdrop is the portrait holder's own background.
+        -- Each piece samples its share of the one centre texture, so the
+        -- parchment reads as a single surface.
+        local holeLeft = card.PORTRAIT_INSET
+        local holeTop = card.PORTRAIT_INSET
+        local holeRight = holeLeft + card.PORTRAIT_SIZE
+        local holeBottom = holeTop + card.PORTRAIT_SIZE
+        local centre = {}
+        index = 1
+        while index <= 4 do
+            centre[index] = Slice("C", "BACKGROUND")
+            index = index + 1
+        end
+        frame.unrealQuestBackground = centre[4]
+        frame.unrealQuestClassicCentre = centre
+        -- Lays the nine slices for a card `height` units tall: the quest
+        -- pages' objectives strip makes it taller (TALL_HEIGHT), so the
+        -- bottom row and the side and centre spans are placed again.
+        frame.unrealQuestLayClassicCard = function(height)
+            if frame.unrealQuestClassicHeight == height then return end
+            frame.unrealQuestClassicHeight = height
+            local spanY = height + 2 * out - 2 * size
+            local border = {
+                { -out, -out, size, size },
+                { width + out - size, -out, size, size },
+                { -out, height + out - size, size, size },
+                { width + out - size, height + out - size, size, size },
+                { inner, -out, spanX, size },
+                { inner, height + out - size, spanX, size },
+                { -out, inner, size, spanY },
+                { width + out - size, inner, size, spanY },
+            }
+            local slot = 1
+            while slot <= table.getn(border) do
+                local spec = border[slot]
+                Place(slices[slot], spec[1], spec[2], spec[3], spec[4])
+                slot = slot + 1
+            end
+            local function CentrePiece(piece, left, top, right, bottom)
+                if not piece then return end
+                -- The hole may start on the centre's own edge, leaving
+                -- nothing on that side: the piece leaves the classic skin, so
+                -- a theme switch never shows it at a size of zero. It is
+                -- only out while this card is laid: the conversation card
+                -- (HEIGHT) ends above the portrait's bottom, so the piece
+                -- under the portrait is empty there but needed on the taller
+                -- quest card, and it rejoins the skin as soon as it has room.
+                local skin = frame.unrealQuestSkins and frame.unrealQuestSkins.parchment or {}
+                if right <= left or bottom <= top then
+                    local at = 1
+                    while at <= table.getn(skin) do
+                        if skin[at] == piece then table.remove(skin, at) else at = at + 1 end
+                    end
+                    piece.unrealQuestOutOfSkin = true
+                    Client.HideObject(piece)
+                    return
+                end
+                if piece.unrealQuestOutOfSkin then
+                    piece.unrealQuestOutOfSkin = nil
+                    table.insert(skin, piece)
+                    if frame.unrealQuestTheme == "parchment" then Client.ShowObject(piece) end
+                end
+                Place(piece, left, top, right - left, bottom - top)
+                if type(piece.SetTexCoord) == "function" then
+                    pcall(piece.SetTexCoord, piece,
+                        (left - inner) / spanX, (right - inner) / spanX,
+                        (top - inner) / spanY, (bottom - inner) / spanY)
+                end
+            end
+            CentrePiece(centre[1], inner, inner, inner + spanX, holeTop)
+            CentrePiece(centre[2], inner, holeBottom, inner + spanX, inner + spanY)
+            CentrePiece(centre[3], inner, holeTop, holeLeft, holeBottom)
+            CentrePiece(centre[4], holeRight, holeTop, inner + spanX, holeBottom)
+        end
+        frame.unrealQuestLayClassicCard(card.HEIGHT)
+
+        -- The Cinematic card: four tiles of one composed image, each with
+        -- the portrait's hole cut out for the same reason as the classic
+        -- centre. The card has no portrait frame of its own: the parchment
+        -- runs under the standalone frame, drawn over the model. Hidden
+        -- until Client.SetQuestDialogueTheme picks it.
+        -- Two cards: the gossip one and the taller quest-page one with room
+        -- for the objectives strip; RenderQuestDialogue shows one of them.
+        local cine = Client.QUEST_DIALOGUE_HORDE_LIGHT
+        local halfWidth = cine.WIDTH / 2
+        local tiles = { { "TL", 0, 0 }, { "TR", 1, 0 }, { "BL", 0, 1 }, { "BR", 1, 1 } }
+        -- `seam` ({ top, bottom, grow }, art units) draws the card `grow`
+        -- units taller than its art by stretching only those art rows; the
+        -- rows above keep their place and the rows below move down whole.
+        -- `reuse` lays the pieces of an earlier call again (a new `grow`).
+        local function LayCard(prefix, height, hole, seam, reuse)
+            local pieces = {}
+            local halfHeight = height / 2
+            local sections = { { 0, 1, -1e9, 1e9 } }
+            if seam then
+                local stretch = (seam[2] - seam[1] + seam[3]) / (seam[2] - seam[1])
+                -- { art row kept at its place, scale, drawn top, drawn bottom,
+                -- stretched }. The stretched section is flagged rather than
+                -- told by its scale: at a growth of 0 its scale is 1 too,
+                -- and laid as a shifted one it drew the top tiles' rows in
+                -- the seam (user report).
+                sections = {
+                    { 0, 1, -1e9, seam[1] },
+                    { seam[1], stretch, seam[1], seam[2] + seam[3], true },
+                    { seam[3], 1, seam[2] + seam[3], 1e9 },
+                }
+            end
+            local tileIndex = 1
+            while tileIndex <= table.getn(tiles) do
+                local tile = tiles[tileIndex]
+                local sectionIndex = 1
+                while sectionIndex <= table.getn(sections) do
+                    local section = sections[sectionIndex]
+                    local tileTop, scale = tile[3] * halfHeight, section[2]
+                    -- The stretched section pins art row section[1] in place;
+                    -- the last one shifts the art down by the seam's growth.
+                    local drawnTop = section[5] and section[1] - (section[1] - tileTop) * scale
+                        or tileTop + section[1]
+                    Client.LayQuestDialogueArt(frame, "ornate",
+                        cine.PATH .. prefix .. tile[1], "BACKGROUND",
+                        { tile[2] * halfWidth, drawnTop, halfWidth, halfHeight * scale },
+                        hole, pieces, seam and { section[3], section[4] } or nil, reuse)
+                    sectionIndex = sectionIndex + 1
+                end
+                tileIndex = tileIndex + 1
+            end
+            return pieces
+        end
+        local layouts = Client.QUEST_DIALOGUE_LAYOUTS
+        -- A quest card that grows with a long objective is laid with its
+        -- art's GROW_SEAM at a growth of 0 and remembers that art (`seamArt`)
+        -- for frame.unrealQuestGrowCardTall. Horde light's set is Alliance
+        -- light's too; both grow it at the same seam.
+        frame.unrealQuestCineCardsByHole = {
+            ["horde-light"] = {
+                card = LayCard("Card_", cine.HEIGHT, layouts["horde-light"].hole),
+                cardTall = LayCard("CardTall_", cine.TALL_HEIGHT, layouts["horde-light"].hole,
+                    Client.GrowQuestDialogueSeam(cine, 0)),
+                seamArt = cine,
+                grow = 0,
+            },
+            ["alliance"] = {
+                card = LayCard("Card_", cine.HEIGHT, layouts.alliance.hole),
+                cardTall = LayCard("CardTall_", cine.TALL_HEIGHT,
+                    layouts.alliance.hole,
+                    Client.GrowQuestDialogueSeam(Client.QUEST_DIALOGUE_ALLIANCE, 0)),
+                seamArt = Client.QUEST_DIALOGUE_ALLIANCE,
+                grow = 0,
+            },
+            -- Horde V2's portrait sits elsewhere, so its cards are cut around
+            -- its own hole (PORTRAIT_HOLE in tools/make_dialogue_horde.py).
+            ["horde"] = {
+                card = LayCard("Card_", cine.HEIGHT,
+                    layouts.horde.conversation.hole),
+                cardTall = LayCard("CardTall_", cine.TALL_HEIGHT, layouts.horde.hole,
+                    Client.QUEST_DIALOGUE_HORDE.TALL_SEAM),
+            },
+        }
+        frame.unrealQuestCineCard = frame.unrealQuestCineCardsByHole["horde-light"].card
+        frame.unrealQuestCineCardTall = frame.unrealQuestCineCardsByHole["horde-light"].cardTall
+        -- The `holeKey` set's quest card drawn `grow` units taller at its
+        -- GROW_SEAM (Client.ShowQuestDialogueCardArt): its pieces are
+        -- re-laid, never made again, and only when the growth changes. A set
+        -- without a seam is left alone.
+        frame.unrealQuestGrowCardTall = function(holeKey, grow)
+            local set = frame.unrealQuestCineCardsByHole[holeKey or ""]
+            if not set or not set.seamArt or set.grow == grow then return end
+            set.grow = grow
+            LayCard("CardTall_", cine.TALL_HEIGHT, layouts[holeKey].hole,
+                Client.GrowQuestDialogueSeam(set.seamArt, grow),
+                { pieces = set.cardTall, next = 1 })
+        end
+
+        local minimal = Client.QUEST_DIALOGUE_MINIMAL
+        local minimalLayout = layouts.minimal
+        -- `reuse`: the set of an earlier MinimalCard, laid again for a new
+        -- height or `cardWidth` (frame.unrealQuestLayMinimalCard) rather
+        -- than made again. `cardWidth` defaults to the art's WIDTH.
+        local function MinimalBorder(set, name, left, top, borderWidth, borderHeight, reuse)
+            local border = reuse and reuse.borders[name]
+            if reuse and not border then return end
+            if not border then
+                local made, created = pcall(frame.CreateTexture, frame, nil, "BORDER")
+                if not made or not created then return end
+                border = created
+                pcall(border.SetTexture, border, minimal.PATH .. minimal.BORDER .. name)
+                Client.HideObject(border)
+                Client.AddQuestDialogueSkin(frame, "minimal", border)
+                table.insert(set, border)
+                set.borders[name] = border
+            end
+            Client.SizeQuestDialogue(border, borderWidth, borderHeight)
+            Client.AnchorQuestDialogue(border, "TOPLEFT", frame, "TOPLEFT", left, -top)
+        end
+        local function MinimalCard(height, reuse, cardWidth)
+            cardWidth = cardWidth or minimal.WIDTH
+            local pieces = reuse or { borders = {} }
+            local inset = minimal.FILL_INSET
+            Client.LayQuestDialogueArt(frame, "minimal",
+                minimal.PATH .. minimal.GRAIN, "BACKGROUND",
+                { inset, inset, cardWidth - 2 * inset, height - 2 * inset },
+                minimalLayout.hole, pieces, nil, reuse and { pieces = reuse, next = 1 } or nil)
+            local size = minimal.BORDER_SIZE
+            local right = cardWidth - size
+            local bottom = height - size
+            local function Borders()
+                MinimalBorder(pieces, "TL", 0, 0, size, size, reuse)
+                MinimalBorder(pieces, "TR", right, 0, size, size, reuse)
+                MinimalBorder(pieces, "BL", 0, bottom, size, size, reuse)
+                MinimalBorder(pieces, "BR", right, bottom, size, size, reuse)
+                MinimalBorder(pieces, "T", size, 0, right - size, size, reuse)
+                MinimalBorder(pieces, "B", size, bottom, right - size, size, reuse)
+                MinimalBorder(pieces, "L", 0, size, size, bottom - size, reuse)
+                MinimalBorder(pieces, "R", right, size, size, bottom - size, reuse)
+            end
+            -- The fill's pieces come first in the set, so the reuse above
+            -- walks them alone; the rest only moves.
+            if reuse then
+                Borders()
+                -- The divider spans the card's width (headerDivider is laid
+                -- for the full WIDTH).
+                local line = pieces.headerDivider
+                local divider = minimalLayout.headerDivider
+                if line and divider then
+                    Client.SizeQuestDialogue(line,
+                        divider[3] - minimal.WIDTH + cardWidth, divider[4])
+                end
+                return pieces
+            end
+            local fill = minimal.FILL_COLOR
+            local pieceIndex = 1
+            while pieceIndex <= table.getn(pieces) do
+                local piece = pieces[pieceIndex]
+                if type(piece.SetVertexColor) == "function" then
+                    pcall(piece.SetVertexColor, piece, fill[1], fill[2], fill[3], fill[4])
+                end
+                pieceIndex = pieceIndex + 1
+            end
+            Borders()
+            -- The gold line between the header (portrait, name, title, flags)
+            -- and the body, on both cards (user request, 2026-10-12): the
+            -- tracker sheet's goldLine cell, in the four-argument SetTexCoord
+            -- form proven for RLE sheets
+            -- (textures.rle_512_tga_atlas_four_arg_supported).
+            local divider = minimalLayout.headerDivider
+            local cell = TrackerArt.pieces.goldLine
+            if divider and cell then
+                local made, line = pcall(frame.CreateTexture, frame, nil, "ARTWORK")
+                if made and line then
+                    local width, height = TrackerArt.SheetSize("tracker")
+                    local top, rows = cell[2], cell[4]
+                    local band = minimalLayout.headerDividerRows
+                    if band then top, rows = cell[2] + band[1], band[2] end
+                    pcall(line.SetTexture, line, TrackerArt.sheets.tracker)
+                    pcall(line.SetTexCoord, line, cell[1] / width,
+                        (cell[1] + cell[3]) / width, top / height,
+                        (top + rows) / height)
+                    if type(line.SetVertexColor) == "function" then
+                        pcall(line.SetVertexColor, line, 1, 1, 1,
+                            minimalLayout.headerDividerAlpha or 1)
+                    end
+                    Client.SizeQuestDialogue(line, divider[3], divider[4])
+                    Client.AnchorQuestDialogue(line, "TOPLEFT", frame, "TOPLEFT",
+                        divider[1], -divider[2])
+                    Client.HideObject(line)
+                    Client.AddQuestDialogueSkin(frame, "minimal", line)
+                    table.insert(pieces, line)
+                    pieces.headerDivider = line
+                end
+            end
+            return pieces
+        end
+        frame.unrealQuestMinimalCards = {
+            card = MinimalCard(minimal.HEIGHT),
+            cardTall = MinimalCard(minimal.TALL_HEIGHT),
+            height = minimal.HEIGHT,
+            width = minimal.WIDTH,
+            tallHeight = minimal.TALL_HEIGHT,
+            tallWidth = minimal.WIDTH,
+        }
+        -- The conversation card laid `height` units tall and `width` wide: it
+        -- grows to hold a quest giver's options as buttons and narrows to
+        -- them (Client.ShowQuestDialogueCardArt). Its pieces are laid again,
+        -- never made again, and only on a change.
+        frame.unrealQuestLayMinimalCard = function(height, width)
+            local cards = frame.unrealQuestMinimalCards
+            width = width or minimal.WIDTH
+            if cards.height == height and cards.width == width then return end
+            cards.height = height
+            cards.width = width
+            MinimalCard(height, cards.card, width)
+        end
+        -- The quest card laid `height` units tall and `width` wide: shorter
+        -- without an item reward row (Client.QuestDialogueRewardRowCollapse),
+        -- narrower for short content (Client.FitQuestDialogueCardWidth).
+        frame.unrealQuestLayMinimalTallCard = function(height, width)
+            local cards = frame.unrealQuestMinimalCards
+            width = width or minimal.WIDTH
+            if cards.tallHeight == height and cards.tallWidth == width then return end
+            cards.tallHeight = height
+            cards.tallWidth = width
+            MinimalCard(height, cards.cardTall, width)
+        end
+    end
+
+    local portraitHolder
+    ok, portraitHolder = pcall(create, "Frame", "UnrealQuestDialoguePortrait", frame)
+    if ok and portraitHolder then
+        Client.SizeQuestDialogue(portraitHolder, card.PORTRAIT_SIZE, card.PORTRAIT_SIZE)
+        Client.AnchorQuestDialogue(portraitHolder, "TOPLEFT", frame, "TOPLEFT",
+            card.PORTRAIT_INSET, -card.PORTRAIT_INSET)
+        if type(portraitHolder.CreateTexture) == "function" then
+            local bgOk, bg = pcall(portraitHolder.CreateTexture, portraitHolder,
+                nil, "BACKGROUND")
+            if bgOk and bg then
+                pcall(bg.SetTexture, bg,
+                    "Interface\\AddOns\\unrealQuest\\media\\Textures\\Dialogues\\Parchment\\UQ_Parchment_Portrait_Background")
+                pcall(bg.SetAllPoints, bg, portraitHolder)
+                frame.unrealQuestPortraitBackground = bg
+            end
+        end
+        frame.unrealQuestPortraitHolder = portraitHolder
+
+        local modelOk, model = pcall(create, "PlayerModel",
+            "UnrealQuestDialoguePortraitModel", portraitHolder)
+        if modelOk and model then
+            Client.SizeQuestDialogue(model, 116, 116)
+            Client.AnchorQuestDialogue(model, "CENTER", portraitHolder, "CENTER", 0, 0)
+            frame.unrealQuestPortraitModel = model
+        end
+
+        local overlayOk, overlay = pcall(create, "Frame",
+            "UnrealQuestDialoguePortraitOverlay", portraitHolder)
+        if overlayOk and overlay then
+            Client.SizeQuestDialogue(overlay, 136, 136)
+            Client.AnchorQuestDialogue(overlay, "CENTER", portraitHolder, "CENTER", 0, 0)
+            if type(overlay.SetFrameLevel) == "function"
+                and model and type(model.GetFrameLevel) == "function" then
+                local levelOk, level = pcall(model.GetFrameLevel, model)
+                if levelOk and type(level) == "number" then
+                    pcall(overlay.SetFrameLevel, overlay, level + 1)
+                end
+            end
+            if type(overlay.CreateTexture) == "function" then
+                local artOk, art = pcall(overlay.CreateTexture, overlay, nil, "OVERLAY")
+                if artOk and art then
+                    pcall(art.SetTexture, art,
+                        "Interface\\AddOns\\unrealQuest\\media\\Textures\\Dialogues\\Parchment\\UQ_Parchment_Portrait_Frame_Square_Dark")
+                    pcall(art.SetAllPoints, art, overlay)
+                    frame.unrealQuestPortraitArt = art
+                end
+                -- The nine-slice copy of the frame art for a layout with
+                -- portraitSlice (Client.LayQuestDialoguePortraitSlices).
+                local slices = {}
+                local names = { "TL", "T", "TR", "L", "C", "R", "BL", "B", "BR" }
+                local index = 1
+                while index <= 9 do
+                    local sliceOk, slice = pcall(overlay.CreateTexture, overlay, nil, "OVERLAY")
+                    if sliceOk and slice then
+                        slices[names[index]] = slice
+                        Client.HideObject(slice)
+                    end
+                    index = index + 1
+                end
+                frame.unrealQuestPortraitSlices = slices
+                -- Minimal's portrait frame: the tracker sheet's quest-item
+                -- frame, a chamfered gold square (user request, 2026-10-12),
+                -- stretched over the portrait box in place of the flat gold
+                -- edge it had (Client.SetQuestDialogueItemFrameArt).
+                local minimalBorders = {}
+                local borderOk, border = pcall(overlay.CreateTexture, overlay,
+                    nil, "OVERLAY")
+                if borderOk and border and Client.SetQuestDialogueItemFrameArt(border) then
+                    Client.AnchorQuestDialogue(border, "TOPLEFT", overlay, "TOPLEFT", 0, 0)
+                    Client.AddQuestDialogueAnchor(border, "BOTTOMRIGHT", overlay,
+                        "BOTTOMRIGHT", 0, 0)
+                    Client.HideObject(border)
+                    Client.AddQuestDialogueSkin(frame, "minimal", border)
+                    table.insert(minimalBorders, border)
+                end
+                frame.unrealQuestMinimalPortraitBorder = minimalBorders
+            end
+            frame.unrealQuestPortraitOverlay = overlay
+        end
+    end
+
+    local function Label(name, template, left, top, width, height, red, green, blue,
+        size, keepTemplateFont)
+        if type(frame.CreateFontString) ~= "function" then
+            return nil
+        end
+        local made, label = pcall(frame.CreateFontString, frame, name,
+            "OVERLAY", template)
+        if not made or not label then
+            return nil
+        end
+        -- Wrapped prose must retain its template Font: this client centres
+        -- short lines on addon-created named Fonts even after LEFT is set on
+        -- both the FontString and Font. The inherited small face honours LEFT.
+        if not keepTemplateFont then Client.ScaleQuestDialogueFont(label, size) end
+        Client.SizeQuestDialogue(label, width, height)
+        Client.AnchorQuestDialogue(label, "TOPLEFT", frame, "TOPLEFT", left, -top)
+        Client.JustifyQuestDialogueText(label, "LEFT", "TOP")
+        if type(label.SetTextColor) == "function" then
+            pcall(label.SetTextColor, label, red, green, blue)
+        end
+        StripShadow(label)
+        return label
+    end
+    -- Dark ink on the parchment: the templates' gold and their black drop
+    -- shadow were tuned for the old dark panel and smear on a light page.
+    frame.unrealQuestSpeaker = Label("UnrealQuestDialogueSpeaker", "GameFontNormal",
+        188, 18, 450, 20, 0.45, 0.12, 0.04)
+    frame.unrealQuestTitle = Label("UnrealQuestDialogueTitle", "GameFontNormalLarge",
+        188, 40, 450, 24, 0.24, 0.12, 0.02)
+    Client.AddQuestDialogueSkin(frame, "parchment", frame.unrealQuestSpeaker)
+    Client.AddQuestDialogueSkin(frame, "parchment", frame.unrealQuestTitle)
+
+    -- The Cinematic card's text: its own speaker and title at larger
+    -- sizes (a label's font is set once, at creation, so each theme has its
+    -- own pair), the role line on the wood band, and the quest kicker -- "!"
+    -- badge, label and line -- over the title. The pair is a skin; the role
+    -- and kicker show per page (RenderQuestDialogue), so they are not.
+    local cineLayout = Client.QUEST_DIALOGUE_LAYOUTS["horde-light"]
+    local cineInk = cineLayout.ink
+    local function CineLabel(name, template, box, color, size, keepTemplateFont)
+        local label = Label(name, template, box[1], box[2], box[3], box[4],
+            color[1], color[2], color[3], size, keepTemplateFont)
+        Client.HideObject(label)
+        return label
+    end
+    frame.unrealQuestCineSpeaker = Client.AddQuestDialogueSkin(frame, "ornate",
+        CineLabel("UnrealQuestDialogueCineSpeaker", "GameFontNormal", cineLayout.speaker,
+            cineInk.speaker, cineLayout.speakerSize))
+    frame.unrealQuestCineTitle = Client.AddQuestDialogueSkin(frame, "ornate",
+        CineLabel("UnrealQuestDialogueCineTitle", "GameFontNormalLarge", cineLayout.title,
+            cineInk.title, cineLayout.titleSize))
+    Client.AddQuestDialogueSkin(frame, "minimal", frame.unrealQuestCineSpeaker)
+    Client.AddQuestDialogueSkin(frame, "minimal", frame.unrealQuestCineTitle)
+    frame.unrealQuestCineRole = CineLabel("UnrealQuestDialogueCineRole",
+        "GameFontNormalSmall", cineLayout.role, cineInk.role)
+    -- Start the shared kicker and page labels at the saved theme's authored
+    -- size. SetQuestDialogueTheme reapplies those sizes on every live switch.
+    local buildLayout = Client.QUEST_DIALOGUE_LAYOUTS[Client.QUEST_DIALOGUE_BUILD_THEME or ""]
+        or cineLayout
+    frame.unrealQuestCineKicker = CineLabel("UnrealQuestDialogueCineKicker",
+        "GameFontNormalSmall", cineLayout.kicker, cineInk.kicker, buildLayout.kickerSize)
+    if type(frame.CreateTexture) == "function" then
+        local function CineArt(name, box, layer)
+            local made, texture = pcall(frame.CreateTexture, frame, nil, layer or "ARTWORK")
+            if not made or not texture then return nil end
+            Client.SetQuestDialogueArtTexture(texture,
+                Client.QUEST_DIALOGUE_HORDE_LIGHT.PATH .. name)
+            Client.SizeQuestDialogue(texture, box[3], box[4])
+            Client.AnchorQuestDialogue(texture, "TOPLEFT", frame, "TOPLEFT", box[1], -box[2])
+            Client.HideObject(texture)
+            return texture
+        end
+        local dividerBox = Client.QUEST_DIALOGUE_LAYOUTS.alliance.titleDivider
+        frame.unrealQuestHordeTitleDivider = CineArt("Title_Divider", dividerBox)
+        if frame.unrealQuestHordeTitleDivider then
+            frame.unrealQuestHordeTitleDivider.unrealQuestDialogueTexture = nil
+        end
+        -- BORDER: over the card (BACKGROUND), under every ARTWORK piece --
+        -- the title rule, the kicker badge -- and the OVERLAY labels.
+        frame.unrealQuestDialogueEmblem = CineArt("Emblem", dividerBox, "BORDER")
+        if frame.unrealQuestDialogueEmblem then
+            frame.unrealQuestDialogueEmblem.unrealQuestDialogueTexture = nil
+        end
+        frame.unrealQuestCineKickerIcon = CineArt("Kicker_Icon", cineLayout.kickerIcon)
+        -- The strip's badge is the shared dialogue crosshair, not cinematic art.
+        local objectiveIcon = CineArt("Objective_Icon", cineLayout.objectiveIcon)
+        if objectiveIcon then
+            pcall(objectiveIcon.SetTexture, objectiveIcon,
+                "Interface\\AddOns\\unrealQuest\\media\\Textures\\Dialogues\\UQ_Dialogue_Crosshair")
+        end
+        frame.unrealQuestCineObjectiveIcon = objectiveIcon
+        local rule = cineLayout.objectiveDivider
+        local diamond = cineLayout.objectiveDiamond
+        local lineHeight = cineLayout.objectiveLine
+        local middleY = rule[2] + rule[4] / 2
+        local middleX = rule[1] + rule[3] / 2
+        local gap = diamond / 2 + 2
+        frame.unrealQuestCineObjectiveDivider = CineArt("Objective_Diamond",
+            { middleX - diamond / 2, middleY - diamond / 2, diamond, diamond })
+        frame.unrealQuestCineObjectiveLineLeft = CineArt("Objective_Line",
+            { rule[1], middleY - lineHeight / 2, middleX - gap - rule[1], lineHeight })
+        frame.unrealQuestCineObjectiveLineRight = CineArt("Objective_Line",
+            { middleX + gap, middleY - lineHeight / 2, rule[1] + rule[3] - middleX - gap,
+                lineHeight })
+    end
+    frame.unrealQuestCineObjectiveHeading = CineLabel("UnrealQuestDialogueCineObjectiveHeading",
+        "GameFontNormalLarge", cineLayout.objectiveHeading, cineInk.objectiveHeading,
+        cineLayout.objectiveHeadingSize)
+    frame.unrealQuestCineObjective = CineLabel("UnrealQuestDialogueCineObjective",
+        "GameFontNormalSmall", cineLayout.objective, cineInk.objective, nil, true)
+    if frame.unrealQuestCineObjective
+        and type(frame.unrealQuestCineObjective.SetWordWrap) == "function" then
+        pcall(frame.unrealQuestCineObjective.SetWordWrap, frame.unrealQuestCineObjective, true)
+        frame.unrealQuestCineObjective.unrealQuestFitWraps = true
+    end
+    -- A card's one-line reward summary (a layout's rewardLine, Minimal's
+    -- quest card): placed by LayQuestDialogueCard, shown per page.
+    -- (No local: this function is near Lua's 200-local limit.)
+    frame.unrealQuestRewardLine = CineLabel("UnrealQuestDialogueRewardLine",
+        "GameFontNormalSmall", Client.QUEST_DIALOGUE_LAYOUTS.minimal.quest.rewardLine,
+        Client.QUEST_DIALOGUE_LAYOUTS.minimal.ink.rewardLine,
+        Client.QUEST_DIALOGUE_LAYOUTS.minimal.quest.rewardLineSize)
+    -- With money on it, the line is its label, the coins, then this tail
+    -- (the experience and reputation).
+    frame.unrealQuestRewardLineTail = CineLabel("UnrealQuestDialogueRewardLineTail",
+        "GameFontNormalSmall", Client.QUEST_DIALOGUE_LAYOUTS.minimal.quest.rewardLine,
+        Client.QUEST_DIALOGUE_LAYOUTS.minimal.ink.rewardLine,
+        Client.QUEST_DIALOGUE_LAYOUTS.minimal.quest.rewardLineSize)
+    frame.unrealQuestRewardCoins = Client.CreateQuestDialogueCoins(frame)
+
+    -- The classic card's title divider (always drawn, a skin) and its
+    -- objectives strip: a divider, the crosshair badge, the heading and the
+    -- objective text, shown per page like the Cinematic strip.
+    local classicLayout = Client.QUEST_DIALOGUE_LAYOUTS.parchment
+    local classicInk = classicLayout.ink
+    local titleDivider = Client.LayQuestDialogueDivider(frame, classicLayout.titleDivider,
+        classicLayout.titleDividerTexture)
+    frame.unrealQuestTitleDivider = titleDivider
+    local pieceIndex = 1
+    while pieceIndex <= table.getn(titleDivider) do
+        Client.AddQuestDialogueSkin(frame, "parchment", titleDivider[pieceIndex])
+        pieceIndex = pieceIndex + 1
+    end
+    -- Its objectives rule: Horde's diamond and line runs (the quest card's
+    -- objectiveRuleArt), laid by Client.LayQuestDialogueCard; shown with the
+    -- strip (RenderQuestDialogue).
+    frame.unrealQuestObjectiveDivider = {}
+    if type(frame.CreateTexture) == "function" then
+        local ruleArt = classicLayout.quest.objectiveRuleArt
+        local names = { "Objective_Diamond", "Objective_Line", "Objective_Line" }
+        local ruleIndex = 1
+        while ruleIndex <= 3 do
+            local made, piece = pcall(frame.CreateTexture, frame, nil, "ARTWORK")
+            if made and piece then
+                pcall(piece.SetTexture, piece, ruleArt .. names[ruleIndex])
+                Client.HideObject(piece)
+                table.insert(frame.unrealQuestObjectiveDivider, piece)
+            end
+            ruleIndex = ruleIndex + 1
+        end
+    end
+    if type(frame.CreateTexture) == "function" then
+        local made, icon = pcall(frame.CreateTexture, frame, nil, "ARTWORK")
+        if made and icon then
+            local box = classicLayout.objectiveIcon
+            pcall(icon.SetTexture, icon,
+                "Interface\\AddOns\\unrealQuest\\media\\Textures\\Dialogues\\UQ_Dialogue_Crosshair")
+            Client.SizeQuestDialogue(icon, box[3], box[4])
+            Client.AnchorQuestDialogue(icon, "TOPLEFT", frame, "TOPLEFT", box[1], -box[2])
+            Client.HideObject(icon)
+            frame.unrealQuestObjectiveIcon = icon
+        end
+    end
+    frame.unrealQuestObjectiveHeading = CineLabel("UnrealQuestDialogueObjectiveHeading",
+        "GameFontNormal", classicLayout.objectiveHeading, classicInk.objectiveHeading)
+    frame.unrealQuestObjective = CineLabel("UnrealQuestDialogueObjective",
+        "GameFontNormalSmall", classicLayout.objective, classicInk.objective, nil, true)
+    if frame.unrealQuestObjective
+        and type(frame.unrealQuestObjective.SetWordWrap) == "function" then
+        pcall(frame.unrealQuestObjective.SetWordWrap, frame.unrealQuestObjective, true)
+        frame.unrealQuestObjective.unrealQuestFitWraps = true
+    end
+
+    local bodyOk, bodyScroll = pcall(create, "ScrollFrame",
+        "UnrealQuestDialogueBodyScroll", frame)
+    if bodyOk and bodyScroll then
+        Client.SizeQuestDialogue(bodyScroll, 468, 82)
+        Client.AnchorQuestDialogue(bodyScroll, "TOPLEFT", frame, "TOPLEFT", 188, -70)
+        local childOk, child = pcall(create, "Frame",
+            "UnrealQuestDialogueBodyChild", bodyScroll)
+        if childOk and child then
+            Client.SizeQuestDialogue(child, 468, 82)
+            if type(bodyScroll.SetScrollChild) == "function" then
+                pcall(bodyScroll.SetScrollChild, bodyScroll, child)
+            end
+            if type(child.CreateFontString) == "function" then
+                local textOk, body = pcall(child.CreateFontString, child,
+                    "UnrealQuestDialogueBody", "OVERLAY", "GameFontNormalSmall")
+                if textOk and body then
+                    Client.WidthQuestDialogue(body, 460)
+                    Client.AnchorQuestDialogue(body, "TOPLEFT", child, "TOPLEFT", 0, 0)
+                    Client.JustifyQuestDialogueText(body, "LEFT", "TOP")
+                    if type(body.SetWordWrap) == "function" then pcall(body.SetWordWrap, body, true) end
+                    if type(body.SetTextColor) == "function" then
+                        pcall(body.SetTextColor, body, 0.17, 0.11, 0.05)
+                    end
+                    StripShadow(body)
+                    frame.unrealQuestBody = body
+                end
+            end
+            frame.unrealQuestBodyChild = child
+        end
+        frame.unrealQuestBodyScroll = bodyScroll
+    end
+
+    local animationOk, bodyAnimation = pcall(create, "Frame",
+        "UnrealQuestDialogueBodyAnimation", frame)
+    if animationOk and bodyAnimation then
+        Client.SizeQuestDialogue(bodyAnimation, 468, 82)
+        Client.AnchorQuestDialogue(bodyAnimation, "TOPLEFT", frame, "TOPLEFT", 188, -70)
+        frame.unrealQuestBodyAnimation = bodyAnimation
+        frame.unrealQuestBodyLetterPool = {}
+        frame.unrealQuestBodyLetters = {}
+        frame.unrealQuestActiveBodyLetters = {}
+    end
+
+    if type(frame.CreateTexture) == "function" then
+        local indicatorOk, indicator = pcall(frame.CreateTexture, frame, nil, "OVERLAY")
+        if indicatorOk and indicator then
+            pcall(indicator.SetTexture, indicator,
+                "Interface\\AddOns\\unrealQuest\\media\\Textures\\Dialogues\\UQ_Continue_Indicator")
+            Client.SizeQuestDialogue(indicator, 18, 18)
+            Client.AnchorQuestDialogue(indicator, "TOPRIGHT", frame, "TOPRIGHT", -24, -142)
+            pcall(indicator.Hide, indicator)
+            frame.unrealQuestContinueIndicator = indicator
+        end
+    end
+    frame.unrealQuestPage = Label("UnrealQuestDialoguePage", "GameFontNormalSmall",
+        552, 190, 90, 18, 0.38, 0.25, 0.10, buildLayout.pageSize)
+    Client.JustifyQuestDialogueText(frame.unrealQuestPage, "RIGHT")
+
+    if type(frame.CreateTexture) == "function" then
+        local panelOk, panel = pcall(frame.CreateTexture, frame, nil, "BACKGROUND")
+        if panelOk and panel then
+            pcall(panel.SetTexture, panel, 0.012, 0.010, 0.008, 0.78)
+            Client.SizeQuestDialogue(panel, 356, 188)
+            Client.HideObject(panel)
+            frame.unrealQuestOptionsPanel = panel
+        end
+    end
+
+    local optionsOk, optionsScroll = pcall(create, "ScrollFrame",
+        "UnrealQuestDialogueOptionsScroll", frame)
+    if optionsOk and optionsScroll then
+        Client.SizeQuestDialogue(optionsScroll, 340, 176)
+        Client.AnchorQuestDialogue(optionsScroll, "CENTER", parent, "CENTER", 500, 0)
+        if frame.unrealQuestOptionsPanel then
+            Client.AnchorQuestDialogue(frame.unrealQuestOptionsPanel, "TOPLEFT",
+                optionsScroll, "TOPLEFT", -8, 6)
+        end
+        -- The rows are NOT in the scroll frame's scroll child: they never
+        -- took the mouse there (user report, 2026-10-07: no gossip row
+        -- could be hovered or clicked), while plain-frame buttons on the
+        -- card do. They sit on a plain frame laid over the scroll frame and
+        -- are painted from a row offset (Client.PlaceQuestDialogueRows), as
+        -- widgets.reparented_native_widget_ignores_scroll_offset prescribes;
+        -- the scroll frame stays only as the wheel receiver under them
+        -- (scripts.scrollframe_receives_mousewheel), with a 1x1 child.
+        local dummyOk, dummy = pcall(create, "Frame", nil, optionsScroll)
+        if dummyOk and dummy then
+            Client.SetObjectSize(dummy, 1, 1)
+            if type(optionsScroll.SetScrollChild) == "function" then
+                pcall(optionsScroll.SetScrollChild, optionsScroll, dummy)
+            end
+        end
+        local childOk, child = pcall(create, "Frame",
+            "UnrealQuestDialogueOptionsChild", frame)
+        if childOk and child then
+            Client.SizeQuestDialogue(child, 340, 176)
+            Client.AnchorQuestDialogue(child, "TOPLEFT", optionsScroll, "TOPLEFT", 0, 0)
+            frame.unrealQuestOptionChild = child
+            frame.unrealQuestRowOffset = 0
+            frame.unrealQuestRows = {}
+            frame.unrealQuestCreateRow = function(rowIndex)
+                local rowOk, row = pcall(create, "Button",
+                    "UnrealQuestDialogueRow" .. tostring(rowIndex), child)
+                if rowOk and row then
+                    Client.SizeQuestDialogue(row, 330, Client.QUEST_DIALOGUE_ROW_HEIGHT)
+                    Client.AnchorQuestDialogue(row, "TOPLEFT", child, "TOPLEFT", 4,
+                        Client.GetQuestDialogueRowTop(frame, rowIndex - 1))
+                    if type(row.EnableMouse) == "function" then pcall(row.EnableMouse, row, true) end
+                    if type(row.RegisterForClicks) == "function" then
+                        pcall(row.RegisterForClicks, row, "LeftButtonUp")
+                    end
+                    if type(row.CreateTexture) == "function" then
+                        -- Parchment's normal, hover and selected looks are
+                        -- the row skin's parchment button plates.
+                        Client.CreateQuestDialogueRowSkin(frame, row, "BORDER", true,
+                            Client.QUEST_DIALOGUE_ROW_HEIGHT)
+                        local glowOk, glow = pcall(row.CreateTexture, row, nil, "BORDER")
+                        if glowOk and glow then
+                            pcall(glow.SetTexture, glow,
+                                "Interface\\AddOns\\unrealQuest\\media\\Textures\\Dialogues\\UQ_Reward_Select_Glow")
+                            Client.SizeQuestDialogue(glow, 34, 34)
+                            Client.AnchorQuestDialogue(glow, "LEFT", row, "LEFT", 4, 0)
+                            pcall(glow.Hide, glow)
+                            row.unrealQuestRewardGlow = glow
+                        end
+                        local iconOk, icon = pcall(row.CreateTexture, row, nil, "ARTWORK")
+                        if iconOk and icon then
+                            Client.SizeQuestDialogue(icon, 26, 26)
+                            Client.AnchorQuestDialogue(icon, "LEFT", row, "LEFT", 8, 0)
+                            pcall(icon.Hide, icon)
+                            row.unrealQuestIcon = icon
+                        end
+                    end
+                    if type(row.CreateFontString) == "function" then
+                        local labelOk, label = pcall(row.CreateFontString, row, nil,
+                            "OVERLAY", "GameFontNormal")
+                        if labelOk and label then
+                            Client.ScaleQuestDialogueFont(label)
+                            Client.SizeQuestDialogue(label, 278, 26)
+                            Client.AnchorQuestDialogue(label, "LEFT", row, "LEFT", 42, 0)
+                            Client.JustifyQuestDialogueText(label, "LEFT")
+                            if type(label.SetTextColor) == "function" then
+                                pcall(label.SetTextColor, label, 0.95, 0.93, 0.88)
+                            end
+                            row.unrealQuestLabel = label
+                        end
+                    end
+                    Client.SetObjectScript(row, "OnClick", function()
+                        if row.unrealQuestEnabled and type(row.unrealQuestCallback) == "function" then
+                            pcall(row.unrealQuestCallback, row.unrealQuestPayload)
+                        end
+                    end)
+                    Client.SetObjectScript(row, "OnEnter", function()
+                        if row.unrealQuestHover then pcall(row.unrealQuestHover.Show, row.unrealQuestHover) end
+                        if row.unrealQuestRewardType and row.unrealQuestRewardIndex then
+                            local tooltip = ResolveObject("GameTooltip")
+                            if tooltip and type(tooltip.SetOwner) == "function"
+                                and type(tooltip.SetQuestItem) == "function" then
+                                pcall(tooltip.SetOwner, tooltip, row, "ANCHOR_RIGHT")
+                                pcall(tooltip.SetQuestItem, tooltip,
+                                    row.unrealQuestRewardType, row.unrealQuestRewardIndex)
+                                if type(tooltip.Show) == "function" then pcall(tooltip.Show, tooltip) end
+                            end
+                        end
+                    end)
+                    Client.SetObjectScript(row, "OnLeave", function()
+                        if row.unrealQuestHover then pcall(row.unrealQuestHover.Hide, row.unrealQuestHover) end
+                        local tooltip = ResolveObject("GameTooltip")
+                        if tooltip and type(tooltip.Hide) == "function" then pcall(tooltip.Hide, tooltip) end
+                    end)
+                    table.insert(frame.unrealQuestRows, row)
+                    -- A row made after the theme was set takes it at once.
+                    if frame.unrealQuestTheme then
+                        Client.ShowQuestDialogueSkin(frame, frame.unrealQuestTheme)
+                        Client.ApplyQuestDialogueRowTheme(row, frame.unrealQuestTheme)
+                    end
+                end
+            end
+            local rowIndex = 1
+            while rowIndex <= 32 do
+                frame.unrealQuestCreateRow(rowIndex)
+                rowIndex = rowIndex + 1
+            end
+        end
+        frame.unrealQuestOptionsScroll = optionsScroll
+    end
+
+    local function OptionScrollButton(name, top, direction)
+        local buttonOk, button = pcall(create, "Button", name, frame)
+        if not buttonOk or not button then return nil end
+        Client.SizeQuestDialogue(button, 48, 26)
+        Client.AnchorQuestDialogue(button, "TOPLEFT",
+            frame.unrealQuestOptionsScroll or frame, "TOPRIGHT", 8, -top)
+        if type(button.EnableMouse) == "function" then pcall(button.EnableMouse, button, true) end
+        if type(button.RegisterForClicks) == "function" then
+            pcall(button.RegisterForClicks, button, "LeftButtonUp")
+        end
+        if type(button.CreateTexture) == "function" then
+            local textureOk, texture = pcall(button.CreateTexture, button, nil, "BACKGROUND")
+            if textureOk and texture then
+                pcall(texture.SetTexture, texture, 0.05, 0.04, 0.02, 0.90)
+                pcall(texture.SetAllPoints, texture, button)
+            end
+        end
+        if type(button.CreateFontString) == "function" then
+            local labelOk, label = pcall(button.CreateFontString, button, nil,
+                "OVERLAY", "GameFontNormalSmall")
+            if labelOk and label then
+                Client.ScaleQuestDialogueFont(label)
+                pcall(label.SetAllPoints, label, button)
+                Client.JustifyQuestDialogueText(label, "CENTER")
+                if type(label.SetTextColor) == "function" then
+                    pcall(label.SetTextColor, label, 0.92, 0.76, 0.32)
+                end
+                button.unrealQuestLabel = label
+            end
+        end
+        Client.SetObjectScript(button, "OnClick", function()
+            Client.ScrollQuestDialogueRows(frame, direction * Client.QUEST_DIALOGUE_ROW_PAGE)
+        end)
+        return button
+    end
+    frame.unrealQuestOptionsUp = OptionScrollButton(
+        "UnrealQuestDialogueOptionsUp", 54, -1)
+    frame.unrealQuestOptionsDown = OptionScrollButton(
+        "UnrealQuestDialogueOptionsDown", 88, 1)
+    Client.HideObject(frame.unrealQuestOptionsUp)
+    Client.HideObject(frame.unrealQuestOptionsDown)
+
+
+    local inspectorOk, inspector = pcall(create, "Frame",
+        "UnrealQuestDialogueInspector", parent)
+    if inspectorOk and inspector then
+        if type(inspector.SetAllPoints) == "function" then
+            pcall(inspector.SetAllPoints, inspector, parent)
+        else
+            Client.SizeQuestDialogue(inspector, 1024, 768)
+            Client.AnchorQuestDialogue(inspector, "CENTER", parent, "CENTER", 0, 0)
+        end
+        if type(inspector.SetFrameStrata) == "function" then
+            pcall(inspector.SetFrameStrata, inspector, "FULLSCREEN_DIALOG")
+        end
+        if type(inspector.EnableMouse) == "function" then
+            pcall(inspector.EnableMouse, inspector, true)
+        end
+        if type(inspector.CreateTexture) == "function" then
+            local dimOk, dim = pcall(inspector.CreateTexture, inspector, nil, "BACKGROUND")
+            if dimOk and dim then
+                if type(dim.SetTexture) == "function" then
+                    pcall(dim.SetTexture, dim, 0.010, 0.008, 0.006, 0.28)
+                end
+                if type(dim.SetAllPoints) == "function" then pcall(dim.SetAllPoints, dim, inspector) end
+                inspector.unrealQuestDim = dim
+            end
+        end
+        local contentOk, content = pcall(create, "Frame",
+            "UnrealQuestDialogueInspectorContent", inspector)
+        if contentOk and content then
+            Client.SizeQuestDialogue(content, 720, 400)
+            Client.AnchorQuestDialogue(content, "BOTTOMLEFT", inspector, "BOTTOMLEFT", 52, 70)
+            inspector.unrealQuestContent = content
+        else
+            content = inspector
+        end
+        if type(content.CreateTexture) == "function" then
+            local parchmentOk, parchment = pcall(content.CreateTexture, content, nil, "BORDER")
+            if parchmentOk and parchment then
+                pcall(parchment.SetTexture, parchment, 0.012, 0.010, 0.008, 0.91)
+                Client.SizeQuestDialogue(parchment, 720, 400)
+                Client.AnchorQuestDialogue(parchment, "CENTER", content, "CENTER", 0, 0)
+                Client.AddQuestDialogueSkin(frame, "parchment", parchment)
+            end
+            local cine = Client.QUEST_DIALOGUE_HORDE_LIGHT
+            Client.SkinQuestDialogueParchment(content, cine.INSPECTOR_SLICE,
+                cine.INSPECTOR_OUTSET, cine.PATH .. "Panel_", frame, "ornate")
+            Client.SkinQuestDialogueMinimalPanel(content, frame)
+        end
+        if type(content.CreateFontString) == "function" then
+            local titleOk, title = pcall(content.CreateFontString, content,
+                "UnrealQuestDialogueInspectorTitle", "OVERLAY", "GameFontNormalLarge")
+            if titleOk and title then
+                Client.ScaleQuestDialogueFont(title)
+                Client.SizeQuestDialogue(title, 600, 28)
+                Client.AnchorQuestDialogue(title, "TOP", content, "TOP", 0, -18)
+                Client.JustifyQuestDialogueText(title, "CENTER")
+                if type(title.SetTextColor) == "function" then
+                    pcall(title.SetTextColor, title, 0.96, 0.78, 0.30)
+                end
+                inspector.unrealQuestTitle = title
+            end
+            local pageOk, page = pcall(content.CreateFontString, content,
+                "UnrealQuestDialogueInspectorPage", "OVERLAY", "GameFontNormalSmall")
+            if pageOk and page then
+                Client.ScaleQuestDialogueFont(page)
+                Client.SizeQuestDialogue(page, 180, 18)
+                Client.AnchorQuestDialogue(page, "TOP", content, "TOP", 0, -46)
+                Client.JustifyQuestDialogueText(page, "CENTER")
+                if type(page.SetTextColor) == "function" then
+                    pcall(page.SetTextColor, page, 0.76, 0.58, 0.24)
+                end
+                inspector.unrealQuestPage = page
+            end
+            local warningOk, warning = pcall(content.CreateFontString, content,
+                "UnrealQuestDialogueInspectorWarning", "OVERLAY", "GameFontNormal")
+            if warningOk and warning then
+                Client.ScaleQuestDialogueFont(warning)
+                Client.SizeQuestDialogue(warning, 600, 20)
+                Client.AnchorQuestDialogue(warning, "BOTTOM", content, "BOTTOM", 0, 44)
+                Client.JustifyQuestDialogueText(warning, "CENTER")
+                if type(warning.SetTextColor) == "function" then
+                    pcall(warning.SetTextColor, warning, 0.92, 0.20, 0.12)
+                end
+                pcall(warning.Hide, warning)
+                inspector.unrealQuestWarning = warning
+            end
+        end
+
+        inspector.unrealQuestCards = {}
+        local cardIndex = 1
+        while cardIndex <= 15 do
+            local cardOk, card = pcall(create, "Button",
+                "UnrealQuestDialogueInspectorCard" .. tostring(cardIndex), content)
+            if cardOk and card then
+                Client.SizeQuestDialogue(card, 210, 48)
+                local row = math.floor((cardIndex - 1) / 3)
+                local column = (cardIndex - 1) - row * 3
+                Client.AnchorQuestDialogue(card, "TOP", content, "TOP",
+                    -230 + column * 230, -70 - row * 54)
+                if type(card.EnableMouse) == "function" then pcall(card.EnableMouse, card, true) end
+                card.unrealQuestSlot = cardIndex
+                if type(card.RegisterForClicks) == "function" then
+                    pcall(card.RegisterForClicks, card, "LeftButtonUp")
+                end
+                if type(card.CreateTexture) == "function" then
+                    local normalOk, normal = pcall(card.CreateTexture, card, nil, "BACKGROUND")
+                    if normalOk and normal then
+                        pcall(normal.SetTexture, normal, 0.025, 0.022, 0.016, 0.94)
+                        pcall(normal.SetAllPoints, normal, card)
+                        Client.AddQuestDialogueSkin(frame, "parchment", normal)
+                    end
+                    local hoverOk, hover = pcall(card.CreateTexture, card, nil, "ARTWORK")
+                    if hoverOk and hover then
+                        pcall(hover.SetTexture, hover, 0.05, 0.35, 0.56, 0.72)
+                        pcall(hover.SetAllPoints, hover, card)
+                        pcall(hover.Hide, hover)
+                        card.unrealQuestHover = hover
+                    end
+                    local selectedOk, selected = pcall(card.CreateTexture, card, nil, "ARTWORK")
+                    if selectedOk and selected then
+                        pcall(selected.SetTexture, selected, 0.48, 0.35, 0.10, 0.78)
+                        pcall(selected.SetAllPoints, selected, card)
+                        pcall(selected.Hide, selected)
+                        card.unrealQuestSelected = selected
+                    end
+                    Client.CreateQuestDialogueRowSkin(frame, card, "BORDER")
+                    local glowOk, glow = pcall(card.CreateTexture, card, nil, "OVERLAY")
+                    if glowOk and glow then
+                        pcall(glow.SetTexture, glow,
+                            "Interface\\AddOns\\unrealQuest\\media\\Textures\\Dialogues\\UQ_Reward_Select_Glow")
+                        Client.SizeQuestDialogue(glow, 42, 42)
+                        Client.AnchorQuestDialogue(glow, "LEFT", card, "LEFT", 4, 0)
+                        pcall(glow.Hide, glow)
+                        card.unrealQuestGlow = glow
+                    end
+                    local iconOk, icon = pcall(card.CreateTexture, card, nil, "ARTWORK")
+                    if iconOk and icon then
+                        Client.SizeQuestDialogue(icon, 36, 36)
+                        Client.AnchorQuestDialogue(icon, "LEFT", card, "LEFT", 7, 0)
+                        card.unrealQuestIcon = icon
+                    end
+                end
+                if type(card.CreateFontString) == "function" then
+                    local nameOk, name = pcall(card.CreateFontString, card, nil,
+                        "OVERLAY", "GameFontNormal")
+                    if nameOk and name then
+                        Client.ScaleQuestDialogueFont(name)
+                        Client.SizeQuestDialogue(name, 158, 22)
+                        Client.AnchorQuestDialogue(name, "TOPLEFT", card, "TOPLEFT", 48, -6)
+                        Client.JustifyQuestDialogueText(name, "LEFT")
+                        card.unrealQuestLabel = name
+                    end
+                    local metaOk, meta = pcall(card.CreateFontString, card, nil,
+                        "OVERLAY", "GameFontNormalSmall")
+                    if metaOk and meta then
+                        Client.ScaleQuestDialogueFont(meta)
+                        Client.SizeQuestDialogue(meta, 158, 16)
+                        Client.AnchorQuestDialogue(meta, "BOTTOMLEFT", card, "BOTTOMLEFT", 48, 4)
+                        Client.JustifyQuestDialogueText(meta, "LEFT")
+                        if type(meta.SetTextColor) == "function" then
+                            pcall(meta.SetTextColor, meta, 0.78, 0.66, 0.36)
+                        end
+                        card.unrealQuestMeta = meta
+                    end
+                end
+                Client.SetObjectScript(card, "OnClick", function()
+                    if card.unrealQuestEnabled and type(card.unrealQuestCallback) == "function" then
+                        pcall(card.unrealQuestCallback, card.unrealQuestPayload)
+                    end
+                end)
+                Client.SetObjectScript(card, "OnEnter", function()
+                    if card.unrealQuestEnabled and inspector.unrealQuestSetFocus then
+                        inspector.unrealQuestSetFocus(card.unrealQuestSlot)
+                    elseif card.unrealQuestHover then
+                        pcall(card.unrealQuestHover.Show, card.unrealQuestHover)
+                    end
+                    local tooltip = ResolveObject("GameTooltip")
+                    if tooltip and type(tooltip.SetOwner) == "function" then
+                        pcall(tooltip.SetOwner, tooltip, card, "ANCHOR_RIGHT")
+                        if card.unrealQuestRewardType == "spell"
+                            and type(tooltip.SetQuestRewardSpell) == "function" then
+                            pcall(tooltip.SetQuestRewardSpell, tooltip)
+                        elseif card.unrealQuestRewardType and card.unrealQuestRewardIndex
+                            and type(tooltip.SetQuestItem) == "function" then
+                            pcall(tooltip.SetQuestItem, tooltip,
+                                card.unrealQuestRewardType, card.unrealQuestRewardIndex)
+                        end
+                        if type(tooltip.Show) == "function" then pcall(tooltip.Show, tooltip) end
+                    end
+                end)
+                Client.SetObjectScript(card, "OnLeave", function()
+                    if card.unrealQuestHover and not card.unrealQuestFocused then
+                        pcall(card.unrealQuestHover.Hide, card.unrealQuestHover)
+                    end
+                    local tooltip = ResolveObject("GameTooltip")
+                    if tooltip and type(tooltip.Hide) == "function" then pcall(tooltip.Hide, tooltip) end
+                end)
+                table.insert(inspector.unrealQuestCards, card)
+            end
+            cardIndex = cardIndex + 1
+        end
+
+        inspector.unrealQuestSetFocus = function(slot)
+            local cards = inspector.unrealQuestCards or {}
+            local index = 1
+            while index <= table.getn(cards) do
+                local card = cards[index]
+                local focused = index == slot and card.unrealQuestEnabled
+                    and Client.IsObjectShown(card)
+                card.unrealQuestFocused = focused and true or nil
+                if card.unrealQuestHover then
+                    if focused then Client.ShowObject(card.unrealQuestHover)
+                    else Client.HideObject(card.unrealQuestHover) end
+                end
+                index = index + 1
+            end
+            inspector.unrealQuestFocusSlot = slot
+        end
+
+        inspector.unrealQuestActions = {}
+        local function InspectorAction(name, x)
+            local buttonOk, button = pcall(create, "Button", name, content)
+            if not buttonOk or not button then return nil end
+            Client.SizeQuestDialogue(button, 126, 28)
+            Client.AnchorQuestDialogue(button, "BOTTOM", content, "BOTTOM", x, 10)
+            if type(button.EnableMouse) == "function" then pcall(button.EnableMouse, button, true) end
+            if type(button.RegisterForClicks) == "function" then
+                pcall(button.RegisterForClicks, button, "LeftButtonUp")
+            end
+            if type(button.CreateTexture) == "function" then
+                local textureOk, texture = pcall(button.CreateTexture, button, nil, "BACKGROUND")
+                if textureOk and texture then
+                    pcall(texture.SetTexture, texture, 0.035, 0.030, 0.020, 0.94)
+                    pcall(texture.SetAllPoints, texture, button)
+                    Client.AddQuestDialogueSkin(frame, "parchment", texture)
+                end
+                local minimalOk, minimal = pcall(button.CreateTexture, button,
+                    nil, "BACKGROUND")
+                if minimalOk and minimal then
+                    pcall(minimal.SetTexture, minimal, 0.22, 0.17, 0.10, 0.96)
+                    pcall(minimal.SetAllPoints, minimal, button)
+                    Client.HideObject(minimal)
+                    Client.AddQuestDialogueSkin(frame, "minimal", minimal)
+                end
+                local cine = Client.QUEST_DIALOGUE_HORDE_LIGHT
+                local plate = Client.CreateQuestDialoguePlate(button, "BACKGROUND")
+                if plate then
+                    Client.SkinQuestDialoguePlate(button, plate, cine.PATH .. "Button",
+                        cine.CAP_U.Button, math.floor(28 * cine.CAP_SHARE + 0.5))
+                    local part = 1
+                    while part <= 3 do
+                        Client.HideObject(plate[part])
+                        Client.AddQuestDialogueSkin(frame, "ornate", plate[part])
+                        part = part + 1
+                    end
+                end
+            end
+            if type(button.CreateFontString) == "function" then
+                local labelOk, label = pcall(button.CreateFontString, button, nil,
+                    "OVERLAY", "GameFontNormal")
+                if labelOk and label then
+                    Client.ScaleQuestDialogueFont(label)
+                    pcall(label.SetAllPoints, label, button)
+                    Client.JustifyQuestDialogueText(label, "CENTER")
+                    if type(label.SetTextColor) == "function" then
+                        pcall(label.SetTextColor, label, 0.92, 0.76, 0.32)
+                    end
+                    button.unrealQuestLabel = label
+                end
+            end
+            Client.SetObjectScript(button, "OnClick", function()
+                if button.unrealQuestEnabled and type(button.unrealQuestCallback) == "function" then
+                    pcall(button.unrealQuestCallback, button.unrealQuestAction)
+                end
+            end)
+            table.insert(inspector.unrealQuestActions, button)
+            return button
+        end
+        InspectorAction("UnrealQuestDialogueInspectorAction1", -210)
+        InspectorAction("UnrealQuestDialogueInspectorAction2", -70)
+        InspectorAction("UnrealQuestDialogueInspectorAction3", 70)
+        InspectorAction("UnrealQuestDialogueInspectorAction4", 210)
+        Client.HideObject(inspector)
+        frame.unrealQuestInspector = inspector
+    end
+
+    local function InstallWheel(scroll)
+        if not scroll then return end
+        if type(scroll.EnableMouseWheel) == "function" then
+            pcall(scroll.EnableMouseWheel, scroll, true)
+        end
+        Client.SetObjectScript(scroll, "OnMouseWheel", function(first)
+            local delta = type(first) == "number" and first or nil
+            if not delta then
+                local legacyOk, legacy = pcall(getglobal, "arg1")
+                if legacyOk and type(legacy) == "number" then delta = legacy end
+            end
+            if not delta or type(scroll.GetVerticalScroll) ~= "function"
+                or type(scroll.SetVerticalScroll) ~= "function" then
+                return
+            end
+            local currentOk, current = pcall(scroll.GetVerticalScroll, scroll)
+            local rangeOk, range = pcall(scroll.GetVerticalScrollRange, scroll)
+            if not currentOk or type(current) ~= "number" then current = 0 end
+            if not rangeOk or type(range) ~= "number" or range < 0 then range = 0 end
+            local nextValue = current - delta * 42 * Client.QUEST_DIALOGUE_UNIT
+            if nextValue < 0 then nextValue = 0 end
+            if nextValue > range then nextValue = range end
+            pcall(scroll.SetVerticalScroll, scroll, nextValue)
+        end)
+    end
+    InstallWheel(frame.unrealQuestBodyScroll)
+    local optionsWheel = frame.unrealQuestOptionsScroll
+    if optionsWheel then
+        if type(optionsWheel.EnableMouseWheel) == "function" then
+            pcall(optionsWheel.EnableMouseWheel, optionsWheel, true)
+        end
+        -- Only the sign of the delta is reliable here (a raw delta arrives,
+        -- scripts.scrollframe_receives_mousewheel).
+        Client.SetObjectScript(optionsWheel, "OnMouseWheel", function(first)
+            local delta = type(first) == "number" and first or nil
+            if not delta then
+                local legacyOk, legacy = pcall(getglobal, "arg1")
+                if legacyOk and type(legacy) == "number" then delta = legacy end
+            end
+            if not delta or delta == 0 then return end
+            Client.ScrollQuestDialogueRows(frame, delta > 0 and -1 or 1)
+        end)
+    end
+
+    -- Immersion has no footer buttons: its TalkBox is the button. A left
+    -- click advances the page or takes the window's next step, a right click
+    -- pages forward or back to the first page (TalkBox:OnClick,
+    -- inputs.accept). The body scroll frame takes the mouse for its wheel, so
+    -- it carries the same handlers rather than swallowing the click.
+    -- OnMouseUp, not OnClick: the card is a Frame, and the button arrives as
+    -- the handler argument or the legacy arg1 (Client.ResolveClickButton).
+    local function Clicked(first)
+        local callback = frame.unrealQuestActionCallback
+        if type(callback) ~= "function" then return end
+        local action = frame.unrealQuestClickAction
+        if Client.ResolveClickButton(first) == "RightButton" then
+            action = frame.unrealQuestRightClickAction
+        end
+        pcall(callback, action or "revealText")
+    end
+    -- No hover effect on the card (by request): it reacts to clicks only.
+    frame.unrealQuestCardClick = Clicked
+    Client.CreateQuestDialogueKeyCatcher(frame)
+    Client.CreateQuestDialogueTurnIn(frame)
+    Client.CreateQuestDialogueActionButton(frame)
+    Client.CreateQuestDialogueActionButton(frame, "UnrealQuestDialogueSecondary",
+        "unrealQuestSecondaryButton")
+    local surfaces = { frame, frame.unrealQuestBodyScroll }
+    local surfaceIndex = 1
+    while surfaceIndex <= table.getn(surfaces) do
+        local surface = surfaces[surfaceIndex]
+        if surface then
+            if type(surface.EnableMouse) == "function" then
+                pcall(surface.EnableMouse, surface, true)
+            end
+            Client.SetObjectScript(surface, "OnMouseUp", Clicked)
+        end
+        surfaceIndex = surfaceIndex + 1
+    end
+
+    -- No keyboard of any kind: a key-enabled frame swallows every key on this
+    -- client (scripts.keyboard_frame_captures_all_input). Escape reaches the
+    -- card only through UISpecialFrames, see Client.SetQuestDialogueEscape.
+    -- A 70% black veil over the whole screen while the card is up. Its own
+    -- top-level frame one strata below the card (HIGH under DIALOG), taking
+    -- the mouse only while the card is up (a click on it closes the
+    -- conversation, Client.SetQuestDialogueVoidClick), and slaved to the
+    -- card's OnShow/OnHide so every show or hide path, Escape included, moves it.
+    local dim
+    local dimMade, dimFrame = pcall(create, "Frame", "UnrealQuestDialogueDim", parent)
+    if dimMade and dimFrame then
+        dim = dimFrame
+        if type(dim.SetAllPoints) == "function" then
+            pcall(dim.SetAllPoints, dim, parent)
+        end
+        if type(dim.SetFrameStrata) == "function" then
+            pcall(dim.SetFrameStrata, dim, "HIGH")
+        end
+        if type(dim.CreateTexture) == "function" then
+            local shadeMade, shade = pcall(dim.CreateTexture, dim, nil, "BACKGROUND")
+            if shadeMade and shade then
+                pcall(shade.SetTexture, shade, 0, 0, 0, 0)
+                pcall(shade.SetAllPoints, shade, dim)
+                dim.unrealQuestShade = shade
+            end
+        end
+        Client.HideObject(dim)
+        frame.unrealQuestDim = dim
+    end
+    Client.SetObjectScript(frame, "OnShow", function()
+        if not dim then return end
+        Client.FadeQuestDialogueDim(frame, Client.GetQuestDialogueDimAlpha(frame))
+        if type(dim.EnableMouse) == "function" then pcall(dim.EnableMouse, dim, true) end
+        Client.ShowObject(dim)
+    end)
+
+    Client.SetObjectScript(frame, "OnHide", function()
+        -- The keyboard goes back to the game with the card, whatever path
+        -- hid it (Client.SetQuestDialogueKeyboard).
+        Client.SetQuestDialogueKeyboard(frame, false)
+        -- A fading-out veil lets clicks through to the world again.
+        if dim and type(dim.EnableMouse) == "function" then
+            pcall(dim.EnableMouse, dim, false)
+        end
+        Client.FadeQuestDialogueDim(frame, 0, true)
+        -- A hide this layer did not make, on the card's own flag (a hidden
+        -- parent leaves IsShown true), is the client's Escape list.
+        local onEscape = frame.unrealQuestEscapeHandler
+        if not frame.unrealQuestOwnHide and type(onEscape) == "function"
+            and not Client.IsObjectShown(frame) then
+            pcall(onEscape)
+        end
+    end)
+
+    -- Every skin region exists by now; start on Classic until the dialogue
+    -- reads the player's choice (Client.SetQuestDialogueTheme).
+    Client.SetQuestDialogueTheme(frame, "parchment")
+    frame.unrealQuestOwnHide = true
+    Client.HideObject(frame)
+    frame.unrealQuestOwnHide = nil
+    return frame
+end
+
+-- Escape for the quest dialogue, still without any keyboard code. While the
+-- card shows, the stock quest and gossip windows are hidden, and with nothing
+-- of its own to close Escape did nothing at all (user report, 2026-10-05).
+-- Listed in UISpecialFrames, Escape does hide the card -- that much was
+-- user-confirmed when the card was first listed there -- and the card's
+-- OnHide hands that to `handler`. The same press can also open the game menu
+-- (frames.uispecialframes_dialogue_escape_opens_game_menu); the dialogue's
+-- poll puts that menu away (Dialogue:CloseOnGameMenu). Listed once.
+-- A click on the screen veil, outside the card, calls `handler`. The veil
+-- takes the mouse only while the card is up (its OnShow/OnHide), so a click
+-- anywhere but the card is caught here rather than reaching the world.
+function Client.SetQuestDialogueVoidClick(frame, handler)
+    local dim = frame and frame.unrealQuestDim
+    if not dim then return false end
+    Client.SetObjectScript(dim, "OnMouseUp", function()
+        if type(handler) == "function" then pcall(handler) end
+    end)
+    return true
+end
+
+-- Keyboard control while the card is up (option dialogueKeyboard): Space
+-- does what a left click on the card does -- the next page, or Accept /
+-- Complete (frame.unrealQuestCardClick) -- and Escape calls `handler`'s
+-- escape. Evidence: a plain Frame with EnableKeyboard(true) receives
+-- OnKeyDown, the key name only in the legacy arg1 global, never OnKeyUp and
+-- never on a Button (scripts.keyboard_frame_only_keydown_arg1,
+-- USER_CONFIRMED_INGAME). And a SHOWN keyboard frame takes the whole
+-- keyboard from the client -- movement, Enter-to-chat and every binding stop,
+-- nothing propagates, SetPropagateKeyboardInput does not exist
+-- (scripts.keyboard_frame_captures_all_input) -- so it is shown only while
+-- the card is up (the dialogue's poll) and hidden by the card's OnHide; the
+-- player opted into that trade with the option. Key bindings cannot be
+-- borrowed instead: SetBinding to an addon command is refused here
+-- (scripts.addon_wheel_binding_unavailable). Capability
+-- questDialogue.keyboard stays unverified until this use is confirmed.
+function Client.CreateQuestDialogueKeyCatcher(frame)
+    local create = Resolve("CreateFrame")
+    local parent = ResolveObject("UIParent")
+    if not create or not frame or not parent then return nil end
+    local ok, keys = pcall(create, "Frame", "UnrealQuestDialogueKeys", parent)
+    if not ok or not keys then return nil end
+    -- The shape both measured catchers had: covering UIParent, mouse off, and
+    -- the keytest's FULLSCREEN_DIALOG strata. A 1x1 catcher at the default
+    -- strata let Space through to Jump with the card up (user report,
+    -- 2026-10-12, Minimal theme). Mouse off, so clicks still reach the card
+    -- and the veil.
+    if type(keys.SetAllPoints) == "function" then
+        pcall(keys.SetAllPoints, keys, parent)
+    else
+        Client.SetObjectSize(keys, 1, 1)
+        Client.AnchorObject(keys, "TOPLEFT", parent, "TOPLEFT", 0, 0)
+    end
+    if type(keys.SetFrameStrata) == "function" then
+        pcall(keys.SetFrameStrata, keys, "FULLSCREEN_DIALOG")
+    end
+    if type(keys.EnableMouse) == "function" then pcall(keys.EnableMouse, keys, false) end
+    Client.SetObjectScript(keys, "OnKeyDown", function(first)
+        local key = type(first) == "string" and first or nil
+        if not key then
+            local legacyOk, legacy = pcall(getglobal, "arg1")
+            if legacyOk and type(legacy) == "string" then key = legacy end
+        end
+        if key == "SPACE" then
+            local keyAction = frame.unrealQuestKeyAction
+            local callback = frame.unrealQuestActionCallback
+            if keyAction and type(callback) == "function" then
+                pcall(callback, keyAction)
+            elseif frame.unrealQuestCardClick then
+                frame.unrealQuestCardClick("LeftButton")
+            end
+        elseif key == "ESCAPE" then
+            local onEscape = frame.unrealQuestKeyEscape
+            if type(onEscape) == "function" then pcall(onEscape) end
+        end
+    end)
+    if type(keys.EnableKeyboard) == "function" then pcall(keys.EnableKeyboard, keys, false) end
+    Client.HideObject(keys)
+    frame.unrealQuestKeys = keys
+    return keys
+end
+
+-- Shows the key catcher (and turns its keyboard on) or hides it (and off).
+-- Only a change touches it.
+function Client.SetQuestDialogueKeyboard(frame, enabled)
+    local keys = frame and frame.unrealQuestKeys
+    if not keys then return false end
+    enabled = enabled and true or false
+    if keys.unrealQuestEnabled == enabled then return true end
+    keys.unrealQuestEnabled = enabled
+    if type(keys.EnableKeyboard) == "function" then
+        pcall(keys.EnableKeyboard, keys, enabled)
+    end
+    if enabled then Client.ShowObject(keys) else Client.HideObject(keys) end
+    return true
+end
+
+-- What Escape does while the key catcher holds the keyboard (it never
+-- reaches the client's Escape list then).
+function Client.SetQuestDialogueKeyEscape(frame, handler)
+    if frame then frame.unrealQuestKeyEscape = handler end
+end
+
+-- Key bindings, for taking Space off Jump while the dialogue card is up. A
+-- shown key catcher receives Space yet the character still jumped, the full
+-- screen catcher and a hold after the press included (user report,
+-- 2026-10-12): Jump is not blocked by keyboard capture here. GetBindingAction
+-- and SetBinding(key) without a command are documented, not probed; SetBinding
+-- with a native command on a keyboard key works (unrealUI's quick binding,
+-- scripts.keyboard_frame_captures_all_input). The change is never saved with
+-- SaveBindings. Capability questDialogue.spaceUnbind.
+function Client.GetKeyBindingAction(key)
+    local get = Resolve("GetBindingAction")
+    if not get or not key then return nil end
+    local ok, action = pcall(get, key)
+    if ok and type(action) == "string" and action ~= "" then return action end
+    return nil
+end
+
+-- Binds `key` to `action`, or unbinds it when `action` is nil. True when the
+-- binding reads back as asked.
+function Client.SetKeyBinding(key, action)
+    local set = Resolve("SetBinding")
+    if not set or not key then return false end
+    if action then pcall(set, key, action) else pcall(set, key) end
+    return Client.GetKeyBindingAction(key) == action
+end
+
+function Client.SetQuestDialogueEscape(frame, handler)
+    if not frame then return false end
+    frame.unrealQuestEscapeHandler = handler
+    local special = ResolveObject("UISpecialFrames")
+    if type(special) ~= "table" then return false end
+    local name = "UnrealQuestDialogueFrame"
+    local index = 1
+    while index <= table.getn(special) do
+        if special[index] == name then return true end
+        index = index + 1
+    end
+    table.insert(special, name)
+    return true
+end
+
+-- Draws the card's parchment nine-slice on any frame, anchored to its edges
+-- so it follows later size changes (the turn-in panel grows with its
+-- rewards). `size` is the drawn corner square, `out` the overhang that swallows
+-- the art's transparent margin. Same slices as the card, so the two read as
+-- one set. `path` picks another slice set (the Cinematic panel); with
+-- `frame` and `theme` every slice registers as that theme's skin. `panelKind`
+-- lets one theme replace a specific panel without changing the inspector.
+function Client.SkinQuestDialogueParchment(target, size, out, path, frame, theme,
+    panelKind)
+    if not target or type(target.CreateTexture) ~= "function" then return false end
+    path = path or Client.QUEST_DIALOGUE_CARD.SLICE_PATH
+    local function Slice(name, layer)
+        local made, texture = pcall(target.CreateTexture, target, nil, layer)
+        if not made or not texture then return nil end
+        Client.SetQuestDialogueArtTexture(texture, path .. name)
+        texture.unrealQuestDialoguePanel = panelKind
+        if frame and theme then Client.AddQuestDialogueSkin(frame, theme, texture) end
+        return texture
+    end
+    local function Corner(name, point, x, y)
+        local texture = Slice(name, "BORDER")
+        if not texture then return end
+        Client.SizeQuestDialogue(texture, size, size)
+        Client.AnchorQuestDialogue(texture, point, target, point, x, y)
+    end
+    local function Span(texture, firstPoint, firstX, firstY, secondPoint, secondX, secondY)
+        if not texture then return end
+        Client.AnchorQuestDialogue(texture, firstPoint, target, firstPoint, firstX, firstY)
+        Client.AddQuestDialogueAnchor(texture, secondPoint, target, secondPoint,
+            secondX, secondY)
+    end
+    Corner("TL", "TOPLEFT", -out, out)
+    Corner("TR", "TOPRIGHT", out, out)
+    Corner("BL", "BOTTOMLEFT", -out, -out)
+    Corner("BR", "BOTTOMRIGHT", out, -out)
+    local top = Slice("T", "BORDER")
+    Span(top, "TOPLEFT", size - out, out, "TOPRIGHT", out - size, out)
+    if top then Client.SizeQuestDialogue(top, nil, size) end
+    local bottom = Slice("B", "BORDER")
+    Span(bottom, "BOTTOMLEFT", size - out, -out, "BOTTOMRIGHT", out - size, -out)
+    if bottom then Client.SizeQuestDialogue(bottom, nil, size) end
+    local left = Slice("L", "BORDER")
+    Span(left, "TOPLEFT", -out, out - size, "BOTTOMLEFT", -out, size - out)
+    if left then Client.SizeQuestDialogue(left, size, nil) end
+    local right = Slice("R", "BORDER")
+    Span(right, "TOPRIGHT", out, out - size, "BOTTOMRIGHT", out, size - out)
+    if right then Client.SizeQuestDialogue(right, size, nil) end
+    Span(Slice("C", "BACKGROUND"), "TOPLEFT", size - out, out - size,
+        "BOTTOMRIGHT", out - size, size - out)
+    return true
+end
+
+-- Minimal panels are one Lua-tinted grain fill with a one-unit warm edge.
+function Client.SkinQuestDialogueMinimalPanel(target, frame)
+    if not target or not frame or type(target.CreateTexture) ~= "function" then
+        return false
+    end
+    local function Region(layer, color, texture)
+        local made, region = pcall(target.CreateTexture, target, nil, layer)
+        if not made or not region then return nil end
+        if texture then
+            pcall(region.SetTexture, region, texture)
+            if type(region.SetVertexColor) == "function" then
+                pcall(region.SetVertexColor, region, color[1], color[2], color[3], color[4])
+            end
+        else
+            pcall(region.SetTexture, region, color[1], color[2], color[3], color[4])
+        end
+        Client.HideObject(region)
+        Client.AddQuestDialogueSkin(frame, "minimal", region)
+        return region
+    end
+    local grain = Region("BACKGROUND", { 0.40, 0.34, 0.27, 0.96 },
+        Client.QUEST_DIALOGUE_MINIMAL.PATH .. Client.QUEST_DIALOGUE_MINIMAL.GRAIN)
+    if grain then pcall(grain.SetAllPoints, grain, target) end
+    local edge = { 0.42, 0.31, 0.14, 0.96 }
+    local top = Region("BORDER", edge)
+    local bottom = Region("BORDER", edge)
+    local left = Region("BORDER", edge)
+    local right = Region("BORDER", edge)
+    -- Remembered for the rewards panel's inline row, which draws no panel
+    -- behind its icons (Client.RenderQuestDialogueInlineRewards).
+    target.unrealQuestMinimalSkin = { grain, top, bottom, left, right }
+    if top then
+        Client.AnchorQuestDialogue(top, "TOPLEFT", target, "TOPLEFT", 0, 0)
+        Client.AddQuestDialogueAnchor(top, "TOPRIGHT", target, "TOPRIGHT", 0, 0)
+        Client.SizeQuestDialogue(top, nil, 1)
+    end
+    if bottom then
+        Client.AnchorQuestDialogue(bottom, "BOTTOMLEFT", target, "BOTTOMLEFT", 0, 0)
+        Client.AddQuestDialogueAnchor(bottom, "BOTTOMRIGHT", target, "BOTTOMRIGHT", 0, 0)
+        Client.SizeQuestDialogue(bottom, nil, 1)
+    end
+    if left then
+        Client.AnchorQuestDialogue(left, "TOPLEFT", target, "TOPLEFT", 0, 0)
+        Client.AddQuestDialogueAnchor(left, "BOTTOMLEFT", target, "BOTTOMLEFT", 0, 0)
+        Client.SizeQuestDialogue(left, 1, nil)
+    end
+    if right then
+        Client.AnchorQuestDialogue(right, "TOPRIGHT", target, "TOPRIGHT", 0, 0)
+        Client.AddQuestDialogueAnchor(right, "BOTTOMRIGHT", target, "BOTTOMRIGHT", 0, 0)
+        Client.SizeQuestDialogue(right, 1, nil)
+    end
+    return grain ~= nil
+end
+
+-- Reads a quest log entry's rewards without leaving the log selection moved:
+-- the entry is selected, its choose-one items, guaranteed items and money
+-- read, and the previous selection (or none) restored before returning, all
+-- within one call so nothing draws in between. The quest-giver reward calls
+-- answer only on the completion page, and the progress page still needs to
+-- say what the quest pays. GetQuestLogChoiceInfo, GetQuestLogRewardInfo and
+-- GetQuestLogRewardMoney are OFFICIAL_CLIENT_DOCUMENTATION (selected entry);
+-- the counts are the probe-observed Client.GetQuestLogRewardCounts. nil when
+-- the entry or the selection call is unavailable.
+function Client.ReadQuestLogRewards(logIndex)
+    if type(logIndex) ~= "number" or logIndex < 1
+        or not Client.HasFunction("SelectQuestLogEntry") then
+        return nil
+    end
+    local previous = Client.GetQuestLogSelection() or 0
+    Client.SelectQuestLogEntry(logIndex)
+    local result = { choices = {}, rewards = {}, money = 0 }
+    local choices, rewards = Client.GetQuestLogRewardCounts()
+    local function Read(apiName, kind, count, target)
+        local index = 1
+        while index <= count do
+            local ok, name, texture, quantity = Call1(apiName, index)
+            if ok and type(name) == "string" and name ~= "" then
+                table.insert(target, {
+                    name = name,
+                    texture = type(texture) == "string" and texture or nil,
+                    count = type(quantity) == "number" and quantity or 1,
+                    kind = kind,
+                    index = index,
+                })
+            end
+            index = index + 1
+        end
+    end
+    Read("GetQuestLogChoiceInfo", "choice", choices, result.choices)
+    Read("GetQuestLogRewardInfo", "reward", rewards, result.rewards)
+    local ok, money = Call0("GetQuestLogRewardMoney")
+    if ok and type(money) == "number" and money > 0 then result.money = money end
+    Client.SelectQuestLogEntry(previous)
+    return result
+end
+
+-- The tooltip for one of those rewards, with the same select-and-restore:
+-- GameTooltip:SetQuestLogItem (OFFICIAL_CLIENT_DOCUMENTATION) reads the
+-- selected entry when it builds the tooltip, so the selection only has to
+-- hold for that call.
+function Client.ShowQuestLogItemTooltip(owner, logIndex, kind, index)
+    local tooltip = ResolveObject("GameTooltip")
+    if not owner or not tooltip or type(logIndex) ~= "number"
+        or type(tooltip.SetOwner) ~= "function"
+        or type(tooltip.SetQuestLogItem) ~= "function" then
+        return false
+    end
+    local previous = Client.GetQuestLogSelection() or 0
+    Client.SelectQuestLogEntry(logIndex)
+    pcall(tooltip.SetOwner, tooltip, owner, "ANCHOR_RIGHT")
+    pcall(tooltip.SetQuestLogItem, tooltip, kind, index)
+    Client.SelectQuestLogEntry(previous)
+    if type(tooltip.Show) == "function" then pcall(tooltip.Show, tooltip) end
+    return true
+end
+
+-- Host integration, not a client API assumption: unrealUI's own readouts on
+-- a reward's GameTooltip, as its modules/quest.lua and questlog.lua add them
+-- on the stock reward buttons -- the item link resolved by its price adapter
+-- (ShowQuestItemPrice / ShowQuestLogItemPrice, which also append the sell
+-- price), the rarity colour on the name, and its equipped-item comparison
+-- with the stat changes (ShowItemCompare, which shows nothing for a non-gear
+-- item). `logIndex` set means a quest-log reward: the log link getter reads
+-- the selected entry, so the selection is held for that call only, as in
+-- Client.ShowQuestLogItemTooltip. Without unrealUI nothing is drawn.
+function Client.ShowUnrealUIRewardCompare(kind, index, logIndex)
+    local host = ResolveObject("UnrealUI")
+    if not host or type(host.ShowItemCompare) ~= "function"
+        or (kind ~= "choice" and kind ~= "reward") or type(index) ~= "number" then
+        return false
+    end
+    local ok, link
+    if type(logIndex) == "number" then
+        if type(host.ShowQuestLogItemPrice) ~= "function" then return false end
+        local previous = Client.GetQuestLogSelection() or 0
+        Client.SelectQuestLogEntry(logIndex)
+        ok, link = pcall(host.ShowQuestLogItemPrice, kind, index)
+        Client.SelectQuestLogEntry(previous)
+    else
+        if type(host.ShowQuestItemPrice) ~= "function" then return false end
+        ok, link = pcall(host.ShowQuestItemPrice, kind, index)
+    end
+    if not ok or type(link) ~= "string" then return false end
+    if type(host.ColorTooltipItemName) == "function" then
+        pcall(host.ColorTooltipItemName, link)
+    end
+    return pcall(host.ShowItemCompare, link) and true or false
+end
+
+function Client.HideUnrealUIRewardCompare()
+    local host = ResolveObject("UnrealUI")
+    if not host then return end
+    if type(host.ClearTooltipItemName) == "function" then pcall(host.ClearTooltipItemName) end
+    if type(host.HideItemPrice) == "function" then pcall(host.HideItemPrice) end
+    if type(host.HideItemCompare) == "function" then pcall(host.HideItemCompare) end
+end
+
+-- Sizes one rewards-panel tile and everything on it for a tile `height` and
+-- item `icon` side, in card units: the classic tile or the Cinematic theme's
+-- taller one (Client.RenderQuestDialogueTurnIn switches them with the theme).
+-- Puts the tracker sheet's quest-item frame (a chamfered gold square) on
+-- `texture`: Minimal's portrait frame, and the picked reward's frame that
+-- matches it. Four-argument SetTexCoord on the RLE sheet
+-- (textures.rle_512_tga_atlas_four_arg_supported). False without the art.
+function Client.SetQuestDialogueItemFrameArt(texture)
+    local cell = TrackerArt.pieces.itemFrame
+    if not texture or not cell then return false end
+    local width, height = TrackerArt.SheetSize("tracker")
+    pcall(texture.SetTexture, texture, TrackerArt.sheets.tracker)
+    pcall(texture.SetTexCoord, texture, cell[1] / width,
+        (cell[1] + cell[3]) / width, cell[2] / height,
+        (cell[2] + cell[4]) / height)
+    return true
+end
+
+function Client.SizeQuestDialogueTurnInTile(tile, height, icon, iconOffset, nameLeft)
+    local layout = Client.QUEST_DIALOGUE_TURN_IN
+    iconOffset = type(iconOffset) == "number" and iconOffset or 10
+    nameLeft = type(nameLeft) == "number" and nameLeft or iconOffset + icon + 8
+    if not tile or (tile.unrealQuestTileHeight == height
+        and tile.unrealQuestTileIcon == icon
+        and tile.unrealQuestTileIconOffset == iconOffset
+        and tile.unrealQuestTileNameLeft == nameLeft) then return end
+    tile.unrealQuestTileHeight = height
+    tile.unrealQuestTileIcon = icon
+    tile.unrealQuestTileIconOffset = iconOffset
+    tile.unrealQuestTileNameLeft = nameLeft
+    Client.SizeQuestDialogue(tile, layout.TILE_WIDTH, height)
+    -- The plate's cap width follows the height; re-skinned on next render.
+    tile.unrealQuestPlateTexture = nil
+    Client.SizeQuestDialogue(tile.unrealQuestGlow, icon + 10, icon + 10)
+    Client.AnchorQuestDialogue(tile.unrealQuestGlow, "LEFT", tile, "LEFT", iconOffset - 5, 0)
+    Client.SizeQuestDialogue(tile.unrealQuestIcon, icon, icon)
+    Client.AnchorQuestDialogue(tile.unrealQuestIcon, "LEFT", tile, "LEFT", iconOffset, 0)
+    Client.SizeQuestDialogue(tile.unrealQuestRewardEdge, height, height)
+    Client.AnchorQuestDialogue(tile.unrealQuestRewardEdge, "LEFT", tile, "LEFT", 0, 0)
+    local arrowSize = math.floor(icon * QuestRewardGear.arrowShare + 0.5)
+    Client.SizeQuestDialogue(tile.unrealQuestArrow, arrowSize, arrowSize)
+    local coinWidth = math.floor(icon * 0.5 + 0.5)
+    Client.SizeQuestDialogue(tile.unrealQuestCoin, coinWidth,
+        math.floor(coinWidth * QuestRewardGear.coinAspect + 0.5))
+    local name = tile.unrealQuestName
+    if name then
+        -- The cap the renderer fits the name to (its unrealQuestBoxWidth).
+        name.unrealQuestBoxWidth = layout.TILE_WIDTH - nameLeft - 12
+        Client.SizeQuestDialogue(name, name.unrealQuestBoxWidth, height - 10)
+        Client.AnchorQuestDialogue(name, "LEFT", tile, "LEFT", nameLeft, 0)
+    end
+end
+
+-- The quest page's action button on the card's bottom band (a theme's
+-- ACTION_BUTTON art: Alliance V2, Horde V2, and the red button shared by
+-- Horde light, Alliance light and Parchment): Accept on a quest to take, Complete
+-- on one to hand in, disabled while the objectives are not done. It does the
+-- page's last step at once, whatever page of the text is showing; the card
+-- itself still pages forward and back as before.
+--
+-- Its states are drawn by hand, never through the Button state API
+-- (SetNormalTexture, SetPushedTexture, Disable, SetButtonState are documented
+-- only): one face and one chevron texture whose atlas cell is switched.
+-- Hover rides OnEnter / OnLeave, measured on the option rows. The pressed
+-- face rides OnMouseDown / OnMouseUp, which have no runtime record on this
+-- client (capability questDialogue.actionButtonPressed, unverified): if they
+-- never fire, the button simply never shows its pressed face.
+-- `name` and `field` make the second button of a card that has one
+-- (Client.RenderQuestDialogueSecondaryButton); both default to the action
+-- button's.
+function Client.CreateQuestDialogueActionButton(frame, name, field)
+    local create = Resolve("CreateFrame")
+    if not create or not frame then return nil end
+    name = name or "UnrealQuestDialogueAction"
+    local ok, button = pcall(create, "Button", name, frame)
+    if not ok or not button then return nil end
+    if type(button.EnableMouse) == "function" then pcall(button.EnableMouse, button, true) end
+    if type(button.RegisterForClicks) == "function" then
+        pcall(button.RegisterForClicks, button, "LeftButtonUp")
+    end
+    if type(button.CreateTexture) == "function" then
+        local faceOk, face = pcall(button.CreateTexture, button, nil, "ARTWORK")
+        if faceOk and face then
+            pcall(face.SetAllPoints, face, button)
+            button.unrealQuestFace = face
+        end
+        local glowOk, glow = pcall(button.CreateTexture, button, nil, "ARTWORK")
+        if glowOk and glow then
+            if type(glow.SetBlendMode) == "function" then
+                pcall(glow.SetBlendMode, glow, "ADD")
+            end
+            Client.HideObject(glow)
+            button.unrealQuestHoverGlow = glow
+        end
+        local chevronOk, chevron = pcall(button.CreateTexture, button, nil, "OVERLAY")
+        if chevronOk and chevron then button.unrealQuestChevron = chevron end
+        button.unrealQuestMinimalBorder = {}
+        local edge = { 0.48, 0.34, 0.13, 1 }
+        local function Border(first, second, width, height)
+            local made, border = pcall(button.CreateTexture, button, nil, "BORDER")
+            if not made or not border then return end
+            pcall(border.SetTexture, border, edge[1], edge[2], edge[3], edge[4])
+            Client.AnchorQuestDialogue(border, first[1], button, first[2], first[3], first[4])
+            Client.AddQuestDialogueAnchor(border,
+                second[1], button, second[2], second[3], second[4])
+            Client.SizeQuestDialogue(border, width, height)
+            Client.HideObject(border)
+            table.insert(button.unrealQuestMinimalBorder, border)
+        end
+        Border({ "TOPLEFT", "TOPLEFT", 0, 0 }, { "TOPRIGHT", "TOPRIGHT", 0, 0 }, nil, 1)
+        Border({ "BOTTOMLEFT", "BOTTOMLEFT", 0, 0 },
+            { "BOTTOMRIGHT", "BOTTOMRIGHT", 0, 0 }, nil, 1)
+        Border({ "TOPLEFT", "TOPLEFT", 0, 0 },
+            { "BOTTOMLEFT", "BOTTOMLEFT", 0, 0 }, 1, nil)
+        Border({ "TOPRIGHT", "TOPRIGHT", 0, 0 },
+            { "BOTTOMRIGHT", "BOTTOMRIGHT", 0, 0 }, 1, nil)
+    end
+    if type(button.CreateFontString) == "function" then
+        local labelOk, label = pcall(button.CreateFontString, button,
+            name .. "Label", "OVERLAY", "GameFontNormalLarge")
+        if labelOk and label then
+            local spec = Client.QUEST_DIALOGUE_ALLIANCE.ACTION_BUTTON
+            Client.ScaleQuestDialogueFont(label, spec.LABEL_SIZE)
+            Client.JustifyQuestDialogueText(label, "CENTER")
+            -- One line, always: a label too long for the button is cut with
+            -- ".." by the fit pass instead (SettleQuestDialogueLabels).
+            -- Optional method, as on the tracker's zone headers.
+            if type(label.SetWordWrap) == "function" then
+                pcall(label.SetWordWrap, label, false)
+            end
+            button.unrealQuestLabel = label
+        end
+        -- The key that does the same, after the label (a spec with HINT_INK).
+        local hintOk, hint = pcall(button.CreateFontString, button,
+            name .. "Hint", "OVERLAY", "GameFontNormalSmall")
+        if hintOk and hint then
+            Client.HideObject(hint)
+            button.unrealQuestHint = hint
+        end
+    end
+    Client.SetObjectScript(button, "OnClick", function()
+        local callback = frame.unrealQuestActionCallback
+        if button.unrealQuestEnabled and button.unrealQuestAction
+            and type(callback) == "function" then
+            pcall(callback, button.unrealQuestAction, true)
+        end
+    end)
+    Client.SetObjectScript(button, "OnEnter", function()
+        button.unrealQuestHovered = true
+        Client.PaintQuestDialogueActionButton(button)
+    end)
+    Client.SetObjectScript(button, "OnLeave", function()
+        button.unrealQuestHovered = nil
+        button.unrealQuestPressed = nil
+        Client.PaintQuestDialogueActionButton(button)
+    end)
+    Client.SetObjectScript(button, "OnMouseDown", function()
+        button.unrealQuestPressed = true
+        Client.PaintQuestDialogueActionButton(button)
+    end)
+    Client.SetObjectScript(button, "OnMouseUp", function()
+        button.unrealQuestPressed = nil
+        Client.PaintQuestDialogueActionButton(button)
+    end)
+    Client.HideObject(button)
+    frame[field or "unrealQuestActionButton"] = button
+    return button
+end
+
+-- The silver nine-slice of a spec with SILVER, built once per button the
+-- first time such a spec is shown (Client.ShowQuestDialogueButton): four
+-- corners of CORNER size, edges and centre stretched between them by
+-- two-point anchors, plus the additive highlight over the whole button. All
+-- hidden; the painter shows them and picks each state's sheet.
+function Client.BuildQuestDialogueSilverFace(button, silver)
+    if not button or button.unrealQuestSilver or type(button.CreateTexture) ~= "function" then
+        return button and button.unrealQuestSilver
+    end
+    local pieces = {}
+    local function Piece(key, layer)
+        local made, texture = pcall(button.CreateTexture, button, nil, layer or "ARTWORK")
+        if not made or not texture then return nil end
+        Client.HideObject(texture)
+        pieces[key] = texture
+        return texture
+    end
+    local cw, ch = silver.CORNER[1], silver.CORNER[2]
+    local corners = {
+        TL = { "TOPLEFT" }, TR = { "TOPRIGHT" },
+        BL = { "BOTTOMLEFT" }, BR = { "BOTTOMRIGHT" },
+    }
+    for key, spec in pairs(corners) do
+        local piece = Piece(key)
+        if piece then
+            Client.SizeQuestDialogue(piece, cw, ch)
+            Client.AnchorQuestDialogue(piece, spec[1], button, spec[1], 0, 0)
+        end
+    end
+    -- Each stretched piece spans from one corner's inner point to another's.
+    local spans = {
+        T = { "TL", "TOPRIGHT", "TR", "BOTTOMLEFT" },
+        B = { "BL", "TOPRIGHT", "BR", "BOTTOMLEFT" },
+        L = { "TL", "BOTTOMLEFT", "BL", "TOPRIGHT" },
+        R = { "TR", "BOTTOMLEFT", "BR", "TOPRIGHT" },
+        C = { "TL", "BOTTOMRIGHT", "BR", "TOPLEFT" },
+    }
+    for key, span in pairs(spans) do
+        local piece = Piece(key)
+        local first, second = pieces[span[1]], pieces[span[3]]
+        if piece and first and second then
+            Client.AnchorQuestDialogue(piece, "TOPLEFT", first, span[2], 0, 0)
+            Client.AddQuestDialogueAnchor(piece, "BOTTOMRIGHT", second, span[4], 0, 0)
+        end
+    end
+    local highlight = Piece("highlight", "OVERLAY")
+    if highlight then
+        if type(highlight.SetBlendMode) == "function" then
+            pcall(highlight.SetBlendMode, highlight, "ADD")
+        end
+        Client.AnchorQuestDialogue(highlight, "TOPLEFT", button, "TOPLEFT", 0, 0)
+        Client.AddQuestDialogueAnchor(highlight, "BOTTOMRIGHT", button, "BOTTOMRIGHT", 0, 0)
+    end
+    button.unrealQuestSilver = pieces
+    return pieces
+end
+
+-- Points the face and chevron at the atlas cells of the button's state.
+function Client.PaintQuestDialogueActionButton(button)
+    local spec = button and button.unrealQuestSpec
+    if not spec then return end
+    local glowSpec = spec.HOVER_GLOW
+    local glow = button.unrealQuestHoverGlow
+    if glow then
+        if glowSpec and button.unrealQuestHovered and button.unrealQuestEnabled
+            and not button.unrealQuestPressed then
+            Client.ShowObject(glow)
+        else
+            Client.HideObject(glow)
+        end
+    end
+    local state = 0
+    if not button.unrealQuestEnabled then
+        state = 3
+    elseif button.unrealQuestPressed then
+        state = 2
+    elseif button.unrealQuestHovered and (not glowSpec or spec.HOVER_CHEVRON) then
+        state = 1
+    end
+    if button.unrealQuestState == state then return end
+    button.unrealQuestState = state
+    local face = button.unrealQuestFace
+    local silver = spec.SILVER
+    if silver and button.unrealQuestSilver then
+        local base = spec.PATH or Client.QUEST_DIALOGUE_MINIMAL.PATH
+        local sheet = base .. (state == 2 and silver.DOWN or silver.UP)
+        local shade = state == 3 and silver.DISABLED_SHADE or 1
+        for key, coords in pairs(silver.COORDS) do
+            local piece = button.unrealQuestSilver[key]
+            if piece then
+                pcall(piece.SetTexture, piece, sheet)
+                if type(piece.SetTexCoord) == "function" then
+                    pcall(piece.SetTexCoord, piece, coords[1], coords[2], coords[3], coords[4])
+                end
+                if type(piece.SetVertexColor) == "function" then
+                    pcall(piece.SetVertexColor, piece, shade, shade, shade, 1)
+                end
+                Client.ShowObject(piece)
+            end
+        end
+        local highlight = button.unrealQuestSilver.highlight
+        if highlight then
+            if state == 1 then
+                pcall(highlight.SetTexture, highlight, base .. silver.HIGHLIGHT)
+                local hc = silver.HIGHLIGHT_COORDS
+                if type(highlight.SetTexCoord) == "function" then
+                    pcall(highlight.SetTexCoord, highlight, hc[1], hc[2], hc[3], hc[4])
+                end
+                Client.ShowObject(highlight)
+            else
+                Client.HideObject(highlight)
+            end
+        end
+        local label = button.unrealQuestLabel
+        local ink = state == 3 and spec.DISABLED_INK or spec.INK
+        if label and type(label.SetTextColor) == "function" then
+            pcall(label.SetTextColor, label, ink[1], ink[2], ink[3])
+        end
+        return
+    end
+    if spec.FLAT then
+        local color = spec.COLORS[state] or spec.COLORS[0]
+        if face then
+            pcall(face.SetTexture, face, color[1], color[2], color[3], color[4])
+            if type(face.SetTexCoord) == "function" then
+                pcall(face.SetTexCoord, face, 0, 1, 0, 1)
+            end
+        end
+        local label = button.unrealQuestLabel
+        local ink = state == 3 and spec.DISABLED_INK or spec.INK
+        if label and type(label.SetTextColor) == "function" then
+            pcall(label.SetTextColor, label, ink[1], ink[2], ink[3])
+        end
+        return
+    end
+    if face and type(face.SetTexCoord) == "function" then
+        local faceState = state
+        if spec.FACE_CELLS and spec.FACE_CELLS[state] ~= nil then
+            faceState = spec.FACE_CELLS[state]
+        end
+        local top = faceState * spec.CELL_PITCH
+        pcall(face.SetTexCoord, face, 0, spec.CELL_WIDTH or 1, top, top + spec.CELL_HEIGHT)
+    end
+    -- Chevron cells step across a row (CHEVRON_PITCH) or down a column
+    -- (CHEVRON_ROW_PITCH, from CHEVRON_LEFT).
+    local chevron = button.unrealQuestChevron
+    if chevron and spec.CHEVRON and type(chevron.SetTexCoord) == "function" then
+        local left = (spec.CHEVRON_LEFT or 0) + state * spec.CHEVRON_PITCH
+        local down = state * (spec.CHEVRON_ROW_PITCH or 0)
+        pcall(chevron.SetTexCoord, chevron, left, left + spec.CHEVRON_WIDTH,
+            spec.CHEVRON_TOP + down, spec.CHEVRON_BOTTOM + down)
+    end
+    local label = button.unrealQuestLabel
+    local ink = state == 3 and spec.DISABLED_INK or spec.INK
+    if label and type(label.SetTextColor) == "function" then
+        pcall(label.SetTextColor, label, ink[1], ink[2], ink[3])
+    end
+end
+
+-- Shows the view's `actionButton` ({ action, text, enabled }) when the
+-- theme has the art, centred on the bottom band of the card shown
+-- (`tall`: the quest card). Returns the gap the rewards panel then needs
+-- under the card (the button's reach below the card's bottom edge, less
+-- PANEL_OVERLAP), in design units, or nil when the button is hidden.
+function Client.RenderQuestDialogueActionButton(frame, view, tall)
+    local button = frame and frame.unrealQuestActionButton
+    if not button then return nil end
+    -- Parchment reads the Cinematic art table but has its own bottom border.
+    local spec = frame.unrealQuestTheme == "parchment"
+        and Client.QUEST_DIALOGUE_CARD.ACTION_BUTTON
+        or Client.GetQuestDialogueArt(frame.unrealQuestTheme).ACTION_BUTTON
+    local entry = type(view) == "table" and view.actionButton or nil
+    if not spec or type(entry) ~= "table" then
+        Client.HideQuestDialogueButton(button)
+        return nil
+    end
+    local band = tall and spec.BAND or spec.CONVERSATION_BAND
+    local corner = tall and spec.CORNER or nil
+    -- A card may centre the button at a point of its own (Parchment's quest
+    -- footer, its right column).
+    local centre = tall and Client.GetQuestDialogueLayout(frame).actionButtonCentre or nil
+    Client.SizeQuestDialogue(button, spec.WIDTH, spec.HEIGHT)
+    if centre then
+        Client.AnchorQuestDialogue(button, "CENTER", frame, "TOPLEFT", centre[1],
+            -(centre[2] - (frame.unrealQuestCardCollapse or 0)))
+    elseif corner then
+        Client.AnchorQuestDialogue(button, "BOTTOMRIGHT", frame, "BOTTOMRIGHT",
+            -corner[1], corner[2])
+    else
+        Client.AnchorQuestDialogue(button, "CENTER", frame, "BOTTOM", 0, band)
+    end
+    Client.ShowQuestDialogueButton(frame, button, spec, entry)
+    -- Inside the card: nothing for the rewards panel to clear.
+    if corner or centre then return nil end
+    return spec.HEIGHT / 2 - band - spec.PANEL_OVERLAP
+end
+
+-- The quest card's second button (Decline on a quest offered, Cancel on one
+-- being handed in; the view's `secondaryButton`), drawn like the action
+-- button, only on a card whose layout places it (`secondaryButtonCentre`,
+-- Minimal's quest card). Always inside the card, so it never moves the
+-- rewards panel.
+function Client.RenderQuestDialogueSecondaryButton(frame, view, tall)
+    local button = frame and frame.unrealQuestSecondaryButton
+    if not button then return end
+    local centre = tall and Client.GetQuestDialogueLayout(frame).secondaryButtonCentre or nil
+    local spec = frame.unrealQuestTheme ~= "parchment"
+        and Client.GetQuestDialogueArt(frame.unrealQuestTheme).ACTION_BUTTON or nil
+    local entry = type(view) == "table" and view.secondaryButton or nil
+    if not centre or not spec or type(entry) ~= "table" then
+        Client.HideQuestDialogueButton(button)
+        return
+    end
+    Client.SizeQuestDialogue(button, spec.WIDTH, spec.HEIGHT)
+    Client.AnchorQuestDialogue(button, "CENTER", frame, "TOPLEFT", centre[1],
+        -(centre[2] - (frame.unrealQuestCardCollapse or 0)))
+    Client.ShowQuestDialogueButton(frame, button, spec, entry)
+end
+
+function Client.HideQuestDialogueButton(button)
+    button.unrealQuestEnabled = nil
+    button.unrealQuestAction = nil
+    Client.HideObject(button)
+end
+
+-- How wide `button` is drawn under `spec`: spec.WIDTH, or wider for a
+-- stretchable (SILVER) button with a key hint whose label and hint, as last
+-- measured for their current text (Client.ShowQuestDialogueButton), need more.
+function Client.GetQuestDialogueButtonWidth(button, spec)
+    local width = spec.WIDTH
+    local label, hint = button.unrealQuestLabel, button.unrealQuestHint
+    if not spec.SILVER or not button.unrealQuestHintShown or not label or not hint then
+        return width
+    end
+    local function Measured(region)
+        if region.unrealQuestMeasuredText ~= region.unrealQuestFitText then return nil end
+        return region.unrealQuestMeasuredWidth
+    end
+    local labelWidth, hintWidth = Measured(label), Measured(hint)
+    if not labelWidth or not hintWidth then return width end
+    local needed = (labelWidth + hintWidth) / Client.QUEST_DIALOGUE_UNIT
+        + 2 * spec.HINT_PAD + spec.HINT_GAP
+    if needed > width then width = needed end
+    return width
+end
+
+-- The quest card's action and second buttons where its layout centres them
+-- (actionButtonCentre, secondaryButtonCentre), each as wide as it needs
+-- (Client.GetQuestDialogueButtonWidth). The action button keeps its right
+-- edge and grows left; the second button moves left by that growth, keeping
+-- its gap, and grows left too.
+-- On a card narrower than its design width (Client.FitQuestDialogueCardWidth)
+-- they move left with its right edge. unrealQuestFooterLeft keeps where the
+-- leftmost one starts at the design width, for the fit to read.
+function Client.PlaceQuestDialogueFooterButtons(frame)
+    if not frame or frame.unrealQuestCard ~= "quest" then return end
+    local layout = Client.GetQuestDialogueLayout(frame)
+    local narrow = Client.GetQuestDialogueCardNarrowing(frame)
+    local grown = 0
+    local left = nil
+    local function Place(button, centre, shift)
+        local spec = button and button.unrealQuestSpec
+        if not centre or not spec or not Client.IsObjectShown(button) then return 0 end
+        local width = Client.GetQuestDialogueButtonWidth(button, spec)
+        local own = width - spec.WIDTH
+        local x = centre[1] - shift - own / 2
+        Client.SizeQuestDialogue(button, width, spec.HEIGHT)
+        Client.AnchorQuestDialogue(button, "CENTER", frame, "TOPLEFT", x - narrow,
+            -(centre[2] - (frame.unrealQuestCardCollapse or 0)))
+        if not left or x - width / 2 < left then left = x - width / 2 end
+        return own
+    end
+    grown = Place(frame.unrealQuestActionButton, layout.actionButtonCentre, 0)
+    Place(frame.unrealQuestSecondaryButton, layout.secondaryButtonCentre, grown)
+    frame.unrealQuestFooterLeft = left
+end
+
+-- How many units the shown card is narrower than its design width: 0 on a
+-- theme whose cards keep it (no `fitWidth`).
+function Client.GetQuestDialogueCardNarrowing(frame)
+    local layout = Client.GetQuestDialogueLayout(frame)
+    if not layout.fitWidth or not frame.unrealQuestFitWidth then return 0 end
+    return layout.card.WIDTH - frame.unrealQuestFitWidth
+end
+
+-- `text`'s full width in design units as `label`'s Font draws it, or nil
+-- when it cannot be measured. Read from a hidden FontString that is never
+-- sized, because SetWidth clamps GetStringWidth
+-- (widgets.fontstring_stringwidth_clamped_by_setwidth) -- the body's letter
+-- measure does the same (Client.PrepareQuestDialogueLetters). A label on its
+-- own Font (Client.ScaleQuestDialogueFont) is measured in that Font; one
+-- without (a label that keeps its template font, or whose Font could not be
+-- made) in `template`, the template it was created from.
+function Client.MeasureQuestDialogueLabelWidth(frame, label, text, template)
+    if type(text) ~= "string" or text == "" then return 0 end
+    local font = label and label.unrealQuestFont
+    local key = font and "\031scaled" or template
+    if not frame or not label or not key then return nil end
+    frame.unrealQuestWidthMeasures = frame.unrealQuestWidthMeasures or {}
+    local measure = frame.unrealQuestWidthMeasures[key]
+    if not measure then
+        if type(frame.CreateFontString) ~= "function" then return nil end
+        local made, created = pcall(frame.CreateFontString, frame, nil,
+            "OVERLAY", template or "GameFontNormalSmall")
+        if not made or not created then return nil end
+        measure = created
+        Client.HideObject(measure)
+        frame.unrealQuestWidthMeasures[key] = measure
+    end
+    if font and (type(measure.SetFontObject) ~= "function"
+        or not pcall(measure.SetFontObject, measure, font)) then
+        return nil
+    end
+    local width = Client.MeasureQuestDialogueText(measure, text)
+    if width <= 0 then return nil end
+    return width / Client.QUEST_DIALOGUE_UNIT
+end
+
+-- Sizes a card whose layout has `fitWidth` (Minimal's two cards) to what it
+-- shows, between fitWidth.min and the design WIDTH, from `view` as
+-- Client.RenderQuestDialogue last drew it (unrealQuestFitView): the header
+-- (name, quest title or role, the flag row), and on the quest card the
+-- objectives line, the reward icons, the reward line and the footer buttons;
+-- on the conversation card its option buttons or a one-line talk. Anything
+-- that cannot be measured, or that wraps, keeps the design width. Then lays
+-- the card's art at that width and moves what hangs off its right edge.
+-- Called after every render and when a footer or option button is measured.
+function Client.FitQuestDialogueCardWidth(frame)
+    if not frame then return end
+    local layout = Client.GetQuestDialogueLayout(frame)
+    local fit = layout.fitWidth
+    local view = frame.unrealQuestFitView
+    if not fit or type(view) ~= "table" then
+        frame.unrealQuestFitWidth = nil
+        return
+    end
+    local full = layout.card.WIDTH
+    local width = fit.min
+    local function Need(value)
+        if value == nil then value = full end
+        if value > width then width = value end
+    end
+    -- `template`: the label's creation template (Client.CreateQuestDialogueFrame),
+    -- for one that keeps it.
+    -- The wider of the measured width and the one the label settled at on
+    -- screen: a same-frame read can fall short, and the text then ran past
+    -- the card's border (user report, 2026-10-13). A label that has not
+    -- settled yet asks to size the card again when it does.
+    local unit = Client.QUEST_DIALOGUE_UNIT
+    local function Width(label, text, template)
+        local measured = Client.MeasureQuestDialogueLabelWidth(frame, label, text, template)
+        local settled = label and label.unrealQuestSettledWidth
+        if label and not label.unrealQuestOnFit and label.unrealQuestFitText ~= nil then
+            label.unrealQuestOnFit = function() Client.FitQuestDialogueCardWidth(frame) end
+        end
+        if type(settled) == "number" and measured and settled / unit > measured then
+            return settled / unit
+        end
+        return measured
+    end
+    local function Shown(text) return type(text) == "string" and text ~= "" end
+    local quest = frame.unrealQuestCard == "quest"
+    local header = fit.headerGap + fit.flags
+    local nameWidth = Width(frame.unrealQuestCineSpeaker, view.speaker, "GameFontNormal")
+    Need(nameWidth and layout.speaker[1] + nameWidth + header)
+    if not layout.hideTitle and Shown(view.title) then
+        local titleWidth = Width(frame.unrealQuestCineTitle, view.title, "GameFontNormalLarge")
+        Need(titleWidth and layout.title[1] + titleWidth + header)
+    end
+    if not layout.hideRole and Shown(view.speakerRole) then
+        local roleWidth = Width(frame.unrealQuestCineRole, view.speakerRole, "GameFontNormalSmall")
+        Need(roleWidth and layout.role[1] + roleWidth + header)
+    end
+    if quest then
+        local inline = layout.objectiveInline
+        if Shown(view.objective) and inline then
+            local headingWidth = Width(frame.unrealQuestCineObjectiveHeading,
+                UQ.L(layout.objectiveHeadingText or "DIALOGUE_OBJECTIVES"), "GameFontNormalLarge")
+            -- Several lines (one per objective) are as wide as the widest:
+            -- each is measured alone, since the label's settled width is that
+            -- of the whole text (user request, 2026-10-13).
+            local objectiveWidth
+            if string.find(view.objective, "\n", 1, true) then
+                objectiveWidth = 0
+                for line in string.gfind(view.objective, "[^\n]+") do
+                    local lineWidth = objectiveWidth and Client.MeasureQuestDialogueLabelWidth(
+                        frame, frame.unrealQuestCineObjective, line, "GameFontNormalSmall")
+                    if not lineWidth then objectiveWidth = nil
+                    elseif lineWidth > objectiveWidth then objectiveWidth = lineWidth end
+                end
+            else
+                objectiveWidth = Width(frame.unrealQuestCineObjective, view.objective,
+                    "GameFontNormalSmall")
+            end
+            -- Past its box it wraps: the card stays at the design width.
+            if objectiveWidth and objectiveWidth > layout.objective[3] then objectiveWidth = nil end
+            Need(headingWidth and objectiveWidth and layout.objectiveHeading[1]
+                + headingWidth + inline[1] + objectiveWidth + fit.margin)
+        elseif Shown(view.objective) then
+            Need(nil)
+        end
+        local icons = layout.rewardIcons
+        local iconsWidth = frame.unrealQuestInlineRewardsWidth
+        if icons and type(iconsWidth) == "number" and iconsWidth > 0 then
+            Need(icons.x + iconsWidth + fit.margin)
+        end
+        if layout.rewardLine and Shown(view.rewardLine) then
+            local lineWidth = Width(frame.unrealQuestRewardLine, view.rewardLine, "GameFontNormalSmall")
+            -- With money: the label and coins, then the tail after them.
+            local coinsWidth = frame.unrealQuestRewardCoinsWidth
+            if lineWidth and type(coinsWidth) == "number" then
+                local tailWidth = Shown(view.rewardLineTail)
+                    and Width(frame.unrealQuestRewardLineTail, view.rewardLineTail,
+                        "GameFontNormalSmall") or 0
+                lineWidth = tailWidth and coinsWidth + tailWidth or nil
+            end
+            Need(lineWidth and layout.rewardLine[1] + lineWidth + fit.margin)
+        end
+        if frame.unrealQuestFooterLeft then
+            Need(full - frame.unrealQuestFooterLeft + fit.margin)
+        end
+    else
+        if frame.unrealQuestConversationWidth then
+            Need(frame.unrealQuestConversationWidth)
+        end
+        -- A talk on one line, measured as its letters are laid
+        -- (Client.PrepareQuestDialogueLetters); more lines keep the width.
+        if not view.optionButtons and Shown(view.body) then
+            local box = layout.body
+            local measure = frame.unrealQuestBodyMeasure
+            local bodyWidth = measure and (view.pageCount or 1) <= 1
+                and not string.find(view.body, "\n", 1, true)
+                and Client.MeasureQuestDialogueText(measure, view.body)
+                    / Client.QUEST_DIALOGUE_UNIT or nil
+            if bodyWidth and (bodyWidth <= 0 or bodyWidth > box[3] - 8) then bodyWidth = nil end
+            Need(bodyWidth and box[1] + bodyWidth + fit.margin)
+        end
+    end
+    width = math.ceil(width)
+    -- Wider than the design width only for text that cannot wrap (a long
+    -- reward line, a long name): the card grows to hold it, up to fitWidth.max
+    -- (user report, 2026-10-13).
+    local most = math.max(full, fit.max or full)
+    if width > most then width = most end
+    frame.unrealQuestFitWidth = width
+    Client.ShowQuestDialogueCardArt(frame)
+    Client.PlaceQuestDialogueFooterButtons(frame)
+    -- The quest card's lone badge sits under the rightmost flag.
+    local badge = layout.kickerIconAlone and layout.kickerIcon
+    if badge and frame.unrealQuestCineKickerIcon then
+        Client.AnchorQuestDialogue(frame.unrealQuestCineKickerIcon, "TOPLEFT", frame,
+            "TOPLEFT", badge[1] - (full - width), -badge[2])
+    end
+end
+
+-- Whether `card` under the current theme draws a quest giver's options as
+-- buttons inside the card in place of the talk (a layout's `optionButtons`,
+-- on a theme whose action button has the stretchable SILVER face).
+function Client.QuestDialogueHasOptionButtons(frame, card)
+    if not frame or frame.unrealQuestTheme == "parchment" then return false end
+    local spec = Client.GetQuestDialogueArt(frame.unrealQuestTheme).ACTION_BUTTON
+    return Client.GetQuestDialogueLayout(frame, card).optionButtons ~= nil
+        and spec ~= nil and spec.SILVER ~= nil
+end
+
+-- The card height that holds `count` option buttons laid by `box`.
+function Client.GetQuestDialogueOptionsHeight(box, count)
+    return box.y + count * box.height + (count - 1) * box.gap + box.bottom
+end
+
+-- One option button (Client.RenderQuestDialogueOptionButtons): a Button
+-- with the silver face, an icon and a label. Its states are painted by hand
+-- as the action button's are (Client.PaintQuestDialogueActionButton); a click
+-- selects its row exactly as a row in the stack does.
+function Client.CreateQuestDialogueOptionButton(frame, index)
+    local create = Resolve("CreateFrame")
+    if not create or not frame then return nil end
+    local ok, button = pcall(create, "Button",
+        "UnrealQuestDialogueOptionButton" .. tostring(index), frame)
+    if not ok or not button then return nil end
+    if type(button.EnableMouse) == "function" then pcall(button.EnableMouse, button, true) end
+    if type(button.RegisterForClicks) == "function" then
+        pcall(button.RegisterForClicks, button, "LeftButtonUp")
+    end
+    if type(button.CreateTexture) == "function" then
+        local iconOk, icon = pcall(button.CreateTexture, button, nil, "OVERLAY")
+        if iconOk and icon then
+            Client.HideObject(icon)
+            button.unrealQuestIcon = icon
+        end
+    end
+    if type(button.CreateFontString) == "function" then
+        local labelOk, label = pcall(button.CreateFontString, button, nil,
+            "OVERLAY", "GameFontNormal")
+        if labelOk and label then
+            Client.JustifyQuestDialogueText(label, "LEFT")
+            if type(label.SetWordWrap) == "function" then
+                pcall(label.SetWordWrap, label, false)
+            end
+            button.unrealQuestLabel = label
+        end
+    end
+    Client.SetObjectScript(button, "OnClick", function()
+        if button.unrealQuestEnabled and type(button.unrealQuestCallback) == "function" then
+            pcall(button.unrealQuestCallback, button.unrealQuestPayload)
+        end
+    end)
+    Client.SetObjectScript(button, "OnEnter", function()
+        button.unrealQuestHovered = true
+        Client.PaintQuestDialogueActionButton(button)
+    end)
+    Client.SetObjectScript(button, "OnLeave", function()
+        button.unrealQuestHovered = nil
+        button.unrealQuestPressed = nil
+        Client.PaintQuestDialogueActionButton(button)
+    end)
+    Client.SetObjectScript(button, "OnMouseDown", function()
+        button.unrealQuestPressed = true
+        Client.PaintQuestDialogueActionButton(button)
+    end)
+    Client.SetObjectScript(button, "OnMouseUp", function()
+        button.unrealQuestPressed = nil
+        Client.PaintQuestDialogueActionButton(button)
+    end)
+    Client.HideObject(button)
+    return button
+end
+
+-- Draws `rows` (a gossip page's rows, Quest/Dialogue.lua BuildView) as
+-- buttons inside the conversation card, one per line from the card's
+-- `optionButtons` box, each on the theme's silver action-button face with the
+-- row's icon and label from the left. nil (or a card without the box) hides
+-- them all. Returns how many are shown.
+function Client.RenderQuestDialogueOptionButtons(frame, rows, rowCallback)
+    if not frame then return 0 end
+    local buttons = frame.unrealQuestOptionButtons or {}
+    frame.unrealQuestOptionButtons = buttons
+    local box = Client.GetQuestDialogueLayout(frame).optionButtons
+    local spec = frame.unrealQuestTheme ~= "parchment"
+        and Client.GetQuestDialogueArt(frame.unrealQuestTheme).ACTION_BUTTON or nil
+    local count = 0
+    if box and spec and spec.SILVER and type(rows) == "table" then count = table.getn(rows) end
+    while table.getn(buttons) < count do
+        local made = Client.CreateQuestDialogueOptionButton(frame, table.getn(buttons) + 1)
+        if not made then
+            count = table.getn(buttons)
+            break
+        end
+        table.insert(buttons, made)
+    end
+    local index = 1
+    while index <= table.getn(buttons) do
+        local button = buttons[index]
+        local row = index <= count and rows[index] or nil
+        if row then
+            if button.unrealQuestSpec ~= spec then
+                button.unrealQuestSpec = spec
+                button.unrealQuestState = nil
+                Client.BuildQuestDialogueSilverFace(button, spec.SILVER)
+                Client.ScaleQuestDialogueFont(button.unrealQuestLabel, spec.LABEL_SIZE)
+                if button.unrealQuestLabel then button.unrealQuestLabel.unrealQuestFitText = nil end
+            end
+            Client.AnchorQuestDialogue(button, "TOPLEFT", frame, "TOPLEFT", box.x,
+                -(box.y + (index - 1) * (box.height + box.gap)))
+            local icon = button.unrealQuestIcon
+            if icon then
+                -- A narrow icon (a quest mark) keeps its own shape, centred
+                -- in the square slot.
+                local iconWidth = box.icon * (row.iconAspect or 1)
+                Client.SizeQuestDialogue(icon, iconWidth, box.icon)
+                Client.AnchorQuestDialogue(icon, "LEFT", button, "LEFT",
+                    box.iconX + (box.icon - iconWidth) / 2, 0)
+                if type(row.icon) == "string" and row.icon ~= ""
+                    and Client.SetQuestDialogueRowIcon(icon, row.icon) then
+                    Client.ShowObject(icon)
+                else
+                    Client.HideObject(icon)
+                end
+            end
+            local label = button.unrealQuestLabel
+            if label then
+                Client.AnchorQuestDialogue(label, "LEFT", button, "LEFT", box.labelX,
+                    (spec.FACE_LIFT or 0) - (spec.LABEL_DROP or 0))
+                if type(label.SetText) == "function" then
+                    pcall(label.SetText, label, type(row.text) == "string" and row.text or "")
+                end
+                -- Hugs its text, cut with ".." short of the widest button's
+                -- right end; its measured width sizes the buttons.
+                label.unrealQuestOnFit = function(fitted, width)
+                    fitted.unrealQuestMeasuredText = fitted.unrealQuestFitText
+                    fitted.unrealQuestMeasuredWidth = width
+                    Client.SizeQuestDialogueOptionButtons(frame)
+                end
+                Client.FitQuestDialogueLabel(label, { 0, 0, box.width - box.labelX - box.rightPad })
+            end
+            button.unrealQuestPayload = row.payload
+            button.unrealQuestCallback = rowCallback
+            button.unrealQuestEnabled = row.enabled ~= false
+            Client.PaintQuestDialogueActionButton(button)
+            Client.ShowObject(button)
+        else
+            button.unrealQuestPayload = nil
+            button.unrealQuestCallback = nil
+            button.unrealQuestEnabled = nil
+            Client.HideObject(button)
+        end
+        index = index + 1
+    end
+    frame.unrealQuestOptionButtonCount = count
+    Client.SizeQuestDialogueOptionButtons(frame)
+    return count
+end
+
+-- Sizes the shown option buttons alike: as wide as the longest label needs
+-- (labelX, its measured width, rightPad), between the box's minWidth and
+-- width. A label not yet measured for its text (Client.SettleQuestDialogueLabels
+-- measures it a frame or two later) counts as minWidth until it is.
+function Client.SizeQuestDialogueOptionButtons(frame)
+    local buttons = frame and frame.unrealQuestOptionButtons
+    local box = frame and Client.GetQuestDialogueLayout(frame).optionButtons
+    if not buttons or not box then return end
+    local count = frame.unrealQuestOptionButtonCount or 0
+    local width = box.minWidth or box.width
+    local index = 1
+    while index <= count and buttons[index] do
+        local label = buttons[index].unrealQuestLabel
+        if label and label.unrealQuestMeasuredText == label.unrealQuestFitText
+            and type(label.unrealQuestMeasuredWidth) == "number" then
+            local needed = box.labelX + label.unrealQuestMeasuredWidth / Client.QUEST_DIALOGUE_UNIT
+                + box.rightPad
+            if needed > width then width = needed end
+        end
+        index = index + 1
+    end
+    if width > box.width then width = box.width end
+    index = 1
+    while index <= count and buttons[index] do
+        Client.SizeQuestDialogue(buttons[index], width, box.height)
+        index = index + 1
+    end
+    -- The card narrows to the buttons (user request, 2026-10-12): their
+    -- margins either side, never under cardMinWidth (room for the header).
+    local cardWidth = nil
+    if count > 0 then
+        cardWidth = 2 * box.x + width
+        if box.cardMinWidth and cardWidth < box.cardMinWidth then cardWidth = box.cardMinWidth end
+    end
+    -- The card's width also holds its header (Client.FitQuestDialogueCardWidth).
+    if frame.unrealQuestConversationWidth ~= cardWidth then
+        frame.unrealQuestConversationWidth = cardWidth
+        if frame.unrealQuestCard ~= "quest" then Client.FitQuestDialogueCardWidth(frame) end
+    end
+end
+
+-- Skins `button` for `spec` (once per spec), writes the `entry`'s label --
+-- its shortText under a SHORT_LABEL spec -- and key hint, and shows it in
+-- its enabled or disabled state.
+function Client.ShowQuestDialogueButton(frame, button, spec, entry)
+    if button.unrealQuestSpec ~= spec then
+        button.unrealQuestSpec = spec
+        button.unrealQuestState = nil
+        -- A spec shared by several themes carries its own PATH.
+        local base = spec.PATH or Client.GetQuestDialogueArt(frame.unrealQuestTheme).PATH
+        local path = not spec.FLAT and spec.TEXTURE and (base .. spec.TEXTURE) or nil
+        if button.unrealQuestFace and path then
+            pcall(button.unrealQuestFace.SetTexture, button.unrealQuestFace, path)
+        end
+        -- A silver spec draws its own nine-slice (Client.BuildQuestDialogueSilverFace)
+        -- in place of the face; any other spec hides that nine-slice.
+        if spec.SILVER then Client.BuildQuestDialogueSilverFace(button, spec.SILVER) end
+        if button.unrealQuestFace then
+            if spec.SILVER then Client.HideObject(button.unrealQuestFace)
+            else Client.ShowObject(button.unrealQuestFace) end
+        end
+        if not spec.SILVER then
+            for _, piece in pairs(button.unrealQuestSilver or {}) do
+                Client.HideObject(piece)
+            end
+        end
+        local glowSpec = spec.HOVER_GLOW
+        local glow = button.unrealQuestHoverGlow
+        if glow then
+            Client.HideObject(glow)
+            if glowSpec then
+                pcall(glow.SetTexture, glow, base .. glowSpec.TEXTURE)
+                Client.SizeQuestDialogue(glow, glowSpec.WIDTH, glowSpec.HEIGHT)
+                Client.AnchorQuestDialogue(glow, "CENTER", button, "CENTER",
+                    glowSpec.X or 0, glowSpec.Y or 0)
+                if type(glow.SetVertexColor) == "function" then
+                    local intensity = glowSpec.INTENSITY or 1
+                    pcall(glow.SetVertexColor, glow, intensity, intensity, intensity, 1)
+                end
+            else
+                pcall(glow.SetTexture, glow, nil)
+            end
+        end
+        local chevron = button.unrealQuestChevron
+        if chevron and not spec.CHEVRON then
+            -- The red button has no chevron.
+            Client.HideObject(chevron)
+        elseif chevron then
+            Client.ShowObject(chevron)
+            pcall(chevron.SetTexture, chevron, path)
+            Client.SizeQuestDialogue(chevron, spec.CHEVRON[2], spec.CHEVRON[3])
+            Client.AnchorQuestDialogue(chevron, "CENTER", button, "CENTER",
+                spec.CHEVRON[1], spec.FACE_LIFT - (spec.CHEVRON_DROP or 0))
+        end
+        local borders = button.unrealQuestMinimalBorder or {}
+        local borderIndex = 1
+        while borderIndex <= table.getn(borders) do
+            if spec.FLAT then Client.ShowObject(borders[borderIndex])
+            else Client.HideObject(borders[borderIndex]) end
+            borderIndex = borderIndex + 1
+        end
+        -- Each theme's label size (Horde V2's button is drawn smaller). The
+        -- label hugs its text at the old size: forget that fit, or a larger
+        -- font (Horde light to Alliance light, same text and limit) keeps
+        -- the narrower width and wraps "Accept Quest" onto two lines.
+        Client.ScaleQuestDialogueFont(button.unrealQuestLabel, spec.LABEL_SIZE)
+        if button.unrealQuestLabel then button.unrealQuestLabel.unrealQuestFitText = nil end
+        local hint = button.unrealQuestHint
+        if hint and spec.HINT_INK then
+            Client.ScaleQuestDialogueFont(hint, spec.HINT_SIZE)
+            pcall(hint.SetTextColor, hint, spec.HINT_INK[1], spec.HINT_INK[2],
+                spec.HINT_INK[3])
+        end
+        -- The label is anchored afresh below for the new spec.
+        button.unrealQuestHintShown = nil
+    end
+    local label = button.unrealQuestLabel
+    local text = spec.SHORT_LABEL and entry.shortText or entry.text
+    -- A key hint draws only where the spec styles one: the label then starts
+    -- HINT_PAD in from the left with the hint HINT_GAP after it, both hugging
+    -- their text; without one the label is centred.
+    local hint = button.unrealQuestHint
+    local hinted = (hint and spec.HINT_INK and type(entry.hint) == "string"
+        and entry.hint ~= "") and true or false
+    if label and button.unrealQuestHintShown ~= hinted then
+        button.unrealQuestHintShown = hinted
+        if hinted then
+            Client.AnchorQuestDialogue(label, "LEFT", button, "LEFT",
+                spec.HINT_PAD, spec.FACE_LIFT - (spec.LABEL_DROP or 0))
+            Client.AnchorQuestDialogue(hint, "LEFT", label, "RIGHT", spec.HINT_GAP, 0)
+        else
+            Client.AnchorQuestDialogue(label, "CENTER", button, "CENTER",
+                0, spec.FACE_LIFT - (spec.LABEL_DROP or 0))
+        end
+    end
+    -- A stretchable (SILVER) button grows to its measured label and hint
+    -- (Client.GetQuestDialogueButtonWidth): "Complete" with its key ran past
+    -- the button's right end (user report, 2026-10-12).
+    local function Measured(fitted, width)
+        fitted.unrealQuestMeasuredText = fitted.unrealQuestFitText
+        fitted.unrealQuestMeasuredWidth = width
+        Client.PlaceQuestDialogueFooterButtons(frame)
+        Client.FitQuestDialogueCardWidth(frame)
+    end
+    if hint then
+        hint.unrealQuestOnFit = (hinted and spec.SILVER) and Measured or nil
+        if hinted then
+            pcall(hint.SetText, hint, entry.hint)
+            Client.FitQuestDialogueLabel(hint, { 0, 0, spec.WIDTH })
+            Client.ShowObject(hint)
+        else
+            Client.HideObject(hint)
+        end
+    end
+    if label and type(label.SetText) == "function" then
+        pcall(label.SetText, label, type(text) == "string" and text or "")
+        -- Hugs its text, so the CENTER anchor centres it (justification is
+        -- not honoured here); never reaching the chevron on either side,
+        -- unless the theme widens it (LABEL_WIDTH).
+        -- With LABEL_RIGHT the label stays centred while its right edge is
+        -- left of that x (units from the button's centre), and otherwise
+        -- moves left just enough to keep it there: a label too long for the
+        -- room between the chevrons is shown whole, clear of the chevron,
+        -- once its width is measured (Client.SettleQuestDialogueLabels).
+        if not hinted and spec.LABEL_RIGHT then
+            label.unrealQuestOnFit = function(fitted, width)
+                local shift = spec.LABEL_RIGHT - width / Client.QUEST_DIALOGUE_UNIT / 2
+                if shift > 0 then shift = 0 end
+                Client.AnchorQuestDialogue(fitted, "CENTER", button, "CENTER",
+                    shift, spec.FACE_LIFT - (spec.LABEL_DROP or 0))
+            end
+        elseif hinted and spec.SILVER then
+            label.unrealQuestOnFit = Measured
+        else
+            label.unrealQuestOnFit = nil
+        end
+        Client.FitQuestDialogueLabel(label,
+            { 0, 0, spec.LABEL_WIDTH or 2 * (spec.CHEVRON[1] - spec.CHEVRON[2] / 2 - 4) })
+    end
+    button.unrealQuestAction = entry.action
+    local enabled = entry.enabled ~= false
+    if button.unrealQuestEnabled ~= enabled then
+        button.unrealQuestEnabled = enabled
+        button.unrealQuestPressed = nil
+    end
+    Client.PaintQuestDialogueActionButton(button)
+    Client.ShowObject(button)
+end
+
+-- The progress page's turn-in panel, under the card (Immersion's Elements
+-- frame). The required items themselves read as plain lines in the card's
+-- text (Quest/Dialogue.lua); this panel answers the other two questions. Its
+-- header says whether the quest can be handed in -- a check or a cross,
+-- "Ready to turn in" or "Items still missing", and what a click on the card
+-- will do. Below it, what handing the quest in pays: the choose-one rewards,
+-- the guaranteed ones (icon, name, count, two to a row as in Immersion, with
+-- the item tooltip on hover), then money, experience and reputation lines.
+--
+-- Money on the dialogue is drawn as coins on every theme (user request,
+-- 2026-10-12): per denomination its number then its coin, a zero one left
+-- out -- the Quest Log coin row's art and rule (QuestLogRewardRows.coins).
+-- Each coin is a texture beside a number label, not an inline |T escape:
+-- nothing in the compatibility database shows this client drawing those.
+-- Sizes are pixels, taken from the numbers' own font size, since the
+-- dialogue's text is drawn at FONT_UNIT rather than UNIT. The numbers carry
+-- no width, so GetStringWidth reads them at once, as on the Quest Log row.
+-- ICON_RAISE: the coins sit 2px higher than centred, level with their
+-- numbers (user request, 2026-10-12).
+Client.QUEST_DIALOGUE_COINS = { ICON_SHARE = 1.2, NUMBER_GAP = 1, GAP = 4, LEAD = 3,
+    ICON_RAISE = 2 }
+
+function Client.CreateQuestDialogueCoins(parent)
+    local create = Resolve("CreateFrame")
+    if not create or not parent then return nil end
+    local ok, row = pcall(create, "Frame", nil, parent)
+    if not ok or not row or type(row.CreateFontString) ~= "function"
+        or type(row.CreateTexture) ~= "function" then
+        return nil
+    end
+    row.unrealQuestCoins = {}
+    local index = 1
+    while index <= table.getn(QuestLogRewardRows.coins) do
+        local labelOk, label = pcall(row.CreateFontString, row, nil, "OVERLAY",
+            "GameFontNormalSmall")
+        local iconOk, icon = pcall(row.CreateTexture, row, nil, "OVERLAY")
+        if not labelOk or not label or not iconOk or not icon then return nil end
+        Client.ScaleQuestDialogueFont(label)
+        StripShadow(label)
+        pcall(icon.SetTexture, icon, QuestLogRewardRows.coins[index].texture)
+        row.unrealQuestCoins[index] = { label = label, icon = icon, size = false }
+        index = index + 1
+    end
+    Client.HideObject(row)
+    return row
+end
+
+-- Draws `copper` on a row from Client.CreateQuestDialogueCoins, its numbers
+-- at `size` (design font size; nil: the template's) in `color`, and returns
+-- its width in pixels, or hides it and returns 0 when there is no money.
+function Client.SetQuestDialogueCoins(row, copper, size, color)
+    if not row or not row.unrealQuestCoins then return 0 end
+    if type(copper) ~= "number" or copper <= 0 then
+        Client.HideObject(row)
+        return 0
+    end
+    local coins = Client.QUEST_DIALOGUE_COINS
+    local x = 0
+    local iconSize = 1
+    local index = 1
+    while index <= table.getn(QuestLogRewardRows.coins) do
+        local spec = QuestLogRewardRows.coins[index]
+        local coin = row.unrealQuestCoins[index]
+        local amount = math.floor(copper / spec.copper)
+        copper = copper - amount * spec.copper
+        if coin.size ~= (size or false) then
+            coin.size = size or false
+            Client.ScaleQuestDialogueFont(coin.label, size)
+            StripShadow(coin.label)
+        end
+        local design = size or coin.label.unrealQuestDefaultFontDesignSize or 12
+        local pixels = design * Client.QUEST_DIALOGUE_FONT_UNIT
+        iconSize = math.floor(pixels * coins.ICON_SHARE + 0.5)
+        if amount > 0 then
+            if x > 0 then x = x + coins.GAP end
+            local text = tostring(amount)
+            pcall(coin.label.SetText, coin.label, text)
+            if color and type(coin.label.SetTextColor) == "function" then
+                pcall(coin.label.SetTextColor, coin.label, color[1], color[2], color[3])
+            end
+            local width = ReadObjectMethod(coin.label, "GetStringWidth")
+            if type(width) ~= "number" or width <= 0 then
+                width = string.len(text) * pixels * 0.6
+            end
+            Client.AnchorObject(coin.label, "LEFT", row, "LEFT", x, 0)
+            x = x + math.ceil(width) + coins.NUMBER_GAP
+            Client.SetObjectSize(coin.icon, iconSize, iconSize)
+            Client.AnchorObject(coin.icon, "LEFT", row, "LEFT", x, coins.ICON_RAISE)
+            x = x + iconSize
+            Client.ShowObject(coin.label)
+            Client.ShowObject(coin.icon)
+        else
+            Client.HideObject(coin.label)
+            Client.HideObject(coin.icon)
+        end
+        index = index + 1
+    end
+    Client.SetObjectSize(row, x, iconSize)
+    Client.ShowObject(row)
+    return x
+end
+
+function Client.CreateQuestDialogueTurnIn(frame)
+    local create = Resolve("CreateFrame")
+    local layout = Client.QUEST_DIALOGUE_TURN_IN
+    if not create or not frame then return nil end
+    local ok, panel = pcall(create, "Frame", "UnrealQuestDialogueTurnIn", frame)
+    if not ok or not panel then return nil end
+    Client.SizeQuestDialogue(panel, layout.WIDTH, 100)
+    Client.AnchorQuestDialogue(panel, "TOP", frame, "BOTTOM", 0, -layout.GAP)
+    Client.SkinQuestDialogueParchment(panel, layout.SLICE_SIZE, layout.SLICE_OUTSET,
+        nil, frame, "parchment")
+    local cine = Client.QUEST_DIALOGUE_HORDE_LIGHT
+    Client.SkinQuestDialogueParchment(panel, cine.PANEL_SLICE, cine.PANEL_OUTSET,
+        cine.PATH .. "Panel_", frame, "ornate", "reward")
+    Client.SkinQuestDialogueMinimalPanel(panel, frame)
+
+    local function Label(parent, template, justify, color)
+        local made, label = pcall(parent.CreateFontString, parent, nil, "OVERLAY", template)
+        if not made or not label then return nil end
+        Client.ScaleQuestDialogueFont(label)
+        Client.JustifyQuestDialogueText(label, justify)
+        if color and type(label.SetTextColor) == "function" then
+            pcall(label.SetTextColor, label, color[1], color[2], color[3])
+        end
+        StripShadow(label)
+        return label
+    end
+    -- Clicks anywhere on the panel behave as on the card.
+    local function Forward(surface)
+        if type(surface.EnableMouse) == "function" then pcall(surface.EnableMouse, surface, true) end
+        Client.SetObjectScript(surface, "OnMouseUp", function(first)
+            if frame.unrealQuestCardClick then frame.unrealQuestCardClick(first) end
+        end)
+    end
+    Forward(panel)
+
+    local statusOk, status = pcall(panel.CreateTexture, panel, nil, "ARTWORK")
+    if statusOk and status then
+        Client.SizeQuestDialogue(status, 22, 22)
+        Client.AnchorQuestDialogue(status, "TOPLEFT", panel, "TOPLEFT", layout.PAD, -layout.PAD + 6)
+        panel.unrealQuestStatusIcon = status
+    end
+    panel.unrealQuestStatusText = Label(panel, "GameFontNormalLarge", "LEFT")
+    if panel.unrealQuestStatusText then
+        Client.SizeQuestDialogue(panel.unrealQuestStatusText, layout.HEADER_TEXT_WIDTH, 22)
+        Client.AnchorQuestDialogue(panel.unrealQuestStatusText, "TOPLEFT", panel, "TOPLEFT",
+            layout.PAD + 30, -layout.PAD + 6)
+    end
+    panel.unrealQuestHint = Label(panel, "GameFontNormalSmall", "RIGHT", layout.INK.label)
+    if panel.unrealQuestHint then
+        Client.SizeQuestDialogue(panel.unrealQuestHint, layout.HEADER_TEXT_WIDTH, 22)
+        Client.AnchorQuestDialogue(panel.unrealQuestHint, "TOPRIGHT", panel, "TOPRIGHT",
+            -layout.PAD, -layout.PAD + 6)
+    end
+
+    panel.unrealQuestSections = {}
+    local index = 1
+    while index <= 2 do
+        local section = Label(panel, "GameFontNormalSmall", "LEFT", layout.INK.label)
+        if section then
+            Client.SizeQuestDialogue(section, layout.WIDTH - 2 * layout.PAD, layout.LABEL)
+            Client.HideObject(section)
+        end
+        panel.unrealQuestSections[index] = section
+        index = index + 1
+    end
+
+    panel.unrealQuestTiles = {}
+    index = 1
+    while index <= layout.MAX_TILES do
+        local tileOk, tile = pcall(create, "Frame",
+            "UnrealQuestDialogueTurnInItem" .. tostring(index), panel)
+        if tileOk and tile then
+            Client.SizeQuestDialogue(tile, layout.TILE_WIDTH, layout.TILE_HEIGHT)
+            local cap = math.floor(layout.TILE_HEIGHT / 2)
+            tile.unrealQuestPlate = {}
+            local function Plate(left, right)
+                local made, part = pcall(tile.CreateTexture, tile, nil, "BACKGROUND")
+                if not made or not part then return end
+                pcall(part.SetTexture, part, layout.TILE_PLATE)
+                pcall(part.SetTexCoord, part, left, right, 0, 1)
+                local tint = layout.TILE_TINT
+                pcall(part.SetVertexColor, part, tint[1], tint[2], tint[3])
+                Client.SizeQuestDialogue(part, nil, layout.TILE_HEIGHT)
+                table.insert(tile.unrealQuestPlate, part)
+                return part
+            end
+            local leftCap = Plate(0, 0.25)
+            if leftCap then
+                Client.SizeQuestDialogue(leftCap, cap)
+                Client.AnchorQuestDialogue(leftCap, "LEFT", tile, "LEFT", 0, 0)
+            end
+            local rightCap = Plate(0.75, 1)
+            if rightCap then
+                Client.SizeQuestDialogue(rightCap, cap)
+                Client.AnchorQuestDialogue(rightCap, "RIGHT", tile, "RIGHT", 0, 0)
+            end
+            local centre = Plate(0.25, 0.75)
+            if centre then
+                Client.AnchorQuestDialogue(centre, "TOPLEFT", tile, "TOPLEFT", cap, 0)
+                Client.AddQuestDialogueAnchor(centre, "BOTTOMRIGHT", tile,
+                    "BOTTOMRIGHT", -cap, 0)
+            end
+            local glowOk, glow = pcall(tile.CreateTexture, tile, nil, "BORDER")
+            if glowOk and glow then
+                pcall(glow.SetTexture, glow,
+                    "Interface\\AddOns\\unrealQuest\\media\\Textures\\Dialogues\\UQ_Reward_Select_Glow")
+                Client.SizeQuestDialogue(glow, layout.ICON + 10, layout.ICON + 10)
+                Client.AnchorQuestDialogue(glow, "LEFT", tile, "LEFT", 5, 0)
+                Client.HideObject(glow)
+                tile.unrealQuestGlow = glow
+            end
+            local iconOk, icon = pcall(tile.CreateTexture, tile, nil, "ARTWORK")
+            if iconOk and icon then
+                Client.SizeQuestDialogue(icon, layout.ICON, layout.ICON)
+                Client.AnchorQuestDialogue(icon, "LEFT", tile, "LEFT", 10, 0)
+                tile.unrealQuestIcon = icon
+            end
+            local edgeOk, rewardEdge = pcall(tile.CreateTexture, tile, nil, "OVERLAY")
+            if edgeOk and rewardEdge then
+                Client.HideObject(rewardEdge)
+                tile.unrealQuestRewardEdge = rewardEdge
+            end
+            -- The picked choice in a card with rewardIcons.selectFrame:
+            -- the portrait's frame, drawn over the icon (OVERLAY, above the
+            -- icon's ARTWORK) rather than the glow under it (user request,
+            -- 2026-10-12). Client.RenderQuestDialogueInlineRewards sizes it.
+            local selectOk, selectFrame = pcall(tile.CreateTexture, tile, nil, "OVERLAY")
+            if selectOk and selectFrame then
+                Client.SetQuestDialogueItemFrameArt(selectFrame)
+                Client.HideObject(selectFrame)
+                tile.unrealQuestSelectFrame = selectFrame
+            end
+            -- GearAdvisor's marks on the item icon, as on the stock reward
+            -- buttons (Client.SetQuestRewardGearMark): the arrow in its
+            -- bottom-right corner, the best-value coin in its top-right.
+            local arrowOk, arrow = pcall(tile.CreateTexture, tile, nil, "OVERLAY")
+            if arrowOk and arrow and icon then
+                pcall(arrow.SetTexture, arrow, QuestRewardGear.texture)
+                local arrowSize = math.floor(layout.ICON * QuestRewardGear.arrowShare + 0.5)
+                Client.SizeQuestDialogue(arrow, arrowSize, arrowSize)
+                Client.AnchorQuestDialogue(arrow, "BOTTOMRIGHT", icon, "BOTTOMRIGHT", 3, -2)
+                Client.HideObject(arrow)
+                tile.unrealQuestArrow = arrow
+            end
+            local coinOk, coin = pcall(tile.CreateTexture, tile, nil, "OVERLAY")
+            if coinOk and coin and icon then
+                pcall(coin.SetTexture, coin, QuestRewardGear.texture)
+                local cell = QuestRewardGear.coinCell
+                pcall(coin.SetTexCoord, coin, cell[1], cell[2], cell[3], cell[4])
+                local coinWidth = math.floor(layout.ICON * 0.5 + 0.5)
+                Client.SizeQuestDialogue(coin, coinWidth,
+                    math.floor(coinWidth * QuestRewardGear.coinAspect + 0.5))
+                Client.AnchorQuestDialogue(coin, "TOPRIGHT", icon, "TOPRIGHT", 3, 2)
+                Client.HideObject(coin)
+                tile.unrealQuestCoin = coin
+            end
+            tile.unrealQuestName = Label(tile, "GameFontNormalSmall", "LEFT", layout.INK.text)
+            Client.SizeQuestDialogueTurnInTile(tile, layout.TILE_HEIGHT, layout.ICON)
+            Forward(tile)
+            -- A choice on the completion page is picked by clicking its tile;
+            -- any other tile behaves as the card.
+            Client.SetObjectScript(tile, "OnMouseUp", function(first)
+                local pick = frame.unrealQuestTileCallback
+                if tile.unrealQuestPayload and type(pick) == "function" then
+                    pcall(pick, tile.unrealQuestPayload)
+                elseif frame.unrealQuestCardClick then
+                    frame.unrealQuestCardClick(first)
+                end
+            end)
+            -- A theme with REWARD_HOVER art (tools/make_reward_hover.py)
+            -- swaps the plate and left edge for their brightened copies
+            -- while hovered: a vertex colour above 1 clamps, and an additive
+            -- overlay showed no effect in game (user report).
+            -- Parchment has no hover art: its tinted plate is lifted to a
+            -- brighter tint instead (TILE_HOVER_TINT, still under 1).
+            local function ShowBloom(shown)
+                local hover = tile.unrealQuestHoverArt
+                if not hover then
+                    local tints = tile.unrealQuestHoverTint
+                    if not tints then return end
+                    local tint = shown and tints.hover or tints.normal
+                    local index = 1
+                    while index <= table.getn(tile.unrealQuestPlate or {}) do
+                        local part = tile.unrealQuestPlate[index]
+                        if type(part.SetVertexColor) == "function" then
+                            pcall(part.SetVertexColor, part, tint[1], tint[2], tint[3])
+                        end
+                        index = index + 1
+                    end
+                    return
+                end
+                local suffix = shown and hover.SUFFIX or ""
+                local plateKey = hover.plate .. suffix
+                if tile.unrealQuestHoverPlate ~= plateKey then
+                    tile.unrealQuestHoverPlate = plateKey
+                    Client.SkinQuestDialoguePlate(tile, tile.unrealQuestPlate,
+                        plateKey, hover.capU, hover.capWidth, nil, hover.outset)
+                end
+                if hover.edge and tile.unrealQuestRewardEdge then
+                    local edgeKey = hover.edge .. suffix
+                    if tile.unrealQuestRewardEdgeTexture ~= edgeKey then
+                        tile.unrealQuestRewardEdgeTexture = edgeKey
+                        Client.SetQuestDialogueArtTexture(tile.unrealQuestRewardEdge, edgeKey)
+                    end
+                end
+            end
+            tile.unrealQuestShowBloom = ShowBloom
+            Client.SetObjectScript(tile, "OnEnter", function()
+                tile.unrealQuestHovered = true
+                ShowBloom(true)
+                local giverType = tile.unrealQuestTooltipType
+                if giverType then
+                    local tooltip = ResolveObject("GameTooltip")
+                    if tooltip and type(tooltip.SetOwner) == "function" then
+                        pcall(tooltip.SetOwner, tooltip, tile, "ANCHOR_RIGHT")
+                        if giverType == "spell"
+                            and type(tooltip.SetQuestRewardSpell) == "function" then
+                            pcall(tooltip.SetQuestRewardSpell, tooltip)
+                        elseif type(tooltip.SetQuestItem) == "function" then
+                            pcall(tooltip.SetQuestItem, tooltip, giverType,
+                                tile.unrealQuestItemIndex)
+                        end
+                        if type(tooltip.Show) == "function" then pcall(tooltip.Show, tooltip) end
+                        if giverType ~= "spell" then
+                            Client.ShowUnrealUIRewardCompare(giverType, tile.unrealQuestItemIndex)
+                        end
+                    end
+                elseif tile.unrealQuestKind then
+                    if Client.ShowQuestLogItemTooltip(tile, tile.unrealQuestLogIndex,
+                        tile.unrealQuestKind, tile.unrealQuestItemIndex) then
+                        Client.ShowUnrealUIRewardCompare(tile.unrealQuestKind,
+                            tile.unrealQuestItemIndex, tile.unrealQuestLogIndex)
+                    end
+                end
+            end)
+            Client.SetObjectScript(tile, "OnLeave", function()
+                tile.unrealQuestHovered = nil
+                ShowBloom(false)
+                Client.HideUnrealUIRewardCompare()
+                local tooltip = ResolveObject("GameTooltip")
+                if tooltip and type(tooltip.Hide) == "function" then pcall(tooltip.Hide, tooltip) end
+            end)
+            Client.HideObject(tile)
+            table.insert(panel.unrealQuestTiles, tile)
+        end
+        index = index + 1
+    end
+
+    panel.unrealQuestLines = {}
+    index = 1
+    while index <= layout.MAX_LINES do
+        local line = Label(panel, "GameFontNormalSmall", "LEFT", layout.INK.text)
+        if line then
+            Client.SizeQuestDialogue(line, layout.WIDTH - 2 * layout.PAD, layout.LINE)
+            Client.HideObject(line)
+        end
+        panel.unrealQuestLines[index] = line
+        index = index + 1
+    end
+    -- The money line's coins, after its "You will receive:" label.
+    panel.unrealQuestCoins = Client.CreateQuestDialogueCoins(panel)
+    Client.HideObject(panel)
+    frame.unrealQuestTurnIn = panel
+    return panel
+end
+
+-- Fills the turn-in panel from view.turnIn (Quest/Dialogue.lua) and returns
+-- its height, or hides it and returns 0. Laid out top to bottom with one
+-- running offset, so an absent section leaves no gap. A titled rewards panel
+-- contracts to its widest item row or text line; the progress panel stays full
+-- width so its status and right-aligned action hint cannot collide.
+-- The rewards as one line inside the card, for a card with `rewardIcons`
+-- (Minimal's quest card): each section's label, hugging its text, then its
+-- items as icons alone, the next section after them on the same line. It
+-- reuses the panel's own tiles, so hover tooltips, the GearAdvisor marks
+-- and picking a choice by clicking behave exactly as on the panel; only the
+-- plate, name and edge are left out, and the panel draws no background.
+-- Returns 0: nothing hangs under the card.
+function Client.RenderQuestDialogueInlineRewards(frame, panel, turnIn, spec)
+    panel.unrealQuestInline = true
+    panel.unrealQuestFontGrow = nil
+    local layout = Client.GetQuestDialogueLayout(frame)
+    local ink = layout.ink and layout.ink.objectiveHeading or { 1, 1, 1 }
+    local hidden = { panel.unrealQuestStatusIcon, panel.unrealQuestStatusText,
+        panel.unrealQuestHint, panel.unrealQuestCoins }
+    local index = 1
+    while index <= table.getn(panel.unrealQuestLines or {}) do
+        table.insert(hidden, panel.unrealQuestLines[index])
+        index = index + 1
+    end
+    index = 1
+    while index <= table.getn(panel.unrealQuestMinimalSkin or {}) do
+        table.insert(hidden, panel.unrealQuestMinimalSkin[index])
+        index = index + 1
+    end
+    index = 1
+    while index <= table.getn(hidden) do
+        Client.HideObject(hidden[index])
+        index = index + 1
+    end
+    -- No header text either, as a bare panel has none.
+    if panel.unrealQuestStatusText then pcall(panel.unrealQuestStatusText.SetText, panel.unrealQuestStatusText, "") end
+    if panel.unrealQuestHint then pcall(panel.unrealQuestHint.SetText, panel.unrealQuestHint, "") end
+    -- Over the card, not under it as the panel hangs.
+    if panel.unrealQuestLayerKey ~= "inline" and type(frame.GetFrameLevel) == "function"
+        and type(panel.SetFrameLevel) == "function" then
+        local levelOk, cardLevel = pcall(frame.GetFrameLevel, frame)
+        if levelOk and type(cardLevel) == "number" then
+            pcall(panel.SetFrameLevel, panel, cardLevel + 1)
+            local tileIndex = 1
+            while (panel.unrealQuestTiles or {})[tileIndex] do
+                local tile = panel.unrealQuestTiles[tileIndex]
+                if type(tile.SetFrameLevel) == "function" then
+                    pcall(tile.SetFrameLevel, tile, cardLevel + 2)
+                end
+                tileIndex = tileIndex + 1
+            end
+            panel.unrealQuestLayerKey = "inline"
+        end
+    end
+    local icon = spec.icon
+    local cursor = 0
+    local tiles = panel.unrealQuestTiles or {}
+    local tileIndex = 1
+    local sectionIndex = 1
+    local function Section(labelText, items)
+        if not items or table.getn(items) == 0 then return end
+        if sectionIndex > 1 then cursor = cursor + spec.sectionGap - spec.gap end
+        local label = panel.unrealQuestSections[sectionIndex]
+        sectionIndex = sectionIndex + 1
+        if label then
+            Client.ScaleQuestDialogueFont(label, spec.labelSize)
+            pcall(label.SetText, label, labelText)
+            pcall(label.SetTextColor, label, ink[1], ink[2], ink[3])
+            label.unrealQuestFitText = nil
+            label.unrealQuestBoxWidth = 300
+            Client.FitQuestDialogueLabel(label, { 0, 0, 300 })
+            Client.SizeQuestDialogue(label, nil, icon)
+            Client.AnchorQuestDialogue(label, "TOPLEFT", panel, "TOPLEFT", cursor, 0)
+            Client.ShowObject(label)
+            local width = 0
+            if type(label.GetStringWidth) == "function" then
+                local ok, measured = pcall(label.GetStringWidth, label)
+                if ok and type(measured) == "number" then
+                    width = measured / Client.QUEST_DIALOGUE_UNIT
+                end
+            end
+            cursor = cursor + width + spec.labelGap
+        end
+        local itemIndex = 1
+        while itemIndex <= table.getn(items) and tiles[tileIndex] do
+            local item = items[itemIndex]
+            local tile = tiles[tileIndex]
+            Client.SizeQuestDialogueTurnInTile(tile, icon, icon, 0, icon)
+            Client.SizeQuestDialogue(tile, icon, icon)
+            Client.AnchorQuestDialogue(tile, "TOPLEFT", panel, "TOPLEFT", cursor, 0)
+            local plateIndex = 1
+            while plateIndex <= table.getn(tile.unrealQuestPlate or {}) do
+                Client.HideObject(tile.unrealQuestPlate[plateIndex])
+                plateIndex = plateIndex + 1
+            end
+            tile.unrealQuestPlateTexture = nil
+            Client.HideObject(tile.unrealQuestName)
+            Client.HideObject(tile.unrealQuestRewardEdge)
+            tile.unrealQuestRewardEdgeTexture = nil
+            tile.unrealQuestHoverArt = nil
+            tile.unrealQuestHoverTint = nil
+            if tile.unrealQuestIcon then
+                if type(item.texture) == "string" and item.texture ~= "" then
+                    pcall(tile.unrealQuestIcon.SetTexture, tile.unrealQuestIcon, item.texture)
+                    Client.ShowObject(tile.unrealQuestIcon)
+                else
+                    Client.HideObject(tile.unrealQuestIcon)
+                end
+                -- An item the player cannot use reads red, as its name did.
+                if type(tile.unrealQuestIcon.SetVertexColor) == "function" then
+                    if item.usable == false then
+                        pcall(tile.unrealQuestIcon.SetVertexColor, tile.unrealQuestIcon, 1, 0.35, 0.35)
+                    else
+                        pcall(tile.unrealQuestIcon.SetVertexColor, tile.unrealQuestIcon, 1, 1, 1)
+                    end
+                end
+            end
+            tile.unrealQuestLogIndex = turnIn.logIndex
+            tile.unrealQuestKind = item.kind
+            tile.unrealQuestTooltipType = item.tooltipType
+            tile.unrealQuestItemIndex = item.index
+            tile.unrealQuestPayload = item.payload
+            local advisor = item.advisor
+            local cell = advisor and advisor.arrow and QuestRewardGear.cells[advisor.arrow]
+            if tile.unrealQuestArrow then
+                if cell then
+                    pcall(tile.unrealQuestArrow.SetTexCoord, tile.unrealQuestArrow,
+                        cell[1], cell[2], cell[3], cell[4])
+                    Client.ShowObject(tile.unrealQuestArrow)
+                else
+                    Client.HideObject(tile.unrealQuestArrow)
+                end
+            end
+            if advisor and advisor.coin then
+                Client.ShowObject(tile.unrealQuestCoin)
+            else
+                Client.HideObject(tile.unrealQuestCoin)
+            end
+            local frameOutset = spec.selectFrame
+            if item.selected and frameOutset and tile.unrealQuestSelectFrame
+                and tile.unrealQuestIcon then
+                local selectFrame = tile.unrealQuestSelectFrame
+                Client.AnchorQuestDialogue(selectFrame, "TOPLEFT", tile.unrealQuestIcon,
+                    "TOPLEFT", -frameOutset, frameOutset)
+                Client.AddQuestDialogueAnchor(selectFrame, "BOTTOMRIGHT", tile.unrealQuestIcon,
+                    "BOTTOMRIGHT", frameOutset, -frameOutset)
+                Client.ShowObject(selectFrame)
+                Client.HideObject(tile.unrealQuestGlow)
+            else
+                Client.HideObject(tile.unrealQuestSelectFrame)
+                if item.selected then
+                    Client.ShowObject(tile.unrealQuestGlow)
+                else
+                    Client.HideObject(tile.unrealQuestGlow)
+                end
+            end
+            Client.ShowObject(tile)
+            cursor = cursor + icon + spec.gap
+            tileIndex = tileIndex + 1
+            itemIndex = itemIndex + 1
+        end
+    end
+    local choices = turnIn.choices or {}
+    local rewards = turnIn.rewards or {}
+    Section(UQ.L("DIALOGUE_CHOOSE_REWARD"), choices)
+    Section(UQ.L(table.getn(choices) > 0 and "DIALOGUE_ALSO_RECEIVE"
+        or "DIALOGUE_RECEIVE_REWARD"), rewards)
+    while sectionIndex <= table.getn(panel.unrealQuestSections) do
+        Client.HideObject(panel.unrealQuestSections[sectionIndex])
+        sectionIndex = sectionIndex + 1
+    end
+    while tiles[tileIndex] do
+        tiles[tileIndex].unrealQuestKind = nil
+        tiles[tileIndex].unrealQuestTooltipType = nil
+        tiles[tileIndex].unrealQuestPayload = nil
+        tiles[tileIndex].unrealQuestHovered = nil
+        Client.HideObject(tiles[tileIndex].unrealQuestSelectFrame)
+        Client.HideObject(tiles[tileIndex])
+        tileIndex = tileIndex + 1
+    end
+    if cursor <= 0 then
+        Client.HideObject(panel)
+        return 0
+    end
+    -- Only as wide as the row, so the rest of the card keeps its clicks.
+    Client.SizeQuestDialogue(panel, cursor, icon)
+    -- Its width without the gap after the last icon, for the card's width
+    -- (Client.FitQuestDialogueCardWidth).
+    frame.unrealQuestInlineRewardsWidth = cursor - spec.gap
+    Client.AnchorQuestDialogue(panel, "TOPLEFT", frame, "TOPLEFT", spec.x,
+        -(spec.y - (frame.unrealQuestObjectiveSlack or 0)))
+    panel.unrealQuestGap = nil
+    Client.ShowObject(panel)
+    return 0
+end
+
+function Client.RenderQuestDialogueTurnIn(frame, turnIn)
+    local panel = frame and frame.unrealQuestTurnIn
+    if not panel then return 0 end
+    frame.unrealQuestInlineRewardsWidth = nil
+    local layout = Client.QUEST_DIALOGUE_TURN_IN
+    if type(turnIn) ~= "table" then
+        Client.HideObject(panel)
+        return 0
+    end
+    local inlineSpec = Client.GetQuestDialogueLayout(frame).rewardIcons
+    if inlineSpec then
+        return Client.RenderQuestDialogueInlineRewards(frame, panel, turnIn, inlineSpec)
+    end
+    -- Back from the inline row: its panel skin, tile plates, names and icon
+    -- tint come back, and the label fonts are rescaled below.
+    if panel.unrealQuestInline then
+        panel.unrealQuestInline = nil
+        panel.unrealQuestFontGrow = nil
+        local minimalTheme = frame.unrealQuestTheme == "minimal"
+        local skinIndex = 1
+        while skinIndex <= table.getn(panel.unrealQuestMinimalSkin or {}) do
+            if minimalTheme then Client.ShowObject(panel.unrealQuestMinimalSkin[skinIndex])
+            else Client.HideObject(panel.unrealQuestMinimalSkin[skinIndex]) end
+            skinIndex = skinIndex + 1
+        end
+        local restoreIndex = 1
+        while (panel.unrealQuestTiles or {})[restoreIndex] do
+            local tile = panel.unrealQuestTiles[restoreIndex]
+            local plateIndex = 1
+            while plateIndex <= table.getn(tile.unrealQuestPlate or {}) do
+                Client.ShowObject(tile.unrealQuestPlate[plateIndex])
+                plateIndex = plateIndex + 1
+            end
+            Client.ShowObject(tile.unrealQuestName)
+            if tile.unrealQuestIcon and type(tile.unrealQuestIcon.SetVertexColor) == "function" then
+                pcall(tile.unrealQuestIcon.SetVertexColor, tile.unrealQuestIcon, 1, 1, 1)
+            end
+            restoreIndex = restoreIndex + 1
+        end
+        if panel.unrealQuestStatusText then Client.ShowObject(panel.unrealQuestStatusText) end
+        if panel.unrealQuestHint then Client.ShowObject(panel.unrealQuestHint) end
+    end
+    local ready = turnIn.completable
+    local maxInnerWidth = layout.WIDTH - 2 * layout.PAD
+    local contentWidth = 0
+    -- A theme may draw every label but the item names larger
+    -- (REWARD_FONT_GROW, rendered pixels); the rows they sit in grow with it.
+    local fontGrow = frame.unrealQuestTheme ~= "parchment"
+        and Client.GetQuestDialogueArt(frame.unrealQuestTheme).REWARD_FONT_GROW or 0
+    if panel.unrealQuestFontGrow ~= fontGrow then
+        panel.unrealQuestFontGrow = fontGrow
+        local grown = { panel.unrealQuestStatusText, panel.unrealQuestHint }
+        local listIndex = 1
+        while listIndex <= table.getn(panel.unrealQuestSections or {}) do
+            table.insert(grown, panel.unrealQuestSections[listIndex])
+            listIndex = listIndex + 1
+        end
+        listIndex = 1
+        while listIndex <= table.getn(panel.unrealQuestLines or {}) do
+            table.insert(grown, panel.unrealQuestLines[listIndex])
+            listIndex = listIndex + 1
+        end
+        listIndex = 1
+        while listIndex <= table.getn(grown) do
+            local label = grown[listIndex]
+            local base = label and label.unrealQuestDefaultFontDesignSize
+            if type(base) == "number" then
+                Client.ScaleQuestDialogueFont(label, fontGrow > 0
+                    and base + fontGrow / Client.QUEST_DIALOGUE_FONT_UNIT or nil)
+                -- Re-measure the label's fitted width for the new face.
+                label.unrealQuestFitText = nil
+            end
+            listIndex = listIndex + 1
+        end
+    end
+    local rowGrow = fontGrow / Client.QUEST_DIALOGUE_UNIT
+    local labelPitch = layout.LABEL + rowGrow
+    local linePitch = layout.LINE + rowGrow
+    local function Heights(list, height)
+        local at = 1
+        while at <= table.getn(list or {}) do
+            if list[at] then Client.SizeQuestDialogue(list[at], nil, height) end
+            at = at + 1
+        end
+    end
+    Heights(panel.unrealQuestSections, labelPitch)
+    Heights(panel.unrealQuestLines, linePitch)
+    local fitted = {}
+    -- Every label hugs its text from its anchor, since justification is not
+    -- honoured here (Client.FitQuestDialogueLabel). Reward labels first use
+    -- the full inner width so their text can be measured before the panel contracts.
+    local function Text(region, value, boxWidth)
+        if not region or type(region.SetText) ~= "function" then return end
+        pcall(region.SetText, region, value)
+        if type(boxWidth) == "number" then
+            region.unrealQuestBoxWidth = boxWidth
+        elseif not region.unrealQuestBoxWidth and type(region.GetWidth) == "function" then
+            local ok, width = pcall(region.GetWidth, region)
+            if ok and type(width) == "number" and width > 0 then
+                region.unrealQuestBoxWidth = width / Client.QUEST_DIALOGUE_UNIT
+            end
+        end
+        if region.unrealQuestBoxWidth then
+            Client.FitQuestDialogueLabel(region, { 0, 0, region.unrealQuestBoxWidth })
+        end
+    end
+    local function Measure(region)
+        if not region or type(region.GetStringWidth) ~= "function" then return end
+        local ok, width = pcall(region.GetStringWidth, region)
+        if ok and type(width) == "number" and width > 0 then
+            width = (width + 2) / Client.QUEST_DIALOGUE_UNIT
+            if width > contentWidth then contentWidth = width end
+        end
+        table.insert(fitted, region)
+    end
+    local function Ink(region, color)
+        if region and type(region.SetTextColor) == "function" then
+            pcall(region.SetTextColor, region, color[1], color[2], color[3])
+        end
+    end
+    -- The accept and completion pages head the panel "Rewards"; the progress
+    -- page heads it with whether the quest can be handed in.
+    -- A `bare` panel (a card with a reward line, Quest/Dialogue.lua
+    -- BareTurnIn) has no header at all: its item tiles only, sized like a
+    -- titled one.
+    local bare = turnIn.bare and true or false
+    local titled = bare or type(turnIn.title) == "string"
+    if panel.unrealQuestStatusIcon then
+        pcall(panel.unrealQuestStatusIcon.SetTexture, panel.unrealQuestStatusIcon,
+            ready and layout.ICON_DONE or layout.ICON_MISSING)
+        if titled then
+            Client.HideObject(panel.unrealQuestStatusIcon)
+        else
+            Client.ShowObject(panel.unrealQuestStatusIcon)
+        end
+    end
+    if panel.unrealQuestStatusText then
+        Client.AnchorQuestDialogue(panel.unrealQuestStatusText, "TOPLEFT", panel, "TOPLEFT",
+            layout.PAD + (titled and 0 or 30), -layout.PAD + 6)
+    end
+    if bare then
+        Text(panel.unrealQuestStatusText, "", maxInnerWidth)
+        Text(panel.unrealQuestHint, "", layout.HEADER_TEXT_WIDTH)
+    elseif titled then
+        Text(panel.unrealQuestStatusText, turnIn.title, maxInnerWidth)
+        Measure(panel.unrealQuestStatusText)
+        Ink(panel.unrealQuestStatusText, layout.INK.title)
+        Text(panel.unrealQuestHint, "", layout.HEADER_TEXT_WIDTH)
+    else
+        Text(panel.unrealQuestStatusText,
+            UQ.L(ready and "DIALOGUE_READY_TO_TURN_IN" or "DIALOGUE_ITEMS_MISSING"),
+            layout.HEADER_TEXT_WIDTH)
+        Ink(panel.unrealQuestStatusText, ready and layout.INK.done or layout.INK.missing)
+        Text(panel.unrealQuestHint,
+            UQ.L(ready and "DIALOGUE_HINT_TURN_IN" or "DIALOGUE_HINT_COME_BACK"),
+            layout.HEADER_TEXT_WIDTH)
+    end
+
+    local offset = titled and layout.TITLE_HEADER or layout.HEADER
+    if bare then offset = layout.PAD end
+    -- The Cinematic theme draws taller tiles with a larger item icon.
+    local cinematic = frame.unrealQuestTheme ~= "parchment"
+    local cine = Client.GetQuestDialogueArt(frame.unrealQuestTheme)
+    local tileHeight = cinematic and cine.REWARD_TILE_HEIGHT or layout.TILE_HEIGHT
+    local tileIcon = cinematic and cine.REWARD_ICON or layout.ICON
+    local tileIconOffset = cinematic and cine.REWARD_ICON_OFFSET or 10
+    local tileNameLeft = cinematic and cine.REWARD_NAME_LEFT or nil
+    local tiles = panel.unrealQuestTiles or {}
+    local tileIndex = 1
+    local sectionIndex = 1
+    local function Section(labelText, items)
+        if not items or table.getn(items) == 0 then return end
+        local label = panel.unrealQuestSections[sectionIndex]
+        sectionIndex = sectionIndex + 1
+        if label then
+            Text(label, labelText, maxInnerWidth)
+            Measure(label)
+            Client.AnchorQuestDialogue(label, "TOPLEFT", panel, "TOPLEFT", layout.PAD, -offset)
+            Client.ShowObject(label)
+        end
+        local columns = table.getn(items) > 1 and 2 or 1
+        local rowWidth = columns * layout.TILE_WIDTH + (columns - 1) * layout.TILE_GAP
+        if rowWidth > contentWidth then contentWidth = rowWidth end
+        offset = offset + labelPitch
+        local index = 1
+        while index <= table.getn(items) and tiles[tileIndex] do
+            local item = items[index]
+            local tile = tiles[tileIndex]
+            Client.SizeQuestDialogueTurnInTile(tile, tileHeight, tileIcon,
+                tileIconOffset, tileNameLeft)
+            -- Floor, not a modulo: neither math.mod nor % is portable here
+            -- (see QuestLogRewardRows above).
+            local row = math.floor((index - 1) / 2)
+            local column = (index - 1) - row * 2
+            Client.AnchorQuestDialogue(tile, "TOPLEFT", panel, "TOPLEFT",
+                layout.PAD + column * (layout.TILE_WIDTH + layout.TILE_GAP),
+                -(offset + row * (tileHeight + layout.ROW_GAP)))
+            if tile.unrealQuestIcon then
+                if type(item.texture) == "string" and item.texture ~= "" then
+                    pcall(tile.unrealQuestIcon.SetTexture, tile.unrealQuestIcon, item.texture)
+                    Client.ShowObject(tile.unrealQuestIcon)
+                else
+                    Client.HideObject(tile.unrealQuestIcon)
+                end
+            end
+            if tile.unrealQuestRewardEdge then
+                local rewardEdge = cinematic and cine.REWARD_LEFT_EDGE
+                if rewardEdge then
+                    local rewardEdgePath = cine.PATH .. rewardEdge
+                    if tile.unrealQuestRewardEdgeTexture ~= rewardEdgePath then
+                        tile.unrealQuestRewardEdgeTexture = rewardEdgePath
+                        Client.SetQuestDialogueArtTexture(
+                            tile.unrealQuestRewardEdge, rewardEdgePath)
+                    end
+                    Client.ShowObject(tile.unrealQuestRewardEdge)
+                else
+                    tile.unrealQuestRewardEdgeTexture = nil
+                    Client.HideObject(tile.unrealQuestRewardEdge)
+                end
+            end
+            local name = item.name or ""
+            if type(item.count) == "number" and item.count > 1 then
+                name = name .. "  x" .. tostring(item.count)
+            end
+            Text(tile.unrealQuestName, name)
+            local rewardInk = layout.INK.text
+            if cinematic and cine.REWARD_INK then rewardInk = cine.REWARD_INK end
+            if item.usable == false then
+                rewardInk = cinematic and cine.REWARD_MISSING_INK or layout.INK.missing
+            end
+            Ink(tile.unrealQuestName, rewardInk)
+            tile.unrealQuestLogIndex = turnIn.logIndex
+            tile.unrealQuestKind = item.kind
+            tile.unrealQuestTooltipType = item.tooltipType
+            tile.unrealQuestItemIndex = item.index
+            tile.unrealQuestPayload = item.payload
+            local advisor = item.advisor
+            local cell = advisor and advisor.arrow and QuestRewardGear.cells[advisor.arrow]
+            if tile.unrealQuestArrow then
+                if cell then
+                    pcall(tile.unrealQuestArrow.SetTexCoord, tile.unrealQuestArrow,
+                        cell[1], cell[2], cell[3], cell[4])
+                    Client.ShowObject(tile.unrealQuestArrow)
+                else
+                    Client.HideObject(tile.unrealQuestArrow)
+                end
+            end
+            if advisor and advisor.coin then
+                Client.ShowObject(tile.unrealQuestCoin)
+            else
+                Client.HideObject(tile.unrealQuestCoin)
+            end
+            -- The plate under the tile follows the theme: the classic framed
+            -- parchment tinted warmer, or that cinematic skin's reward row.
+            local plate
+            if cinematic then
+                plate = item.selected and (cine.REWARD_PLATE_SELECTED or "Plate_Selected")
+                    or (cine.REWARD_PLATE or "Plate")
+            else
+                plate = item.selected and layout.TILE_PLATE_SELECTED or layout.TILE_PLATE
+            end
+            local plateKey = cinematic and (frame.unrealQuestTheme .. ":" .. plate) or plate
+            -- REWARD_PLATE_OUTSET draws the plate past the tile; its caps
+            -- follow the drawn height.
+            local plateOutset = cinematic and cine.REWARD_PLATE_OUTSET or nil
+            local plateCapWidth = cinematic and math.floor((tileHeight + 2 * (plateOutset or 0))
+                * (cine.REWARD_CAP_SHARE or cine.CAP_SHARE) + 0.5) or nil
+            if tile.unrealQuestPlateTexture ~= plateKey then
+                tile.unrealQuestPlateTexture = plateKey
+                -- What the hover swap (ShowBloom) now sees on the plate.
+                tile.unrealQuestHoverPlate = cinematic and (cine.PATH .. plate) or nil
+                if cinematic then
+                    Client.SkinQuestDialoguePlate(tile, tile.unrealQuestPlate,
+                        cine.PATH .. plate, cine.CAP_U[plate], plateCapWidth, nil, plateOutset)
+                else
+                    Client.SkinQuestDialoguePlate(tile, tile.unrealQuestPlate, plate, 0.25,
+                        math.floor(layout.TILE_HEIGHT / 2), layout.TILE_TINT)
+                end
+            end
+            -- The plate and edge the hover swap starts from (REWARD_HOVER).
+            local hoverSuffix = cinematic and cine.REWARD_HOVER
+            if hoverSuffix then
+                tile.unrealQuestHoverArt = {
+                    SUFFIX = hoverSuffix,
+                    plate = cine.PATH .. plate,
+                    capU = cine.CAP_U[plate],
+                    capWidth = plateCapWidth,
+                    outset = plateOutset,
+                    edge = cine.REWARD_LEFT_EDGE and (cine.PATH .. cine.REWARD_LEFT_EDGE),
+                }
+                -- A re-render under the cursor keeps the hover art.
+                tile.unrealQuestShowBloom(tile.unrealQuestHovered)
+            else
+                tile.unrealQuestHoverArt = nil
+                tile.unrealQuestHoverTint = not cinematic
+                    and { normal = layout.TILE_TINT, hover = layout.TILE_HOVER_TINT } or nil
+                tile.unrealQuestShowBloom(tile.unrealQuestHovered)
+            end
+            -- The inline row's selection frame never shows on the panel.
+            Client.HideObject(tile.unrealQuestSelectFrame)
+            if item.selected then
+                Client.ShowObject(tile.unrealQuestGlow)
+            else
+                Client.HideObject(tile.unrealQuestGlow)
+            end
+            Client.ShowObject(tile)
+            tileIndex = tileIndex + 1
+            index = index + 1
+        end
+        local rows = math.ceil((index - 1) / 2)
+        offset = offset + rows * (tileHeight + layout.ROW_GAP)
+    end
+    local choices = turnIn.choices or {}
+    local rewards = turnIn.rewards or {}
+    Section(UQ.L("DIALOGUE_CHOOSE_REWARD"), choices)
+    Section(UQ.L(table.getn(choices) > 0 and "DIALOGUE_ALSO_RECEIVE"
+        or "DIALOGUE_RECEIVE_REWARD"), rewards)
+    while sectionIndex <= table.getn(panel.unrealQuestSections) do
+        Client.HideObject(panel.unrealQuestSections[sectionIndex])
+        sectionIndex = sectionIndex + 1
+    end
+    while tiles[tileIndex] do
+        tiles[tileIndex].unrealQuestKind = nil
+        tiles[tileIndex].unrealQuestTooltipType = nil
+        tiles[tileIndex].unrealQuestPayload = nil
+        tiles[tileIndex].unrealQuestHovered = nil
+        if tiles[tileIndex].unrealQuestShowBloom then
+            tiles[tileIndex].unrealQuestShowBloom(false)
+        end
+        Client.HideObject(tiles[tileIndex])
+        tileIndex = tileIndex + 1
+    end
+
+    local lines = turnIn.lines or {}
+    local coinRow = panel.unrealQuestCoins
+    local coinsShown = false
+    local lineIndex = 1
+    while lineIndex <= table.getn(panel.unrealQuestLines) do
+        local line = panel.unrealQuestLines[lineIndex]
+        local value = lines[lineIndex]
+        -- The money line (Quest/Dialogue.lua MoneyLine) is { text, money }:
+        -- its label, then the coins drawn after it.
+        local money
+        if type(value) == "table" then
+            money = value.money
+            value = value.text
+        end
+        if line and value then
+            Text(line, value, maxInnerWidth)
+            Measure(line)
+            Client.AnchorQuestDialogue(line, "TOPLEFT", panel, "TOPLEFT", layout.PAD, -offset)
+            Client.ShowObject(line)
+            if money and coinRow and not coinsShown then
+                local base = line.unrealQuestDefaultFontDesignSize
+                local red, green, blue = 1, 1, 1
+                if type(line.GetTextColor) == "function" then
+                    local inkOk, r, g, b = pcall(line.GetTextColor, line)
+                    if inkOk and type(r) == "number" then red, green, blue = r, g, b end
+                end
+                local coinsWidth = Client.SetQuestDialogueCoins(coinRow, money,
+                    fontGrow > 0 and type(base) == "number"
+                        and base + fontGrow / Client.QUEST_DIALOGUE_FONT_UNIT or nil,
+                    { red, green, blue })
+                local textWidth = ReadObjectMethod(line, "GetStringWidth")
+                if type(textWidth) ~= "number" or textWidth < 0 then textWidth = 0 end
+                local lead = textWidth + Client.QUEST_DIALOGUE_COINS.LEAD
+                Client.AnchorObject(coinRow, "LEFT", line, "LEFT", lead, 0)
+                coinsShown = coinsWidth > 0
+                local total = (lead + coinsWidth + 2) / Client.QUEST_DIALOGUE_UNIT
+                if total > contentWidth then contentWidth = total end
+            end
+            offset = offset + linePitch
+        elseif line then
+            Client.HideObject(line)
+        end
+        lineIndex = lineIndex + 1
+    end
+    if not coinsShown then Client.HideObject(coinRow) end
+
+    local height = offset + layout.PAD - layout.ROW_GAP
+    local panelWidth = layout.WIDTH
+    if titled then
+        if contentWidth < layout.TILE_WIDTH then contentWidth = layout.TILE_WIDTH end
+        panelWidth = math.ceil(contentWidth + 2 * layout.PAD)
+        if panelWidth > layout.WIDTH then panelWidth = layout.WIDTH end
+        local innerWidth = panelWidth - 2 * layout.PAD
+        local fittedIndex = 1
+        while fittedIndex <= table.getn(fitted) do
+            local label = fitted[fittedIndex]
+            label.unrealQuestBoxWidth = innerWidth
+            Client.FitQuestDialogueLabel(label, { 0, 0, innerWidth })
+            fittedIndex = fittedIndex + 1
+        end
+    end
+    Client.SizeQuestDialogue(panel, panelWidth, height)
+    local panelGap = cinematic and cine.REWARD_PANEL_GAP or layout.GAP
+    -- Clear of the action button on the card's bottom band.
+    local buttonGap = frame.unrealQuestActionButtonGap
+    if type(buttonGap) == "number" and buttonGap > panelGap then panelGap = buttonGap end
+    panel.unrealQuestGap = panelGap
+    Client.AnchorQuestDialogue(panel, "TOP", frame, "BOTTOM", 0, -panelGap)
+    local panelUnderCard = cinematic and cine.REWARD_PANEL_UNDER_CARD
+    local layerKey = panelUnderCard and "under" or "over"
+    if panel.unrealQuestLayerKey ~= layerKey
+        and type(frame.GetFrameLevel) == "function"
+        and type(panel.SetFrameLevel) == "function" then
+        local levelOk, cardLevel = pcall(frame.GetFrameLevel, frame)
+        if levelOk and type(cardLevel) == "number" then
+            local panelLevel = cardLevel + 1
+            if panelUnderCard then
+                panelLevel = cardLevel - 1
+                if panelLevel < 0 then panelLevel = 0 end
+            end
+            pcall(panel.SetFrameLevel, panel, panelLevel)
+            local tileLevel = panelUnderCard and panelLevel or panelLevel + 1
+            local tileIndex = 1
+            while tiles[tileIndex] do
+                local tile = tiles[tileIndex]
+                if type(tile.SetFrameLevel) == "function" then
+                    pcall(tile.SetFrameLevel, tile, tileLevel)
+                end
+                tileIndex = tileIndex + 1
+            end
+            panel.unrealQuestLayerKey = layerKey
+        end
+    end
+    Client.ShowObject(panel)
+    return height
+end
+
+-- Seconds after the first SetUnit at which the portrait is applied again:
+-- three calls per speaker in total.
+Client.QUEST_DIALOGUE_PORTRAIT_RETRY_AT = { 0.5, 2 }
+
+-- Loads the speaker into the square 3D portrait with unrealUI's unit-frame
+-- recipe (modules/unitframes.lua model3d.Refresh, the sequence
+-- unitframes.portrait_model_crash records as user-confirmed on NPCs):
+-- Show, then SetUnit + SetCamera(0), only while the model is actually on
+-- screen, re-applied at RETRY_AT for a model or skin still streaming in. The
+-- earlier one-shot call ran on the first render, while the card was still
+-- hidden, and the identity check then never let it run again -- the model
+-- stayed empty. Callers invoke this on every driver poll; the budget keeps it
+-- to three calls per speaker. HideQuestDialogue resets the key, so a reopened
+-- card loads its speaker afresh (the model is empty after a hide). SetUnit
+-- runs only on a unit that exists and is in the world -- the gates of the
+-- recipe this copies.
+function Client.SetQuestDialoguePortrait(frame, unit, identity)
+    local model = frame and frame.unrealQuestPortraitModel
+    if not model then
+        return false
+    end
+    if type(unit) == "string" and unit ~= ""
+        and (not Client.UnitExists(unit) or Client.UnitIsVisible(unit) ~= true) then
+        unit = nil
+    end
+    if type(unit) ~= "string" or unit == "" then
+        -- No unit to show: an empty viewport rather than the last speaker.
+        model.unrealQuestPortraitKey = nil
+        model.unrealQuestPortraitCalls = nil
+        Client.HideObject(model)
+        return false
+    end
+    if type(model.SetUnit) ~= "function" or type(model.SetCamera) ~= "function" then
+        return false
+    end
+    if not Client.IsObjectShown(frame) then
+        return false
+    end
+    local key = unit .. "#" .. tostring(identity or "")
+    local now = Client.Now()
+    local calls = model.unrealQuestPortraitCalls or 0
+    if key ~= model.unrealQuestPortraitKey then
+        calls = 0
+        model.unrealQuestPortraitKey = key
+        model.unrealQuestPortraitFirstAt = now
+    else
+        local retries = Client.QUEST_DIALOGUE_PORTRAIT_RETRY_AT
+        if calls >= table.getn(retries) + 1 then
+            return false
+        end
+        local due = retries[calls]
+        local firstAt = model.unrealQuestPortraitFirstAt
+        if type(now) == "number" and type(firstAt) == "number"
+            and now - firstAt < due then
+            return false
+        end
+    end
+    model.unrealQuestPortraitCalls = calls + 1
+    Client.ShowObject(model)
+    local unitOk = pcall(model.SetUnit, model, unit)
+    local cameraOk = pcall(model.SetCamera, model, 0)
+    return unitOk and cameraOk or false
+end
+
+function Client.HideQuestDialogueInspector(frame)
+    local inspector = frame and frame.unrealQuestInspector
+    if not inspector then return false end
+    inspector.unrealQuestActionCallback = nil
+    return Client.HideObject(inspector)
+end
+
+function Client.GetQuestDialogueFlagAnchor(frame, inspectorOpen)
+    if inspectorOpen and frame and frame.unrealQuestInspector then
+        return frame.unrealQuestInspector.unrealQuestContent
+            or frame.unrealQuestInspector
+    end
+    return frame
+end
+
+-- Rows the scroll buttons move at a time.
+Client.QUEST_DIALOGUE_ROW_PAGE = 3
+
+-- Lays the option rows out from frame.unrealQuestRowOffset: the rows in the
+-- window (unrealQuestRowSlots from the offset) are anchored down from the
+-- top of the stack and shown, every other row is hidden. RenderQuestDialogue
+-- sets the count and slots; the rows themselves never move with a scroll
+-- frame (see CreateQuestDialogueFrame).
+function Client.PlaceQuestDialogueRows(frame)
+    local child = frame and frame.unrealQuestOptionChild
+    if not child then return end
+    local rows = frame.unrealQuestRows or {}
+    local count = frame.unrealQuestRowCount or 0
+    local slots = frame.unrealQuestRowSlots or 5
+    if slots < 1 then slots = 1 end
+    local maxOffset = count - slots
+    if maxOffset < 0 then maxOffset = 0 end
+    local offset = frame.unrealQuestRowOffset or 0
+    if offset > maxOffset then offset = maxOffset end
+    if offset < 0 then offset = 0 end
+    frame.unrealQuestRowOffset = offset
+    local index = 1
+    while index <= table.getn(rows) do
+        local row = rows[index]
+        if index <= count and index > offset and index <= offset + slots then
+            Client.AnchorQuestDialogue(row, "TOPLEFT", child, "TOPLEFT", 4,
+                Client.GetQuestDialogueRowTop(frame, index - 1 - offset))
+            Client.ShowObject(row)
+        else
+            Client.HideObject(row)
+        end
+        index = index + 1
+    end
+end
+
+function Client.ScrollQuestDialogueRows(frame, rows)
+    if not frame or type(rows) ~= "number" then return end
+    frame.unrealQuestRowOffset = (frame.unrealQuestRowOffset or 0) + rows
+    Client.PlaceQuestDialogueRows(frame)
+end
+
+-- Anchors the card at its rest height (frame.unrealQuestRestY, set by
+-- Client.LayoutQuestDialogue) plus the open slide's current offset
+-- (frame.unrealQuestSlideOffset, Client.UpdateQuestDialogueAnimation), so a
+-- re-layout during the slide keeps it moving instead of snapping it home.
+function Client.AnchorQuestDialogueCard(frame)
+    local parent = ResolveObject("UIParent")
+    if not frame or not parent then return false end
+    return Client.AnchorObject(frame, "CENTER", parent, "CENTER", 0,
+        (frame.unrealQuestRestY or 0) + (frame.unrealQuestSlideOffset or 0))
+end
+
+function Client.LayoutQuestDialogue(frame)
+    if not frame then return false end
+    local width, height = Client.GetScreenSize()
+    if type(width) ~= "number" or type(height) ~= "number" then return false end
+    -- The card sits at the middle centre of the screen in every theme (user
+    -- request). The choice stack sits against the card's right edge rather
+    -- than at Immersion's TitleButtons offset, which left it far from the card.
+    -- The card is the active theme's (Client.SetQuestDialogueTheme). Its
+    -- place on screen is in UIParent units, as Immersion's are at scale 1;
+    -- its size is design units times QUEST_DIALOGUE_UNIT. Card and inspector
+    -- stay at scale 1: SetScale reached only a frame's own textures here,
+    -- never its text or child frames (frames.root_scale_reaches_textures_not_text).
+    local card = Client.GetQuestDialogueLayout(frame).card
+    if type(frame.SetScale) == "function" then pcall(frame.SetScale, frame, 1) end
+    local parent = ResolveObject("UIParent")
+    -- On a quest page (detail, progress, reward) the rows are the quest's
+    -- items, money and experience, and they hang under the card as
+    -- Immersion's Elements frame does (TOP to the TalkBox's BOTTOM). The card
+    -- keeps the gossip card's centred place (user request); it is lifted only
+    -- by the part of a tall panel that would otherwise run off the bottom.
+    local elements = frame.unrealQuestElementsMode
+        and (frame.unrealQuestElementsHeight or 0) > 0
+    -- A theme may centre the card lower (`screenFromTop`: the share of the
+    -- screen's height above the card's centre; Minimal's 2/3).
+    local fromTop = Client.GetQuestDialogueLayout(frame).screenFromTop
+    local base = 0
+    if type(fromTop) == "number" then base = height / 2 - height * fromTop end
+    local lift = 0
+    if elements then
+        local below = (Client.GetObjectHeight(frame) or 0) / 2
+            + (card.ELEMENTS_GAP + frame.unrealQuestElementsHeight
+                + card.ELEMENTS_PAD) * Client.QUEST_DIALOGUE_UNIT
+        lift = below - (height / 2 - 20) - base
+        if lift < 0 then lift = 0 end
+    end
+    if parent and elements and frame.unrealQuestOptionsScroll then
+        frame.unrealQuestRestY = base + lift
+        Client.AnchorQuestDialogueCard(frame)
+        Client.AnchorQuestDialogue(frame.unrealQuestOptionsScroll, "TOP", frame,
+            "BOTTOM", 0, -card.ELEMENTS_GAP)
+    elseif parent then
+        frame.unrealQuestRestY = base
+        Client.AnchorQuestDialogueCard(frame)
+        if frame.unrealQuestOptionsScroll then
+            -- Beside the card's right edge (user request), clear of the
+            -- art's overhang and the stack panel's 8-unit inset.
+            Client.AnchorQuestDialogue(frame.unrealQuestOptionsScroll, "LEFT", frame,
+                "RIGHT", card.SLICE_OUTSET + 16, 0)
+        end
+    end
+    local inspector = frame.unrealQuestInspector
+    local content = inspector and inspector.unrealQuestContent
+    if content and type(content.SetScale) == "function" then
+        pcall(content.SetScale, content, 1)
+    end
+    return true
+end
+
+function Client.ShowQuestDialogueChoiceRequired(frame)
+    local inspector = frame and frame.unrealQuestInspector
+    local warning = inspector and inspector.unrealQuestWarning
+    if not warning then return false end
+    if type(warning.SetText) == "function" then
+        pcall(warning.SetText, warning, UQ.L("DIALOGUE_CHOICE_REQUIRED"))
+    end
+    Client.ShowObject(warning)
+    inspector.unrealQuestWarningUntil = (Client.Now() or 0) + 1.8
+    return true
+end
+
+function Client.RenderQuestDialogueInspector(frame, view, rowCallback, actionCallback)
+    local inspector = frame and frame.unrealQuestInspector
+    if not inspector then return false end
+    if not view.showInspector then
+        Client.HideQuestDialogueInspector(frame)
+        return false
+    end
+    inspector.unrealQuestActionCallback = actionCallback
+    Client.LayoutQuestDialogue(frame)
+    if inspector.unrealQuestTitle and type(inspector.unrealQuestTitle.SetText) == "function" then
+        pcall(inspector.unrealQuestTitle.SetText, inspector.unrealQuestTitle,
+            UQ.L("DIALOGUE_CHOOSE_REWARD"))
+    end
+    if inspector.unrealQuestPage and type(inspector.unrealQuestPage.SetText) == "function" then
+        if (view.inspectorPageCount or 1) > 1 then
+            pcall(inspector.unrealQuestPage.SetText, inspector.unrealQuestPage,
+                UQ.L("DIALOGUE_PAGE", view.inspectorPageIndex or 1,
+                    view.inspectorPageCount or 1))
+            Client.ShowObject(inspector.unrealQuestPage)
+        else
+            pcall(inspector.unrealQuestPage.SetText, inspector.unrealQuestPage, "")
+            Client.HideObject(inspector.unrealQuestPage)
+        end
+    end
+    local cards = type(view.inspectorCards) == "table" and view.inspectorCards or {}
+    local buttons = inspector.unrealQuestCards or {}
+    local selectedSlot = nil
+    local index = 1
+    while index <= table.getn(buttons) do
+        local button = buttons[index]
+        local card = cards[index]
+        if card then
+            if button.unrealQuestLabel and type(button.unrealQuestLabel.SetText) == "function" then
+                pcall(button.unrealQuestLabel.SetText, button.unrealQuestLabel, card.text or "")
+                local red, green, blue = Client.GetQuestDialogueQualityColor(card.quality)
+                if card.usable == false then red, green, blue = 0.72, 0.12, 0.10 end
+                if type(button.unrealQuestLabel.SetTextColor) == "function" then
+                    pcall(button.unrealQuestLabel.SetTextColor, button.unrealQuestLabel,
+                        red or 0.95, green or 0.93, blue or 0.88)
+                end
+            end
+            local meta = ""
+            if card.advisor then
+                if card.advisor.arrow == "best" then
+                    meta = UQ.L("DIALOGUE_ADVISOR_BEST")
+                elseif card.advisor.arrow == "second" then
+                    meta = UQ.L("DIALOGUE_ADVISOR_SECOND")
+                elseif card.advisor.arrow == "worse" then
+                    meta = UQ.L("DIALOGUE_ADVISOR_LOWER")
+                end
+                if card.advisor.coin then
+                    if meta ~= "" then meta = meta .. "  -  " end
+                    meta = meta .. UQ.L("DIALOGUE_ADVISOR_VALUE")
+                end
+            end
+            if button.unrealQuestMeta and type(button.unrealQuestMeta.SetText) == "function" then
+                pcall(button.unrealQuestMeta.SetText, button.unrealQuestMeta, meta)
+            end
+            if button.unrealQuestIcon then
+                if type(card.icon) == "string" and card.icon ~= "" then
+                    pcall(button.unrealQuestIcon.SetTexture, button.unrealQuestIcon, card.icon)
+                    Client.ShowObject(button.unrealQuestIcon)
+                else
+                    Client.HideObject(button.unrealQuestIcon)
+                end
+            end
+            button.unrealQuestEnabled = card.enabled ~= false
+            button.unrealQuestPayload = card.payload
+            button.unrealQuestCallback = rowCallback
+            button.unrealQuestRewardType = card.rewardType
+            button.unrealQuestRewardIndex = card.rewardIndex
+            button.unrealQuestSelectedValue = card.selected and true or nil
+            if card.selected then selectedSlot = index end
+            if button.unrealQuestSelected then
+                if card.selected then Client.ShowObject(button.unrealQuestSelected)
+                else Client.HideObject(button.unrealQuestSelected) end
+            end
+            if button.unrealQuestGlow then
+                if card.selected then Client.ShowObject(button.unrealQuestGlow)
+                else Client.HideObject(button.unrealQuestGlow) end
+            end
+            Client.ShowObject(button)
+        else
+            button.unrealQuestEnabled = nil
+            button.unrealQuestCallback = nil
+            button.unrealQuestSelectedValue = nil
+            button.unrealQuestFocused = nil
+            if button.unrealQuestHover then Client.HideObject(button.unrealQuestHover) end
+            Client.HideObject(button)
+        end
+        index = index + 1
+    end
+
+    local focusSlot = selectedSlot or inspector.unrealQuestFocusSlot
+    local focusCard = focusSlot and buttons[focusSlot] or nil
+    if not focusCard or not focusCard.unrealQuestEnabled
+        or not Client.IsObjectShown(focusCard) then
+        focusSlot = nil
+        index = 1
+        while index <= table.getn(buttons) and not focusSlot do
+            if buttons[index].unrealQuestEnabled and Client.IsObjectShown(buttons[index]) then
+                focusSlot = index
+            end
+            index = index + 1
+        end
+    end
+    if inspector.unrealQuestSetFocus then
+        inspector.unrealQuestSetFocus(focusSlot)
+    end
+
+    local actionViews = type(view.inspectorActions) == "table"
+        and view.inspectorActions or {}
+    local actions = inspector.unrealQuestActions or {}
+    local actionCount = table.getn(actionViews)
+    index = 1
+    while index <= table.getn(actions) do
+        local button = actions[index]
+        local action = actionViews[index]
+        if action then
+            button.unrealQuestEnabled = action.enabled ~= false
+            button.unrealQuestAction = action.id
+            button.unrealQuestCallback = actionCallback
+            if button.unrealQuestLabel then
+                pcall(button.unrealQuestLabel.SetText, button.unrealQuestLabel,
+                    action.text or "")
+            end
+            Client.AnchorQuestDialogue(button, "BOTTOM", inspector.unrealQuestContent or inspector,
+                "BOTTOM", -((actionCount - 1) * 70) + ((index - 1) * 140), 10)
+            Client.ShowObject(button)
+        else
+            button.unrealQuestEnabled = nil
+            button.unrealQuestCallback = nil
+            Client.HideObject(button)
+        end
+        index = index + 1
+    end
+    if not Client.IsObjectShown(inspector) then
+        inspector.unrealQuestAnimationStart = Client.Now() or 0
+        if type(inspector.SetAlpha) == "function" then pcall(inspector.SetAlpha, inspector, 0) end
+        Client.ShowObject(inspector)
+    end
+    return true
+end
+
+Client.QUEST_DIALOGUE_CARD_FADE = 0.36
+Client.QUEST_DIALOGUE_INSPECTOR_FADE = 0.42
+
+function Client.StaggeredQuestDialogueEase(progress, ordinal, count, delayShare)
+    local delay = 0
+    if count > 1 then delay = ((ordinal - 1) / (count - 1)) * delayShare end
+    return Client.QuestDialogueEase((progress - delay) / (1 - delayShare))
+end
+
+function Client.UpdateQuestDialogueAnimation(frame, now)
+    if not frame or type(now) ~= "number" then return false end
+    local slideStart = frame.unrealQuestSlideStart
+    if type(slideStart) == "number" then
+        local layout = Client.GetQuestDialogueLayout(frame)
+        local slide = layout.openSlide or 0
+        local duration = layout.openSlideTime or Client.QUEST_DIALOGUE_CARD_FADE
+        local progress = 1
+        if duration > 0 then progress = (now - slideStart) / duration end
+        if progress < 0 then progress = 0 end
+        if progress >= 1 then
+            frame.unrealQuestSlideStart = nil
+            frame.unrealQuestSlideOffset = nil
+        else
+            -- Ease-out cubic: fast off the bottom, settling into place.
+            local remaining = 1 - progress
+            frame.unrealQuestSlideOffset = -slide * remaining * remaining * remaining
+        end
+        Client.AnchorQuestDialogueCard(frame)
+    end
+    local start = frame.unrealQuestAnimationStart
+    if type(start) == "number" then
+        local fade = frame.unrealQuestFadeDuration
+        if type(fade) ~= "number" or fade <= 0 then fade = Client.QUEST_DIALOGUE_CARD_FADE end
+        local progress = (now - start) / fade
+        if progress < 0 then progress = 0 end
+        if progress > 1 then progress = 1 end
+        local eased = Client.QuestDialogueEase(progress)
+        if type(frame.SetAlpha) == "function" then pcall(frame.SetAlpha, frame, eased) end
+        local rows = frame.unrealQuestRows or {}
+        local visibleCount = 0
+        local index = 1
+        while index <= table.getn(rows) do
+            if Client.IsObjectShown(rows[index]) then visibleCount = visibleCount + 1 end
+            index = index + 1
+        end
+        local ordinal = 0
+        index = 1
+        while index <= table.getn(rows) do
+            local row = rows[index]
+            if Client.IsObjectShown(row) and type(row.SetAlpha) == "function" then
+                ordinal = ordinal + 1
+                local rowProgress = Client.StaggeredQuestDialogueEase(
+                    progress, ordinal, visibleCount, 0.26)
+                pcall(row.SetAlpha, row, rowProgress)
+            end
+            index = index + 1
+        end
+        if progress >= 1 then
+            frame.unrealQuestAnimationStart = nil
+            frame.unrealQuestFadeDuration = nil
+        end
+    end
+    local inspector = frame.unrealQuestInspector
+    if inspector and Client.IsObjectShown(inspector) then
+        local inspectorStart = inspector.unrealQuestAnimationStart
+        if type(inspectorStart) == "number" then
+            local progress = (now - inspectorStart) / Client.QUEST_DIALOGUE_INSPECTOR_FADE
+            if progress < 0 then progress = 0 end
+            if progress > 1 then progress = 1 end
+            local eased = Client.QuestDialogueEase(progress)
+            if type(inspector.SetAlpha) == "function" then
+                pcall(inspector.SetAlpha, inspector, eased)
+            end
+            local cards = inspector.unrealQuestCards or {}
+            local visibleCount = 0
+            local index = 1
+            while index <= table.getn(cards) do
+                if Client.IsObjectShown(cards[index]) then visibleCount = visibleCount + 1 end
+                index = index + 1
+            end
+            local ordinal = 0
+            index = 1
+            while index <= table.getn(cards) do
+                local card = cards[index]
+                if Client.IsObjectShown(card) and type(card.SetAlpha) == "function" then
+                    ordinal = ordinal + 1
+                    local cardProgress = Client.StaggeredQuestDialogueEase(
+                        progress, ordinal, visibleCount, 0.32)
+                    pcall(card.SetAlpha, card, cardProgress)
+                end
+                index = index + 1
+            end
+            if progress >= 1 then inspector.unrealQuestAnimationStart = nil end
+        end
+        if inspector.unrealQuestWarningUntil and now >= inspector.unrealQuestWarningUntil then
+            inspector.unrealQuestWarningUntil = nil
+            Client.HideObject(inspector.unrealQuestWarning)
+        end
+    end
+    return true
+end
+
+function Client.MeasureQuestDialogueText(label, value)
+    if not label or type(label.SetText) ~= "function"
+        or type(label.GetStringWidth) ~= "function" then
+        return 0
+    end
+    pcall(label.SetText, label, type(value) == "string" and value or "")
+    local ok, width = pcall(label.GetStringWidth, label)
+    return ok and type(width) == "number" and width or 0
+end
+
+Client.QUEST_DIALOGUE_LETTER_OFFSET = 5
+Client.QUEST_DIALOGUE_LETTER_DURATION = 0.20
+
+function Client.AnchorQuestDialogueLetter(letter, parent, x, y)
+    if not letter or not parent then return false end
+    if type(letter.ClearAllPoints) == "function" then
+        pcall(letter.ClearAllPoints, letter)
+    end
+    if type(letter.SetPoint) ~= "function" then return false end
+    return pcall(letter.SetPoint, letter, "TOPLEFT", parent, "TOPLEFT", x, y)
+end
+
+-- Glyphs remain in this temporary layer for the duration of the reveal. The
+-- complete page replaces them in one native paragraph at the end, avoiding the
+-- whole-line rerasterization flicker caused by merging after every character.
+function Client.AcquireQuestDialogueLetter(frame)
+    local parent = frame and frame.unrealQuestBodyAnimation
+    local pool = frame and frame.unrealQuestBodyLetterPool
+    if not parent or type(pool) ~= "table" then return nil end
+    local index = 1
+    while index <= table.getn(pool) do
+        if not pool[index].unrealQuestInUse then return pool[index] end
+        index = index + 1
+    end
+    if type(parent.CreateFontString) ~= "function" then return nil end
+    local ok, letter = pcall(parent.CreateFontString, parent, nil,
+        "OVERLAY", "GameFontNormalSmall")
+    if not ok or not letter then return nil end
+    Client.JustifyQuestDialogueText(letter, "LEFT", "TOP")
+    if type(letter.SetWordWrap) == "function" then
+        pcall(letter.SetWordWrap, letter, false)
+    end
+    StripShadow(letter)
+    table.insert(pool, letter)
+    return letter
+end
+
+function Client.ResetQuestDialogueLetters(frame)
+    if not frame then return false end
+    frame.unrealQuestBodyLetterSignature = nil
+    frame.unrealQuestBodyLetterText = nil
+    frame.unrealQuestBodyLetterCharacters = nil
+    frame.unrealQuestBodyLetterCharacterCount = 0
+    frame.unrealQuestBodyRevealSegments = nil
+    frame.unrealQuestBodyRevealPositions = nil
+    frame.unrealQuestBodyRevealText = nil
+    frame.unrealQuestBodyRevealIndex = 0
+    frame.unrealQuestBodyRevealedIndex = 0
+    frame.unrealQuestBodyLetters = {}
+    frame.unrealQuestActiveBodyLetters = {}
+    local pool = frame.unrealQuestBodyLetterPool or {}
+    local index = 1
+    while index <= table.getn(pool) do
+        pool[index].unrealQuestAnimationStart = nil
+        pool[index].unrealQuestRevealed = nil
+        pool[index].unrealQuestInUse = nil
+        pool[index].unrealQuestSettled = nil
+        Client.HideObject(pool[index])
+        index = index + 1
+    end
+    return true
+end
+
+-- Pre-wraps the complete page into reveal segments and final glyph positions.
+-- The X coordinate comes from width(prefix + glyph) - width(glyph), so the
+-- client's native pair kerning is included. A transparent-prefix paragraph was
+-- considered here, but this client ignores inline colour alpha and paints the
+-- prefix, producing overlapping copies of the prose during the animation.
+function Client.PrepareQuestDialogueLetters(frame, text, characters)
+    local parent = frame and frame.unrealQuestBodyAnimation
+    local body = frame and frame.unrealQuestBody
+    if not parent or not body or type(characters) ~= "table" then return false end
+    local box = Client.GetQuestDialogueLayout(frame).body
+    -- At the card's own body width (the conversation card's may differ).
+    local maximum = ((frame.unrealQuestBodyWidth or box[3]) - 8) * Client.QUEST_DIALOGUE_UNIT
+    local signature = tostring(frame.unrealQuestTheme or "parchment") .. "\031"
+        .. tostring(maximum) .. "\031" .. tostring(text or "")
+    if frame.unrealQuestBodyLetterSignature == signature then return true, false end
+    frame.unrealQuestBodyLetterSignature = signature
+    frame.unrealQuestBodyLetterText = text
+    frame.unrealQuestBodyLetters = {}
+    frame.unrealQuestActiveBodyLetters = {}
+    frame.unrealQuestBodyRevealSegments = {}
+    frame.unrealQuestBodyRevealPositions = {}
+    frame.unrealQuestBodyRevealText = ""
+    frame.unrealQuestBodyRevealIndex = 0
+    frame.unrealQuestBodyRevealedIndex = 0
+
+    local pool = frame.unrealQuestBodyLetterPool or {}
+    frame.unrealQuestBodyLetterPool = pool
+    local poolIndex = 1
+    while poolIndex <= table.getn(pool) do
+        local old = pool[poolIndex]
+        old.unrealQuestAnimationStart = nil
+        old.unrealQuestRevealed = nil
+        old.unrealQuestInUse = nil
+        old.unrealQuestSettled = nil
+        Client.HideObject(old)
+        poolIndex = poolIndex + 1
+    end
+
+    local measure = frame.unrealQuestBodyMeasure
+    if not measure and type(parent.CreateFontString) == "function" then
+        local made
+        made, measure = pcall(parent.CreateFontString, parent, nil,
+            "OVERLAY", "GameFontNormalSmall")
+        if made and measure then
+            Client.JustifyQuestDialogueText(measure, "LEFT", "TOP")
+            StripShadow(measure)
+            Client.HideObject(measure)
+            frame.unrealQuestBodyMeasure = measure
+        end
+    end
+    if not measure then return false end
+    pcall(measure.SetText, measure, "Ag")
+    local heightOk, lineHeight = pcall(measure.GetHeight, measure)
+    if not heightOk or type(lineHeight) ~= "number" or lineHeight < 8 then
+        lineHeight = 12
+    end
+    lineHeight = math.ceil(lineHeight)
+
+    local lineText = ""
+    local line = 0
+    local count = table.getn(characters)
+    local index = 1
+    while index <= count do
+        local character = characters[index]
+        local segment = ""
+        if character == "\n" then
+            segment = "\n"
+            line = line + 1
+            lineText = ""
+        elseif character == " " or character == "\t" then
+            if lineText ~= "" then
+                lineText = lineText .. character
+                segment = character
+            end
+        else
+            local previous = index > 1 and characters[index - 1] or nil
+            if lineText ~= "" and (not previous or previous == " "
+                or previous == "\t" or previous == "\n") then
+                local wordEnd = index
+                while wordEnd <= count do
+                    local nextCharacter = characters[wordEnd]
+                    if nextCharacter == " " or nextCharacter == "\t"
+                        or nextCharacter == "\n" then
+                        break
+                    end
+                    wordEnd = wordEnd + 1
+                end
+                local word = table.concat(characters, "", index, wordEnd - 1)
+                if Client.MeasureQuestDialogueText(measure, lineText .. word) > maximum then
+                    segment = "\n"
+                    line = line + 1
+                    lineText = ""
+                end
+            end
+            local candidate = lineText .. character
+            if lineText ~= ""
+                and Client.MeasureQuestDialogueText(measure, candidate) > maximum then
+                segment = segment .. "\n"
+                line = line + 1
+                lineText = ""
+                candidate = character
+            end
+            segment = segment .. character
+            lineText = candidate
+            local finalX = Client.MeasureQuestDialogueText(measure, candidate)
+                - Client.MeasureQuestDialogueText(measure, character)
+            if finalX < 0 then finalX = 0 end
+            frame.unrealQuestBodyRevealPositions[index] = {
+                finalX, -line * lineHeight,
+            }
+        end
+        frame.unrealQuestBodyRevealSegments[index] = segment
+        index = index + 1
+    end
+    while poolIndex <= table.getn(pool) do
+        Client.HideObject(pool[poolIndex])
+        poolIndex = poolIndex + 1
+    end
+    if type(body.SetText) == "function" then pcall(body.SetText, body, "") end
+    Client.ShowObject(body)
+    Client.HideObject(parent)
+    return true, true
+end
+
+function Client.RevealQuestDialogueLetter(frame, characterIndex, startedAt, instant)
+    local body = frame and frame.unrealQuestBody
+    local segments = frame and frame.unrealQuestBodyRevealSegments
+    local positions = frame and frame.unrealQuestBodyRevealPositions
+    if not body or type(segments) ~= "table" or type(positions) ~= "table"
+        or type(characterIndex) ~= "number" or characterIndex < 1
+        or characterIndex > table.getn(segments) then
+        return false
+    end
+    local revealed = frame.unrealQuestBodyRevealedIndex or 0
+    if characterIndex <= revealed then return true end
+    frame.unrealQuestBodyRevealedIndex = characterIndex
+    local position = positions[characterIndex]
+    if position then
+        local letter = Client.AcquireQuestDialogueLetter(frame)
+        if letter then
+            local character = frame.unrealQuestBodyLetterCharacters
+                and frame.unrealQuestBodyLetterCharacters[characterIndex] or ""
+            pcall(letter.SetText, letter, character)
+            letter.unrealQuestVisibleText = character
+            local ink = Client.GetQuestDialogueLayout(frame).ink.body
+            if type(letter.SetTextColor) == "function" then
+                pcall(letter.SetTextColor, letter, ink[1], ink[2], ink[3])
+            end
+            letter.unrealQuestFinalX = position[1]
+            letter.unrealQuestFinalY = position[2]
+            letter.unrealQuestStartY = position[2] + Client.QUEST_DIALOGUE_LETTER_OFFSET
+            letter.unrealQuestCharacterIndex = characterIndex
+            letter.unrealQuestInUse = true
+            if instant then
+                letter.unrealQuestAnimationStart = nil
+                letter.unrealQuestSettled = true
+                if type(letter.SetAlpha) == "function" then pcall(letter.SetAlpha, letter, 1) end
+                Client.AnchorQuestDialogueLetter(letter, body,
+                    letter.unrealQuestFinalX, letter.unrealQuestFinalY)
+            else
+                letter.unrealQuestAnimationStart = type(startedAt) == "number"
+                    and startedAt or (Client.Now() or 0)
+                letter.unrealQuestSettled = nil
+                if type(letter.SetAlpha) == "function" then pcall(letter.SetAlpha, letter, 0) end
+                Client.AnchorQuestDialogueLetter(letter, body,
+                    letter.unrealQuestFinalX, letter.unrealQuestStartY)
+                table.insert(frame.unrealQuestActiveBodyLetters, letter)
+            end
+            frame.unrealQuestBodyLetters[characterIndex] = letter
+            Client.ShowObject(frame.unrealQuestBodyAnimation)
+            Client.ShowObject(letter)
+        end
+    end
+    return true
+end
+
+function Client.StepQuestDialogueLetters(frame, now)
+    local active = frame and frame.unrealQuestActiveBodyLetters
+    if type(active) ~= "table" or type(now) ~= "number" then return false end
+    local changed = false
+    local index = table.getn(active)
+    while index >= 1 do
+        local letter = active[index]
+        local started = letter.unrealQuestAnimationStart
+        if type(started) == "number" then
+            local progress = (now - started) / Client.QUEST_DIALOGUE_LETTER_DURATION
+            if progress < 0 then progress = 0 end
+            if progress > 1 then progress = 1 end
+            local remaining = 1 - progress
+            local eased = 1 - remaining * remaining
+            local y = letter.unrealQuestStartY
+                + (letter.unrealQuestFinalY - letter.unrealQuestStartY) * eased
+            if type(letter.SetAlpha) == "function" then
+                pcall(letter.SetAlpha, letter, eased)
+            end
+            Client.AnchorQuestDialogueLetter(letter, frame.unrealQuestBody,
+                letter.unrealQuestFinalX, y)
+            if progress >= 1 then
+                letter.unrealQuestAnimationStart = nil
+                letter.unrealQuestSettled = true
+                table.remove(active, index)
+            end
+            changed = true
+        else
+            table.remove(active, index)
+        end
+        index = index - 1
+    end
+    local total = frame.unrealQuestBodyLetterCharacterCount or 0
+    if table.getn(active) == 0 and total > 0
+        and (frame.unrealQuestBodyRevealedIndex or 0) >= total then
+        Client.FinishQuestDialogueLetters(frame)
+    end
+    return changed
+end
+
+function Client.IsQuestDialogueLetterAnimationActive(frame)
+    local active = frame and frame.unrealQuestActiveBodyLetters
+    return type(active) == "table" and table.getn(active) > 0
+end
+
+function Client.FinishQuestDialogueLetters(frame)
+    local segments = frame and frame.unrealQuestBodyRevealSegments
+    local body = frame and frame.unrealQuestBody
+    if type(segments) ~= "table" or not body or type(body.SetText) ~= "function" then
+        return false
+    end
+    local total = frame.unrealQuestBodyLetterCharacterCount or 0
+    if total < 1 and type(frame.unrealQuestBodyLetterCharacters) == "table" then
+        total = table.getn(frame.unrealQuestBodyLetterCharacters)
+    end
+    local rendered = table.concat(segments, "", 1, total)
+    frame.unrealQuestBodyRevealIndex = total
+    frame.unrealQuestBodyRevealedIndex = total
+    frame.unrealQuestBodyRevealText = rendered
+    pcall(body.SetText, body, rendered)
+    Client.ShowObject(body)
+    local pool = frame.unrealQuestBodyLetterPool or {}
+    local index = 1
+    while index <= table.getn(pool) do
+        pool[index].unrealQuestAnimationStart = nil
+        pool[index].unrealQuestInUse = nil
+        pool[index].unrealQuestSettled = nil
+        Client.HideObject(pool[index])
+        index = index + 1
+    end
+    frame.unrealQuestBodyLetters = {}
+    frame.unrealQuestActiveBodyLetters = {}
+    Client.HideObject(frame.unrealQuestBodyAnimation)
+    return true
+end
+
+function Client.SetQuestDialogueBody(frame, value, revealing, characters, revealCount)
+    local body = frame and frame.unrealQuestBody
+    if not body or type(body.SetText) ~= "function" then return false end
+    local text = type(value) == "string" and value or ""
+    local fits = Client.QUEST_DIALOGUE_FITS
+    fits.pending[body] = nil
+    body.unrealQuestFitText = nil
+    local box = Client.GetQuestDialogueLayout(frame).body
+    Client.WidthQuestDialogue(body, (frame.unrealQuestBodyWidth or box[3]) - 8)
+    Client.AnchorQuestDialogue(body, "TOPLEFT", frame.unrealQuestBodyChild,
+        "TOPLEFT", 0, 0)
+    local prepared, rebuilt = Client.PrepareQuestDialogueLetters(frame, text, characters)
+    if not prepared then
+        Client.HideObject(frame.unrealQuestBodyAnimation)
+        Client.ShowObject(body)
+        pcall(body.SetText, body, text)
+        return true
+    end
+    frame.unrealQuestBodyLetterCharacters = characters
+    frame.unrealQuestBodyLetterCharacterCount = table.getn(characters)
+    local count = type(revealCount) == "number" and revealCount or 0
+    if rebuilt then
+        local index = 1
+        while index <= count do
+            Client.RevealQuestDialogueLetter(frame, index, nil, true)
+            index = index + 1
+        end
+        if not revealing and count >= table.getn(characters) then
+            Client.FinishQuestDialogueLetters(frame)
+        end
+    end
+    return true
+end
+
+-- The one-line reward summary (a card's rewardLine), or hides it when `view`
+-- is nil: hugs its text, cut with ".." at the box's width rather than run
+-- under the buttons. With money (view.rewardMoney) it is three parts on one
+-- line: its label (view.rewardLine), the coins, then view.rewardLineTail in
+-- what is left of the box. Sets frame.unrealQuestRewardCoinsWidth (design
+-- units) for Client.FitQuestDialogueCardWidth.
+function Client.RenderQuestDialogueRewardLine(frame, view, cardLayout)
+    local head = frame.unrealQuestRewardLine
+    local tail = frame.unrealQuestRewardLineTail
+    local coins = frame.unrealQuestRewardCoins
+    frame.unrealQuestRewardCoinsWidth = nil
+    local function Set(label, text)
+        if label and type(label.SetText) == "function" then pcall(label.SetText, label, text) end
+    end
+    if not view then
+        Set(head, "")
+        Set(tail, "")
+        Client.HideObject(head)
+        Client.HideObject(tail)
+        Client.HideObject(coins)
+        return
+    end
+    local box = cardLayout.rewardLine
+    -- The labels may run as far as the widest card holds them, less its margin.
+    local fit = cardLayout.fitWidth
+    if fit and fit.max and fit.max - fit.margin - box[1] > box[3] then
+        box = { box[1], box[2], fit.max - fit.margin - box[1], box[4] }
+    end
+    -- Up by the card's collapse (Client.QuestDialogueRewardRowCollapse).
+    local top = -(box[2] - (frame.unrealQuestCardCollapse or 0))
+    -- Once a part's real width settles, the card is sized again from it; the
+    -- head's also moves the coins and the tail, laid from its width read in
+    -- the frame its text was set (clamped by the width then set,
+    -- widgets.fontstring_stringwidth_clamped_by_setwidth).
+    if head then
+        head.unrealQuestOnFit = function(_, width)
+            local current = frame.unrealQuestFitView
+            if current and current.rewardMoney
+                and frame.unrealQuestRewardHeadWidth ~= width then
+                Client.RenderQuestDialogueRewardLine(frame, current,
+                    Client.GetQuestDialogueLayout(frame))
+            end
+            Client.FitQuestDialogueCardWidth(frame)
+        end
+    end
+    if tail then
+        tail.unrealQuestOnFit = function() Client.FitQuestDialogueCardWidth(frame) end
+    end
+    Set(head, view.rewardLine)
+    Client.AnchorQuestDialogue(head, "TOPLEFT", frame, "TOPLEFT", box[1], top)
+    Client.FitQuestDialogueLabel(head, box, view.rewardLine)
+    Client.ShowObject(head)
+    local money = view.rewardMoney
+    if type(money) ~= "number" or money <= 0 or not coins then
+        Set(tail, "")
+        Client.HideObject(tail)
+        Client.HideObject(coins)
+        return
+    end
+    local unit = Client.QUEST_DIALOGUE_UNIT
+    local headWidth = ReadObjectMethod(head, "GetStringWidth")
+    if type(headWidth) ~= "number" or headWidth < 0 then headWidth = 0 end
+    -- Once the head has settled, its real width.
+    local settledHead = head.unrealQuestSettledWidth
+    if type(settledHead) == "number" and settledHead > headWidth then
+        headWidth = settledHead
+    end
+    frame.unrealQuestRewardHeadWidth = settledHead
+    local lead = headWidth + Client.QUEST_DIALOGUE_COINS.LEAD
+    -- The numbers in white, as the line's experience and reputation amounts.
+    local coinsWidth = Client.SetQuestDialogueCoins(coins, money,
+        cardLayout.rewardLineSize, { 1, 1, 1 })
+    Client.AnchorObject(coins, "LEFT", head, "LEFT", lead, 0)
+    local used = (lead + coinsWidth) / unit
+    frame.unrealQuestRewardCoinsWidth = used
+    local rest = view.rewardLineTail
+    if type(rest) == "string" and rest ~= "" and box[3] - used > 0 then
+        Set(tail, rest)
+        Client.AnchorQuestDialogue(tail, "TOPLEFT", frame, "TOPLEFT", box[1] + used, top)
+        Client.FitQuestDialogueLabel(tail, { box[1] + used, box[2], box[3] - used, box[4] }, rest)
+        Client.ShowObject(tail)
+    else
+        Set(tail, "")
+        Client.HideObject(tail)
+    end
+end
+
+function Client.RenderQuestDialogue(frame, view, rowCallback, actionCallback)
+    if not frame or type(view) ~= "table" then
+        return false
+    end
+    local wasShown = Client.IsObjectShown(frame)
+    local animate = not wasShown or frame.unrealQuestDialogueMode ~= view.mode
+    frame.unrealQuestDialogueMode = view.mode
+    -- The conversation card or the quest card (Client.GetQuestDialogueLayout):
+    -- set first, since every layout read below resolves through it, and the
+    -- card is laid out again only when it changes.
+    local card = Client.GetQuestDialogueCardKind(view)
+    local cardChanged = frame.unrealQuestCard ~= card
+    frame.unrealQuestCard = card
+    -- Before the card is sized: a long objective makes it taller.
+    frame.unrealQuestCardGrow = Client.QuestDialogueObjectiveGrow(frame, view)
+    -- And one without item rewards shorter, its footer moved up with it.
+    frame.unrealQuestCardCollapse = Client.QuestDialogueRewardRowCollapse(frame, view)
+    -- The icon row moves up by the objective's unused lines alone.
+    frame.unrealQuestObjectiveSlack = Client.QuestDialogueObjectiveSlack(frame, view)
+    -- A quest giver's options drawn as buttons in the card (view.optionButtons)
+    -- leave the stack beside it empty and make the card as tall as they need.
+    local optionBox = view.optionButtons and Client.GetQuestDialogueLayout(frame).optionButtons
+    local optionRows = optionBox and Client.QuestDialogueHasOptionButtons(frame, card)
+        and type(view.rows) == "table" and table.getn(view.rows) > 0 and view.rows or nil
+    frame.unrealQuestConversationHeight = optionRows
+        and Client.GetQuestDialogueOptionsHeight(optionBox, table.getn(optionRows)) or nil
+    -- Its width follows the buttons once they are sized
+    -- (Client.SizeQuestDialogueOptionButtons); without them, the full card.
+    if not optionRows then frame.unrealQuestConversationWidth = nil end
+    local stackRows = type(view.rows) == "table" and view.rows or {}
+    if optionRows then stackRows = {} end
+    if cardChanged then
+        Client.LayQuestDialogueCard(frame)
+    else
+        -- Every render re-asserts the card's size and art, as it always has.
+        Client.ShowQuestDialogueCardArt(frame)
+    end
+    -- Quest pages put their rows under the card (see LayoutQuestDialogue);
+    -- the stack shrinks to its rows, up to five before it scrolls.
+    local rowCount = table.getn(stackRows)
+    if rowCount > 5 then rowCount = 5 end
+    frame.unrealQuestStackHeight = (rowCount > 0 and rowCount or 1)
+        * Client.GetQuestDialogueRowPitch(frame)
+    frame.unrealQuestElementsMode = view.mode == "detail"
+        or view.mode == "progress" or view.mode == "reward"
+    -- The quest card draws the objective in a strip under the text when the
+    -- page has one (the card's size and art are its own, set above).
+    local hasObjective = Client.QuestDialogueHasObjectiveStrip(frame)
+        and type(view.objective) == "string" and view.objective ~= ""
+    frame.unrealQuestElementsHeight = rowCount > 0
+        and frame.unrealQuestStackHeight or 0
+    frame.unrealQuestTileCallback = rowCallback
+    -- Before the rewards panel, which hangs below the button when it shows.
+    frame.unrealQuestActionButtonGap =
+        Client.RenderQuestDialogueActionButton(frame, view, card == "quest")
+    Client.RenderQuestDialogueSecondaryButton(frame, view, card == "quest")
+    Client.PlaceQuestDialogueFooterButtons(frame)
+    local turnInHeight = Client.RenderQuestDialogueTurnIn(frame, view.turnIn)
+    if turnInHeight > 0 then
+        local turnInGap = frame.unrealQuestTurnIn.unrealQuestGap
+            or Client.QUEST_DIALOGUE_TURN_IN.GAP
+        frame.unrealQuestElementsHeight = turnInHeight
+            + turnInGap
+            - Client.GetQuestDialogueLayout(frame).card.ELEMENTS_GAP
+    end
+    Client.LayoutQuestDialogue(frame)
+    local function SetText(region, value)
+        if region and type(region.SetText) == "function" then
+            pcall(region.SetText, region, type(value) == "string" and value or "")
+        end
+    end
+    SetText(frame.unrealQuestSpeaker, view.speaker)
+    SetText(frame.unrealQuestTitle, view.title)
+    SetText(frame.unrealQuestCineSpeaker, view.speaker)
+    SetText(frame.unrealQuestCineTitle, view.title)
+    -- The Cinematic role line and quest kicker draw only on the pages that
+    -- carry them (Quest/Dialogue.lua BuildView).
+    local cinematic = frame.unrealQuestTheme ~= "parchment"
+    local function ShowWhen(shown, region)
+        if shown then Client.ShowObject(region) else Client.HideObject(region) end
+    end
+    -- A card may leave out the role (`hideRole`) or the title (`hideTitle`):
+    -- Minimal's quest card puts the quest title where the role goes, and its
+    -- conversation card draws no "Conversation" title.
+    local cardLayout = Client.GetQuestDialogueLayout(frame)
+    local hasRole = cinematic and not cardLayout.hideRole
+        and type(view.speakerRole) == "string" and view.speakerRole ~= ""
+    SetText(frame.unrealQuestCineRole, view.speakerRole)
+    ShowWhen(hasRole, frame.unrealQuestCineRole)
+    if cinematic then ShowWhen(not cardLayout.hideTitle, frame.unrealQuestCineTitle) end
+    -- Both themes head a quest page with the kicker, placed per theme
+    -- (Client.SetQuestDialogueTheme).
+    local hasKicker = not Client.GetQuestDialogueLayout(frame).hideKicker
+        and type(view.kicker) == "string" and view.kicker ~= ""
+    SetText(frame.unrealQuestCineKicker, view.kicker)
+    ShowWhen(hasKicker, frame.unrealQuestCineKicker)
+    local kickerIcon = frame.unrealQuestCineKickerIcon
+    -- A card may draw the badge without its label (`kickerIconAlone`,
+    -- Minimal's quest card).
+    local hasBadge = hasKicker or (cardLayout.kickerIconAlone
+        and type(view.kicker) == "string" and view.kicker ~= "")
+    if hasBadge and kickerIcon then
+        -- Parchment and Minimal draw Horde light's "!" and "?" badges (user
+        -- requests). The cache holds the full path, not the badge name
+        -- alone: a live theme switch must not leave the previous theme's
+        -- badge drawn.
+        local badge = view.kickerTurnIn and "Kicker_Icon_TurnIn" or "Kicker_Icon"
+        local artPath = (frame.unrealQuestTheme == "parchment"
+            or frame.unrealQuestTheme == "minimal")
+            and Client.QUEST_DIALOGUE_HORDE_LIGHT.PATH
+            or Client.GetQuestDialogueArt(frame.unrealQuestTheme).PATH
+        if kickerIcon.unrealQuestBadge ~= artPath .. badge then
+            kickerIcon.unrealQuestBadge = artPath .. badge
+            pcall(kickerIcon.SetTexture, kickerIcon, artPath .. badge)
+        end
+    end
+    ShowWhen(hasBadge, kickerIcon)
+    local cineObjective = hasObjective and cinematic
+    SetText(frame.unrealQuestCineObjectiveHeading, cineObjective
+        and UQ.L(cardLayout.objectiveHeadingText or "DIALOGUE_OBJECTIVES") or "")
+    SetText(frame.unrealQuestCineObjective, cineObjective and view.objective or "")
+    ShowWhen(cineObjective, frame.unrealQuestCineObjectiveHeading)
+    ShowWhen(cineObjective, frame.unrealQuestCineObjective)
+    ShowWhen(cineObjective and not cardLayout.hideObjectiveIcon,
+        frame.unrealQuestCineObjectiveIcon)
+    local objectiveRule = cineObjective and not cardLayout.hideObjectiveRule
+    ShowWhen(objectiveRule, frame.unrealQuestCineObjectiveDivider)
+    ShowWhen(objectiveRule, frame.unrealQuestCineObjectiveLineLeft)
+    ShowWhen(objectiveRule, frame.unrealQuestCineObjectiveLineRight)
+    -- The one-line reward summary (a card's rewardLine): hugs its text, cut
+    -- with ".." at the box's width rather than run under the buttons.
+    local rewardLine = cinematic and cardLayout.rewardLine
+        and type(view.rewardLine) == "string" and view.rewardLine ~= ""
+    Client.RenderQuestDialogueRewardLine(frame, rewardLine and view or nil, cardLayout)
+    local classicObjective = hasObjective and not cinematic
+    SetText(frame.unrealQuestObjectiveHeading,
+        classicObjective and UQ.L("DIALOGUE_OBJECTIVES") or "")
+    SetText(frame.unrealQuestObjective, classicObjective and view.objective or "")
+    ShowWhen(classicObjective, frame.unrealQuestObjectiveHeading)
+    ShowWhen(classicObjective, frame.unrealQuestObjective)
+    ShowWhen(classicObjective, frame.unrealQuestObjectiveIcon)
+    local dividerPieces = frame.unrealQuestObjectiveDivider or {}
+    local pieceIndex = 1
+    while pieceIndex <= table.getn(dividerPieces) do
+        ShowWhen(classicObjective, dividerPieces[pieceIndex])
+        pieceIndex = pieceIndex + 1
+    end
+    local stripLayout = cinematic and Client.GetQuestDialogueLayout(frame)
+        or Client.ResolveQuestDialogueLayout(Client.QUEST_DIALOGUE_LAYOUTS["horde-light"], card)
+    local classicStrip = Client.ResolveQuestDialogueLayout(
+        Client.QUEST_DIALOGUE_LAYOUTS.parchment, card)
+    Client.AnchorQuestDialogue(frame.unrealQuestCineObjectiveHeading,
+        "TOPLEFT", frame, "TOPLEFT",
+        stripLayout.objectiveHeading[1], -stripLayout.objectiveHeading[2])
+    -- Inline (`objectiveInline`): the text follows the heading, which hugs
+    -- its text, so it starts right after it in every language.
+    local inline = cinematic and stripLayout.objectiveInline
+    if inline then
+        Client.AnchorQuestDialogue(frame.unrealQuestCineObjective,
+            "TOPLEFT", frame.unrealQuestCineObjectiveHeading, "TOPRIGHT",
+            inline[1], -inline[2])
+    else
+        Client.AnchorQuestDialogue(frame.unrealQuestCineObjective,
+            "TOPLEFT", frame, "TOPLEFT",
+            stripLayout.objective[1], -stripLayout.objective[2])
+    end
+    Client.AnchorQuestDialogue(frame.unrealQuestObjectiveHeading,
+        "TOPLEFT", frame, "TOPLEFT",
+        classicStrip.objectiveHeading[1], -classicStrip.objectiveHeading[2])
+    Client.AnchorQuestDialogue(frame.unrealQuestObjective,
+        "TOPLEFT", frame, "TOPLEFT",
+        classicStrip.objective[1], -classicStrip.objective[2])
+    Client.JustifyQuestDialogueText(frame.unrealQuestCineObjectiveHeading, "LEFT", "TOP")
+    Client.JustifyQuestDialogueText(frame.unrealQuestObjectiveHeading, "LEFT", "TOP")
+    Client.FitQuestDialogueLabel(frame.unrealQuestCineObjectiveHeading,
+        stripLayout.objectiveHeading)
+    -- Its box as tall as the lines the card grew for, so none is cut.
+    local objectiveBox = stripLayout.objective
+    Client.LockQuestDialogueWrappedLeft(frame.unrealQuestCineObjective,
+        { objectiveBox[1], objectiveBox[2], objectiveBox[3],
+            objectiveBox[4] + (frame.unrealQuestCardGrow or 0) })
+    Client.FitQuestDialogueLabel(frame.unrealQuestObjectiveHeading,
+        classicStrip.objectiveHeading)
+    Client.LockQuestDialogueWrappedLeft(frame.unrealQuestObjective,
+        classicStrip.objective)
+    -- The single-line labels hug their text, so it starts at their left edge
+    -- whatever the client does with justification.
+    local classic = Client.ResolveQuestDialogueLayout(Client.QUEST_DIALOGUE_LAYOUTS.parchment, card)
+    local cine = Client.QUEST_DIALOGUE_LAYOUTS[frame.unrealQuestTheme or ""]
+    if not cine or frame.unrealQuestTheme == "parchment" then
+        cine = Client.QUEST_DIALOGUE_LAYOUTS["horde-light"]
+    end
+    cine = Client.ResolveQuestDialogueLayout(cine, card)
+    Client.JustifyQuestDialogueText(frame.unrealQuestSpeaker, "LEFT", "TOP")
+    Client.JustifyQuestDialogueText(frame.unrealQuestTitle, "LEFT", "TOP")
+    Client.JustifyQuestDialogueText(frame.unrealQuestCineSpeaker, "LEFT", "TOP")
+    Client.JustifyQuestDialogueText(frame.unrealQuestCineTitle, "LEFT", "TOP")
+    Client.JustifyQuestDialogueText(frame.unrealQuestCineRole, "LEFT", "TOP")
+    Client.JustifyQuestDialogueText(frame.unrealQuestCineKicker, "LEFT", "TOP")
+    Client.FitQuestDialogueLabel(frame.unrealQuestSpeaker, classic.speaker)
+    Client.FitQuestDialogueLabel(frame.unrealQuestTitle, classic.title)
+    Client.FitQuestDialogueLabel(frame.unrealQuestCineSpeaker, cine.speaker)
+    Client.FitQuestDialogueLabel(frame.unrealQuestCineTitle,
+        (frame.unrealQuestTheme ~= "parchment" and frame.unrealQuestTitleBox) or cine.title)
+    Client.FitQuestDialogueLabel(frame.unrealQuestCineRole, cine.role)
+    Client.FitQuestDialogueLabel(frame.unrealQuestCineKicker,
+        Client.GetQuestDialogueLayout(frame).kicker)
+    Client.SetQuestDialogueBody(frame, view.body, view.bodyRevealing,
+        view.revealCharacters, view.revealCount)
+    -- At the card's own body width (the conversation card may be narrower).
+    local bodyBox = Client.GetQuestDialogueLayout(frame).body
+    Client.LockQuestDialogueWrappedLeft(frame.unrealQuestBody,
+        { bodyBox[1], bodyBox[2], frame.unrealQuestBodyWidth or bodyBox[3], bodyBox[4] }, 8)
+    local paged = (view.pageCount or 1) > 1
+    if paged then
+        SetText(frame.unrealQuestPage, UQ.L("DIALOGUE_PAGE",
+            view.pageIndex or 1, view.pageCount or 1))
+        Client.ShowObject(frame.unrealQuestPage)
+        -- A theme with the indicator beside the label hugs it to its text.
+        local pageLayout = Client.GetQuestDialogueLayout(frame)
+        if pageLayout.indicatorGap or pageLayout.pageBeforeIndicator then
+            Client.FitQuestDialogueLabel(frame.unrealQuestPage, pageLayout.page)
+        end
+    else
+        SetText(frame.unrealQuestPage, "")
+        Client.HideObject(frame.unrealQuestPage)
+    end
+    if frame.unrealQuestBody and frame.unrealQuestBodyChild then
+        local bodyBox = Client.GetQuestDialogueLayout(frame).body
+        Client.SizeQuestDialogue(frame.unrealQuestBodyChild,
+            frame.unrealQuestBodyWidth or bodyBox[3], bodyBox[4])
+        if frame.unrealQuestContinueIndicator then
+            if view.hasNextPage then
+                pcall(frame.unrealQuestContinueIndicator.Show,
+                    frame.unrealQuestContinueIndicator)
+            else
+                pcall(frame.unrealQuestContinueIndicator.Hide,
+                    frame.unrealQuestContinueIndicator)
+            end
+        end
+        if frame.unrealQuestBodyScroll
+            and frame.unrealQuestBodySignature ~= view.body then
+            frame.unrealQuestBodySignature = view.body
+            if type(frame.unrealQuestBodyScroll.SetVerticalScroll) == "function" then
+                pcall(frame.unrealQuestBodyScroll.SetVerticalScroll,
+                    frame.unrealQuestBodyScroll, 0)
+            end
+            Client.UpdateScrollChildRect(frame.unrealQuestBodyScroll)
+        end
+    end
+
+    Client.RenderQuestDialogueOptionButtons(frame, optionRows, rowCallback)
+    local rows = stackRows
+    local buttons = frame.unrealQuestRows or {}
+    while table.getn(buttons) < table.getn(rows)
+        and type(frame.unrealQuestCreateRow) == "function" do
+        frame.unrealQuestCreateRow(table.getn(buttons) + 1)
+        buttons = frame.unrealQuestRows or buttons
+    end
+    local buttonIndex = 1
+    while buttonIndex <= table.getn(buttons) do
+        local button = buttons[buttonIndex]
+        local row = rows[buttonIndex]
+        if row then
+            SetText(button.unrealQuestLabel, row.text)
+            -- Left on the row, a short gap after the icon: a 278-unit label
+            -- draws short text centred here, so it is narrowed to its text
+            -- (Client.FitQuestDialogueLabel).
+            local rowLayout = Client.GetQuestDialogueLayout(frame)
+            local labelX = rowLayout.rowLabelX or 42
+            local iconSide = rowLayout.rowIcon or 26
+            -- A narrow icon (a quest mark) keeps its own shape, centred in
+            -- the square slot.
+            local iconWidth = iconSide * (row.iconAspect or 1)
+            Client.SizeQuestDialogue(button.unrealQuestIcon, iconWidth, iconSide)
+            -- 1 pixel right of the slot's left inset (user request).
+            Client.AnchorQuestDialogue(button.unrealQuestIcon, "LEFT", button, "LEFT",
+                8 + (iconSide - iconWidth) / 2 + 1 / Client.QUEST_DIALOGUE_UNIT, 0)
+            -- The label sits 1 pixel left of and 1 pixel below its slot
+            -- (user request); offsets are design units, so a pixel is 1 / unit.
+            local pixel = 1 / Client.QUEST_DIALOGUE_UNIT
+            Client.AnchorQuestDialogue(button.unrealQuestLabel, "LEFT", button, "LEFT",
+                labelX - pixel, -pixel)
+            Client.FitQuestDialogueLabel(button.unrealQuestLabel, { 0, 0, 320 - labelX })
+            button.unrealQuestEnabled = row.enabled ~= false
+            button.unrealQuestPayload = row.payload
+            button.unrealQuestCallback = rowCallback
+            button.unrealQuestRewardType = row.rewardType
+            button.unrealQuestRewardIndex = row.rewardIndex
+            if button.unrealQuestLabel and type(button.unrealQuestLabel.SetTextColor) == "function" then
+                local red, green, blue = Client.GetQuestDialogueQualityColor(row.quality)
+                local inkFrom = Client.GetQuestDialogueLayout(frame).rowQualityInkFrom
+                if inkFrom and type(row.quality) == "number" and row.quality < inkFrom then
+                    red = nil
+                end
+                if row.usable == false or row.affordable == false then
+                    pcall(button.unrealQuestLabel.SetTextColor,
+                        button.unrealQuestLabel, 0.72, 0.12, 0.10)
+                elseif red then
+                    pcall(button.unrealQuestLabel.SetTextColor,
+                        button.unrealQuestLabel, red, green, blue)
+                else
+                    -- The theme's row ink (ink.row).
+                    local ink = Client.GetQuestDialogueLayout(frame).ink
+                    local color = button.unrealQuestEnabled and ink.row or ink.rowDisabled
+                    pcall(button.unrealQuestLabel.SetTextColor,
+                        button.unrealQuestLabel, color[1], color[2], color[3])
+                end
+            end
+            if button.unrealQuestSelected then
+                if row.selected then pcall(button.unrealQuestSelected.Show, button.unrealQuestSelected)
+                else pcall(button.unrealQuestSelected.Hide, button.unrealQuestSelected) end
+            end
+            if button.unrealQuestRewardGlow then
+                if row.selected then pcall(button.unrealQuestRewardGlow.Show, button.unrealQuestRewardGlow)
+                else pcall(button.unrealQuestRewardGlow.Hide, button.unrealQuestRewardGlow) end
+            end
+            if button.unrealQuestIcon then
+                if type(row.icon) == "string" and row.icon ~= "" then
+                    if Client.SetQuestDialogueRowIcon(button.unrealQuestIcon, row.icon) then
+                        pcall(button.unrealQuestIcon.Show, button.unrealQuestIcon)
+                    else
+                        pcall(button.unrealQuestIcon.Hide, button.unrealQuestIcon)
+                    end
+                else
+                    pcall(button.unrealQuestIcon.Hide, button.unrealQuestIcon)
+                end
+            end
+            Client.ShowObject(button)
+        else
+            button.unrealQuestEnabled = nil
+            button.unrealQuestCallback = nil
+            button.unrealQuestRewardType = nil
+            button.unrealQuestRewardIndex = nil
+            Client.HideObject(button)
+        end
+        buttonIndex = buttonIndex + 1
+    end
+    if frame.unrealQuestOptionChild then
+        local visibleCount = table.getn(rows)
+        if visibleCount > table.getn(buttons) then
+            visibleCount = table.getn(buttons)
+        end
+        local stackHeight = frame.unrealQuestStackHeight or 176
+        local contentHeight = visibleCount * Client.GetQuestDialogueRowPitch(frame)
+        if contentHeight < stackHeight then contentHeight = stackHeight end
+        Client.SizeQuestDialogue(frame.unrealQuestOptionsScroll, 340, stackHeight)
+        Client.SizeQuestDialogue(frame.unrealQuestOptionsPanel, 356, stackHeight + 12)
+        Client.SizeQuestDialogue(frame.unrealQuestOptionChild, 340, stackHeight)
+        if frame.unrealQuestOptionsSignature ~= view.rowsSignature then
+            frame.unrealQuestRowOffset = 0
+        end
+        frame.unrealQuestRowCount = visibleCount
+        frame.unrealQuestRowSlots = math.floor(stackHeight / Client.GetQuestDialogueRowPitch(frame) + 0.5)
+        Client.PlaceQuestDialogueRows(frame)
+        local hasOverflow = contentHeight > stackHeight
+        local hasRows = visibleCount > 0
+        local up = frame.unrealQuestOptionsUp
+        local down = frame.unrealQuestOptionsDown
+        if up and up.unrealQuestLabel then
+            SetText(up.unrealQuestLabel, UQ.L("DIALOGUE_SCROLL_UP"))
+        end
+        if down and down.unrealQuestLabel then
+            SetText(down.unrealQuestLabel, UQ.L("DIALOGUE_SCROLL_DOWN"))
+        end
+        if hasRows then
+            -- Cinematic rows are planks and carry their own background.
+            if Client.GetQuestDialogueLayout(frame).optionsPanel then
+                Client.ShowObject(frame.unrealQuestOptionsPanel)
+            else
+                Client.HideObject(frame.unrealQuestOptionsPanel)
+            end
+            Client.ShowObject(frame.unrealQuestOptionsScroll)
+            Client.ShowObject(frame.unrealQuestOptionChild)
+        else
+            Client.HideObject(frame.unrealQuestOptionsPanel)
+            Client.HideObject(frame.unrealQuestOptionsScroll)
+            Client.HideObject(frame.unrealQuestOptionChild)
+        end
+        if hasOverflow then
+            Client.ShowObject(up)
+            Client.ShowObject(down)
+        else
+            Client.HideObject(up)
+            Client.HideObject(down)
+        end
+    end
+    frame.unrealQuestOptionsSignature = view.rowsSignature
+    -- Minimal's cards narrow to this page's content.
+    frame.unrealQuestFitView = view
+    Client.FitQuestDialogueCardWidth(frame)
+
+    -- The card is the button (Immersion's TalkBox): what a left or right
+    -- click does is decided by the view, read when the click lands.
+    frame.unrealQuestClickAction = view.clickAction
+    frame.unrealQuestRightClickAction = view.rightClickAction
+    -- Space's step when it is not the left click's (view.keyAction).
+    frame.unrealQuestKeyAction = view.keyAction
+    frame.unrealQuestActionCallback = actionCallback
+    Client.RenderQuestDialogueInspector(frame, view, rowCallback, actionCallback)
+    if animate then
+        frame.unrealQuestAnimationStart = Client.Now() or 0
+        if type(frame.SetAlpha) == "function" then pcall(frame.SetAlpha, frame, 0) end
+    elseif type(frame.SetAlpha) == "function" then
+        pcall(frame.SetAlpha, frame, 1)
+    end
+    if not wasShown then
+        local slide = Client.GetQuestDialogueLayout(frame).openSlide
+        if type(slide) == "number" and slide > 0 then
+            frame.unrealQuestSlideStart = Client.Now() or 0
+            frame.unrealQuestSlideOffset = -slide
+            -- The fade runs over the slide's time, so the card reaches full
+            -- opacity exactly as it lands (user request, 2026-10-12).
+            frame.unrealQuestFadeDuration = Client.GetQuestDialogueLayout(frame).openSlideTime
+        else
+            frame.unrealQuestSlideStart = nil
+            frame.unrealQuestSlideOffset = nil
+            frame.unrealQuestFadeDuration = nil
+        end
+        Client.AnchorQuestDialogueCard(frame)
+    end
+    Client.ShowObject(frame)
+    Client.SetQuestDialoguePortrait(frame, view.speakerUnit, view.speaker)
+    return true
+end
+
+function Client.HideQuestDialogue(frame)
+    Client.HideQuestDialogueInspector(frame)
+    local model = frame and frame.unrealQuestPortraitModel
+    if model then
+        model.unrealQuestPortraitKey = nil
+        model.unrealQuestPortraitCalls = nil
+    end
+    if frame then frame.unrealQuestOwnHide = true end
+    local hidden = Client.HideObject(frame)
+    if frame then frame.unrealQuestOwnHide = nil end
+    return hidden
+end
+
+-- Quest icon on the target frame --------------------------------------------
+--
+-- Retail's TargetFrame QuestIcon (atlas UI-HUD-UnitFrame-Target-PortraitOn-
+-- Boss-Quest, 20px centred on the 58px portrait's BOTTOM). Drawn only on
+-- UnrealUI's addon-owned target frame: a persistent SetPoint into the native
+-- TargetFrame's children is the pattern under frames.native_widget_reference_
+-- crash_risk and unitframes.classic_native_crash_signature_1450d5c.
+
+Client.TARGET_QUEST_ICON_TEXTURE =
+    "Interface\\AddOns\\unrealQuest\\media\\Textures\\TargetFrame\\UQ_TargetQuestIcon"
+-- Fields, not locals: this chunk is at Lua's 200-local limit.
+-- The 52px atlas cell sits at 6..58 in the 64px canvas.
+Client.TARGET_QUEST_ICON_INSET = 6 / 64
+Client.TARGET_QUEST_ICON_RATIO = 20 / 58
+-- Above the modern-wow rim overlay, which sits 20 levels over its frame.
+Client.TARGET_QUEST_ICON_LIFT = 30
+
+-- The visible portrait box of UnrealUI's target frame, or nil.
+function Client.GetTargetFramePortrait()
+    local frame = ResolveObject("UnrealUIUnitTarget")
+    local portrait = frame and frame.portrait
+    if type(portrait) ~= "table" or not Client.IsObjectVisible(portrait) then
+        return nil
+    end
+    return portrait, frame
+end
+
+function Client.CreateTargetQuestIcon()
+    local create = Resolve("CreateFrame")
+    if not create then
+        return nil
+    end
+    local ok, holder = pcall(create, "Frame", "UnrealQuestTargetQuestIcon",
+        ResolveObject("UIParent"))
+    if not ok or not holder then
+        return nil
+    end
+    local texOk, texture = pcall(holder.CreateTexture, holder, nil, "OVERLAY")
+    if not texOk or not texture then
+        return nil
+    end
+    pcall(texture.SetTexture, texture, Client.TARGET_QUEST_ICON_TEXTURE)
+    pcall(texture.SetTexCoord, texture, Client.TARGET_QUEST_ICON_INSET, 1 - Client.TARGET_QUEST_ICON_INSET,
+        Client.TARGET_QUEST_ICON_INSET, 1 - Client.TARGET_QUEST_ICON_INSET)
+    pcall(texture.SetAllPoints, texture, holder)
+    holder.unrealQuestTexture = texture
+    pcall(holder.Hide, holder)
+    return holder
+end
+
+-- Parented to the unit frame so it fades and hides with it. Re-anchored only
+-- when the portrait object or its width changes.
+function Client.ShowTargetQuestIcon(holder, portrait, frame)
+    if not holder or not portrait or not frame then
+        return false
+    end
+    local width = Client.GetObjectWidth(portrait)
+    if type(width) ~= "number" or width <= 0 then
+        return false
+    end
+    if holder.unrealQuestPortrait ~= portrait or holder.unrealQuestWidth ~= width then
+        local size = math.floor(width * Client.TARGET_QUEST_ICON_RATIO + 0.5)
+        pcall(holder.SetParent, holder, frame)
+        pcall(holder.ClearAllPoints, holder)
+        pcall(holder.SetWidth, holder, size)
+        pcall(holder.SetHeight, holder, size)
+        pcall(holder.SetPoint, holder, "CENTER", portrait, "BOTTOM", 0, 0)
+        local levelOk, level = pcall(frame.GetFrameLevel, frame)
+        if levelOk and type(level) == "number" then
+            pcall(holder.SetFrameLevel, holder, level + Client.TARGET_QUEST_ICON_LIFT)
+        end
+        holder.unrealQuestPortrait = portrait
+        holder.unrealQuestWidth = width
+    end
+    if not Client.IsObjectShown(holder) then
+        Client.ShowObject(holder)
+    end
+    return true
+end
+
+function Client.HideTargetQuestIcon(holder)
+    if holder and Client.IsObjectShown(holder) then
+        Client.HideObject(holder)
+    end
 end
 
 -- Capability declarations ---------------------------------------------------

@@ -5,7 +5,7 @@ Two-page Dragonflight Quest Log for a session with no unrealUI.
 
 The stock quest list is expanded down the left page and the stock detail pane is
 moved onto the right one, inside imported Dragonflight page art
-(media/QuestLog/, geometry in Compatibility/ClientAPI.lua). The client still
+(media/Textures/QuestLog/, geometry in Compatibility/ClientAPI.lua). The client still
 owns selection, scrolling, quest actions and detail population, while
 UnrealQuest's existing level, translation, tracking, reward and action-button
 modules continue to decorate those same native widgets.
@@ -70,6 +70,7 @@ function StandaloneQuestLog:StartRewardLayoutJob()
             Client.RefreshStandaloneQuestLogArt()
             if Client.IsStandaloneQuestLogShown() then
                 Client.RefreshStandaloneQuestLogRewards()
+                Client.RefreshStandaloneQuestLogFoldFaces()
             end
         end)
 end
@@ -121,6 +122,11 @@ function StandaloneQuestLog:Resolve(force)
     self.applied = applied and true or false
     if self.applied then
         self:StartRewardLayoutJob()
+        UQ:DeclareCapability("questLogFoldGlyphs", "unverified",
+            "header rows and the collapse-all control draw the tracker's plus/minus "
+            .. "art over their stock glyph, which is hidden through GetNormalTexture "
+            .. "(documented, not probed) and SetVertexColor's alpha; needs one in-game "
+            .. "look that the stock glyph stays gone after a native refresh")
         local rows = Client.GetStandaloneQuestLogRows()
         UQ:DeclareCapability("standaloneQuestLog", "unverified",
             "no unrealUI in this session, so the native Quest Log was rebuilt as the "

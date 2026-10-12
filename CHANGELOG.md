@@ -1,14 +1,65 @@
 # Changelog
 
+## 0.5.0
+
+- Added immersive quest dialogue with 6 themes
+- Added option to auto-accept and complete quests
+- Added quest marker on the target frame
+- Dungeon and raid icons now use retail images
+- Added min/max levels for each dungeon on the map
+- Completed quest numbers now appear in a green circle
+- Quest number icons no longer appear on the map when the quest is complete
+
 ## 0.4.1
 
 - Few optimisations done
+- Elite quests now show a "+" after their level ("[11+]"), like dungeon quests, in the trackers, the quest log and the world map tooltip. A quest counts as elite when it sends you after an elite, rare-elite or boss creature, or after an item only such creatures drop.
+- The followed quest is now highlighted with the tracker's golden bar glow, both in the quest trackers and in the quest log, instead of the gold plaque.
+- New "Auto accept and complete quests" option on the Quest dialogue tab (off by default): offered quests are accepted, finished quests are handed in and their reward taken. A reward you must choose from several items is left to you.
+- Minimal dialogue: talking to a quest giver who has gossip options now lists those options inside the card, one per line, on the same silver buttons as Accept and Decline (all as wide as the longest option, not the card's full width, and the card itself narrows to them), instead of showing the NPC's text; the card grows to fit them. A quest giver's greeting (several quests to pick from) lists its quests the same way.
+- A quest offered right after handing one in now opens as an offer with Accept, not as a turn-in with Complete.
+- Minimal dialogue: "Quest Giver" under the NPC's name is now grey instead of gold.
+- Minimal dialogue: on the quest card the header colours are swapped: the NPC's name is grey and the quest title gold.
+- Minimal dialogue: the card now sits two thirds of the way down the screen instead of in the middle.
+- Minimal dialogue: the experience and reputation on the reward line are drawn in white.
+- Minimal dialogue: the card is now sized from the widths the client really draws the text at, so the reward line (and the name, title and role) can no longer run past the card's border.
+- Quest dialogue: reward money is drawn with gold, silver and copper coin icons in every theme, instead of "1g 50s" text.
+- Quest dialogue: a new profile starts on the Minimal theme (existing profiles keep their choice), and the theme dropdown now reads Minimal, Parchment, Alliance, Horde, Alliance light, Horde light.
+- Quest dialogue: the theme keys and texture names now match the theme names (parchment, alliance, horde, alliance-light, horde-light, minimal); a saved choice is carried over once, and an unrecognised one falls back to Minimal.
+- Minimal dialogue: the quest card shows a "!" (quest to accept) or "?" (quest to hand in) badge under the language flags.
+- Handing in a quest now shows its objectives with their counts from the quest log (for example "Kobold Vermin slain: 10/10") instead of the quest's objective text.
+- Minimal dialogue: the Complete (and Accept) button widens to fit its label and key hint, so "Space" no longer runs past the button's edge; the Decline / Cancel button moves over to keep its gap.
 - Without unrealUI, the first language now follows the game client: Chinese for a Chinese client, Russian for a Russian client, English otherwise
 - Accepting a quest no longer performs a second full tracker layout inside the quest-log scan.
 - Quest-area geometry is spread across bounded driver slices without changing its resolution or shape.
+- Immersive quest dialogue now uses a compact framed parchment card centred below the middle of the screen, with the choice stack on the right as in Immersion, instead of a full-screen window. Click the card to continue or accept, right-click to page; Escape or clicking away from the NPC closes it. Quest rewards show under the text, and returning to a quest giver shows the required items with their counts under the text, whether the quest can be turned in, and the rewards it will give.
+- The quest dialogue has two themes, chosen beside the "Immersive quest dialogue" option: Cinematic (the default), a larger bronze-framed card with "Quest Giver" and the NPC's name on a wood band, the portrait in its own gold frame, a "Quest" kicker over a large quest title and its divider, wooden choice rows and ornate reward banners, and Classic, the parchment card. The Cinematic card's art and text now line up instead of the text running past the frame, and the whole dialogue (cards, choices, rewards panel and reward window) is drawn 40% smaller, text included.
+- The Classic dialogue now has Cinematic's header (the "Quest" badge with the page number beside it, the left-aligned quest title and Alliance V2's ornate divider) and shows a quest's objectives under its text, below a divider and beside the objective badge; its NPC name is left-aligned too, and its portrait frame now covers the whole scene behind the 3D portrait.
+- The dialogue themes are renamed and reordered in the options: Parchment (was Classic), Alliance (was Alliance V2), Horde (was Horde V2), Horde light (was Cinematic) and Alliance light (was Alliance). Saved choices carry over unchanged. The theme is now picked from a dropdown instead of a list of radio buttons, and the Quest dialogue tab's first option sits 10px lower.
+- Each dialogue theme now applies its own size immediately when selected, without a reload. Alliance V2 remains 29.6% larger than the other themes while keeping their text size.
+- The Parchment dialogue's choice rows are now gold-framed parchment buttons with their own hover and pressed looks, and dark text, instead of dark bars.
+- Alliance V2's conversation card has a new frame with banners on both posts, at the same size as before; the quest card keeps its frame.
+- Objective text now begins on the same left edge as the Objectives heading in every language; short Latin lines no longer centre themselves inside the translated text box, and Alliance V2 keeps the body a further 5px below the heading and 5px clear of the right frame.
+- The Cinematic dialogue's quest badge shows "!" on a quest to accept and "?" on a quest to turn in.
+- The Cinematic dialogue's reward banners are taller, with larger item icons. With unrealUI installed, hovering a gear reward in the dialogue shows unrealUI's comparison with your equipped item and the stat changes.
+- The quest dialogue shows a scene of the quest's zone behind the portrait, or of the zone you are in, in every theme; 40 outdoor zones have their own art, one set shared by all themes.
+- Quest and gossip prose starts directly beneath the title divider and writes itself letter by letter without drifting, with short pauses at punctuation; click the card once to reveal the page immediately, then click again to continue. New letters fall into place from above using native kerning measurements. Landed letters stay in the reveal layer until the page is complete, then the whole page changes to one native paragraph at once, avoiding both overlapping copies and the horizontal shimmer from rebuilding the paragraph after every character.
+- Zone-grouped trackers now show each zone once, with completed quests at the bottom of that zone.
+- The quest tracker's header rails, zone bars and objective marks are drawn from the original full-resolution art instead of a half-size copy, so they stay sharp at large UI scales.
+- Quest creatures show Retail's quest shield on the unrealUI target portrait.
+- The Alliance V2 dialogue has an "Accept Quest" / "Complete Quest" button on the card's bottom border, with hover and pressed faces; it stays greyed out until the quest's objectives are done. The rewards panel now hangs just below it.
+- The Horde light, Alliance light and Parchment dialogues have the same "Accept Quest" / "Complete Quest" button on the quest card's bottom border, drawn as the quest log's red button, with the same red glow on hover, a pressed face, and a grey face until the objectives are done.
+- Choosing a quest from an NPC's gossip no longer makes the dialogue blink out and back in: the card stays up while the quest page takes over from the gossip page.
+- New Minimal dialogue theme, the smallest card: a dark card with a thin gold edge, the portrait, the NPC's name and the quest title, the objectives on one line, the money, experience and reputation on one line beside flat Decline (Esc) and Accept buttons, and no quest text. Item rewards still show as tiles under the card. Pick it last in the theme dropdown.
+- The Alliance, Horde light and Alliance light dialogues' quest cards grow taller with a long objective, so the objective text never runs under or crowds the Accept / Complete button.
+- The Alliance, Horde and Alliance light dialogues' quest cards draw the Parchment theme's brown divider above the objectives.
+- The Horde dialogue's "Complete Quest" button no longer cuts its label short; a label too long for the space between the arrows moves left of the arrow instead.
+- The Horde light quest card's left and right borders no longer show a stack of repeated spikes along the parchment's edge.
+- Quest objectives in the dialogue no longer show the blank line between their steps, so they take less height.
 
 ## 0.4.0
 
+- Immersive gossip rows now use UnrealQuest's own high-resolution service and quest icons.
 - Reworked quest tracker windows
 - Reworked quest area mode, now works on Retail
 - Added quest numbers to the map and quest tracker windows

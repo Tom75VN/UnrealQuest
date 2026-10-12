@@ -1,11 +1,12 @@
 --[[
 UnrealQuest / Quest/QuestLanguageFlags.lua
 
-The per-quest language flag row, and nothing else. One row of small flags in
-the top-right corner of a quest panel: one flag per language THAT quest can be
-read in, full opacity on the one it is in, 30% on the others, 95% under the
-cursor. Clicking one puts that single quest in that language and leaves the
-account-wide setting alone.
+The per-quest language flag row, and nothing else. One row of flags in the
+top-right corner of a quest panel: one flag per language THAT quest can be
+read in, brightest on the one it is in and brighter under the cursor. The
+Cinematic dialogue uses the reference row's flag size, a readable 65% idle
+shade and a rim drawn directly over the selected language. Clicking one puts
+that single quest in that language and leaves the account-wide setting alone.
 
 Two panels ask for this row, and they are not the same frame, do not share a
 parent, and do not resolve their quest the same way:
@@ -16,8 +17,8 @@ parent, and do not resolve their quest the same way:
     (Quest/QuestGiverTranslation.lua), where there is no log row at all and the
     row is parented to QuestFrame.
 
-Everything they DO share lives here: the roster, the buttons, the tooltip, the
-right-to-left layout and the three shades. A caller hands over its own key, its
+Everything they DO share lives here: the roster, the buttons, the tooltip and
+the right-to-left layout. A caller hands over its own key, its
 own anchor and its own placer, and gets a row back. That is the whole contract,
 and it exists because the second panel would otherwise have been a copy of the
 first with four names changed -- the kind of copy that drifts.
@@ -47,12 +48,16 @@ local FLAG_HEIGHT = 10
 local FLAG_GAP = 2
 local FLAG_INSET_X = -6
 local FLAG_INSET_Y = -4
+-- The rim sits directly over the reference row's 18x14 flag face.
+local CINEMATIC_FLAG_WIDTH = 18
+local CINEMATIC_FLAG_HEIGHT = 14
+local CINEMATIC_FLAG_GAP = 5
 
--- The settings row's own three shades, for the same reason it has them:
--- selection is communicated by opacity alone, and pointing at the current
--- choice must never make it look weaker than the others.
+-- The compact rows share the settings header's shades. Cinematic keeps its
+-- inactive flags brighter against the wood band.
 local FLAG_SHADE_SELECTED = 1
 local FLAG_SHADE_IDLE = 0.3
+local CINEMATIC_FLAG_SHADE_IDLE = 0.65
 local FLAG_SHADE_HOVER = 0.95
 
 Flags.codes = nil
@@ -161,7 +166,7 @@ local function EnsureButtons(row, namePrefix, parent)
             Client.SetObjectScript(button, "OnLeave", function()
                 button.unrealQuestHovered = nil
                 if not button.unrealQuestSelected then
-                    Client.SetFlagButtonShade(button, FLAG_SHADE_IDLE, false)
+                    Client.SetFlagButtonShade(button, row.idleShade or FLAG_SHADE_IDLE, false)
                 end
                 Client.HideGameTooltip(button)
             end)
@@ -210,6 +215,7 @@ end
 --                    CanChooseLanguage / SetQuestLanguage for that panel
 --   spec.onChanged   called after a click actually changed the language
 --   spec.insetX/Y    optional, overriding the row's own corner inset
+--   spec.framed      gives this row the Cinematic overlay rim
 --
 -- The whole row is drawn only when there is a choice: an unambiguous quest ID
 -- and at least one bundled language beside the client's own. A lone flag that
@@ -269,6 +275,11 @@ function Flags:Refresh(spec)
 
     local insetX = spec.insetX or FLAG_INSET_X
     local insetY = spec.insetY or FLAG_INSET_Y
+    local framed = spec.framed and true or false
+    local flagWidth = framed and CINEMATIC_FLAG_WIDTH or FLAG_WIDTH
+    local flagHeight = framed and CINEMATIC_FLAG_HEIGHT or FLAG_HEIGHT
+    local flagGap = framed and CINEMATIC_FLAG_GAP or FLAG_GAP
+    row.idleShade = framed and CINEMATIC_FLAG_SHADE_IDLE or FLAG_SHADE_IDLE
     local current = translation:GetQuestLanguage(quest)
     local count = table.getn(shown)
     local placed = 0
@@ -277,13 +288,15 @@ function Flags:Refresh(spec)
         local button = shown[index]
         -- Right to left from the panel's right edge, exactly as the settings
         -- header lays its own row out.
-        local offsetX = insetX - (count - index) * (FLAG_WIDTH + FLAG_GAP)
+        local offsetX = insetX - (count - index) * (flagWidth + flagGap)
+        Client.SetFlagButtonFrameStyle(button, framed, flagWidth, flagHeight)
+        button.unrealQuestFlagTheme = spec.theme
         if spec.place and spec.place(button, anchor, offsetX, insetY) then
             local selected = button.unrealQuestLanguage == current
             button.unrealQuestSelected = selected
             -- Every poll repaints the row, so the hover shade has to be
             -- repainted too or it lasts only until the next pass.
-            local shade = FLAG_SHADE_IDLE
+            local shade = row.idleShade
             if selected then
                 shade = FLAG_SHADE_SELECTED
             elseif button.unrealQuestHovered then

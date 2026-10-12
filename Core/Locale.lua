@@ -366,7 +366,7 @@ function UQ.FlagTexture(code)
     if not entry or type(entry.flag) ~= "string" then
         return nil
     end
-    return "Interface\\AddOns\\unrealQuest\\media\\Flags\\" .. entry.flag
+    return "Interface\\AddOns\\unrealQuest\\media\\Textures\\Flags\\" .. entry.flag
 end
 
 -- Per-quest exceptions to the language ---------------------------------------

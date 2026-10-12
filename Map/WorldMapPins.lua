@@ -295,7 +295,7 @@ local TURNIN_LEVEL_BOOST = 5
 -- cap. Kept well under the complete objective-location path because turn-in
 -- icons are a separate bounded non-objective surface.
 local MAX_TURNIN_LOCATIONS_PER_QUEST = 8
--- media/ActiveQuestIcon.tga (the turn-in "?") is a 19x32 portrait image, not
+-- media/Textures/Map/Pins/ActiveQuestIcon.tga (the turn-in "?") is a 19x32 portrait image, not
 -- the square the other pins' 14x14 contract assumes. Height keeps the
 -- confirmed 14 and width is derived from the source's own aspect ratio, so
 -- Client.SetWorldMapPinSize stops SetAllPoints from squashing the glyph into
@@ -308,7 +308,7 @@ local TURNIN_ICON_WIDTH = TURNIN_ICON_HEIGHT * 19 / 32
 -- sitting on it.
 local FOLLOWED_TURNIN_RING_SIZE = 38
 local FOLLOWED_TURNIN_LEVEL_BOOST = 4
--- media/icons/questIcon.tga is also 19x32. Keep the giver "!" at the
+-- media/Textures/Map/Pins/questIcon.tga is also 19x32. Keep the giver "!" at the
 -- confirmed pin height without stretching its artwork into a square.
 local GIVER_ICON_HEIGHT = 14
 local GIVER_ICON_WIDTH = GIVER_ICON_HEIGHT * 19 / 32
@@ -1299,7 +1299,8 @@ local function BuildGiverTooltipLines(database, giver, availableQuestIds, suppre
             local record = database:GetQuest(questId)
             if record and (record.lvl ~= nil or record.min ~= nil) then
                 table.insert(lines, {
-                    left = "- " .. UQ.L("TOOLTIP_LEVEL") .. " " .. tostring(record.lvl or "?"),
+                    left = "- " .. UQ.L("TOOLTIP_LEVEL") .. " "
+                        .. (record.lvl ~= nil and UQ.FormatQuestLevel(record.lvl, questId) or "?"),
                     right = UQ.L("TOOLTIP_REQUIRED") .. " " .. tostring(record.min or "?"),
                     r = 1, g = 0.82, b = 0,
                     rightR = 0.3, rightG = 1, rightB = 0.3,
@@ -1418,7 +1419,7 @@ local function BuildQuestTooltipLines(database, quest)
     if type(quest.level) == "number" then
         local red, green, blue = Client.GetQuestLevelColor(quest.level)
         table.insert(lines, {
-            left = UQ.L("TOOLTIP_LEVEL"), right = tostring(quest.level),
+            left = UQ.L("TOOLTIP_LEVEL"), right = UQ.FormatQuestLevel(quest.level, quest),
             rightR = red, rightG = green, rightB = blue,
         })
     end
@@ -5091,9 +5092,8 @@ function WorldMapPins:Refresh()
                 CollectRoamingObjectiveUnits(locations, objectivePatrolUnitIds)
             end
             local components = questTarget:BuildComponents(locations)
-            -- The numbered POI circle is drawn whichever presentation is on:
-            -- with dots alone it still names the quest and links its hover.
-            local markerComponent = MARKER_RENDER_ENABLED
+            -- Completed quests keep their turn-in "?" without a numbered POI.
+            local markerComponent = MARKER_RENDER_ENABLED and not complete
                 and questTarget:SelectPrimary(components)
             -- The main quest's tiles are drawn brighter than the rest, so the
             -- quest the HUD waypoint is pointing at can be identified on the

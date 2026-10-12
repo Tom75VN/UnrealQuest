@@ -924,10 +924,8 @@ end
 -- order. Unstamped quests are the common case on login, where this returns the
 -- list untouched.
 --
--- With zone grouping on this deliberately breaks the log's zone runs: the
--- lifted quest carries its own header to the top and its zone is named twice,
--- the same trade the complete tail below already makes. Being shown what just
--- changed is the point of the lift; keeping the header count down is not.
+-- Zone grouping later gathers the lifted row with the rest of its zone, so the
+-- whole zone rises without writing its header twice.
 local function FloatRecentFirst(quests)
     local lifted = {}
     local rest = {}
@@ -970,11 +968,9 @@ end
 -- when the map's tracker is on screen, and the zone the player stands in
 -- otherwise, which is when the HUD tracker is.
 --
--- Applied to each half of OrderQuestsCompleteLast separately, so the current
--- zone heads the window and also heads the complete tail, but a complete quest
--- still never rises above work left to do. It runs after the recent-first
--- lift: a quest advanced elsewhere stays above the rest of its own half, just
--- not above the zone the player is in or looking at.
+-- Applied to each half of OrderQuestsCompleteLast separately. It runs after
+-- the recent-first lift: a quest advanced elsewhere stays above the rest of
+-- its own half, just not above the zone the player is in or looking at.
 local function FloatCurrentZoneFirst(quests, zoneKey)
     if not zoneKey then
         return quests
@@ -1007,23 +1003,9 @@ local function FloatCurrentZoneFirst(quests, zoneKey)
     return lifted
 end
 
--- Stable partition that moves every complete quest after every quest still in
--- progress, so the window reads as "what is left to do" first and "ready to
--- turn in" last. The partition is global: a complete quest sinks to the very
--- bottom of the window, not merely to the bottom of its own zone's block, and
--- the relative order inside each half is the raw quest log's own.
---
--- With zone grouping on, the complete tail is re-grouped by zone as it is
--- appended -- zones in the order their first complete quest appears -- so that
--- one zone's complete quests stay contiguous and the lazy header machinery in
--- BuildLines still writes a single header for them. The cost is that a zone
--- holding both kinds is named twice, once above with what is left to do and
--- once at the bottom with what is ready to turn in; that is the price of the
--- complete quests actually being at the bottom, which is what the header
--- ordering exists to serve rather than the other way round.
---
--- Removing quests from the middle cannot break the contiguity of the ones that
--- remain, so the incomplete half keeps the log's own zone runs untouched.
+-- Stable partition that moves complete quests after work still in progress.
+-- Without zone grouping that is one global tail. With grouping, every zone is
+-- emitted once and its complete quests form the bottom of that zone's block.
 --
 -- `topZoneKey`, when given, floats that zone to the head of each half; see
 -- FloatCurrentZoneFirst above.
@@ -1061,28 +1043,52 @@ local function OrderQuestsCompleteLast(quests, groupByZone, recentFirst, topZone
         return ordered
     end
 
-    -- One pass per zone, driven by the first complete quest that names it. A
-    -- quest with no zone at all is its own group under the "" key rather than
-    -- being dropped: the draw loop tolerates a nil zone (it writes no header),
-    -- and losing a complete quest here would silently shorten the window.
-    local emitted = {}
+    local groups = {}
+    local zoneOrder = {}
+    local seen = {}
+    local function AddToGroup(quest, kind)
+        local zoneKey = quest.zone or ""
+        local group = groups[zoneKey]
+        if not group then
+            group = { active = {}, complete = {} }
+            groups[zoneKey] = group
+        end
+        if not seen[zoneKey] then
+            seen[zoneKey] = true
+            table.insert(zoneOrder, zoneKey)
+        end
+        table.insert(group[kind], quest)
+    end
+
+    index = 1
+    local activeCount = table.getn(ordered)
+    while index <= activeCount do
+        AddToGroup(ordered[index], "active")
+        index = index + 1
+    end
     index = 1
     while index <= completeCount do
-        local zoneKey = complete[index].zone or ""
-        if not emitted[zoneKey] then
-            emitted[zoneKey] = true
-            local scan = index
-            while scan <= completeCount do
-                local other = complete[scan]
-                if (other.zone or "") == zoneKey then
-                    table.insert(ordered, other)
-                end
-                scan = scan + 1
-            end
+        AddToGroup(complete[index], "complete")
+        index = index + 1
+    end
+
+    local grouped = {}
+    index = 1
+    while index <= table.getn(zoneOrder) do
+        local group = groups[zoneOrder[index]]
+        local scan = 1
+        while scan <= table.getn(group.active) do
+            table.insert(grouped, group.active[scan])
+            scan = scan + 1
+        end
+        scan = 1
+        while scan <= table.getn(group.complete) do
+            table.insert(grouped, group.complete[scan])
+            scan = scan + 1
         end
         index = index + 1
     end
-    return ordered
+    return grouped
 end
 
 -- Turns the model into the flat list of rows the window draws. Everything that
@@ -2119,10 +2125,25 @@ function TrackerFrame:PreparePendingReveal(lines)
     self.hudRevealTitle = title
 end
 
+-- The quest dialogue hides the HUD tracker while it is up
+-- (Dialogue:SyncInterfaceHidden). Lifting it redraws from scratch.
+function TrackerFrame:SetSuppressed(suppressed)
+    suppressed = suppressed and true or false
+    if (self.suppressed or false) == suppressed then return end
+    self.suppressed = suppressed
+    self.dirty = true
+    self:Refresh()
+end
+
 -- Rebuilds the line list and redraws only when the rendered content changes.
 function TrackerFrame:Refresh()
     local window = self.window
     if not window then
+        return
+    end
+    if self.suppressed then
+        Client.HideObject(window)
+        self.dirty = true
         return
     end
     if not Setting("trackerEnabled") then

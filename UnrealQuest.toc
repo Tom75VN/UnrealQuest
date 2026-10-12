@@ -2,7 +2,7 @@
 ## Title: |cffffffffUnreal|cfff5ae0a Quest
 ## Notes: Quest helper for the Unreal Azeroth client. A movable quest tracker and service-NPC selector, current-zone world-map pins, minimap pins, quest tracking and entity tooltips. A quest navigator arc and arrow point the way to the quest you are following, and a second one to a tracked creature - see docs/HUD-NAVIGATOR.md.
 ## Author: Thomas
-## Version: 0.4.1
+## Version: 0.5.0
 ## X-License: MIT. Bundled world data from pfQuest (MIT), sourced from VMaNGOS. See LICENSE.
 ## SavedVariables: UnrealQuestDB
 ## SavedVariablesPerCharacter: UnrealQuestCharDB
@@ -70,6 +70,7 @@ Core\Driver.lua
 Core\Events.lua
 Data\Database.lua
 Data\NodeIcons.lua
+Data\DialogueBackdrops.lua
 Data\QuestMatch.lua
 Data\QuestTarget.lua
 Quest\QuestState.lua
@@ -95,6 +96,7 @@ Quest\QuestLogRewards.lua
 Quest\QuestRewardColors.lua
 Quest\GearAdvisor.lua
 Quest\QuestGiverTranslation.lua
+Quest\Dialogue.lua
 Map\MapContext.lua
 Map\AreaContours.lua
 Map\WorldMapPins.lua
@@ -106,6 +108,7 @@ Map\QuestZonePresence.lua
 World\WorldFrameScan.lua
 World\QuestMarks.lua
 World\RareAlert.lua
+World\TargetQuestIcon.lua
 HUD\PlayerHeading.lua
 HUD\Waypoint.lua
 HUD\Navigator.lua

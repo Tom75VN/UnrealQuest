@@ -1,4 +1,4 @@
-<p align="center"><img src="media/logo.webp" alt="UnrealQuest logo" width="160"></p>
+<p align="center"><img src="docs/logo.webp" alt="UnrealQuest logo" width="160"></p>
 
 # UnrealQuest
 
@@ -127,8 +127,8 @@ visible click.
 
 ## Version
 
-Current release: 0.4.1
+Current release: 0.5.0
 
 ## License
 
-UnrealQuest is released under the MIT License. Bundled world data originates from VMaNGOS and was packaged by pfQuest under the MIT License. The Dragonflight Quest Log artwork under `media/QuestLog/` is imported art with its own provenance; see [LICENSE](LICENSE), [media/QuestLog/ATTRIBUTION.md](media/QuestLog/ATTRIBUTION.md) and [Database/CREDITS.md](Database/CREDITS.md).
+UnrealQuest is released under the MIT License. Bundled world data originates from VMaNGOS and was packaged by pfQuest under the MIT License. The Dragonflight Quest Log artwork under `media/Textures/QuestLog/` is imported art with its own provenance; see [LICENSE](LICENSE), [media/Textures/QuestLog/ATTRIBUTION.md](media/Textures/QuestLog/ATTRIBUTION.md) and [Database/CREDITS.md](Database/CREDITS.md).

@@ -132,7 +132,7 @@ local DOT_BORDER_LEVEL_BOOST = -1
 local GIVER_ICON_HEIGHT = 12
 local GIVER_ICON_WIDTH = GIVER_ICON_HEIGHT * 19 / 32
 local LOW_LEVEL_GIVER_ICON_WIDTH = GIVER_ICON_HEIGHT * 27 / 64
--- media/ActiveQuestIcon.tga is 19x32, so the "?" keeps its own aspect ratio
+-- media/Textures/Map/Pins/ActiveQuestIcon.tga is 19x32, so the "?" keeps its own aspect ratio
 -- rather than being squashed into a square by SetAllPoints -- the same
 -- reasoning as the world map's TURNIN_ICON_WIDTH.
 local TURNIN_ICON_HEIGHT = 14

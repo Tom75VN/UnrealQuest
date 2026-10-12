@@ -118,6 +118,9 @@ local function ResolveGiverQuestId()
     return match and match:ResolveGiverQuestId() or nil
 end
 
+-- The colour escape that draws a reward line's amount in white (valueText).
+local WHITE_VALUE = "|cffffffff"
+
 local function AddExperienceLine(lines, database, questId, language)
     local xp = database:GetQuestRewardXP(questId)
     if not xp then
@@ -125,6 +128,10 @@ local function AddExperienceLine(lines, database, questId, language)
     end
     table.insert(lines, {
         text = UQ.LForLanguage(language, "QUESTLOG_REWARD_XP", tostring(xp)),
+        -- The same line with only the amount in white, for a surface that
+        -- draws its label dimmer (the Minimal dialogue's reward line).
+        valueText = UQ.LForLanguage(language, "QUESTLOG_REWARD_XP",
+            WHITE_VALUE .. tostring(xp) .. "|r"),
         r = XP_COLOR.r, g = XP_COLOR.g, b = XP_COLOR.b,
     })
 end
@@ -141,18 +148,24 @@ local function AddReputationLines(lines, database, questId, language)
         local amount = reward.value
         local signed = amount > 0 and ("+" .. tostring(amount)) or tostring(amount)
         local name = database:GetFactionName(reward.faction)
-        local text
+        local text, valueText
+        local white = WHITE_VALUE .. signed .. "|r"
         if name then
             text = UQ.LForLanguage(language,
                 "QUESTLOG_REWARD_REPUTATION", name, signed)
+            valueText = UQ.LForLanguage(language,
+                "QUESTLOG_REWARD_REPUTATION", name, white)
         else
             -- No faction table on this install; the amount stands alone rather
             -- than being labelled with an id the player cannot read.
             text = UQ.LForLanguage(language,
                 "QUESTLOG_REWARD_REPUTATION_UNNAMED", signed)
+            valueText = UQ.LForLanguage(language,
+                "QUESTLOG_REWARD_REPUTATION_UNNAMED", white)
         end
         local color = amount > 0 and REP_GAIN_COLOR or REP_LOSS_COLOR
-        table.insert(lines, { text = text, r = color.r, g = color.g, b = color.b })
+        table.insert(lines, { text = text, valueText = valueText,
+            r = color.r, g = color.g, b = color.b })
         index = index + 1
     end
 end
@@ -188,6 +201,12 @@ local function BuildLines(database, questId, parchment)
         ApplyParchmentStyle(lines)
     end
     return lines
+end
+
+function QuestLogRewards:GetGiverLines()
+    local config = Config()
+    if config and config:Get("questLogRewards") == false then return nil end
+    return BuildLines(Database(), ResolveGiverQuestId(), true)
 end
 
 local function ClearAll()

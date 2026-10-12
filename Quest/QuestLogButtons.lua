@@ -97,8 +97,8 @@ Classic WoW and when unrealUI is not installed.
 
 Two looks, chosen on every poll by Client.UsesQuestLogTexturedButtons. With
 unrealUI absent, or hosting its modern-wow theme, the buttons wear authored
-art: Show and Track the red button (media/128RedButton), Following the
-gold-rimmed red one (media/128GoldRedButton), each a three-slice skin with a
+art: Show and Track the red button (media/Textures/QuestLog/128RedButton), Following the
+gold-rimmed red one (media/Textures/QuestLog/128GoldRedButton), each a three-slice skin with a
 recessed hover state -- see Client.SetQuestLogButtonSkin for the atlas layout
 and the evidence behind drawing it that way. Every other unrealUI theme keeps
 the flat look below.

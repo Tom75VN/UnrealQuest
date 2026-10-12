@@ -596,6 +596,36 @@ function GearAdvisor:Refresh()
     self.applied = true
 end
 
+-- The marks for the dialogue's reward panel, on the accept page as well as
+-- the completion page: the quest-giver item calls answer on both, so this
+-- evaluates on its own cache rather than through Refresh, which only runs
+-- while the stock completion window is up.
+function GearAdvisor:GetDialogueMarks(choices)
+    if type(choices) ~= "table" or table.getn(choices) == 0 or not Enabled() then
+        return nil
+    end
+    local rewards = ReadChoices()
+    if not rewards or table.getn(rewards) ~= table.getn(choices) then return nil end
+    local index = 1
+    while index <= table.getn(choices) do
+        if rewards[index].name ~= choices[index].name then return nil end
+        index = index + 1
+    end
+    local spec = self:ResolveSpec()
+    local signature = Signature(rewards, spec)
+    local cache = self.dialogueCache
+    if not cache or signature ~= cache.signature
+        or (cache.incomplete and cache.incomplete >= RETRY_PASSES) then
+        local marks, complete = self:Evaluate(rewards, spec)
+        cache = { signature = signature, marks = marks,
+            incomplete = (not complete) and 0 or nil }
+        self.dialogueCache = cache
+    elseif cache.incomplete then
+        cache.incomplete = cache.incomplete + 1
+    end
+    return cache.marks
+end
+
 -- Diagnostic lines for /uq gear: the spec and each choice's numbers.
 function GearAdvisor:Describe()
     local lines = { "spec " .. tostring(self:ResolveSpec()) }

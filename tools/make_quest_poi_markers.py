@@ -2,12 +2,12 @@
 
 Two outputs, both in the client's proven RLE TGA form:
 
-- `media/questpoi.tga` -- `media/questpoi-v3.png` (main, hover and active
+- `media/Textures/Map/Pins/questpoi.tga` -- `questpoi-v3.png` (main, hover and active
   circles, then the followed-quest glow, left to right, on a transparent
   background) reduced to a power-of-two 256x64 strip: one element per 64x64
   cell at x = 0, 64, 128 and 192. The three circles share one scale so their
   rims match; the glow is cropped to its own full fade.
-- `media/QuestPOINumbers.tga` -- the numbers 1-25 in the same 8x8 grid as
+- `media/Textures/Map/Pins/QuestPOINumbers.tga` -- the numbers 1-25 in the same 8x8 grid as
   `UIQuestPOINumberIcons.tga`, at twice its definition (512x512, 64px cells). The glyph shapes are that atlas's plain black
   glyphs (rows 0-3), filled with a solid colour: rows 0-3 use the active
   colour #2c1501, rows 4-7 the main/hover colour #f8c662.
@@ -23,10 +23,12 @@ import os
 
 from PIL import Image, ImageChops, ImageDraw
 
-STRIP_SOURCE = os.path.join("media", "questpoi-v3.png")
-STRIP_OUTPUT = os.path.join("media", "questpoi.tga")
-GLYPH_SOURCE = os.path.join("media", "UIQuestPOINumberIcons.tga")
-GLYPH_OUTPUT = os.path.join("media", "QuestPOINumbers.tga")
+# Generator inputs live outside the addon folder (override with UQ_SOURCE_ART).
+SOURCE_ART = os.environ.get("UQ_SOURCE_ART", "D:/Development/unrealQuest_Data/#backup/unrealQuest-media")
+STRIP_SOURCE = os.path.join(SOURCE_ART, "questpoi-v3.png")
+STRIP_OUTPUT = os.path.join("media", "Textures", "Map", "Pins", "questpoi.tga")
+GLYPH_SOURCE = os.path.join(SOURCE_ART, "UIQuestPOINumberIcons.tga")
+GLYPH_OUTPUT = os.path.join("media", "Textures", "Map", "Pins", "QuestPOINumbers.tga")
 
 CELL = 64
 ELEMENTS = 4

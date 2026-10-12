@@ -1564,7 +1564,8 @@ end
 --
 -- Returns normalized entrance locations for one area, or nil. Every location
 -- keeps x/y at [1]/[2] and also carries the fields the finder consumes:
--- category, name, instanceType, sourceId and entranceLabel.
+-- category, name, instanceType, sourceId and entranceLabel, plus
+-- minimumLevel (entry) and levelLow/levelHigh (recommended range) when known.
 -- Built on the first ask and kept: both tables it reads are static for the
 -- session. The returned list belongs to the index and must be treated as
 -- read-only.
@@ -1632,6 +1633,18 @@ function Database:GetInstanceEntrances(areaId)
                                         and entranceLabel ~= "" then
                                         displayName = displayName .. " (" .. entranceLabel .. ")"
                                     end
+                                    -- A wing's own range wins over the
+                                    -- instance's (Scarlet Monastery, Maraudon).
+                                    local levels = entrance.levels
+                                    if type(levels) ~= "table" then
+                                        levels = record.levels
+                                    end
+                                    local levelLow, levelHigh = nil, nil
+                                    if type(levels) == "table" and type(levels[1]) == "number"
+                                        and type(levels[2]) == "number" then
+                                        levelLow = levels[1]
+                                        levelHigh = levels[2]
+                                    end
                                     table.insert(bucket, {
                                         coordinate[1], coordinate[2],
                                         category = "instances",
@@ -1643,6 +1656,8 @@ function Database:GetInstanceEntrances(areaId)
                                         name = displayName,
                                         instanceType = record.type,
                                         minimumLevel = record.min,
+                                        levelLow = levelLow,
+                                        levelHigh = levelHigh,
                                         entranceLabel = entranceLabel,
                                     })
                                 end
@@ -1840,16 +1855,51 @@ function Database:IsDungeonQuest(questId)
     return next(maps.objective) ~= nil or next(maps.turnIn) ~= nil
 end
 
+-- True when a quest-log header names a dungeon or raid. The client files a
+-- dungeon quest under the instance's name even when its recorded work is
+-- outdoors -- Serpentbloom (962) is gathered in the Barrens cave in front of
+-- the Wailing Caverns portal, so neither IsDungeonQuest nor IsEliteQuest can
+-- see it. The header is the client's localized area name, so it is compared
+-- through the localized zone table against the areas GetInstanceMapForArea
+-- already ties to an instance.
+function Database:IsInstanceZoneName(name)
+    local key = type(name) == "string" and UQ.NameKey(name) or nil
+    if not key then
+        return false
+    end
+    if not self.instanceNameKeys then
+        local keys = {}
+        local names = LocaleTable("zones")
+        self:GetInstanceMapForArea(0)
+        if type(names) == "table" and type(self.instanceAreaIndex) == "table" then
+            local areaId, _
+            for areaId, _ in pairs(self.instanceAreaIndex) do
+                local areaKey = type(names[areaId]) == "string"
+                    and UQ.NameKey(names[areaId]) or nil
+                if areaKey then
+                    keys[areaKey] = true
+                end
+            end
+        end
+        self.instanceNameKeys = keys
+    end
+    return self.instanceNameKeys[key] == true
+end
+
 -- The one level label every addon-owned presentation shows: "24", or "24+"
--- for a dungeon quest. An unmatched or ambiguous quest has no questId and so
--- never gains the "+" -- a hypothesis must not be dressed up as a fact.
+-- for a dungeon or elite quest. An unmatched or ambiguous quest has no questId
+-- and so never gains the "+" from the bundled data -- a hypothesis must not be
+-- dressed up as a fact. Its quest-log header is the client's own word, so a
+-- header naming an instance counts whether or not the quest resolved.
 function UQ.FormatQuestLevel(level, questOrId)
     local text = tostring(level)
     local questId = type(questOrId) == "table" and questOrId.questId or questOrId
+    local zone = type(questOrId) == "table" and questOrId.zone or nil
     local database = UQ:GetModule("Database")
-    if type(questId) == "number" and database
-        and type(database.IsDungeonQuest) == "function"
-        and database:IsDungeonQuest(questId) then
+    if database and ((type(questId) == "number"
+            and (database:IsDungeonQuest(questId)
+                or database:IsEliteQuest(questId)))
+        or database:IsInstanceZoneName(zone)) then
         text = text .. "+"
     end
     return text
@@ -2896,6 +2946,91 @@ function Database:IsMob(unitId)
         return false
     end
     return IsMobRecord(unitId, record)
+end
+
+-- Elite quests ------------------------------------------------------------
+-- The bundled quest records carry no quest type (VMaNGOS's QuestInfo was not
+-- packaged), and GetQuestLogTitle's questTag was nil in every captured
+-- sample, so "elite quest" is inferred from the creatures the quest sends the
+-- player after: an objective creature that is an elite, rare elite or boss
+-- mob, or an objective item that ONLY such mobs drop. One ordinary dropper is
+-- enough to clear the item -- the player can finish it without a group.
+-- Plain rares (rank 4) are not elite and never count. IsMobRecord keeps out
+-- ranked faction NPCs a quest merely sends the player to speak to.
+local ELITE_QUEST_RANK = {
+    [RANK_ELITE] = true,
+    [RANK_RARE_ELITE] = true,
+    [RANK_BOSS] = true,
+}
+
+local MAX_ELITE_QUEST_CACHE = 512
+local eliteQuestCache = {}
+local eliteQuestCacheCount = 0
+
+function Database:IsEliteUnit(unitId)
+    local record = self:GetUnit(unitId)
+    if type(record) ~= "table" then
+        return false
+    end
+    local rank = tonumber(record.rnk)
+    if not rank or not ELITE_QUEST_RANK[rank] then
+        return false
+    end
+    return IsMobRecord(unitId, record)
+end
+
+function Database:IsEliteQuest(questId)
+    if type(questId) ~= "number" then
+        return false
+    end
+    local cached = eliteQuestCache[questId]
+    if cached ~= nil then
+        return cached
+    end
+    local record = self:GetQuest(questId)
+    local objective = type(record) == "table" and record["obj"] or nil
+    local elite = false
+
+    if type(objective) == "table" and type(objective.U) == "table" then
+        local _, unitId
+        for _, unitId in pairs(objective.U) do
+            if self:IsEliteUnit(unitId) then
+                elite = true
+                break
+            end
+        end
+    end
+
+    if not elite and type(objective) == "table"
+        and type(objective.I) == "table" then
+        local _, itemId
+        for _, itemId in pairs(objective.I) do
+            local item = self:GetItem(itemId)
+            if type(item) == "table" and type(item.U) == "table"
+                and next(item.U) ~= nil then
+                local onlyElites = true
+                local unitId, _
+                for unitId, _ in pairs(item.U) do
+                    if not self:IsEliteUnit(unitId) then
+                        onlyElites = false
+                        break
+                    end
+                end
+                if onlyElites then
+                    elite = true
+                    break
+                end
+            end
+        end
+    end
+
+    if eliteQuestCacheCount >= MAX_ELITE_QUEST_CACHE then
+        eliteQuestCache = {}
+        eliteQuestCacheCount = 0
+    end
+    eliteQuestCache[questId] = elite
+    eliteQuestCacheCount = eliteQuestCacheCount + 1
+    return elite
 end
 
 -- Whether a creature is worth INTERRUPTING the player for: a mob, and either

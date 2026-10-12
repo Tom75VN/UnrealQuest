@@ -23,7 +23,7 @@ pfQuest's icons.lua, Database/meta.lua and Database/enUS/objects.lua.
 
 local UQ = UnrealQuest
 
--- category -> object ID -> file name under media/icons/<category>/
+-- category -> object ID -> file name under media/Textures/Icons/<category>/
 UQ.nodeIcons = {
     ["herbs"] = {
         [1617] = "Silverleaf", -- Silverleaf

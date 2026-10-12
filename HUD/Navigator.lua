@@ -51,7 +51,7 @@ distorting instead of turning rigidly. Call success was not visual support.
 
 The navigator therefore uses the same proven technique as pfQuest's
 TomTom-derived arrow: pre-rotated frames selected with ordinary four-argument
-`SetTexCoord`. `media/NavigationArrowFrames0.tga` through `Frames3.tga` hold 64
+`SetTexCoord`. `media/Textures/HUD/NavigationArrowFrames0.tga` through `Frames3.tga` hold 64
 frames across four 4x4 atlases generated from the authored PNG by
 `tools/make_navigator_textures.py`. Each 128x128 cell is a 5.625-degree step,
 square, and sampled wholly inside 0..1. The atlases are RLE TGA type 10,
