@@ -886,19 +886,32 @@ end
 
 function Navigator:Placement()
     local config = Config()
+    -- A Y saved against the old frame, which carried empty room above the dial,
+    -- is converted once to the drawn-extent frame so the dial does not move
+    -- (Client.NavigatorLegacyOffsetShift). Defaults are already in the new frame.
+    if config and config:GetStored("navigatorFrameLayout") ~= 2 then
+        local storedY = config:GetStored("navigatorY")
+        if type(storedY) == "number" then
+            config:Set("navigatorY", storedY + Client.NavigatorLegacyOffsetShift(
+                config:Get("navigatorPoint"), DIAL_WIDTH, ARROW_SIZE, false))
+        end
+        config:Set("navigatorFrameLayout", 2)
+    end
     local offsetX = config and config:Get("navigatorX")
     local offsetY = config and config:Get("navigatorY")
     local scale = config and config:Get("navigatorScale")
     local point = config and config:Get("navigatorPoint")
     local relativePoint = config and config:Get("navigatorRelativePoint")
-    if type(offsetX) ~= "number" or offsetX < -2000 or offsetX > 2000 then
-        offsetX = 0
-    end
-    if type(offsetY) ~= "number" or offsetY < -2000 or offsetY > 2000 then
-        offsetY = 150
-    end
     if type(scale) ~= "number" or scale < 0.5 or scale > 2.5 then
         scale = 1
+    end
+    -- Offsets are in the dial's own units, so the sanity bound scales with it.
+    local limitX, limitY = Client.GetNavigatorOffsetLimits(scale * BASE_RENDER_SCALE)
+    if type(offsetX) ~= "number" or offsetX < -limitX or offsetX > limitX then
+        offsetX = 0
+    end
+    if type(offsetY) ~= "number" or offsetY < -limitY or offsetY > limitY then
+        offsetY = 58
     end
     if type(point) ~= "string" then
         point = "TOP"

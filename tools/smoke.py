@@ -2317,7 +2317,7 @@ for path in toc_files(os.path.join(ADDONS, "unrealQuest", "UnrealQuest.toc")):
 
 check("world data populated", rt.eval("UnrealQuestData ~= nil and UnrealQuestData.quests ~= nil"))
 
-check("namespace created", rt.eval("UnrealQuest ~= nil and UnrealQuest.version == '0.5.0'"))
+check("namespace created", rt.eval("UnrealQuest ~= nil and UnrealQuest.version == '0.5.1'"))
 check("slash command registered", rt.eval("SlashCmdList.UNREALQUEST == nil"),
       "should still be nil before init")
 
@@ -16645,7 +16645,11 @@ check("the navigator contains only the compact dial and distance, with no quest 
         and frame.unrealQuestTitle == nil
         and frame.unrealQuestObjective == nil
         and frame.unrealQuestDistance ~= nil
-        and frame.unrealQuestDial.point[5] == -82
+        -- No empty room above the dial: the frame's top is the arc's top, so
+        -- the dial (arc centred in it) starts its transparent margin above it,
+        -- and the frame ends under the 36-unit yard readout.
+        and math.abs(frame.unrealQuestDial.point[5] - (130 - 220 * 257 / 512) / 2) < 0.001
+        and math.abs(frame:GetHeight() - (130 - (130 - 220 * 257 / 512) / 2 + 36)) < 0.001
 end)()"""))
 
 check("the distance and ETA row is horizontal and centred beneath the arrow", rt.eval("""(function()
@@ -16843,10 +16847,10 @@ check("a saved navigator position off screen is pulled back and kept", rt.eval("
     UnrealQuestDB.navigatorX = 900
     UnrealQuestDB.navigatorY = 683
     nav:RefreshArrow()
-    local insets = frame.unrealQuestScreenInsets
-    local scale = frame:GetScale()
-    local top = frame:GetBottom() + frame:GetHeight() - insets.top * scale
-    local bottom = frame:GetBottom() + insets.bottom * scale
+    -- The frame is exactly what the dial draws, so its own edges are the
+    -- drawn edges (NAVIGATOR_LAYOUT).
+    local top = frame:GetBottom() + frame:GetHeight()
+    local bottom = frame:GetBottom()
     local ok = frame:GetHeight() > 0 and top <= 768.001 and bottom >= -0.001
         and math.abs(top - 768) < 0.001 and frame:GetLeft() == 900
         and frame.point[5] == UnrealQuestDB.navigatorY
@@ -16862,27 +16866,79 @@ check("a saved navigator position off screen is pulled back and kept", rt.eval("
     return ok and frame.point[5] == -40
 end)()"""))
 
-# Dropped against the top edge, the dial's empty headroom hangs off screen.
-# The clamp measures what is drawn, so the arc lands flush with the top of the
-# screen rather than the invisible frame top being pulled down to it.
+# The client's own drag clamp keeps a moved frame's whole rectangle on screen
+# (in-game check 2026-10-17), so the frame carries no empty room: its top is
+# the arc's top, and a drop past the top edge lands the arc flush with it.
 check("a navigator dropped over the top edge lands flush with it", rt.eval("""(function()
     local nav = UnrealQuest:GetModule("Navigator")
     local frame = UnrealQuestNavigator
     UnrealQuestDB.navigatorPoint = "TOPLEFT"
     UnrealQuestDB.navigatorRelativePoint = "TOPLEFT"
     UnrealQuestDB.navigatorX = 900
-    UnrealQuestDB.navigatorY = 60
+    UnrealQuestDB.navigatorY = 40
     nav:RefreshArrow()
-    local insets = frame.unrealQuestScreenInsets
-    local drawnTop = frame:GetBottom() + frame:GetHeight() - insets.top * frame:GetScale()
-    local ok = insets.top > 0 and math.abs(drawnTop - 768) < 0.001
-        and UnrealQuestDB.navigatorY < 60 and frame.point[5] == UnrealQuestDB.navigatorY
+    local drawnTop = frame:GetBottom() + frame:GetHeight()
+    local ok = frame.unrealQuestScreenInsets == nil
+        and math.abs(drawnTop - 768) < 0.001
+        and UnrealQuestDB.navigatorY == 0
+        and frame.point[5] == UnrealQuestDB.navigatorY
     UnrealQuestDB.navigatorPoint = "CENTER"
     UnrealQuestDB.navigatorRelativePoint = "CENTER"
     UnrealQuestDB.navigatorX = 80
     UnrealQuestDB.navigatorY = -40
     nav:RefreshArrow()
     return ok and frame.point[5] == -40
+end)()"""))
+
+# Saved offsets are in the dial's own units: at the 0.5 base scale the screen
+# is twice as many units wide, so a drop in the right half lands past 2000.
+# The old fixed +-2000 bound reset it to x = 0, the left edge (user report
+# 2026-10-17); the bound is one screen in the dial's units.
+check("a navigator offset past 2000 dial units is kept, not reset to the edge", rt.eval("""(function()
+    local nav = UnrealQuest:GetModule("Navigator")
+    local mob = UnrealQuest:GetModule("MobNavigator")
+    local saved = { UnrealQuestDB.navigatorX, UnrealQuestDB.mobNavigatorX }
+    UnrealQuestDB.navigatorX = 2490
+    UnrealQuestDB.mobNavigatorX = 2490
+    local x = nav:Placement()
+    local mobX = mob:Placement()
+    -- Garbage beyond one screen in the dial's units still falls back.
+    UnrealQuestDB.navigatorX = 1000000
+    local reset = nav:Placement()
+    UnrealQuestDB.navigatorX, UnrealQuestDB.mobNavigatorX = saved[1], saved[2]
+    return x == 2490 and mobX == 2490 and reset == 0
+end)()"""))
+
+# The frame used to carry 82 units of empty room above the dial. A Y saved
+# against that frame is converted once so the dial stays where it was: through
+# TOP the frame's top moved down to the arc (or caption) top; through BOTTOM it
+# moved down to the readout's bottom; defaults are already in the new frame.
+check("a navigator Y saved against the old headroom frame is converted once", rt.eval("""(function()
+    local nav = UnrealQuest:GetModule("Navigator")
+    local mob = UnrealQuest:GetModule("MobNavigator")
+    local saved = { UnrealQuestDB.navigatorPoint, UnrealQuestDB.navigatorY,
+        UnrealQuestDB.mobNavigatorPoint, UnrealQuestDB.mobNavigatorY }
+    UnrealQuestDB.navigatorFrameLayout = nil
+    UnrealQuestDB.mobNavigatorFrameLayout = nil
+    UnrealQuestDB.navigatorPoint = "TOP"
+    UnrealQuestDB.navigatorY = 150
+    UnrealQuestDB.mobNavigatorPoint = "BOTTOM"
+    UnrealQuestDB.mobNavigatorY = 100
+    local _, y = nav:Placement()
+    local _, again = nav:Placement()
+    local _, mobY = mob:Placement()
+    -- TOP: 82 headroom + the arc's (130 - 220*257/512)/2 transparent margin.
+    local arcMargin = (130 - 220 * 257 / 512) / 2
+    local ok = math.abs(y - (150 - 82 - arcMargin)) < 0.001 and again == y
+        and UnrealQuestDB.navigatorFrameLayout == 2
+        -- BOTTOM: the frame now reaches 36 units further down, to the readout.
+        and math.abs(mobY - (100 - 36)) < 0.001
+        and UnrealQuestDB.mobNavigatorFrameLayout == 2
+        -- The default spot is the old default's: 150 less the headroom.
+        and math.abs(58 - (150 - 82 - arcMargin)) < 0.5
+    UnrealQuestDB.navigatorPoint, UnrealQuestDB.navigatorY = saved[1], saved[2]
+    UnrealQuestDB.mobNavigatorPoint, UnrealQuestDB.mobNavigatorY = saved[3], saved[4]
+    return ok
 end)()"""))
 
 rt.execute("""

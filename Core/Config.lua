@@ -519,11 +519,14 @@ local defaults = {
 
     -- UIParent-relative anchor captured after dragging. GetFrameAnchor undoes
     -- this client's inverted GetPoint Y before these scalars are persisted.
-    -- The default puts the navigation dial just above centre.
+    -- The default puts the navigation dial just above centre. Y is measured to
+    -- the frame's top, which is the arc's top since the frame was cut to what
+    -- it draws (Client.NavigatorLegacyOffsetShift): 58 is the old 150 less the
+    -- 92 units of headroom that frame no longer has, so the spot is unchanged.
     navigatorPoint = "TOP",
     navigatorRelativePoint = "CENTER",
     navigatorX = 0,
-    navigatorY = 150,
+    navigatorY = 58,
 
     -- Whether the decorative arc is drawn behind the arrow. It is a reference
     -- frame, not information -- the arrow alone is still correct without it.
@@ -541,10 +544,11 @@ local defaults = {
     -- Offset left of the quest navigator's default so a player who tracks a
     -- mob for the first time sees two dials rather than one dial with a second
     -- hidden exactly behind it.
+    -- 76: the old 150 less the 74 units of headroom left above its caption.
     mobNavigatorPoint = "TOP",
     mobNavigatorRelativePoint = "CENTER",
     mobNavigatorX = -170,
-    mobNavigatorY = 150,
+    mobNavigatorY = 76,
     mobNavigatorShowArc = true,
 }
 
@@ -797,6 +801,12 @@ function Config:Get(key)
         return defaults[key]
     end
     return value
+end
+
+-- The saved value alone, nil when the key only has its default. For one-time
+-- migrations that must convert what a player saved and leave defaults alone.
+function Config:GetStored(key)
+    return self.store and self.store[key]
 end
 
 function Config:Set(key, value)

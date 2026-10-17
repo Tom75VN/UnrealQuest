@@ -539,19 +539,31 @@ end
 
 function MobNavigator:Placement()
     local config = Config()
+    -- Converted once from the old frame with empty room above the caption, so
+    -- the dial does not move (Client.NavigatorLegacyOffsetShift).
+    if config and config:GetStored("mobNavigatorFrameLayout") ~= 2 then
+        local storedY = config:GetStored("mobNavigatorY")
+        if type(storedY) == "number" then
+            config:Set("mobNavigatorY", storedY + Client.NavigatorLegacyOffsetShift(
+                config:Get("mobNavigatorPoint"), DIAL_WIDTH, ARROW_SIZE, true))
+        end
+        config:Set("mobNavigatorFrameLayout", 2)
+    end
     local offsetX = config and config:Get("mobNavigatorX")
     local offsetY = config and config:Get("mobNavigatorY")
     local scale = config and config:Get("mobNavigatorScale")
     local point = config and config:Get("mobNavigatorPoint")
     local relativePoint = config and config:Get("mobNavigatorRelativePoint")
-    if type(offsetX) ~= "number" or offsetX < -2000 or offsetX > 2000 then
-        offsetX = -170
-    end
-    if type(offsetY) ~= "number" or offsetY < -2000 or offsetY > 2000 then
-        offsetY = 150
-    end
     if type(scale) ~= "number" or scale < 0.5 or scale > 2.5 then
         scale = 1
+    end
+    -- Offsets are in the dial's own units, so the sanity bound scales with it.
+    local limitX, limitY = Client.GetNavigatorOffsetLimits(scale * BASE_RENDER_SCALE)
+    if type(offsetX) ~= "number" or offsetX < -limitX or offsetX > limitX then
+        offsetX = -170
+    end
+    if type(offsetY) ~= "number" or offsetY < -limitY or offsetY > limitY then
+        offsetY = 76
     end
     if type(point) ~= "string" then
         point = "TOP"

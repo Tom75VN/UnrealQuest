@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.1
+
+- Fix the UI for the new client update 2432
+
 ## 0.5.0
 
 - Added immersive quest dialogue with 6 themes

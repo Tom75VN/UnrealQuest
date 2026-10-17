@@ -7799,6 +7799,77 @@ function Client.SetTrackerBackgroundOpacity(frame, percent)
         FLAT_BACKGROUND[1], FLAT_BACKGROUND[2], FLAT_BACKGROUND[3], scale)
 end
 
+-- UI-scale coordinate spaces -------------------------------------------------
+-- frames.ui_scale_frame_anchor_space_ratio (focused probe uiscale.v2,
+-- 2026-10-17; unrealUI's edit mode built on it is confirmed in game). With the
+-- client's UI scale on, a frame's anchor offsets and GetLeft/GetRight/GetTop/
+-- GetBottom are in its OWN units (screen / its effective scale). UIParent
+-- reports two spaces: GetWidth/GetHeight is the screen (1834.67 x 768 at
+-- uiScale 0.843) while its edge span -- the space a UIParent-relative offset
+-- resolves in -- is that divided by its scale (2177.58 x 911.545). A frame
+-- sized by two anchors (UIParent included) also reports GetWidth = edge span *
+-- effective scale, so its size is read from edges; a SetWidth-sized frame's
+-- GetWidth is its own size. Defined on Client rather than as locals: this
+-- file's main chunk is at the 200-local limit.
+
+-- `object`'s width and height in its own units, from its edges; GetWidth /
+-- GetHeight stand in for an axis whose edges cannot be read.
+function Client.GetObjectEdgeSize(object)
+    if not object then
+        return nil
+    end
+    local left, right = ReadObjectMethod(object, "GetLeft"), ReadObjectMethod(object, "GetRight")
+    local bottom, top = ReadObjectMethod(object, "GetBottom"), ReadObjectMethod(object, "GetTop")
+    local width, height
+    if type(left) == "number" and type(right) == "number" and right > left then
+        width = right - left
+    else
+        width = Client.GetObjectWidth(object)
+    end
+    if type(bottom) == "number" and type(top) == "number" and top > bottom then
+        height = top - bottom
+    else
+        height = Client.GetObjectHeight(object)
+    end
+    return width, height
+end
+
+-- UIParent's anchor-coordinate span, or nil when it cannot be read. Falls
+-- back to its reported size over its effective scale.
+function Client.GetUIParentLayoutSize()
+    local uiParent = ResolveObject("UIParent")
+    if not uiParent then
+        return nil
+    end
+    local width, height = Client.GetObjectEdgeSize(uiParent)
+    if type(width) ~= "number" or type(height) ~= "number"
+        or width <= 0 or height <= 0 then
+        return nil
+    end
+    local left = ReadObjectMethod(uiParent, "GetLeft")
+    local bottom = ReadObjectMethod(uiParent, "GetBottom")
+    if type(left) ~= "number" or type(bottom) ~= "number" then
+        local scale = ReadObjectMethod(uiParent, "GetEffectiveScale")
+        if type(scale) == "number" and scale > 0 then
+            width, height = width / scale, height / scale
+        end
+    end
+    return width, height
+end
+
+-- UIParent anchor units per one of `frame`'s own units: its effective scale
+-- over UIParent's. 1 when either cannot be read.
+function Client.GetLayoutRatio(frame)
+    local uiParent = ResolveObject("UIParent")
+    local scale = frame and ReadObjectMethod(frame, "GetEffectiveScale")
+    local uiScale = uiParent and ReadObjectMethod(uiParent, "GetEffectiveScale")
+    if type(scale) ~= "number" or type(uiScale) ~= "number"
+        or scale <= 0 or uiScale <= 0 then
+        return 1
+    end
+    return scale / uiScale
+end
+
 -- Anchor capture and re-application ------------------------------------------
 -- A captured anchor is returned as an ordinary SetPoint tuple the rest of the
 -- addon can store and replay against UIParent.
@@ -7809,10 +7880,10 @@ end
 -- anchor the client writes after StartMoving/StopMovingOrSizing, GetPoint read
 -- Y back with the SAME sign SetPoint was given, 18 of 18. The negation this
 -- function used to apply (frames.getpoint_relative_name_y_inverted) therefore
--- mirrored every saved position across its anchor. GetLeft/GetBottom and
--- GetWidth/GetHeight are sign-safe and already in UIParent units whatever the
--- frame's own scale (frames.own_scale_resizes_about_anchor_in_parent_space),
--- so no scale conversion is applied. Only the point NAMES come from GetPoint.
+-- mirrored every saved position across its anchor. Edges are sign-safe and in
+-- the frame's own units, the units its offsets are given in; UIParent's span
+-- is brought into them through Client.GetLayoutRatio (see "UI-scale
+-- coordinate spaces" above). Only the point NAMES come from GetPoint.
 
 -- Scoped: the file's main chunk is at the 200-local limit.
 do
@@ -7857,15 +7928,18 @@ do
             return nil
         end
         local left, bottom = Client.GetObjectCorner(frame)
+        -- Every caller moves a SetWidth/SetHeight-sized window, whose GetWidth
+        -- is its own size in its own units; only anchor-sized frames need edges.
         local width = Client.GetObjectWidth(frame)
         local height = Client.GetObjectHeight(frame)
-        local parentWidth = Client.GetObjectWidth(uiParent)
-        local parentHeight = Client.GetObjectHeight(uiParent)
+        local parentWidth, parentHeight = Client.GetUIParentLayoutSize()
         if not left or not width or not height or width <= 0 or height <= 0
-            or not parentWidth or not parentHeight
-            or parentWidth <= 0 or parentHeight <= 0 then
+            or not parentWidth or not parentHeight then
             return nil
         end
+        -- UIParent's span in the frame's own units, the units of its offsets.
+        local ratio = Client.GetLayoutRatio(frame)
+        parentWidth, parentHeight = parentWidth / ratio, parentHeight / ratio
         local point, relativePoint = AnchorPointNames(frame, uiParent)
         local x = left + width * AnchorPointFactor(point, "LEFT", "RIGHT")
             - parentWidth * AnchorPointFactor(relativePoint, "LEFT", "RIGHT")
@@ -7884,30 +7958,26 @@ do
     -- The correction is the measured overshoot of the frame's edges added to the
     -- offsets the caller just passed, never to GetPoint's offsets: that is the
     -- mistake that made unrealUI's guard double its error every pass
-    -- (frames.getpoint_y_same_sign_as_setpoint). An offset moves the frame one
-    -- for one in UIParent units, whatever the frame's own scale
-    -- (frames.own_scale_resizes_about_anchor_in_parent_space). A frame larger
-    -- than the screen keeps its left and top edges on screen.
+    -- (frames.getpoint_y_same_sign_as_setpoint). The whole check runs in the
+    -- frame's own units: its edges and offsets are in them, and UIParent's span
+    -- is converted into them (frames.ui_scale_frame_anchor_space_ratio), so the
+    -- overshoot adds to the offsets one for one. A frame larger than the screen
+    -- keeps its left and top edges on screen.
     --
     -- The rectangle clamped is what the frame DRAWS, so a drop against any edge
     -- lands flush with it. A frame whose drawing does not fill its own rectangle
     -- says so in frame.unrealQuestScreenInsets ({ left, right, top, bottom }, in
-    -- its own units, positive = inside, negative = drawn outside); they are
-    -- multiplied by the frame's own scale into the UIParent units its edges
-    -- report in. The navigator needs it: its frame has 82 units of empty room
-    -- above the arc, and clamping that pushed the arrow down whenever it was
-    -- dropped against the top of the screen (user report 2026-09-18).
+    -- its own units, positive = inside, negative = drawn outside), the same
+    -- units as its edges. Prefer sizing the frame to what it draws instead:
+    -- the client's own drag clamp keeps the whole frame rectangle on screen
+    -- and knows nothing of these insets, which is why the navigator frame was
+    -- cut to its drawn extent (NAVIGATOR_LAYOUT, 2026-10-17).
     local function ScreenInsets(frame)
         local insets = frame.unrealQuestScreenInsets
         if type(insets) ~= "table" then
             return 0, 0, 0, 0
         end
-        local scale = ReadObjectMethod(frame, "GetScale")
-        if type(scale) ~= "number" or scale <= 0 then
-            scale = 1
-        end
-        return (insets.left or 0) * scale, (insets.right or 0) * scale,
-            (insets.top or 0) * scale, (insets.bottom or 0) * scale
+        return insets.left or 0, insets.right or 0, insets.top or 0, insets.bottom or 0
     end
 
     function Client.KeepFrameOnScreen(frame, point, relativePoint, offsetX, offsetY)
@@ -7918,13 +7988,14 @@ do
         local left, bottom = Client.GetObjectCorner(frame)
         local width = Client.GetObjectWidth(frame)
         local height = Client.GetObjectHeight(frame)
-        local parentWidth = uiParent and Client.GetObjectWidth(uiParent)
-        local parentHeight = uiParent and Client.GetObjectHeight(uiParent)
-        if not left or not width or not height or width <= 0 or height <= 0
-            or not parentWidth or not parentHeight
-            or parentWidth <= 0 or parentHeight <= 0 then
+        local parentWidth, parentHeight = Client.GetUIParentLayoutSize()
+        if not uiParent or not left or not width or not height
+            or width <= 0 or height <= 0
+            or not parentWidth or not parentHeight then
             return offsetX, offsetY, false
         end
+        local ratio = Client.GetLayoutRatio(frame)
+        parentWidth, parentHeight = parentWidth / ratio, parentHeight / ratio
         local insetLeft, insetRight, insetTop, insetBottom = ScreenInsets(frame)
         left = left + insetLeft
         bottom = bottom + insetBottom
@@ -12809,10 +12880,9 @@ end
 
 -- The cursor in `object`'s own units: GetCursorPosition divided by the
 -- object's effective scale (api.getcursorposition_usable_for_hit_testing,
--- USER_CONFIRMED_INGAME). For a scale-1 child that is also its parent's
--- units, the space its anchor offsets are given in
--- (frames.own_scale_resizes_about_anchor_in_parent_space), so a cursor delta
--- read here moves the object one for one. Only deltas are meaningful: edge
+-- USER_CONFIRMED_INGAME). Those are the units its anchor offsets are given in
+-- (frames.ui_scale_frame_anchor_space_ratio), so a cursor delta read here
+-- moves the object one for one. Only deltas are meaningful: edge
 -- coordinates of a scaled frame mix spaces
 -- (frames.scaled_frame_edge_coordinates_mixed_space), so never compare the
 -- result with GetLeft/GetTop of a child of WorldMapFrame. nil when unread.
@@ -15294,12 +15364,20 @@ local TrackerPager = { TEXT_WIDTH = 96, MIN_TEXT_WIDTH = 40 }
 -- The height of the frame a tracker window was created in: WorldMapFrame for
 -- the map copy, UIParent for the HUD one. GetHeight on WorldMapFrame is
 -- measured (1018x745 at scale 0.5,
--- frames.scaled_frame_edge_coordinates_mixed_space), and so is UIParent's
--- (1834.67x768 at scale 1, frames.getpoint_y_same_sign_as_setpoint). A child
--- shares its parent's coordinate space, so the number is directly comparable
--- with the tracker's own height. Edge coordinates are deliberately not used.
+-- frames.scaled_frame_edge_coordinates_mixed_space). UIParent's GetHeight is
+-- the screen, not its anchor span, once the client's UI scale is on
+-- (frames.ui_scale_frame_anchor_space_ratio), so the HUD copy takes the span,
+-- converted into the window's own units. A scale-1 child of WorldMapFrame
+-- shares its parent's units, so that number is used as it comes back.
 function Client.GetTrackerParentHeight(frame)
-    return Client.GetObjectHeight(frame and frame.unrealQuestParent)
+    local parent = frame and frame.unrealQuestParent
+    if parent and parent == ResolveObject("UIParent") then
+        local _, height = Client.GetUIParentLayoutSize()
+        if type(height) == "number" then
+            return height / Client.GetLayoutRatio(frame)
+        end
+    end
+    return Client.GetObjectHeight(parent)
 end
 
 -- Sizes the page row for a `textWidth` wide label and re-seats both arrows
@@ -16770,13 +16848,56 @@ end
 -- The arrow sits below the arc's centre so its tip no longer crowds the
 -- forward ornament. The whole navigator renders at half scale, making these
 -- fourteen authored pixels a seven-pixel visual adjustment in game.
--- Removing the one-line quest card must not pull the dial up into the card's
--- old screen position. Keep its former 74px card height plus 8px gap as a
--- transparent, mouse-disabled offset above the dial.
+--
+-- The frame is exactly what the tree draws: from the arc's top (or the
+-- caption's, above it) down to the yard readout under the arrow. This client's
+-- StartMoving keeps a moved frame's whole rectangle on screen even with
+-- IsClampedToScreen false (in-game check, user report 2026-10-17), so empty
+-- room inside the frame is room the drawn dial can never cross to reach an
+-- edge. The frame used to carry `legacyHeadroom` -- the removed one-line quest
+-- card's 74px plus its 8px gap -- as transparent room above the dial, which
+-- stopped the arc ~92 units below the top of the screen;
+-- Client.NavigatorLegacyOffsetShift converts offsets saved against that frame
+-- once, so no dial moves.
 -- One layout record also keeps this already-large compatibility chunk below
 -- Lua's 200-local compilation limit.
-local NAVIGATOR_LAYOUT = { arrowOffsetY = -14, dialTopOffset = 82,
+local NAVIGATOR_LAYOUT = { arrowOffsetY = -14, legacyHeadroom = 82,
     readoutGap = 8, captionGap = 4, textHeight = 14 }
+
+-- How far the drawn tree reaches beyond the dial region, in the dial's own
+-- units: `above` is the drawn top over the dial's top edge (negative: the arc
+-- is centred in the dial and leaves a transparent margin; a caption over the
+-- arc makes it positive), `below` is the yard readout hanging under the
+-- dial's bottom edge beneath the lowered arrow.
+function Client.NavigatorDrawnExtent(arcWidth, arrowSize, withTitle)
+    local above = -(arrowSize - arcWidth * 257 / 512) / 2
+    if withTitle then
+        above = above + NAVIGATOR_LAYOUT.captionGap + NAVIGATOR_LAYOUT.textHeight
+    end
+    local below = NAVIGATOR_LAYOUT.readoutGap + NAVIGATOR_LAYOUT.textHeight
+        - NAVIGATOR_LAYOUT.arrowOffsetY
+    return above, below
+end
+
+-- The Y change that keeps a dial in place when an offset saved against the
+-- old frame (legacyHeadroom above the dial, bottom at the dial's bottom) is
+-- applied to the drawn-extent frame, for an anchor `point` of that frame. In
+-- the dial's own units, the units its offsets are stored in.
+function Client.NavigatorLegacyOffsetShift(point, arcWidth, arrowSize, withTitle)
+    local above, below = Client.NavigatorDrawnExtent(arcWidth, arrowSize, withTitle)
+    local factor = 0.5
+    if type(point) == "string" then
+        if string.find(point, "TOP", 1, true) then
+            factor = 1
+        elseif string.find(point, "BOTTOM", 1, true) then
+            factor = 0
+        end
+    end
+    local oldBottom, oldTop = -arrowSize, NAVIGATOR_LAYOUT.legacyHeadroom
+    local newBottom, newTop = -arrowSize - below, above
+    return (newBottom + factor * (newTop - newBottom))
+        - (oldBottom + factor * (oldTop - oldBottom))
+end
 
 -- Builds the navigator's arc and arrow.
 --
@@ -16817,22 +16938,12 @@ function Client.CreateNavigator(name, arcWidth, arrowSize, withTitle)
     if type(arrowSize) ~= "number" or arrowSize <= 0 then
         arrowSize = 130
     end
+    -- Sized to what the tree draws (see NAVIGATOR_LAYOUT), so both the
+    -- client's drag clamp and Client.KeepFrameOnScreen stop the drawn dial,
+    -- not empty room, at the screen edge.
+    local drawnAbove, drawnBelow = Client.NavigatorDrawnExtent(arcWidth, arrowSize, withTitle)
     pcall(frame.SetWidth, frame, arcWidth)
-    pcall(frame.SetHeight, frame, NAVIGATOR_LAYOUT.dialTopOffset + arrowSize)
-    -- What the tree actually draws, for Client.KeepFrameOnScreen: the top is
-    -- the arc's upper edge (centred in the dial, below the empty room reserved
-    -- above it) or the caption above the arc; the bottom is the distance line,
-    -- which hangs below the dial under the lowered arrow.
-    local arcHeight = arcWidth * 257 / 512
-    local drawnTop = NAVIGATOR_LAYOUT.dialTopOffset + (arrowSize - arcHeight) / 2
-    if withTitle then
-        drawnTop = drawnTop - NAVIGATOR_LAYOUT.captionGap - NAVIGATOR_LAYOUT.textHeight
-    end
-    frame.unrealQuestScreenInsets = {
-        left = 0, right = 0, top = drawnTop,
-        bottom = NAVIGATOR_LAYOUT.arrowOffsetY - NAVIGATOR_LAYOUT.readoutGap
-            - NAVIGATOR_LAYOUT.textHeight,
-    }
+    pcall(frame.SetHeight, frame, drawnAbove + arrowSize + drawnBelow)
 
     -- The arc and the arrow ------------------------------------------------
     -- The arrow is shifted down a few visual pixels from the arc's centre so
@@ -16843,8 +16954,7 @@ function Client.CreateNavigator(name, arcWidth, arrowSize, withTitle)
         if type(dial.SetFrameStrata) == "function" then
             pcall(dial.SetFrameStrata, dial, "PARENT")
         end
-        pcall(dial.SetPoint, dial, "TOP", frame, "TOP", 0,
-            -NAVIGATOR_LAYOUT.dialTopOffset)
+        pcall(dial.SetPoint, dial, "TOP", frame, "TOP", 0, -drawnAbove)
         pcall(dial.SetWidth, dial, arcWidth)
         pcall(dial.SetHeight, dial, arrowSize)
         if type(dial.EnableMouse) == "function" then
@@ -17047,6 +17157,22 @@ function Client.SetNavigatorTitleText(frame, text)
     end
     frame.unrealQuestTitleValue = value
     return true
+end
+
+-- How far a saved navigator offset may sit from its anchor before it is read
+-- as garbage: one screen, in the dial's own units. Offsets are in those units
+-- (frames.ui_scale_frame_anchor_space_ratio), and for a UIParent child the
+-- frame's own scale is its ratio to UIParent, so at the 0.5 base scale the
+-- screen is about 4355 units wide. The fixed +-2000 this replaced reset every
+-- dial dropped in the right half of the screen to the left edge (user report
+-- 2026-10-17). 2000 when UIParent cannot be measured.
+function Client.GetNavigatorOffsetLimits(renderScale)
+    local width, height = Client.GetUIParentLayoutSize()
+    if type(renderScale) ~= "number" or renderScale <= 0
+        or type(width) ~= "number" or type(height) ~= "number" then
+        return 2000, 2000
+    end
+    return width / renderScale, height / renderScale
 end
 
 -- Places the navigator at its saved UIParent-relative anchor and applies the
@@ -19416,7 +19542,8 @@ Client.QUEST_DIALOGUE_LAYOUTS.minimal = Client.CopyQuestDialogueLayout(
         -- `headerGap` between the name or title and `flags`, the room the
         -- language flag row takes from the right edge (four 13-pixel flags
         -- 2 apart, 58 pixels = 96.7 units, plus the row's 14-unit inset).
-        fitWidth = { min = 300, margin = 12, headerGap = 16, flags = 111, max = 860 },
+        -- `pipe`: the unmeasured room of each "||" in the reward line.
+        fitWidth = { min = 300, margin = 12, headerGap = 16, flags = 111, max = 860, pipe = 4 },
         -- No full-screen veil behind the small card (Client.GetQuestDialogueDimAlpha).
         screenDim = 0,
         -- Both cards centred two thirds down the screen rather than at its
@@ -21711,11 +21838,16 @@ function Client.CreateQuestDialogueFrame()
                                 pcall(tooltip.SetQuestItem, tooltip,
                                     row.unrealQuestRewardType, row.unrealQuestRewardIndex)
                                 if type(tooltip.Show) == "function" then pcall(tooltip.Show, tooltip) end
+                                -- The equipped-item comparison, as on the
+                                -- turn-in tiles (a no-op for non-reward rows).
+                                Client.ShowUnrealUIRewardCompare(
+                                    row.unrealQuestRewardType, row.unrealQuestRewardIndex)
                             end
                         end
                     end)
                     Client.SetObjectScript(row, "OnLeave", function()
                         if row.unrealQuestHover then pcall(row.unrealQuestHover.Hide, row.unrealQuestHover) end
+                        Client.HideUnrealUIRewardCompare()
                         local tooltip = ResolveObject("GameTooltip")
                         if tooltip and type(tooltip.Hide) == "function" then pcall(tooltip.Hide, tooltip) end
                     end)
@@ -21966,12 +22098,17 @@ function Client.CreateQuestDialogueFrame()
                                 card.unrealQuestRewardType, card.unrealQuestRewardIndex)
                         end
                         if type(tooltip.Show) == "function" then pcall(tooltip.Show, tooltip) end
+                        if card.unrealQuestRewardType ~= "spell" then
+                            Client.ShowUnrealUIRewardCompare(
+                                card.unrealQuestRewardType, card.unrealQuestRewardIndex)
+                        end
                     end
                 end)
                 Client.SetObjectScript(card, "OnLeave", function()
                     if card.unrealQuestHover and not card.unrealQuestFocused then
                         pcall(card.unrealQuestHover.Hide, card.unrealQuestHover)
                     end
+                    Client.HideUnrealUIRewardCompare()
                     local tooltip = ResolveObject("GameTooltip")
                     if tooltip and type(tooltip.Hide) == "function" then pcall(tooltip.Hide, tooltip) end
                 end)
@@ -23134,14 +23271,24 @@ function Client.FitQuestDialogueCardWidth(frame)
             Need(icons.x + iconsWidth + fit.margin)
         end
         if layout.rewardLine and Shown(view.rewardLine) then
+            -- Each escaped pipe of the separators ("||") is drawn as a blank
+            -- that GetStringWidth does not count: with three of them the line
+            -- ran ~9 units past the card's right border (user screenshot,
+            -- 2026-10-13; open question 39). fit.pipe units are added per pair.
+            local function Pipes(text)
+                if not Shown(text) or not fit.pipe then return 0 end
+                local _, count = string.gsub(text, "||", "")
+                return count * fit.pipe
+            end
             local lineWidth = Width(frame.unrealQuestRewardLine, view.rewardLine, "GameFontNormalSmall")
+            lineWidth = lineWidth and lineWidth + Pipes(view.rewardLine)
             -- With money: the label and coins, then the tail after them.
             local coinsWidth = frame.unrealQuestRewardCoinsWidth
             if lineWidth and type(coinsWidth) == "number" then
                 local tailWidth = Shown(view.rewardLineTail)
                     and Width(frame.unrealQuestRewardLineTail, view.rewardLineTail,
                         "GameFontNormalSmall") or 0
-                lineWidth = tailWidth and coinsWidth + tailWidth or nil
+                lineWidth = tailWidth and coinsWidth + tailWidth + Pipes(view.rewardLineTail) or nil
             end
             Need(lineWidth and layout.rewardLine[1] + lineWidth + fit.margin)
         end
