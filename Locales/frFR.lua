@@ -629,6 +629,7 @@ UQ.RegisterLocale("frFR", {
     ["SETTINGS_MOB_SEARCH"] = "Rechercher",
     ["SETTINGS_MOB_TRACKED_ROW"] = "Suivie : %s",
     ["SETTINGS_MOB_TRACKED_ROW_ZONE"] = "Suivie : %s - %s",
+    ["SETTINGS_NAMEPLATE_QUEST_ICON"] = "Numero de quete sur les barres de nom",
     ["SETTINGS_NAVIGATOR"] = "Afficher le navigateur",
     ["SETTINGS_PFQUEST_CHECKING"] = "Recherche des donnees pfQuest...",
     ["SETTINGS_QUESTLOG_REWARDS"] = "Recompenses en experience et reputation",

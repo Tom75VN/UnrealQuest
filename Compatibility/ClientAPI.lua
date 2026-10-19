@@ -5829,9 +5829,10 @@ end
 -- docs/CLIENT-COMPATIBILITY.md item 12. Short version: a structural classifier
 -- of the kind every Vanilla nameplate addon uses adopted five WorldFrame
 -- children on this client whose name FontString read "Item Name" over 1204
--- polls. Those five are not nameplates. Until something says what they ARE --
--- and whether a real plate is in that child list at all -- nothing may act on
--- them, so this layer deliberately offers no way to.
+-- polls. Those five are not nameplates. Since 2026-10-19 real plates are
+-- known to be in that child list while the client's plates are switched on;
+-- the plate badge layer ("Quest numbers on nameplates") builds on that and
+-- still writes nothing to a native plate.
 --
 -- Note that Frame:GetNumRegions() ALWAYS returns 0 here
 -- (docs/CLIENT-COMPATIBILITY.md, "Native widget scripting"), so a region walk
@@ -26085,6 +26086,438 @@ end
 function Client.HideTargetQuestIcon(holder)
     if holder and Client.IsObjectShown(holder) then
         Client.HideObject(holder)
+    end
+end
+
+-- Quest numbers on nameplates -----------------------------------------------
+--
+-- world.nameplates_are_not_lua_widgets (now SUPPORTED, USER_CONFIRMED_INGAME,
+-- 2026-10-19, build 2432; the id is kept for its links): while the client's
+-- plates are switched on (V) they ARE WorldFrame children, the Vanilla way,
+-- and unrealUI's overlay reads the creature's name and level off them. With
+-- plates switched off there is no plate widget at all, and NAMEPLATES_ON is
+-- nil, so that state cannot be read -- an empty plate list is that state, not
+-- a broken scan.
+--
+-- The real plate's name, type and region layout are still unmeasured, so a
+-- plate is recognised by structure, with the measured false positives denied
+-- by name first: GroupLootFrame1..4 (roll timer + "Item Name") and
+-- ShopFrameScanTooltip (StatusBar child + 60 FontStrings). Nothing here writes
+-- to a native plate or to anything else it found: the badge is an addon-owned
+-- frame hung on it, so a false positive costs at most a badge beside a frame
+-- whose text happens to name a creature a quest wants.
+--
+-- The host. unrealUI hides every direct child of a plate it has adopted
+-- except its own overlay (a child named UnrealUINamePlateN), on every refresh,
+-- so a badge hung on such a plate would be hidden under it. Where that overlay
+-- exists the badge hangs on it instead, right of its health bar, and fades and
+-- hides with it. Without unrealUI it hangs on the plate itself.
+--
+-- USER_CONFIRMED_INGAME 2026-10-19: the first build hung the badge on the
+-- plate until the overlay was found, and the badge appeared then vanished
+-- for good. unrealUI's mute is Hide() AND SetAlpha(0), and a re-Show() alone
+-- leaves the zero alpha, so the badge was invisible on the overlay it moved
+-- to. While unrealUI's plates are on, the badge now waits for the overlay
+-- rather than touching the plate, and its alpha is re-asserted on every show.
+
+-- Whether unrealUI's nameplate overlay is switched on, read through its own
+-- U.NameplatesEnabled. Its setting takes effect at its next reload, so this
+-- can briefly disagree after a toggle; the module's grace period covers that.
+function Client.IsUnrealUINameplatesActive()
+    local addon = ResolveObject("UnrealUI")
+    if type(addon) ~= "table" or type(addon.NameplatesEnabled) ~= "function" then
+        return false
+    end
+    local ok, value = pcall(addon.NameplatesEnabled)
+    return ok and value and true or false
+end
+
+Client.NAMEPLATE_QUEST_NUMBER_SIZE = 16
+-- Texels of the 32px glyph cell shown, as on the tracker's 16px badge.
+Client.NAMEPLATE_QUEST_NUMBER_GLYPH = 20
+Client.NAMEPLATE_QUEST_NUMBER_GAP = 2
+Client.NAMEPLATE_QUEST_NUMBER_LIFT = 5
+-- On unrealUI's overlay the badge takes the health bar's height so its top
+-- and bottom meet the bar's (user request, 2026-10-19). Measured from an
+-- in-game screenshot: the modern-wow bar art draws about half a unit past
+-- its frame on each side, so one unit is added; a 16-unit badge beside it
+-- stood 2px taller than the bar and hung below it.
+Client.NAMEPLATE_QUEST_NUMBER_BAR_OUTSET = 1
+Client.NAMEPLATE_QUEST_NUMBER_MIN = 10
+Client.NAMEPLATE_QUEST_NUMBER_MAX = 32
+
+-- The badge size beside `anchor`: its height plus the art outset, clamped;
+-- the default size when the anchor reports none.
+function Client.GetNameplateQuestBadgeSize(anchor)
+    local height = Client.GetObjectHeight(anchor)
+    if type(height) ~= "number" or height <= 0 then
+        return Client.NAMEPLATE_QUEST_NUMBER_SIZE
+    end
+    local size = height + Client.NAMEPLATE_QUEST_NUMBER_BAR_OUTSET
+    if size < Client.NAMEPLATE_QUEST_NUMBER_MIN then
+        size = Client.NAMEPLATE_QUEST_NUMBER_MIN
+    elseif size > Client.NAMEPLATE_QUEST_NUMBER_MAX then
+        size = Client.NAMEPLATE_QUEST_NUMBER_MAX
+    end
+    return size
+end
+
+function Client.IsDeniedNameplateName(name)
+    if type(name) ~= "string" then
+        return false
+    end
+    return string.find(name, "^GroupLootFrame%d+$") ~= nil
+        or name == "ShopFrameScanTooltip"
+        or string.find(name, "^UnrealQuest") ~= nil
+        or string.find(name, "^UnrealUI") ~= nil
+end
+
+-- The plate's FontString regions, or nil when the frame does not look like a
+-- plate. Accepted on the three signatures unrealUI's classifier uses (border
+-- texture; value-bearing child plus a FontString; two FontStrings), because
+-- that classifier is the one confirmed in game to reach real plates here.
+-- Called once per WorldFrame child, when it appears: the returned list is
+-- kept, so the per-pass name read allocates nothing.
+function Client.GetNameplateFontStrings(frame)
+    if not frame or Client.IsDeniedNameplateName(Client.GetObjectName(frame)) then
+        return nil
+    end
+    local regions = Client.GetRegionList(frame)
+    if not regions then
+        return nil
+    end
+    local fonts = {}
+    local border = false
+    local index = 1
+    local total = table.getn(regions)
+    while index <= total do
+        local region = regions[index]
+        local kind = Client.GetObjectType(region)
+        if kind == "FontString" then
+            table.insert(fonts, region)
+        elseif kind == "Texture" and not border then
+            local path = Client.GetTexturePath(region)
+            if type(path) == "string" and string.find(path, "Nameplate%-Border") then
+                border = true
+            end
+        end
+        index = index + 1
+    end
+    local fontCount = table.getn(fonts)
+    if fontCount == 0 then
+        return nil
+    end
+    if border or fontCount >= 2 then
+        return fonts
+    end
+    local children = Client.GetChildList(frame)
+    if children then
+        index = 1
+        total = table.getn(children)
+        while index <= total do
+            if Client.HasBarValue(children[index]) then
+                return fonts
+            end
+            index = index + 1
+        end
+    end
+    return nil
+end
+
+-- The creature's name: the first FontString whose text is not a number (the
+-- other is the level). Re-read every pass, because the client recycles a
+-- plate onto another unit without rebuilding it. unrealUI keeps GetText
+-- working on the FontStrings it mutes, so this reads through its overlay.
+function Client.ReadNameplateName(fonts)
+    if not fonts then
+        return nil
+    end
+    local index = 1
+    local total = table.getn(fonts)
+    while index <= total do
+        local region = fonts[index]
+        if type(region.GetText) == "function" then
+            local ok, text = pcall(region.GetText, region)
+            if ok and type(text) == "string" and text ~= "" and not tonumber(text) then
+                return text
+            end
+        end
+        index = index + 1
+    end
+    return nil
+end
+
+-- unrealUI fades the plates it is not targeting, never to zero; a plate the
+-- client is not drawing answers IsVisible false or alpha 0.
+function Client.IsNameplateShown(frame)
+    if not Client.IsObjectVisible(frame) then
+        return false
+    end
+    local alpha = Client.GetObjectAlpha(frame)
+    return not (type(alpha) == "number" and alpha <= 0)
+end
+
+-- A WorldFrame child is outside UIParent's scale. Frame:GetScale is
+-- documented (the frame's own scale, not multiplied by ancestors), and
+-- unrealUI's in-game-confirmed plate overlay is scaled by UIParent's the same
+-- way, so a badge hung straight on a plate reads in UI units.
+function Client.GetUIParentScale()
+    local parent = ResolveObject("UIParent")
+    if not parent or type(parent.GetScale) ~= "function" then
+        return 1
+    end
+    local ok, scale = pcall(parent.GetScale, parent)
+    if not ok or type(scale) ~= "number" or scale <= 0 then
+        return 1
+    end
+    return scale
+end
+
+-- unrealUI's overlay on this plate and the region the badge sits beside, or
+-- nil. Walked only for a plate that has a badge to show, and only until found:
+-- unrealUI never rebuilds or drops an overlay once a plate is adopted.
+function Client.FindNameplateOverlay(plate)
+    local children = Client.GetChildList(plate)
+    if not children then
+        return nil
+    end
+    local index = 1
+    local total = table.getn(children)
+    while index <= total do
+        local child = children[index]
+        local name = Client.GetObjectName(child)
+        -- unrealUI stores the plate on its overlay (overlay.plate) and keeps
+        -- the overlay by identity, not by name; this runtime auto-names
+        -- widgets, so the field is the test that does not depend on GetName.
+        -- 2026-10-19: with the name test alone the badge blinked in game.
+        if (type(child) == "table" and child.plate == plate)
+            or (name and string.find(name, "^UnrealUINamePlate")) then
+            local anchor = child
+            if type(child.health) == "table" and type(child.health.GetObjectType) == "function" then
+                anchor = child.health
+            end
+            return child, anchor
+        end
+        index = index + 1
+    end
+    return nil
+end
+
+-- unrealUI names its overlays UnrealUINamePlate1..N globally, in creation
+-- order, and stores the adopted plate on each (overlay.plate). Reading them
+-- by name and keying by that field does not depend on the native plate's
+-- GetChildren listing them. 2026-10-19, USER_CONFIRMED_INGAME + persisted
+-- diagnostics: the plate-children walk found no overlay on a wanted plate
+-- while unrealUI's plates were on, so the badge never showed. `map` is
+-- plate -> overlay, filled from `map.unrealQuestNext` on; returns the
+-- overlays new since the last call (a list, or nil).
+function Client.CollectUnrealUINameplateOverlays(map)
+    local index = map.unrealQuestNext or 1
+    local fresh = nil
+    while true do
+        local overlay = ResolveObject("UnrealUINamePlate" .. tostring(index))
+        if type(overlay) ~= "table" then
+            break
+        end
+        if overlay.plate ~= nil then
+            map[overlay.plate] = overlay
+            fresh = fresh or {}
+            table.insert(fresh, overlay)
+        end
+        index = index + 1
+    end
+    map.unrealQuestNext = index
+    return fresh
+end
+
+-- A plate first met through its overlay: the native FontStrings when the
+-- plate has the shape, else the overlay's own name label, which unrealUI
+-- copies the native name into every refresh.
+function Client.GetNameplateOverlayFonts(overlay)
+    local fonts = Client.GetNameplateFontStrings(overlay and overlay.plate)
+    if fonts then
+        return fonts
+    end
+    local label = type(overlay) == "table" and overlay.name
+    if type(label) == "table" and type(label.GetText) == "function" then
+        return { label }
+    end
+    return nil
+end
+
+-- The region to sit beside on an overlay: its health bar when it has one.
+function Client.GetNameplateOverlayAnchor(overlay)
+    if type(overlay) == "table" and type(overlay.health) == "table"
+        and type(overlay.health.GetObjectType) == "function" then
+        return overlay.health
+    end
+    return overlay
+end
+
+-- A short description of a plate that has a wanted creature but no overlay,
+-- for the persisted diagnostics: its own name and type, and each direct child
+-- as name:type, with "+plate" when the child carries a plate field. No
+-- backslash can reach it (names only).
+function Client.DescribeNameplate(plate)
+    local text = tostring(Client.GetObjectName(plate) or "<unnamed>")
+        .. ":" .. tostring(Client.GetObjectType(plate) or "?")
+    local children = Client.GetChildList(plate)
+    if not children then
+        return text .. " kids=?"
+    end
+    local total = table.getn(children)
+    text = text .. " kids=" .. total
+    local index = 1
+    while index <= total and index <= 6 do
+        local child = children[index]
+        text = text .. " " .. tostring(Client.GetObjectName(child) or "<unnamed>")
+            .. ":" .. tostring(Client.GetObjectType(child) or "?")
+        if type(child) == "table" and child.plate ~= nil then
+            text = text .. "+plate"
+        end
+        index = index + 1
+    end
+    return text
+end
+
+-- One shown badge for the persisted diagnostics: what it hangs on, what it
+-- sits beside, and where it landed (GetLeft/GetBottom, documented, rounded).
+function Client.DescribeNameplateQuestBadge(badge)
+    if not badge then
+        return "?"
+    end
+    local left, bottom = "?", "?"
+    if type(badge.GetLeft) == "function" then
+        local ok, value = pcall(badge.GetLeft, badge)
+        if ok and type(value) == "number" then left = tostring(math.floor(value + 0.5)) end
+    end
+    if type(badge.GetBottom) == "function" then
+        local ok, value = pcall(badge.GetBottom, badge)
+        if ok and type(value) == "number" then bottom = tostring(math.floor(value + 0.5)) end
+    end
+    return tostring(Client.GetObjectName(badge) or "?")
+        .. ">" .. tostring(Client.GetObjectName(badge.unrealQuestHost) or "<unnamed>")
+        .. "/" .. tostring(Client.GetObjectName(badge.unrealQuestAnchor) or "<unnamed>")
+        .. "@" .. left .. "," .. bottom
+end
+
+function Client.CreateNameplateQuestBadge(index)
+    local create = Resolve("CreateFrame")
+    if not create then
+        return nil
+    end
+    local ok, badge = pcall(create, "Frame", "UnrealQuestPlateBadge" .. tostring(index),
+        ResolveObject("UIParent"))
+    if not ok or not badge then
+        return nil
+    end
+    local size = Client.NAMEPLATE_QUEST_NUMBER_SIZE
+    pcall(badge.SetWidth, badge, size)
+    pcall(badge.SetHeight, badge, size)
+    local circleOk, circle = pcall(badge.CreateTexture, badge, nil, "ARTWORK")
+    local glyphOk, glyph = pcall(badge.CreateTexture, badge, nil, "OVERLAY")
+    if not circleOk or not circle or not glyphOk or not glyph then
+        return nil
+    end
+    pcall(circle.SetAllPoints, circle, badge)
+    pcall(glyph.SetAllPoints, glyph, badge)
+    badge.unrealQuestCircle = circle
+    badge.unrealQuestGlyph = glyph
+    -- Past the glyph atlas (25) the number is written as text, as on the
+    -- tracker; created up front so a long quest log costs no extra pass.
+    local labelOk, label = pcall(badge.CreateFontString, badge, nil, "OVERLAY", "GameFontNormalSmall")
+    if labelOk and label then
+        pcall(label.SetPoint, label, "CENTER", badge, "CENTER", 0, 0)
+        pcall(label.Hide, label)
+        badge.unrealQuestLabel = label
+    end
+    pcall(badge.Hide, badge)
+    return badge
+end
+
+-- Hangs the badge on `host`, `slot` badges to the right of `anchor`, and draws
+-- quest `number`; the followed quest gets the active circle, as on the
+-- tracker and the map. Re-parented, re-anchored and re-drawn only when one of
+-- those changes, since this runs on every pass for every badge on screen.
+function Client.ShowNameplateQuestBadge(badge, host, anchor, slot, number, followed, hostScale, size)
+    if not badge or not host or not anchor or type(number) ~= "number" then
+        return false
+    end
+    if type(size) ~= "number" or size <= 0 then
+        size = Client.NAMEPLATE_QUEST_NUMBER_SIZE
+    end
+    if badge.unrealQuestHost ~= host or badge.unrealQuestAnchor ~= anchor
+        or badge.unrealQuestSlot ~= slot or badge.unrealQuestSize ~= size then
+        pcall(badge.SetWidth, badge, size)
+        pcall(badge.SetHeight, badge, size)
+        pcall(badge.SetParent, badge, host)
+        if type(host.GetFrameStrata) == "function" then
+            local strataOk, strata = pcall(host.GetFrameStrata, host)
+            if strataOk and type(strata) == "string" then
+                pcall(badge.SetFrameStrata, badge, strata)
+            end
+        end
+        local levelOk, level = pcall(host.GetFrameLevel, host)
+        if levelOk and type(level) == "number" then
+            pcall(badge.SetFrameLevel, badge, level + Client.NAMEPLATE_QUEST_NUMBER_LIFT)
+        end
+        if type(hostScale) == "number" and hostScale > 0 then
+            pcall(badge.SetScale, badge, hostScale)
+        end
+        pcall(badge.ClearAllPoints, badge)
+        pcall(badge.SetPoint, badge, "LEFT", anchor, "RIGHT",
+            Client.NAMEPLATE_QUEST_NUMBER_GAP + (slot - 1) * (size + 1), 0)
+        badge.unrealQuestHost = host
+        badge.unrealQuestAnchor = anchor
+        badge.unrealQuestSlot = slot
+        badge.unrealQuestSize = size
+    end
+    if badge.unrealQuestNumber ~= number or badge.unrealQuestFollowed ~= followed then
+        local drawn = QuestPOI.SetCircle(badge.unrealQuestCircle,
+            followed and QuestPOI.ACTIVE or QuestPOI.MAIN)
+        if drawn and number > 25 then
+            drawn = QuestPOI.SetNumberText(badge.unrealQuestGlyph, badge.unrealQuestLabel,
+                number, followed)
+        elseif drawn then
+            drawn = QuestPOI.SetGlyph(badge.unrealQuestGlyph, number, followed,
+                Client.NAMEPLATE_QUEST_NUMBER_GLYPH)
+            Client.HideObject(badge.unrealQuestLabel)
+        end
+        if not drawn then
+            badge.unrealQuestNumber = nil
+            Client.HideNameplateQuestBadge(badge)
+            return false
+        end
+        badge.unrealQuestNumber = number
+        badge.unrealQuestFollowed = followed
+    end
+    -- unrealUI's plate mute zeroes alpha as well as hiding; Show restores
+    -- only the latter.
+    local alpha = Client.GetObjectAlpha(badge)
+    if type(alpha) == "number" and alpha < 1 then
+        pcall(badge.SetAlpha, badge, 1)
+    end
+    if not Client.IsObjectShown(badge) then
+        Client.ShowObject(badge)
+    end
+    badge.unrealQuestOwnShown = true
+    return true
+end
+
+-- True when the badge was left shown by this layer and something else has
+-- hidden it since -- the signature of a host that mutes its children.
+function Client.WasNameplateQuestBadgeHidden(badge)
+    return badge ~= nil and badge.unrealQuestOwnShown == true
+        and not Client.IsObjectShown(badge)
+end
+
+function Client.HideNameplateQuestBadge(badge)
+    if not badge then
+        return
+    end
+    badge.unrealQuestOwnShown = nil
+    if Client.IsObjectShown(badge) then
+        Client.HideObject(badge)
     end
 end
 

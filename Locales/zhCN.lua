@@ -623,6 +623,7 @@ UQ.RegisterLocale("zhCN", {
     ["SETTINGS_MOB_SEARCH"] = "搜索",
     ["SETTINGS_MOB_TRACKED_ROW"] = "已追踪：%s",
     ["SETTINGS_MOB_TRACKED_ROW_ZONE"] = "已追踪：%s - %s",
+    ["SETTINGS_NAMEPLATE_QUEST_ICON"] = "姓名板上的任务编号",
     ["SETTINGS_NAVIGATOR"] = "显示任务导航",
     ["SETTINGS_PFQUEST_CHECKING"] = "正在检查 pfQuest 数据……",
     ["SETTINGS_QUESTLOG_REWARDS"] = "经验和声望奖励",

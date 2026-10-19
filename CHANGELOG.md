@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.2
+
+- Add the quest number icon on the mobs nameplate
+
 ## 0.5.1
 
 - Fix the UI for the new client update 2432

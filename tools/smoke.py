@@ -2317,7 +2317,7 @@ for path in toc_files(os.path.join(ADDONS, "unrealQuest", "UnrealQuest.toc")):
 
 check("world data populated", rt.eval("UnrealQuestData ~= nil and UnrealQuestData.quests ~= nil"))
 
-check("namespace created", rt.eval("UnrealQuest ~= nil and UnrealQuest.version == '0.5.1'"))
+check("namespace created", rt.eval("UnrealQuest ~= nil and UnrealQuest.version == '0.5.2'"))
 check("slash command registered", rt.eval("SlashCmdList.UNREALQUEST == nil"),
       "should still be nil before init")
 
@@ -8857,7 +8857,7 @@ end)()"""))
 
 check("scanning writes nothing to any WorldFrame child", rt.eval("""(function()
     return UQ_TEST_SCAN_TARGET:GetAlpha() == 1 and UQ_TEST_SCAN_TARGET:IsShown() == true
-end)()"""), "this layer observes; nothing in the addon acts on a WorldFrame child")
+end)()"""), "the inventory observes and changes nothing")
 
 
 print("quest marks over creatures")
@@ -9065,6 +9065,250 @@ rt.execute("""
     UQ_TEST_TARGET_NAME = nil
     UnrealUIUnitTarget:Hide()
     UnrealUIUnitTarget = nil
+    UQ_TEST_TICK(0.25, 3)
+""")
+
+
+print("quest number beside a nameplate")
+
+# Plates are WorldFrame children while the client's plates are on
+# (world.nameplates_are_not_lua_widgets, superseded 2026-10-19). The badge
+# carries the tracker's number for the quest and hangs on unrealUI's overlay
+# when that addon has adopted the plate, since unrealUI hides every other
+# direct child of an adopted plate.
+rt.execute("""
+    UQ_TEST_PLATE = CreateFrame("Frame", nil, WorldFrame)
+    UQ_TEST_PLATE:SetFrameLevel(2)
+    UQ_TEST_PLATE:CreateFontString(nil, "ARTWORK"):SetText("7")
+    UQ_TEST_PLATE:CreateFontString(nil, "ARTWORK"):SetText("Kobold Vermin")
+    CreateFrame("StatusBar", nil, UQ_TEST_PLATE)
+    UQ_TEST_LOOT_DECOY = CreateFrame("Frame", "GroupLootFrame1", WorldFrame)
+    UQ_TEST_LOOT_DECOY:CreateFontString(nil, "ARTWORK"):SetText("Kobold Vermin")
+    UQ_TEST_LOOT_DECOY:CreateFontString(nil, "ARTWORK"):SetText("Item Name")
+    UQ_TEST_TICK(0.25, 3)
+    UQ_TEST_PLATE_RECORD = nil
+    UQ_TEST_DECOY_RECORD = nil
+    local plates = UnrealQuest:GetModule('NameplateQuestIcon').plates
+    local index
+    for index = 1, table.getn(plates) do
+        if plates[index].frame == UQ_TEST_PLATE then UQ_TEST_PLATE_RECORD = plates[index] end
+        if plates[index].frame == UQ_TEST_LOOT_DECOY then UQ_TEST_DECOY_RECORD = plates[index] end
+    end
+    UQ_TEST_KOBOLD_NUMBER = nil
+    local quests = UnrealQuest:GetModule('QuestState'):GetOrderedQuests()
+    for index = 1, table.getn(quests) do
+        local objectives = quests[index].objectives or {}
+        local o
+        for o = 1, table.getn(objectives) do
+            if string.find(objectives[o].text or '', 'Kobold Vermin', 1, true)
+                and not objectives[o].finished and not UQ_TEST_KOBOLD_NUMBER then
+                UQ_TEST_KOBOLD_NUMBER = index
+            end
+        end
+    end
+""")
+check("a WorldFrame child shaped like a plate is tracked; a measured false positive is not",
+      rt.eval("UQ_TEST_PLATE_RECORD ~= nil and UQ_TEST_DECOY_RECORD == nil"),
+      "GroupLootFrame1..4 match the structure and are denied by name")
+check("a wanted creature's plate shows the tracker's quest number at its right",
+      rt.eval("""(function()
+    local badge = UQ_TEST_PLATE_RECORD and UQ_TEST_PLATE_RECORD.badges[1]
+    if not badge or not badge:IsShown() or not UQ_TEST_KOBOLD_NUMBER then return false end
+    local point = badge.point
+    return badge.unrealQuestNumber == UQ_TEST_KOBOLD_NUMBER
+        and badge.parent == UQ_TEST_PLATE
+        and point[1] == "LEFT" and point[2] == UQ_TEST_PLATE and point[3] == "RIGHT"
+        and badge.frameLevel == 7
+        and string.find(badge.unrealQuestCircle.path, "questpoi", 1, true) ~= nil
+        and string.find(badge.unrealQuestGlyph.path, "QuestPOINumbers", 1, true) ~= nil
+end)()"""), "the level FontString is skipped for the name")
+
+rt.execute("""
+    UQ_TEST_OVERLAY = CreateFrame("Frame", "UnrealUINamePlate1", UQ_TEST_PLATE)
+    UQ_TEST_OVERLAY:SetFrameLevel(3)
+    UQ_TEST_OVERLAY.health = CreateFrame("Frame", nil, UQ_TEST_OVERLAY)
+    UQ_TEST_TICK(0.25, 3)
+""")
+check("with unrealUI's overlay on the plate the badge moves onto it, beside its health bar",
+      rt.eval("""(function()
+    local badge = UQ_TEST_PLATE_RECORD.badges[1]
+    local point = badge.point
+    return badge:IsShown() and badge.parent == UQ_TEST_OVERLAY
+        and point[2] == UQ_TEST_OVERLAY.health and point[3] == "RIGHT"
+        and badge.frameLevel == 8 and badge.scale == 1
+end)()"""))
+
+rt.execute("""
+    UQ_TEST_PLATE.regions[2]:SetText("Stonetusk Boar")
+    UQ_TEST_TICK(0.25, 3)
+""")
+check("a plate recycled onto a creature no quest wants loses its badge", rt.eval(
+    "UQ_TEST_PLATE_RECORD.badges[1]:IsShown() == false"))
+
+rt.execute("""
+    UQ_TEST_PLATE.regions[2]:SetText("Kobold Vermin")
+    UQ_TEST_PLATE:Hide()
+    UQ_TEST_TICK(0.25, 3)
+""")
+check("a plate the client is not drawing shows no badge", rt.eval(
+    "UQ_TEST_PLATE_RECORD.badges[1]:IsShown() == false"))
+
+rt.execute("""
+    UQ_TEST_PLATE:Show()
+    UnrealQuest:GetModule('Config'):Set('nameplateQuestIcon', false)
+    UQ_TEST_TICK(0.25, 3)
+""")
+check("the option turns the nameplate number off", rt.eval(
+    "UQ_TEST_PLATE_RECORD.badges[1]:IsShown() == false"))
+
+rt.execute("""
+    UnrealQuest:GetModule('Config'):Set('nameplateQuestIcon', true)
+    UQ_TEST_TICK(0.25, 3)
+""")
+check("and back on", rt.eval("UQ_TEST_PLATE_RECORD.badges[1]:IsShown() == true"))
+
+# In game the first build's badge appeared and vanished: unrealUI mutes a
+# plate's direct children with Hide() AND SetAlpha(0), and Show() alone left
+# the badge invisible on the overlay it moved to.
+rt.execute("""
+    UQ_TEST_PLATE_RECORD.badges[1]:SetAlpha(0)
+    UQ_TEST_TICK(0.25, 1)
+""")
+check("a badge muted to zero alpha is drawn again", rt.eval(
+    "UQ_TEST_PLATE_RECORD.badges[1]:GetAlpha() == 1"))
+
+rt.execute("""
+    UQ_TEST_SAVED_UNREALUI = UnrealUI
+    UnrealUI = UnrealUI or {}
+    UQ_TEST_SAVED_NP_ENABLED = UnrealUI.NameplatesEnabled
+    UnrealUI.NameplatesEnabled = function() return true end
+    UQ_TEST_PLATE2 = CreateFrame("Frame", nil, WorldFrame)
+    UQ_TEST_PLATE2:CreateFontString(nil, "ARTWORK"):SetText("Kobold Vermin")
+    UQ_TEST_PLATE2:CreateFontString(nil, "ARTWORK"):SetText("7")
+    UQ_TEST_TICK(0.25, 12)
+    UQ_TEST_PLATE2_RECORD = nil
+    local plates = UnrealQuest:GetModule('NameplateQuestIcon').plates
+    local index
+    for index = 1, table.getn(plates) do
+        if plates[index].frame == UQ_TEST_PLATE2 then UQ_TEST_PLATE2_RECORD = plates[index] end
+    end
+""")
+check("with unrealUI's plates on, nothing is ever hung on the plate itself",
+      rt.eval("""(function()
+    local badge = UQ_TEST_PLATE2_RECORD and UQ_TEST_PLATE2_RECORD.badges[1]
+    return UQ_TEST_PLATE2_RECORD ~= nil and (badge == nil or not badge:IsShown())
+end)()"""), "unrealUI mutes an adopted plate's children every 0.1s: the badge blinked")
+
+# Found through unrealUI's own registry (global UnrealUINamePlateN holding its
+# plate), never by walking the plate's children while unrealUI's plates are on.
+rt.execute("""
+    UQ_TEST_OVERLAY2 = CreateFrame("Frame", "UnrealUINamePlate2", UQ_TEST_PLATE2)
+    UQ_TEST_OVERLAY2.plate = UQ_TEST_PLATE2
+    UQ_TEST_OVERLAY2.health = CreateFrame("Frame", nil, UQ_TEST_OVERLAY2)
+    UQ_TEST_TICK(0.25, 1)
+""")
+check("and it goes straight onto the overlay once unrealUI adopts the plate",
+      rt.eval("""(function()
+    local badge = UQ_TEST_PLATE2_RECORD.badges[1]
+    return badge ~= nil and badge:IsShown() and badge.parent == UQ_TEST_OVERLAY2
+end)()"""))
+# In game the WorldFrame walk tracked one plate and found no overlay on it.
+# unrealUI's own overlays (global UnrealUINamePlateN, each holding its plate)
+# name every plate it adopted, whatever that plate's shape.
+rt.execute("""
+    UQ_TEST_PLATE3 = CreateFrame("Frame", nil, WorldFrame)
+    UQ_TEST_OVERLAY3 = CreateFrame("Frame", "UnrealUINamePlate3", UIParent)
+    UQ_TEST_OVERLAY3.plate = UQ_TEST_PLATE3
+    UQ_TEST_OVERLAY3.health = CreateFrame("Frame", nil, UQ_TEST_OVERLAY3)
+    UQ_TEST_OVERLAY3.name = UQ_TEST_OVERLAY3:CreateFontString(nil, "OVERLAY")
+    UQ_TEST_OVERLAY3.name:SetText("Kobold Vermin")
+    UQ_TEST_TICK(0.25, 2)
+""")
+check("a plate known only through unrealUI's overlay still gets its number there",
+      rt.eval("""(function()
+    local record = UnrealQuest:GetModule('NameplateQuestIcon').tracked[UQ_TEST_PLATE3]
+    local badge = record and record.badges[1]
+    return badge ~= nil and badge:IsShown() and badge.parent == UQ_TEST_OVERLAY3
+        and badge.point[2] == UQ_TEST_OVERLAY3.health
+end)()"""), "its name is read off the overlay's label when the plate has no shape")
+
+# In game one native plate came back as two objects -- one from
+# WorldFrame:GetChildren(), one from overlay.plate -- and its WorldFrame copy
+# drew a second, blinking number under the plate.
+rt.execute("""
+    UQ_TEST_PLATE4 = CreateFrame("Frame", nil, WorldFrame)
+    UQ_TEST_PLATE4:CreateFontString(nil, "ARTWORK"):SetText("Kobold Vermin")
+    UQ_TEST_PLATE4:CreateFontString(nil, "ARTWORK"):SetText("7")
+    UQ_TEST_PLATE4_OTHER = CreateFrame("Frame", nil, nil)
+    UQ_TEST_PLATE4_OTHER:CreateFontString(nil, "ARTWORK"):SetText("Kobold Vermin")
+    UQ_TEST_PLATE4_OTHER:CreateFontString(nil, "ARTWORK"):SetText("7")
+    UQ_TEST_OVERLAY4 = CreateFrame("Frame", "UnrealUINamePlate4", UQ_TEST_PLATE4)
+    UQ_TEST_OVERLAY4.plate = UQ_TEST_PLATE4_OTHER
+    UQ_TEST_OVERLAY4.health = CreateFrame("Frame", nil, UQ_TEST_OVERLAY4)
+    UQ_TEST_TICK(0.25, 4)
+""")
+check("one plate seen as two objects still shows one number, on the overlay",
+      rt.eval("""(function()
+    local module = UnrealQuest:GetModule('NameplateQuestIcon')
+    local walked = module.tracked[UQ_TEST_PLATE4]
+    local viaOverlay = module.tracked[UQ_TEST_PLATE4_OTHER]
+    if not walked or not viaOverlay then return false end
+    local onOverlay = viaOverlay.badges[1]
+    local stray = walked.badges[1]
+    return onOverlay ~= nil and onOverlay:IsShown() and onOverlay.parent == UQ_TEST_OVERLAY4
+        and (stray == nil or not stray:IsShown())
+end)()"""))
+
+# In game unrealUI kept a second overlay for the same creature that drew no
+# bar; the badge on it floated under the real plate.
+rt.execute("""
+    UQ_TEST_OVERLAY4.health:Hide()
+    UQ_TEST_TICK(0.25, 2)
+""")
+check("no badge beside an overlay whose health bar is not drawn", rt.eval("""(function()
+    local record = UnrealQuest:GetModule('NameplateQuestIcon').tracked[UQ_TEST_PLATE4_OTHER]
+    return record.badges[1] ~= nil and not record.badges[1]:IsShown()
+end)()"""))
+rt.execute("""
+    UQ_TEST_OVERLAY4.health:Show()
+    UQ_TEST_TICK(0.25, 2)
+""")
+check("and it returns once the bar is drawn again", rt.eval("""(function()
+    local record = UnrealQuest:GetModule('NameplateQuestIcon').tracked[UQ_TEST_PLATE4_OTHER]
+    return record.badges[1]:IsShown()
+end)()"""))
+
+rt.execute("""
+    UQ_TEST_OVERLAY4.health:SetHeight(14)
+    UQ_TEST_TICK(0.25, 2)
+""")
+check("on unrealUI's overlay the badge is as tall as the health bar, centred on it",
+      rt.eval("""(function()
+    local badge = UnrealQuest:GetModule('NameplateQuestIcon').tracked[UQ_TEST_PLATE4_OTHER].badges[1]
+    local point = badge.point
+    return badge:IsShown() and badge:GetHeight() == 15 and badge:GetWidth() == 15
+        and point[1] == "LEFT" and point[2] == UQ_TEST_OVERLAY4.health
+        and point[3] == "RIGHT" and point[5] == 0
+end)()"""), "the bar's art draws half a unit past its frame on each side")
+
+check("the plate counters survive the reload for a post-mortem", rt.eval("""(function()
+    local saved = UnrealQuestDB.nameplateQuestIconDiagnostics
+    return saved ~= nil and saved.max_onOverlay ~= nil and saved.max_onOverlay >= 1
+        and saved.uuiActive == true
+end)()"""))
+
+rt.execute("""
+    UnrealUI.NameplatesEnabled = UQ_TEST_SAVED_NP_ENABLED
+    UnrealUI = UQ_TEST_SAVED_UNREALUI
+    UQ_TEST_PLATE2:Hide()
+    UQ_TEST_PLATE3:Hide()
+    UQ_TEST_PLATE4:Hide()
+    UQ_TEST_PLATE4_OTHER:Hide()
+""")
+
+rt.execute("""
+    UQ_TEST_PLATE:Hide()
+    UQ_TEST_LOOT_DECOY:Hide()
     UQ_TEST_TICK(0.25, 3)
 """)
 

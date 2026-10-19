@@ -1014,6 +1014,8 @@ local function BuildGeneralSection(page)
 
     page.Checkbox("hideUnlearnedProfessionQuests", UQ.L("SETTINGS_HIDE_PROFESSION_QUESTS"), nil,
         { width = TEXT_WIDTH, advance = CHECKBOX_ADVANCE })
+    page.Checkbox("nameplateQuestIcon", UQ.L("SETTINGS_NAMEPLATE_QUEST_ICON"), nil,
+        { width = TEXT_WIDTH, advance = CHECKBOX_ADVANCE })
     page.Checkbox("targetQuestIcon", UQ.L("SETTINGS_TARGET_QUEST_ICON"), nil,
         { width = pairWidth, advance = 0 })
     page.Checkbox("questRewardGearAdvisor", UQ.L("SETTINGS_REWARD_GEAR_ADVISOR"), nil,

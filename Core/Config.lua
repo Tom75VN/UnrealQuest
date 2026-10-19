@@ -310,6 +310,10 @@ local defaults = {
     -- Retail's quest shield on the target portrait (World/TargetQuestIcon.lua).
     targetQuestIcon = true,
 
+    -- The quest number beside a wanted creature's nameplate
+    -- (World/NameplateQuestIcon.lua).
+    nameplateQuestIcon = true,
+
     -- Rare / elite proximity alert -------------------------------------------
     --
     -- See World/RareAlert.lua. This is a PROXIMITY alert over the bundled

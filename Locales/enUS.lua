@@ -647,6 +647,7 @@ UQ.RegisterLocale("enUS", {
     ["SETTINGS_MOB_SEARCH"] = "Search",
     ["SETTINGS_MOB_TRACKED_ROW"] = "Tracked: %s",
     ["SETTINGS_MOB_TRACKED_ROW_ZONE"] = "Tracked: %s - %s",
+    ["SETTINGS_NAMEPLATE_QUEST_ICON"] = "Quest number on nameplates",
     ["SETTINGS_NAVIGATOR"] = "Show quest navigator",
     ["SETTINGS_PFQUEST_CHECKING"] = "Checking for pfQuest data...",
     ["SETTINGS_QUESTLOG_REWARDS"] = "Experience and reputation rewards",

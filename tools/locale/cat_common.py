@@ -1443,6 +1443,12 @@ STRINGS.update({
     u"Значок задания на портрете цели",
     u"目标头像上的任务图标",
 ),
+"SETTINGS_NAMEPLATE_QUEST_ICON": (
+    u"Quest number on nameplates",
+    u"Numero de quete sur les barres de nom",
+    u"Номер задания на полосах имени",
+    u"姓名板上的任务编号",
+),
 "SETTINGS_TOOLTIP_RESPAWN": (
     u"Respawn timers in tooltips",
     u"Temps de reapparition dans les infobulles",

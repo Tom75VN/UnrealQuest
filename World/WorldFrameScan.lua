@@ -285,7 +285,8 @@ function WorldFrameScan:OnEnable()
             .. "the reachability of the child list only -- it says NOTHING about whether any of those "
             .. "children is a nameplate, which is the open question /uq worldscan exists to answer and "
             .. "which a structural classifier already got wrong once (docs/CLIENT-COMPATIBILITY.md "
-            .. "item 12). Nothing in this addon acts on a WorldFrame child")
+            .. "item 12). This scan acts on nothing; World/NameplateQuestIcon.lua hangs its own badge "
+            .. "on plates since plates were confirmed to be WorldFrame children while switched on")
     else
         UQ:DeclareCapability("worldFrameScan", "missing",
             "WorldFrame is not reachable as an object with GetNumChildren/GetChildren")

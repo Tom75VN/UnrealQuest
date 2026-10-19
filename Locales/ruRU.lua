@@ -671,6 +671,7 @@ UQ.RegisterLocale("ruRU", {
     ["SETTINGS_MOB_SEARCH"] = "Найти",
     ["SETTINGS_MOB_TRACKED_ROW"] = "Отслеживается: %s",
     ["SETTINGS_MOB_TRACKED_ROW_ZONE"] = "Отслеживается: %s - %s",
+    ["SETTINGS_NAMEPLATE_QUEST_ICON"] = "Номер задания на полосах имени",
     ["SETTINGS_NAVIGATOR"] = "Показывать навигатор",
     ["SETTINGS_PFQUEST_CHECKING"] = "Проверка данных pfQuest...",
     ["SETTINGS_QUESTLOG_REWARDS"] = "Награды опытом и репутацией",
