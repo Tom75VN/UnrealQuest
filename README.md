@@ -1,134 +1,259 @@
-<p align="center"><img src="docs/logo.webp" alt="UnrealQuest logo" width="160"></p>
+<p align="center"><img src="screenshots/logo.webp" alt="UnrealQuest logo" width="160"></p>
 
-# UnrealQuest
+<h1 align="center">UnrealQuest</h1>
 
-See every objective. Spend less time searching. Adventure more.
+<p align="center"><b>See every objective. Spend less time searching. Adventure more.</b></p>
 
-**Developed from scratch exclusively for the Unreal Azeroth / Emberveil client — not a fork or port.**
+<p align="center">Built from scratch for the <b>Unreal Azeroth / Emberveil</b> client -- not a fork or a port.</p>
 
 > [!IMPORTANT]
-> ## Install UnrealQuest
+> ## Install
 >
 > 1. [Download the latest release](https://github.com/Tom75VN/UnrealQuest/releases/latest/download/UnrealQuest.zip).
-> 2. Extract the archive into `Azeroth\Interface\AddOns\`.
-> 3. Confirm that `UnrealQuest.toc` is directly inside the `unrealQuest` folder.
-> 4. Launch the game or reload the interface.
+> 2. Extract it into `Azeroth\Interface\AddOns\`.
+> 3. Check that `UnrealQuest.toc` sits directly inside the `unrealQuest` folder.
+> 4. Launch the game, or reload the interface.
 
-UnrealQuest turns questing into exploration instead of guesswork. It is designed and optimized specifically for Unreal Azeroth / Emberveil, with every feature built around the client you actually play.
+![World map with quest areas, numbered quests and the tracker window](screenshots/world-map-areas-dots-tracker.jpg)
 
-## Main benefits
+## Features at a glance
 
-- See objectives, available quests and turn-ins directly on the world map with dots or areas, `!` and `?` markers, a different color for each quest and patrol paths that stay visible while a moving quest NPC still has a marker. The `?` turns orange the moment a quest is ready to hand in.
-- Open any zone's map and read its quest points, not only the zone you are standing in -- and let "Show" (or ctrl + click in the tracker) take you straight to the zone a quest is handed in or worked on, across continents if needed.
-- Follow nearby quest creatures and objectives from your minimap without constantly reopening the world map, with a tooltip on every marker.
-- Watch every quest you need in a movable tracker window, beyond the client's native five-quest limit, grouped by zone with live objective progress, quest levels and tracking that survives a reload.
-- Browse the native Quest Log in two full-height pages: the quest list stays on the left and the selected quest's details stay visible on the right. This layout is used standalone and with unrealUI's Classic WoW theme; unrealUI's modern themes keep their own two-pane Quest Log.
-- Narrow the tracker to the zone you are in, and keep a quest whose objectives are here even when the quest log files it under another zone.
-- Find nearby auctioneers, bankers, flight masters, mailboxes, vendors and class trainers from the quest tracker's NPC finder.
-- Put treasure chests, herbs, mining veins, fishing pools, rare, elite and boss creatures and dungeon and raid entrances on both maps from the same menu, each herb, vein and entrance drawn with its own icon, and each ranked creature wearing a silver, gold or red star for its rank.
-- Be warned when you come near a rare, rare elite or boss creature's known spawn, with a movable alert card and a sound you choose.
-- Buy quest items without hunting for the shop: when a quest asks for something a trader sells, the sellers in the zone are marked on both maps with the NPC finder's vendor icon, and the mark clears once you have the item.
-- See live quest progress in creature tooltips and recognize relevant targets through automatic quest marks.
-- Read every marker in one tooltip when several land on the same spot, instead of losing the ones underneath.
-- Track more reliably, with far fewer ambiguously matched quests, no other-faction quest givers and no city guards or dungeon interiors crowding the map.
-- Report your own objective progress to your party as it happens, one line per step, but only for a quest a group member genuinely has as well -- so nobody is told about work they are not doing. Off until you turn it on, and silent while you are alone.
-- Adjust everything from a standalone settings window that also plugs into unrealUI when it is installed.
-- Import completed-quest history from pfQuest so finished quests do not reappear on the map.
-- Read the whole interface in English, French, Russian or Simplified Chinese, chosen with the flag row in the settings window -- or automatically matched to unrealUI's language when that addon is installed.
+| | |
+|---|---|
+| [World map](#world-map) | Objective dots and areas, numbered quests, `!` / `?` markers, patrol paths, any zone |
+| [Minimap](#minimap) | The same quest pins and areas around you, with tooltips |
+| [Quest tracker](#quest-tracker) | Movable, resizable, unlimited, grouped by zone, live progress |
+| [Quest navigator](#quest-navigator) | An on-screen arrow to the next objective, plus a second one for a tracked creature |
+| [Immersive quest dialogue](#immersive-quest-dialogue) | Six themes, keyboard control, optional auto accept and hand-in |
+| [Quest log](#quest-log) | Two full-height pages, Show / Track / Follow, levels, translations |
+| [Rewards](#rewards) | Experience, reputation, best upgrade and best sale value |
+| [Recognize quest targets](#recognize-quest-targets) | Tooltips, nameplate numbers, target-frame icon, raid marks |
+| [Explore the world](#explore-the-world) | NPC finder, herbs and veins, chests, rares, dungeons, quest vendors |
+| [Rare alert](#rare-alert) | A warning card and sound near a rare, elite or boss spawn |
+| [Party](#party) | Shared-quest count and objective progress in party chat |
+| [Languages](#languages) | English, French, Russian and Simplified Chinese |
 
-## Stop searching. Start adventuring.
+## World map
 
-Azeroth should feel mysterious, not frustrating. UnrealQuest gives you the direction you need while keeping the journey in your hands. Objective areas guide you toward the right part of the world, nearby targets become easier to spot, and useful quest information appears exactly when you need it.
+Turn the world map into a questing compass.
 
-No more circling the same field wondering where a creature spawns. No more forgetting which NPC wanted an item. No more losing your tracked quests after a reload. UnrealQuest keeps the adventure moving so you can spend more time exploring, fighting and finishing the stories you started.
+- **Dots, areas or both** for every objective, each quest in its own colour that survives a relog.
+- **Numbered quests** that match the tracker; a finished quest's number turns green.
+- **`!` and `?` markers** for quests to take and to hand in; the `?` turns orange when the quest is ready.
+- **Followed quest** stands out with a gold outline and a ring that pulses on its turn-in.
+- **Hover a pin** to fade every other quest and light up that quest's turn-in.
+- **Patrol paths** for moving quest NPCs, elites and vendors.
+- **One tooltip for stacked pins**, listing every quest that shares a spawn.
+- **Click a pin to follow its quest**; shift-click a `!` to mark a quest as done.
+- **Any zone, not just yours** -- and Show (or ctrl-click in the tracker) opens the zone you actually need, across continents.
+- **Cleaner map**: no other-faction givers, no profession quests you cannot do, no city guards or dungeon interiors.
 
-Install UnrealQuest and experience questing built specifically for Unreal Azeroth.
+![Quest areas on the world map with the tracker window](screenshots/world-map-areas-tracker.jpg)
 
-## Screenshots
+<table>
+<tr>
+<td width="50%"><img src="screenshots/world-map-followed-quest-dots.jpg" alt="Followed quest dots outlined in gold"><br><sub>The followed quest's dots and turn-in ring</sub></td>
+<td width="50%"><img src="screenshots/world-map-shared-objective-tooltip.jpg" alt="One tooltip for two quests sharing a spawn"><br><sub>Two quests on the same spawn, one tooltip</sub></td>
+</tr>
+<tr>
+<td><img src="screenshots/world-map-elite-patrol.jpg" alt="Elite patrol path on the world map"><br><sub>Patrol path of a roaming elite</sub></td>
+<td><img src="screenshots/settings-map-objective-style.jpg" alt="Map style options"><br><sub>Areas, dots, or both</sub></td>
+</tr>
+</table>
 
-### Track every quest you need
+## Minimap
 
-The movable tracker groups quests by zone, shows live objective progress and is not limited to the client's native five watched quests. Hover a quest for details and quick controls.
+Nearby objectives, givers and turn-ins stay on the minimap while you move.
 
-![Movable quest tracker with live progress and quest details](screenshots/quest_tracker.png)
+- The world map's dots and areas, drawn around you.
+- A tooltip on every pin; click a pin to follow its quest.
+- Off-screen `!` and `?` markers can stick to the edge, and your own arrow stays on top.
+- Hover a quest in the tracker to enlarge its dots.
 
-### Control tracking from the quest log
+<p align="center"><img src="screenshots/minimap-areas-dots.jpg" alt="Quest area and objective dots on the minimap" width="340"></p>
 
-Show a quest on the map or add and remove it from the custom tracker without leaving the quest log. Show opens the zone you actually have to go to -- where a finished quest is handed in, where an unfinished one's objectives are -- not the zone you happen to be standing in.
+## Quest tracker
 
-![Show and untrack controls in the quest log](screenshots/quest_log.png)
+Every quest you need, in one movable window.
 
-### Find nearby services
+- **No five-quest limit**, grouped by zone, with live objective progress and quest levels.
+- **Drag and resize** it; its position and tracked quests survive a reload.
+- **Current zone only** -- including quests whose objectives are here but that the log files elsewhere, and dungeons.
+- Optional progress bars, a hide-until-started filter, and fold / unfold per quest and zone.
+- Elite and dungeon quests show a `+` after their level (`[11+]`).
+- The followed quest glows gold; click a quest to follow it.
+- The same tracker is shown on the world map.
 
-Choose the NPC categories you need from the movable finder, including auctioneers, bankers, flight masters, vendors and your class trainer.
+<p align="center"><img src="screenshots/tracker-followed-quest.jpg" alt="Tracker rows with the followed quest highlighted" width="420"></p>
 
-![NPC finder with service and trainer categories](screenshots/npc_finder.png)
+## Quest navigator
 
-### Configure the experience
+An arrow that tells you which way to turn.
 
-Adjust tracker opacity, choose objective dots or areas, control overlapping-marker details and decide how off-screen minimap markers behave.
+- Points at the nearest objective of the followed quest -- or of any quest nearby when you follow none -- and switches to the turn-in once the quest is done.
+- Shows the distance and an estimated travel time; it fades as the target moves behind you.
+- Drag it anywhere; its position is saved.
+- **Mob tracking**: search the creature database, track one creature, and a second arrow leads you to its nearest spawn while its spawns appear on both maps.
 
-![UnrealQuest settings for the tracker, world map and quest history](screenshots/settings.png)
+<table>
+<tr>
+<td width="33%"><img src="screenshots/navigator-straight-ahead.jpg" alt="Navigator pointing straight ahead"><br><sub>Straight ahead</sub></td>
+<td width="33%"><img src="screenshots/navigator-behind.jpg" alt="Navigator pointing behind"><br><sub>Behind you</sub></td>
+<td width="33%"><img src="screenshots/mob-navigator.jpg" alt="Mob navigator naming the tracked creature"><br><sub>Tracked creature</sub></td>
+</tr>
+</table>
 
-### Turn your world map into a questing compass
+![Mob tracking search and results](screenshots/settings-mob-tracking.jpg)
 
-Blue objective areas show you where to search, while `!` and `?` markers reveal where new adventures begin and completed journeys end.
+## Immersive quest dialogue
 
-![Quest objectives, quest givers and turn-ins on the world map](screenshots/map_tracking.png)
+A replacement for the stock gossip and quest windows, with the NPC's portrait, paginated text, objectives and rewards.
 
-### Find nearby quest targets at a glance
+- **Six themes**: Minimal, Parchment, Alliance, Horde, Alliance light and Horde light.
+- **Conversation card** for gossip and greetings, **quest card** for offers, progress and rewards.
+- **Keyboard control** (Space to accept, Esc to decline) and an option to hide the interface while talking.
+- **Auto accept and complete** (off by default): quests are accepted and handed in for you; a choice of rewards is left to you.
+- Language flags on every quest card to read that quest in another language.
 
-The minimap keeps nearby objectives visible while you move, helping you choose your next direction without breaking the rhythm of exploration.
+<table>
+<tr>
+<td width="50%"><img src="screenshots/dialogue-alliance-quest.jpg" alt="Alliance dialogue theme"><br><sub>Alliance</sub></td>
+<td width="50%"><img src="screenshots/dialogue-horde-quest.jpg" alt="Horde dialogue theme"><br><sub>Horde</sub></td>
+</tr>
+<tr>
+<td><img src="screenshots/dialogue-alliance-light-quest.jpg" alt="Alliance light dialogue theme"><br><sub>Alliance light</sub></td>
+<td><img src="screenshots/dialogue-horde-light-quest.jpg" alt="Horde light dialogue theme"><br><sub>Horde light</sub></td>
+</tr>
+<tr>
+<td><img src="screenshots/dialogue-parchment-quest.jpg" alt="Parchment dialogue theme"><br><sub>Parchment</sub></td>
+<td><img src="screenshots/dialogue-minimal-quest.jpg" alt="Minimal dialogue theme"><br><sub>Minimal</sub><br><br><img src="screenshots/dialogue-minimal-greeting.jpg" alt="Minimal greeting with quest choices"><br><sub>Minimal greeting</sub></td>
+</tr>
+</table>
 
-![Nearby quest targets and quest givers on the minimap](screenshots/minimap.png)
+![Horde conversation card](screenshots/dialogue-horde-conversation.jpg)
 
-### Know why every creature matters
+## Quest log
 
-Hover a relevant creature to see the connected quest and your live objective progress immediately.
+- **Two full-height pages**: the quest list on the left, the selected quest on the right (standalone and with unrealUI's Classic WoW theme; unrealUI's modern themes keep their own layout).
+- **Show, Track and Follow** buttons on every quest.
+- Quest levels, difficulty colours, and unlimited tracking from the log.
+- **Language flags** to read one quest's title, objectives and description in another language.
+- In a party, how many members share each quest.
 
-![Quest objective progress shown on a creature tooltip](screenshots/tooltip_quest.png)
+![Two-page quest log](screenshots/quest-log-two-page.jpg)
 
-### Discover quests before you make the journey
+<table>
+<tr>
+<td width="50%"><img src="screenshots/quest-log-language-flags.jpg" alt="Language flags on a quest"><br><sub>Per-quest language flags</sub></td>
+<td width="50%"><img src="screenshots/quest-log-party-shared-count.jpg" alt="Party members sharing each quest"><br><sub>Party members on the same quest</sub></td>
+</tr>
+</table>
 
-Quest-giver tooltips show the available quests, their levels and requirements directly from the map, helping you decide where to go next.
+## Rewards
 
-![Available quests shown in a world-map tooltip](screenshots/map_tooltip.png)
+- **Experience and reputation** on the quest log, the offer window and the turn-in window.
+- **Gear advisor**: a green arrow on the best upgrade, yellow on the runner-up, red on a downgrade, and a coin on the reward that sells for the most.
+- Reward names drawn in their item quality colour.
 
-## Designed for Unreal Azeroth
+<table>
+<tr>
+<td width="50%"><img src="screenshots/rewards-gear-advisor.jpg" alt="Gear advisor marks on quest rewards"><br><sub>Best sale value and upgrades</sub></td>
+<td width="50%"><img src="screenshots/rewards-experience-reputation.jpg" alt="Experience and reputation rewards"><br><sub>Experience and reputation</sub></td>
+</tr>
+</table>
 
-UnrealQuest is not a generic quest addon forced onto an unfamiliar client. Its tracking, maps, minimap, tooltips and compatibility layer are engineered around the behavior and limitations of Unreal Azeroth / Emberveil. The result is a focused questing experience that feels native to this world.
+## Recognize quest targets
 
-Use `/uq` in game to view the available commands and diagnostics.
+- **Creature tooltips** show the quest, your live progress and the item drop rate.
+- **Respawn time** from the world data on creature and object tooltips.
+- **Map tooltips** for bosses and elites list their loot with drop rates, with item comparison.
+- **Nameplate number**: the quest's number next to a creature an objective still needs.
+- **Target frame icon** while your target is a quest creature (unrealUI target frame).
+- **Raid marks** over quest creatures (optional).
 
-Use the tracker header's spyglass to select or clear service categories; the
-class-trainer row automatically shows only trainers for your character's class.
-Below the divider are dungeon entrances and the world-node categories --
-chests, herbs, mines, fishing pools and rare/elite/boss creatures. Dungeon and
-raid entrances use distinct icons; nodes show the required gathering skill or
-creature level in each pin's tooltip. Herb and vein pins carry their own artwork,
-so Peacebloom, Silverleaf and Copper Vein are told apart at a glance instead of
-sharing one category icon.
+<table>
+<tr>
+<td width="33%"><img src="screenshots/tooltip-quest-progress-drop-rate.jpg" alt="Quest progress and drop rate in a creature tooltip"><br><sub>Progress and drop rate</sub></td>
+<td width="33%"><img src="screenshots/nameplate-quest-number.jpg" alt="Quest number beside a nameplate"><br><sub>Nameplate quest number</sub></td>
+<td width="33%"><img src="screenshots/target-frame-quest-icon.jpg" alt="Quest icon on the target frame"><br><sub>Target frame icon</sub></td>
+</tr>
+<tr>
+<td><img src="screenshots/tooltip-respawn-time.jpg" alt="Respawn time in a tooltip"><br><sub>Respawn time</sub></td>
+<td colspan="2"><img src="screenshots/world-map-loot-tooltip-item-compare.jpg" alt="Elite loot table on the world map with item comparison"><br><sub>Loot and drop rates on the map</sub></td>
+</tr>
+</table>
+
+## Explore the world
+
+Everything is picked from the tracker's spyglass menu and shown on both maps.
+
+- **NPC finder**: auctioneers, bankers, battlemasters, flight masters, innkeepers, mailboxes, vendors and your class trainer.
+- **Gathering**: treasure chests, fishing pools, and herbs and veins, each with its own icon and required skill.
+- **Rare, elite and boss** creatures with a silver, gold or red star.
+- **Dungeon and raid entrances** with their level range and required level.
+- **Quest vendors**: when a quest needs an item a trader sells, the sellers are marked until you own it.
+
+<table>
+<tr>
+<td width="33%"><img src="screenshots/npc-finder.jpg" alt="NPC finder menu"><br><sub>NPC finder</sub></td>
+<td width="33%"><img src="screenshots/world-map-gathering-nodes.jpg" alt="Herbs and mining veins on the map"><br><sub>Herbs and veins</sub></td>
+<td width="33%"><img src="screenshots/world-map-rare-elite-boss-stars.jpg" alt="Rare, elite and boss stars"><br><sub>Rare, elite and boss</sub></td>
+</tr>
+<tr>
+<td><img src="screenshots/world-map-dungeon-level-range.jpg" alt="Dungeon entrance with level range"><br><sub>Dungeon entrance</sub></td>
+<td><img src="screenshots/world-map-raid-entrance.jpg" alt="Raid entrance"><br><sub>Raid entrance</sub></td>
+<td><img src="screenshots/world-map-vendor-patrol.jpg" alt="Vendors on the map"><br><sub>Vendors</sub></td>
+</tr>
+</table>
+
+## Rare alert
+
+- A movable card when you come near a known rare, rare elite or boss spawn, with its rank, level, distance, direction and your kill count.
+- Separate switches for rares, elites and bosses, an alert distance, and a sound you choose.
+
+<table>
+<tr>
+<td width="60%"><img src="screenshots/rare-alert-card.jpg" alt="Rare creature alert card"></td>
+<td width="40%"><img src="screenshots/settings-rare-alert-filter.jpg" alt="Rare alert settings"></td>
+</tr>
+</table>
+
+## Party
+
+- Report your objective progress to the party, one line per step -- only for quests another member also has (off by default).
+- Option to report completed objectives only.
+
+![Objective progress in party chat](screenshots/party-objective-announce.jpg)
 
 ## Languages
 
-The interface is available in English, French, Russian and Simplified Chinese.
-Pick one with the flags in the top-right of the settings window. If unrealUI is
-installed, UnrealQuest follows the language set there instead and shows no flags
-of its own -- one setting for both addons, and neither one requires the other.
+- The interface ships in **English, French, Russian and Simplified Chinese**, picked with the flags in the settings window.
+- With unrealUI installed, UnrealQuest follows unrealUI's language instead.
+- Quest, creature and zone **names** follow your client's language, to match what the game shows.
+- Quests themselves can be read in another language, one quest at a time, from the quest log and dialogue flags.
 
-Quest, creature and zone NAMES are a separate matter: they come from the
-bundled world data and follow your CLIENT's language, because they have to match
-what the game itself shows. Playing an English client in French therefore gives
-a French interface around English quest names, which is correct.
+## Settings and commands
 
-Whether Cyrillic and Chinese characters draw at all depends on the client's own
-font. The flags stay recognizable either way, so the way back is always one
-visible click.
+- A standalone settings window (General, Quest dialogue and Mob tracking tabs) that becomes an "UnrealQuest" entry in unrealUI's settings when it is installed.
+- A settings button beside the minimap.
+- **pfQuest import**: bring in pfQuest's completed-quest history so finished quests stay off the map; it can be undone.
+
+| Command | What it does |
+|---|---|
+| `/uq` | List every command |
+| `/uq config` | Open the settings |
+| `/uq tracker on\|off\|reset` | Show, hide or reset the tracker |
+| `/uq map dots\|areas\|both` | Choose how objectives are drawn |
+| `/uq track <quest>` / `/uq untrack <quest>` | Track or untrack a quest |
+| `/uq hide <quest>` / `/uq unhide <quest>` | Hide or restore a quest's map pins |
+| `/uq marks on\|off` | Raid marks over quest creatures |
+| `/uq pfquest import` | Import pfQuest's quest history |
+| `/uq status` | What this build detected about the client |
 
 ## Version
 
-Current release: 0.5.2
+Current release: **0.5.2**
 
 ## License
 
-UnrealQuest is released under the MIT License. Bundled world data originates from VMaNGOS and was packaged by pfQuest under the MIT License. The Dragonflight Quest Log artwork under `media/Textures/QuestLog/` is imported art with its own provenance; see [LICENSE](LICENSE), [media/Textures/QuestLog/ATTRIBUTION.md](media/Textures/QuestLog/ATTRIBUTION.md) and [Database/CREDITS.md](Database/CREDITS.md).
+UnrealQuest is released under the MIT License. Bundled world data originates from VMaNGOS and was packaged by pfQuest under the MIT License. Imported artwork keeps its own provenance; see [LICENSE](LICENSE), [Database/CREDITS.md](Database/CREDITS.md) and [media/Textures/QuestLog/ATTRIBUTION.md](media/Textures/QuestLog/ATTRIBUTION.md).
