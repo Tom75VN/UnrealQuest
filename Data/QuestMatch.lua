@@ -56,7 +56,8 @@ end
 
 -- Result shape:
 --   questId     resolved quest ID, or nil
---   confidence  "unique" | "levelDisambiguated" | "eligibilityDisambiguated"
+--   confidence  "unique" | "historyDisambiguated" | "levelDisambiguated"
+--               | "eligibilityDisambiguated"
 --               | "textDisambiguated" | "objectiveDisambiguated"
 --               | "textObjectiveDisambiguated" | "ambiguous" | "unmatched"
 --   candidates  list of quest IDs sharing the title, when there is more than one
@@ -119,6 +120,9 @@ function Match:Resolve(title, level, questIndex, rawTitle)
         candidates = database:FindQuestIdsByTitleKey(titleKey)
     end
     local result
+    -- Set when the server's completed list removed a candidate: the outcome
+    -- then depends on that list, not on title+level alone.
+    local historyNarrowed = false
 
     if not candidates or table.getn(candidates) == 0 then
         -- Recorded under the client's own spelling: a miss list full of
@@ -128,105 +132,114 @@ function Match:Resolve(title, level, questIndex, rawTitle)
     elseif table.getn(candidates) == 1 then
         result = { questId = candidates[1], confidence = "unique" }
     else
-        local eligibility = UQ:GetModule("QuestEligibility")
-
-        -- Same-level candidates first (unchanged from before), then within
-        -- those the ones this character's race/class mask does not exclude.
-        -- A quest already sitting in the log was offerable when accepted, so
-        -- an excluded record cannot be the one actually in the log -- this is
-        -- what tells apart same-title, same-level race/class variants such as
-        -- "Garments of the Light" (5624 Human, 5625 Dwarf, both level 4).
-        local levelMatch = nil
-        local levelMatchCount = 0
-        local refinedMatch = nil
-        local refinedCount = 0
-        local refinedCandidates = {}
-
-        local index = 1
-        local total = table.getn(candidates)
-        while index <= total do
-            local questId = candidates[index]
-            local record = database:GetQuest(questId)
-
-            local sameLevel = true
-            if record and type(level) == "number" and type(record.lvl) == "number"
-                and record.lvl ~= level then
-                sameLevel = false
-            end
-
-            if sameLevel then
-                levelMatch = questId
-                levelMatchCount = levelMatchCount + 1
-
-                if not eligibility or eligibility:MatchesRaceClass(record) then
-                    refinedMatch = questId
-                    refinedCount = refinedCount + 1
-                    table.insert(refinedCandidates, questId)
-                end
-            end
-
-            index = index + 1
+        local open = self:DropServerCompleted(candidates, level)
+        if open then
+            historyNarrowed = true
         end
-
-        if levelMatchCount == 1 then
-            result = { questId = levelMatch, confidence = "levelDisambiguated", candidates = candidates }
-        elseif refinedCount == 1 then
-            result = { questId = refinedMatch, confidence = "eligibilityDisambiguated", candidates = candidates }
+        if open and table.getn(open) == 1 then
+            result = { questId = open[1], confidence = "historyDisambiguated", candidates = candidates }
         else
-            -- Still tied: same title, same level, same race/class mask -- the
-            -- remaining case is a same-title chain quest (one step per record).
-            -- Only the quest's own logged text can tell those apart, and
-            -- reading it means moving the quest log selection, so it is only
-            -- ever attempted here when QuestState first models the row. Text
-            -- outcomes are deliberately not cached by title+level: a later
-            -- same-title chain step must be allowed to read its own text.
-            local textCandidates = candidates
-            if refinedCount > 0 then
-                textCandidates = refinedCandidates
-            end
+            local pool = open or candidates
+            local eligibility = UQ:GetModule("QuestEligibility")
 
-            local textMatch = nil
-            local objectiveMatch = nil
-            if type(questIndex) == "number" and Client and Client.GetQuestLogDetailText then
-                local detailText = Client.GetQuestLogDetailText(questIndex)
-                if detailText then
-                    textMatch = self:Disambiguate(textCandidates, detailText)
+            -- Same-level candidates first (unchanged from before), then within
+            -- those the ones this character's race/class mask does not exclude.
+            -- A quest already sitting in the log was offerable when accepted, so
+            -- an excluded record cannot be the one actually in the log -- this is
+            -- what tells apart same-title, same-level race/class variants such as
+            -- "Garments of the Light" (5624 Human, 5625 Dwarf, both level 4).
+            local levelMatch = nil
+            local levelMatchCount = 0
+            local refinedMatch = nil
+            local refinedCount = 0
+            local refinedCandidates = {}
+
+            local index = 1
+            local total = table.getn(pool)
+            while index <= total do
+                local questId = pool[index]
+                local record = database:GetQuest(questId)
+
+                local sameLevel = true
+                if record and type(level) == "number" and type(record.lvl) == "number"
+                    and record.lvl ~= level then
+                    sameLevel = false
                 end
-            end
-            if type(questIndex) == "number" then
-                objectiveMatch = self:DisambiguateObjectives(textCandidates, questIndex)
+
+                if sameLevel then
+                    levelMatch = questId
+                    levelMatchCount = levelMatchCount + 1
+
+                    if not eligibility or eligibility:MatchesRaceClass(record) then
+                        refinedMatch = questId
+                        refinedCount = refinedCount + 1
+                        table.insert(refinedCandidates, questId)
+                    end
+                end
+
+                index = index + 1
             end
 
-            if textMatch and objectiveMatch and textMatch == objectiveMatch then
-                result = {
-                    questId = textMatch,
-                    confidence = "textObjectiveDisambiguated",
-                    candidates = candidates,
-                }
-            elseif textMatch and objectiveMatch and textMatch ~= objectiveMatch then
-                -- Two independent live signals disagree. Neither is allowed
-                -- to overrule the other: exposing either ID would be a guess.
-                result = {
-                    questId = nil,
-                    confidence = "ambiguous",
-                    candidates = candidates,
-                    mapCandidates = textCandidates,
-                }
-            elseif textMatch then
-                result = { questId = textMatch, confidence = "textDisambiguated", candidates = candidates }
-            elseif objectiveMatch then
-                result = {
-                    questId = objectiveMatch,
-                    confidence = "objectiveDisambiguated",
-                    candidates = candidates,
-                }
+            if levelMatchCount == 1 then
+                result = { questId = levelMatch, confidence = "levelDisambiguated", candidates = candidates }
+            elseif refinedCount == 1 then
+                result = { questId = refinedMatch, confidence = "eligibilityDisambiguated", candidates = candidates }
             else
-                result = {
-                    questId = nil,
-                    confidence = "ambiguous",
-                    candidates = candidates,
-                    mapCandidates = textCandidates,
-                }
+                -- Still tied: same title, same level, same race/class mask -- the
+                -- remaining case is a same-title chain quest (one step per record).
+                -- Only the quest's own logged text can tell those apart, and
+                -- reading it means moving the quest log selection, so it is only
+                -- ever attempted here when QuestState first models the row. Text
+                -- outcomes are deliberately not cached by title+level: a later
+                -- same-title chain step must be allowed to read its own text.
+                local textCandidates = pool
+                if refinedCount > 0 then
+                    textCandidates = refinedCandidates
+                end
+
+                local textMatch = nil
+                local objectiveMatch = nil
+                if type(questIndex) == "number" and Client and Client.GetQuestLogDetailText then
+                    local detailText = Client.GetQuestLogDetailText(questIndex)
+                    if detailText then
+                        textMatch = self:Disambiguate(textCandidates, detailText)
+                    end
+                end
+                if type(questIndex) == "number" then
+                    objectiveMatch = self:DisambiguateObjectives(textCandidates, questIndex)
+                end
+
+                if textMatch and objectiveMatch and textMatch == objectiveMatch then
+                    result = {
+                        questId = textMatch,
+                        confidence = "textObjectiveDisambiguated",
+                        candidates = candidates,
+                    }
+                elseif textMatch and objectiveMatch and textMatch ~= objectiveMatch then
+                    -- Two independent live signals disagree. Neither is allowed
+                    -- to overrule the other: exposing either ID would be a guess.
+                    result = {
+                        questId = nil,
+                        confidence = "ambiguous",
+                        candidates = candidates,
+                        mapCandidates = textCandidates,
+                    }
+                elseif textMatch then
+                    result = { questId = textMatch, confidence = "textDisambiguated", candidates = candidates }
+                elseif objectiveMatch then
+                    result = {
+                        questId = objectiveMatch,
+                        confidence = "objectiveDisambiguated",
+                        candidates = candidates,
+                    }
+                else
+                    result = {
+                        questId = nil,
+                        confidence = "ambiguous",
+                        candidates = candidates,
+                        mapCandidates = textCandidates,
+                    }
+                end
             end
         end
     end
@@ -237,13 +250,58 @@ function Match:Resolve(title, level, questIndex, rawTitle)
     -- step without reading its description. QuestState resolves a newly seen
     -- row once, so leaving these two outcomes uncached does not add poll-time
     -- selection churn.
-    if result.confidence ~= "textDisambiguated"
+    -- A history-narrowed outcome is left uncached for the same reason: the
+    -- step it picked can be turned in and replaced by the next same-title
+    -- step, which the list fetched at login does not know is done.
+    if not historyNarrowed
+        and result.confidence ~= "textDisambiguated"
         and result.confidence ~= "objectiveDisambiguated"
         and result.confidence ~= "textObjectiveDisambiguated"
         and result.confidence ~= "ambiguous" then
         self.cache[cacheKey] = result
     end
     return result.questId, result.confidence, result.candidates, result.mapCandidates
+end
+
+-- The candidates the server has NOT listed as completed, or nil when the list
+-- removed nothing (no answer yet, or none of them is done). Measured in game
+-- (quest.completed_list_vs_quest_log.questquery.v1): no quest sitting in the
+-- log is ever in that list, so a listed candidate cannot be the row's quest.
+-- The list only grows during a session, so a stale one drops too little,
+-- never too much.
+--
+-- Two refusals keep a data mismatch from becoming a confident wrong answer:
+-- every candidate listed (the row's quest is not under this title in the
+-- bundled data) and a lone survivor whose level contradicts the row.
+function Match:DropServerCompleted(candidates, level)
+    local history = UQ:GetModule("CompletedQuestImport")
+    if not history or not history.IsServerCompleted or not history:HasServerAnswer() then
+        return nil
+    end
+    local open = {}
+    local dropped = 0
+    local index = 1
+    local total = table.getn(candidates)
+    while index <= total do
+        local questId = candidates[index]
+        if history:IsServerCompleted(questId) then
+            dropped = dropped + 1
+        else
+            table.insert(open, questId)
+        end
+        index = index + 1
+    end
+    if dropped == 0 or table.getn(open) == 0 then
+        return nil
+    end
+    if table.getn(open) == 1 and type(level) == "number" then
+        local database = Database()
+        local record = database and database:GetQuest(open[1])
+        if record and type(record.lvl) == "number" and record.lvl ~= level then
+            return nil
+        end
+    end
+    return open
 end
 
 -- True when needle's NameKey occurs inside haystack's NameKey. NameKey only

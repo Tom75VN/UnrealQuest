@@ -132,6 +132,12 @@ STRINGS = {
     "/uq tracker recent            поднимать задание с новым прогрессом, или нет",
     "/uq tracker recent            是否将刚有进展的任务置顶",
 ),
+"CMD_HELP_TRACKER_ITEMS": (
+    "/uq tracker items             show quest item buttons, or do not",
+    "/uq tracker items             afficher les boutons d'objet de quête, ou non",
+    "/uq tracker items             показывать кнопки предметов задания или нет",
+    "/uq tracker items             是否显示任务物品按钮",
+),
 "CMD_HELP_TRACKER_WIDTH": (
     "/uq tracker width <110-600>   how wide the window is",
     "/uq tracker width <110-600>   largeur de la fenêtre",

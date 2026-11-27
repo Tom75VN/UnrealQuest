@@ -706,21 +706,50 @@ local function HideTextures(entry, first)
     entry.visible = first - 1
 end
 
--- A drawn group is on screen only while it is pinned (the followed quest, or
--- every quest under "show all areas"), while its quest is hovered, or while
--- the reveal flash owns it. Every other drawn group keeps its patches built
--- and hidden, so a hover shows it without a rebuild.
-local function ApplyShown(entry)
-    if entry.pending then
-        Client.HideObject(entry.frame)
-    elseif entry.pinned or entry.hovered or entry.flashShown then
-        Client.ReapplyWorldMapAreaGroup(entry.frame)
-    else
-        Client.HideObject(entry.frame)
+-- How unrealUI's zoom window meets a group's bounds: "whole" when nothing of
+-- it is cropped (no zoom, or wholly in view), "out" when none of it is in
+-- view, "edge" when the window crosses it.
+local function CropState(entry, zoom)
+    local bounds = entry.bounds
+    if not bounds or zoom.zoom <= 1 then
+        return "whole"
     end
+    if bounds[3] <= zoom.l or bounds[1] >= zoom.r
+        or bounds[4] <= zoom.t or bounds[2] >= zoom.b then
+        return "out"
+    end
+    if bounds[1] >= zoom.l and bounds[3] <= zoom.r
+        and bounds[2] >= zoom.t and bounds[4] <= zoom.b then
+        return "whole"
+    end
+    return "edge"
 end
 
-local function ApplyEntry(entry)
+local function UpdateBounds(entry)
+    local patches = entry.patches
+    local bounds = nil
+    local index = 1
+    local total = table.getn(patches)
+    while index <= total do
+        local patch = patches[index]
+        if not bounds then
+            bounds = { patch[1], patch[2], patch[3], patch[4] }
+        else
+            bounds[1] = math.min(bounds[1], patch[1])
+            bounds[2] = math.min(bounds[2], patch[2])
+            bounds[3] = math.max(bounds[3], patch[3])
+            bounds[4] = math.max(bounds[4], patch[4])
+        end
+        index = index + 1
+    end
+    entry.bounds = bounds
+    entry.boundsOf = patches
+end
+
+-- Places a group's patches, cropped to the zoom window. `moveOnly` is a drag
+-- frame (AreaContours:FollowMove): canvas, records and style are those of the
+-- last full pass, so only patches whose crop changed are written.
+local function PlaceEntry(entry, moveOnly)
     local failures = 0
     local index = 1
     local total = table.getn(entry.patches)
@@ -733,8 +762,12 @@ local function ApplyEntry(entry)
     -- One guarded pass over the whole group; a patch it could not place (or
     -- the rest of the group, if the pass itself failed) takes the per-patch
     -- path, which reports and hides it individually.
+    if entry.boundsOf ~= entry.patches then
+        UpdateBounds(entry)
+    end
     local placed = Client.PlaceWorldMapAreaPatches(entry.frame, entry.textures,
-        entry.patches, total, entry.path, entry.red, entry.green, entry.blue)
+        entry.patches, total, entry.path, entry.red, entry.green, entry.blue,
+        moveOnly)
     index = placed + 1
     while index <= total do
         local texture = entry.textures[index]
@@ -749,7 +782,36 @@ local function ApplyEntry(entry)
         end
         index = index + 1
     end
-    HideTextures(entry, total + 1)
+    if not moveOnly then
+        HideTextures(entry, total + 1)
+        entry.placedPatches = entry.patches
+        entry.placedWidth, entry.placedHeight = Client.GetWorldMapCanvasSize()
+    end
+    entry.cropState = CropState(entry, Client.GetWorldMapZoom())
+    entry.cropStale = nil
+    return failures
+end
+
+-- A drawn group is on screen only while it is pinned (the followed quest, or
+-- every quest under "show all areas"), while its quest is hovered, or while
+-- the reveal flash owns it. Every other drawn group keeps its patches built
+-- and hidden, so a hover shows it without a rebuild; one a drag skipped while
+-- hidden is re-placed first.
+local function ApplyShown(entry)
+    if entry.pending then
+        Client.HideObject(entry.frame)
+    elseif entry.pinned or entry.hovered or entry.flashShown then
+        if entry.cropStale then
+            PlaceEntry(entry, false)
+        end
+        Client.ReapplyWorldMapAreaGroup(entry.frame)
+    else
+        Client.HideObject(entry.frame)
+    end
+end
+
+local function ApplyEntry(entry)
+    local failures = PlaceEntry(entry, false)
     ApplyShown(entry)
     return failures
 end
@@ -1056,6 +1118,34 @@ function AreaContours:Reapply(resized)
             ApplyEntry(entry)
         else
             ApplyShown(entry)
+        end
+        index = index + 1
+    end
+end
+
+-- A drag frame of the zoomed map (WorldMapPins:FollowZoomMove): only the crop
+-- window moved, so a shown group is re-cropped only while the window crosses
+-- it or when it crossed into or out of view; a group wholly in view (or out
+-- of it) before and now is left as it is. A hidden group is only marked and
+-- re-placed when it is shown. The full Reapply runs once the zoom settles.
+function AreaContours:FollowMove()
+    local zoom = Client.GetWorldMapZoom()
+    local width, height = Client.GetWorldMapCanvasSize()
+    local index = 1
+    while index <= self.visibleCount do
+        local entry = self.groups[index]
+        if entry.pending then
+            -- Hidden until built; FinishPending places it in full.
+        elseif not (entry.pinned or entry.hovered or entry.flashShown) then
+            entry.cropStale = true
+        elseif entry.placedPatches ~= entry.patches
+            or entry.placedWidth ~= width or entry.placedHeight ~= height then
+            ApplyEntry(entry)
+        else
+            local state = CropState(entry, zoom)
+            if state == "edge" or state ~= entry.cropState then
+                PlaceEntry(entry, true)
+            end
         end
         index = index + 1
     end

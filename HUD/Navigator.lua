@@ -158,6 +158,14 @@ Navigator.lastTargetTitle = nil
 Navigator.dragging = false
 Navigator.drags = 0
 Navigator.dragFailures = 0
+-- unrealUI's Move UI owns the dial's position (see RegisterHostMover).
+Navigator.hostMover = false
+Navigator.hostMoverTried = false
+-- The navigatorScale base last handed to unrealUI's scalable anchor.
+Navigator.hostBaseScale = nil
+
+-- The dial's anchor id in unrealUI's Move UI, and its position-store key.
+local MOVER_ID = "unrealquest.navigator"
 
 local function Config()
     return UQ:GetModule("Config")
@@ -199,6 +207,16 @@ function Navigator:Hide(reason)
     self.hiddenReason = reason
     if reason then
         self.hiddenCounts[reason] = (self.hiddenCounts[reason] or 0) + 1
+    end
+    -- While unrealUI's edit mode is open the dial stays up as a preview, so
+    -- its anchor is not placed blind when no quest node is being pointed at.
+    if self.frame and self.hostMover and reason ~= "disabledBySetting"
+        and Client.IsUnrealUIEditMode() then
+        if not self.shown then
+            Client.ShowObject(self.frame)
+            self.shown = true
+        end
+        return
     end
     if self.frame and self.shown then
         Client.HideObject(self.frame)
@@ -260,7 +278,46 @@ function Navigator:CapturePosition()
         type(relativePoint) == "string" and relativePoint or point)
     config:Set("navigatorX", x)
     config:Set("navigatorY", y)
+    -- Under unrealUI the drop is its anchor's new position too; the offsets
+    -- are in the dial's own units, the units unrealUI stores.
+    if self.hostMover then
+        Client.SaveUnrealUIMoverPosition(MOVER_ID, self.frame, point,
+            type(relativePoint) == "string" and relativePoint or point, x, y)
+    end
     return true
+end
+
+-- unrealUI's Move UI ----------------------------------------------------------
+--
+-- With unrealUI loaded the dial is one of its Move UI anchors ("Navigation
+-- Arrow"): unrealUI keeps, snaps, clamps and resets its position, and this
+-- module only scales and shows it. Tried from the context job rather than at
+-- enable, because unrealUI loads after this addon, and only once: a refused
+-- registration would repeat unrealUI's error on every tick. The navigator's own
+-- saved anchor is the mover's default, so the dial opens where it was.
+function Navigator:RegisterHostMover()
+    if self.hostMoverTried or self.createFailed or not Client.HasUnrealUIMovers() then
+        return self.hostMover
+    end
+    local frame = self:GetFrame()
+    if not frame then
+        return false
+    end
+    self.hostMoverTried = true
+    local offsetX, offsetY, scale, point, relativePoint = self:Placement()
+    -- Scale first: the offsets unrealUI applies are in the scaled units, and
+    -- the scale at registration is the base its "Scale (%)" setting multiplies
+    -- (navigatorScale x the edit-mode percentage).
+    Client.SetNavigatorScale(frame, scale)
+    self.hostBaseScale = scale
+    self.hostMover = Client.RegisterUnrealUIMover(MOVER_ID, frame,
+        UQ.L("MOVER_LABEL_NAVIGATOR"),
+        { point = point, relativePoint = relativePoint, x = offsetX, y = offsetY },
+        function()
+            local config = Config()
+            return not config or config:Get("navigatorEnabled") ~= false
+        end, true)
+    return self.hostMover
 end
 
 function Navigator:StopDrag()
@@ -514,6 +571,7 @@ end
 
 function Navigator:RefreshContext()
     self.context = nil
+    self:RegisterHostMover()
 
     local config = Config()
     if config and config:Get("navigatorEnabled") == false then
@@ -856,7 +914,23 @@ function Navigator:RefreshArrow()
     -- StartMoving owns the anchor while the mouse is down. Reapplying the
     -- stored point at 20Hz would pin the frame under the cursor and make a
     -- correctly wired drag look broken.
-    if not self.dragging then
+    if not self.dragging and self.hostMover then
+        -- unrealUI owns the position and the edit-mode Scale (%); a new
+        -- navigatorScale becomes the base that percentage multiplies (a plain
+        -- SetScale would drop it), then re-places the dial from unrealUI's store.
+        local _, _, scale = self:Placement()
+        if self.hostBaseScale ~= scale then
+            self.hostBaseScale = scale
+            if not Client.SetUnrealUIMoverBaseScale(frame, scale) then
+                Client.SetNavigatorScale(frame, scale)
+            end
+            Client.ReapplyUnrealUIMover(frame)
+        end
+        Client.ShowObject(frame)
+        self.placements = self.placements + 1
+        self.shown = true
+        self.hiddenReason = nil
+    elseif not self.dragging then
         local offsetX, offsetY, scale, point, relativePoint = self:Placement()
         local placed, placedX, placedY, moved = Client.PositionNavigator(frame,
             offsetX, offsetY, scale, point, relativePoint)
@@ -968,6 +1042,7 @@ function Navigator:GetReport()
         dragging = self.dragging,
         drags = self.drags,
         dragFailures = self.dragFailures,
+        unrealUIMover = self.hostMover and true or false,
         hiddenReason = self.hiddenReason,
         hiddenCounts = self.hiddenCounts,
         relativeAngle = self.lastRelativeAngle,

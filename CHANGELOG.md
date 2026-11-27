@@ -1,5 +1,53 @@
 # Changelog
 
+## 0.6.0
+
+### Added
+
+- Quest tracker: click a quest item's icon on its quest to use it, even in combat.
+- Minimap: a gold arrow on the edge points to your followed quest ("Minimap arrow to followed quest" option, on).
+- Options: new Import page; "Import completed quests" asks the server which quests you already finished.
+- Finished quests are imported from the server at login, so maps stop offering them ("Import completed quests at login" option, on).
+- Login reminder to like the addon in the launcher; "I already liked it" stops it for good.
+- Options: filter the creature search by zone, with zone names suggested as you type.
+
+### Changed
+
+- Quests sharing a title with ones you finished are now recognised, so pins, tracker and arrow point at the right one.
+- With unrealUI, Edit mode moves and scales the navigation arrow and quest tracker.
+- With unrealUI or Unreal Map, World map: quest pins keep their size and stay inside the map when you zoom or drag it.
+- With unrealUI or Unreal Map, World map: dragging the zoomed map is smoother with many quests shown.
+- With Unreal Map, World map: quest markers follow its "Hide map markers while moving the map" option.
+- Minimap: pins and quest areas follow a square minimap, corners included.
+- Minimap: quest, vendor and service pins now show inside buildings and caves, at the indoor scale.
+- Options: creature search uses the settings search bar and filters as you type.
+- Options: creature results show each creature's zone, use the full page width and list 2 more per page.
+- Navigation arrow: larger distance text under the arrow.
+- Navigation arrow: larger name of the tracked creature above the arrow.
+- With unrealUI, creature and object tooltips get the same border as its Modern WoW and Classic WoW tooltips.
+- World map, minimap and quest tracker tooltips now look like your other tooltips, unrealUI border included.
+- Tooltips: the mouse-out delay can now go down to 0.05 seconds.
+- With unrealUI, creature tooltips fade out with cursor-following tooltips instead of vanishing.
+- Quest dialogue: the Minimal theme is 20% larger, with larger objective text and more room above its buttons.
+
+### Fixed
+
+- World map: right-click on a quest area did not zoom out; with unrealUI, the zoomed map could not be dragged there.
+- With unrealUI, World map: the minimized map jumped back to your zone while browsing a continent.
+- World map: a zone's quest number circle could stay on the continent map after zooming out.
+- World map: hovering the map showed the tooltip of the creature behind it.
+- World map: a grey block hid part of the tooltip on grouped markers.
+- Rare alert: kills of a rare you had not targeted, or sharing its name with another creature, were not counted.
+- Quest tracker and navigation arrow: went off screen after a UI scale change.
+- Quest log: the last quest of a long list drew under the bottom buttons.
+- Quest log: Show, Track and Follow labels sat low on their buttons.
+- Quest tracker: the title and quest count sat lower than the header buttons.
+- Options: creature search results sat low in their rows.
+
+### Removed
+
+- Options: the pfQuest import button; type /uq pfquest import to import from pfQuest instead.
+
 ## 0.5.2
 
 - Add the quest number icon on the mobs nameplate

@@ -473,8 +473,11 @@ function MapContext:InspectPrimed()
     -- module parked is standing, and at most once every RECENTER_SECONDS so a
     -- place where the call cannot resolve a zone does not re-issue it per tick.
     -- A player browsing a continent has the map open and is never overruled.
+    -- IsWorldMapOpen, not IsGameUIHidden: UnrealUI's minimized map keeps
+    -- UIParent shown, and this re-centred a continent the player was
+    -- browsing on it every RECENTER_SECONDS (user report 2026-11-27).
     if (not report.zoneIndex or report.zoneIndex == 0) and not self.parkedAreaId
-        and Client.IsGameUIHidden() == false then
+        and Client.IsWorldMapOpen() == false then
         local now = Client.Now()
         if now and (not self.recenteredAt or now - self.recenteredAt >= RECENTER_SECONDS) then
             self.recenteredAt = now
@@ -803,10 +806,11 @@ end
 -- Whether the player is standing in a named sub-area of the zone the map is
 -- showing -- in practice, inside a building or a cave.
 --
--- There is no direct route to this on this client: IsIndoors and IsOutdoors
--- are both absent, and the minimapZoom/minimapInsideZoom pair that pfQuest
--- uses is measured NOT MAINTAINED here (both read "0" always). What is left is
--- the disagreement between two names the client does give:
+-- Used only where IsIndoors is unavailable (it was absent until measured present
+-- on 2026-11-27, see Client.IsPlayerIndoors); the minimapZoom/minimapInsideZoom
+-- pair that pfQuest uses is measured NOT MAINTAINED here (both read "0"
+-- always). What is left is the disagreement between two names the client does
+-- give:
 --
 -- * the zone the MAP is showing, from GetMapZones/GetCurrentMapZone;
 -- * the area the player is standing in, from GetZoneText -- which this client
@@ -830,6 +834,20 @@ function MapContext:IsInterior(report)
         return nil
     end
     return report.areaIdFromZoneText ~= report.areaIdFromMapZone
+end
+
+-- Whether minimap layers must withhold their pins because the player is inside
+-- and the indoor scale cannot be chosen. Where IsIndoors answers, the indoor
+-- span row is selected and nothing is withheld; the interior name test and
+-- the minimapPinsHideIndoors escape hatch apply only to a client without it.
+function MapContext:WithholdsMinimapIndoors(report, config)
+    if Client.IsPlayerIndoors() ~= nil then
+        return false
+    end
+    if config and config:Get("minimapPinsHideIndoors") == false then
+        return false
+    end
+    return self:IsInterior(report) and true or false
 end
 
 -- Converts direct database percentages to UV coordinates on the map view the

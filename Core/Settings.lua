@@ -45,11 +45,12 @@ local TAB_LABEL = "UnrealQuest"
 local SETTINGS_LOGO_TEXTURE =
     "Interface\\AddOns\\unrealQuest\\media\\Textures\\Settings\\uQ_logo"
 local SETTINGS_LOGO_SIZE = 20
--- The submenu's three pages, one per section of the page. Under a settings group
+-- The submenu's four pages, one per section of the page. Under a settings group
 -- TAB_ID names the group, and these name the rows inside it.
 local GENERAL_PAGE_ID = TAB_ID .. ".general"
 local DIALOGUE_PAGE_ID = TAB_ID .. ".dialogue"
 local MOBS_PAGE_ID = TAB_ID .. ".mobs"
+local IMPORT_PAGE_ID = TAB_ID .. ".import"
 
 -- The page's own first line: "Unreal Quest" in the addon's two-tone wordmark,
 -- with the running version after it. The split is the one the TOC Title already
@@ -109,6 +110,7 @@ Settings.dragFailures = 0
 Settings.liveSliders = {}
 Settings.activePageTab = "general"
 Settings.mobSearchQuery = ""
+Settings.mobZoneQuery = ""
 Settings.mobSearchPage = 1
 -- The settings button beside the minimap, and what it ended up anchored to.
 -- Built straight away while the host poll runs so a standalone install never
@@ -218,21 +220,39 @@ local INTERNAL_TAB_HEIGHT = 20
 -- Tab height, its 2px gap, and a 5px margin under the strip so the first
 -- control of either tab does not sit against the row of tabs.
 local INTERNAL_TAB_ADVANCE = 27
-local INTERNAL_TAB_WIDTH = 150
+-- Four tabs and their 6px gaps share the text width.
+local INTERNAL_TAB_WIDTH = math.floor((TEXT_WIDTH - 6 * 3) / 4)
 local MOB_MIN_ROWS_PER_PAGE = 9
 -- Rows held back from the height-derived count: the measured host height
 -- overstates the drawable area, and without them the pager falls below the
 -- visible panel and the page needs scrolling.
 local MOB_RESERVED_ROWS = 2
+-- Rows added on top of that count and of the minimum (user request,
+-- 2026-11-27): three made unrealUI's page scroll, two fit without a bar.
+local MOB_EXTRA_ROWS = 2
 local MOB_ROW_HEIGHT = 20
 -- Table rows touch, as Forever's own lists do; the stripe separates them.
 local MOB_ROW_ADVANCE = MOB_ROW_HEIGHT
 -- Space between the last table row and the result counter under it.
 local MOB_TABLE_GAP = 4
--- The tracked band and the result table end where the Search button ends
--- (field 296 + gap 10 + button 112), not at the page's full text width: at
--- that width their right edge ran past the host window's page box.
+-- The search row, the tracked band and the result table share one width:
+-- the page's own width less the usual 12px right inset (MobListWidth), so the
+-- listing fits whichever host draws it (user request, 2026-11-27). This is
+-- the narrowest it gets, and the width when the page cannot be measured.
 local MOB_LIST_WIDTH = 418
+-- The search field's 22px row plus a 6px gap before the tracked band.
+local MOB_SEARCH_FIELD_HEIGHT = 22
+local MOB_SEARCH_ADVANCE = 28
+-- The search row: creature name, a 10px gap, then the zone field at the right
+-- end. The listing's zone column starts under the zone field.
+local MOB_FIELD_GAP = 10
+local MOB_ZONE_FIELD_WIDTH = 160
+-- Completions shown under the zone field at most.
+local MOB_ZONE_SUGGESTIONS = 6
+-- The search field's caret blink, a driver job only while typing.
+local SEARCH_CARET_BLINK = 0.5
+local SEARCH_CARET_JOB = "settings.searchCaret"
+local SEARCH_HELD_SECTION = "searchHeldKeys"
 -- The tracked-creature band between the search field and the results: one
 -- accent line naming the creature, and the square that stops tracking it, on
 -- an outlined panel tinted with the same accent at a tenth of its opacity.
@@ -730,6 +750,30 @@ local function NewPage(parent)
         return control
     end
 
+    -- The settings header's search field (user request, 2026-11-27): unrealUI's
+    -- own U.CreateSearchBox when that addon hosts the page, so the window has
+    -- one typing mode; the compatibility layer's port of it otherwise.
+    -- onChange(text) runs on every typed or cleared change; onTyping(typing),
+    -- when given, as typing mode opens and closes (the port only).
+    page.Search = function(key, width, placeholder, onChange, advance, left, onTyping)
+        local host = UnrealUI()
+        local control = host and Client.CreateHostSearchField(host, page.parent,
+            WidgetName(key), left or 0, page.y, width, placeholder, onChange)
+        if not control then
+            control = Client.CreateSettingsSearchField(page.parent,
+                WidgetName(key), left or 0, page.y, width, placeholder, onChange,
+                function(typing)
+                    Settings:OnSearchTyping(typing)
+                    if type(onTyping) == "function" then
+                        onTyping(typing)
+                    end
+                end)
+        end
+        page.Add(control)
+        page.y = page.y - (type(advance) == "number" and advance or MOB_SEARCH_ADVANCE)
+        return control
+    end
+
     -- The real unrealUI component is used when that addon hosts this page.
     -- Standalone uses Client.CreateSettingsSlider, the imported equivalent in
     -- the compatibility layer. Both expose the same current/SetPoint/SetValue
@@ -834,9 +878,9 @@ end
 -- window honours the same contract, so this builder never learns which host
 -- called it -- it is handed a parent frame and anchors everything to that.
 --
--- The page is two sections, General and Mob tracking, each built by its own
--- function below. Where they are switched is the host's business: the
--- standalone window has no sidebar, so it gets both sections under an
+-- The page is four sections (General, Quest dialogue, Mob tracking, Import),
+-- each built by its own function below. Where they are switched is the host's
+-- business: the standalone window has no sidebar, so it gets them under an
 -- internal tab strip; unrealUI's sidebar already is a list of pages, so it gets
 -- an "UnrealQuest" submenu with one page per section and no strip at all.
 
@@ -862,7 +906,24 @@ local function AvailableHeight(parent)
     return height
 end
 
--- The General section: every stored option, and the pfQuest history action.
+-- The width of the creature finder's search row, band and table: the page's
+-- own width less the 12px right inset every page text keeps (TEXT_WIDTH's
+-- rule), never narrower than MOB_LIST_WIDTH. unrealUI scales a sibling page
+-- to fit its box by width, so the page frame's width is the drawn width there
+-- too; it is only the HEIGHT that overstates the visible area (AvailableHeight).
+local function MobListWidth(parent)
+    local width = Client.GetObjectWidth(parent)
+    if type(width) ~= "number" then
+        return MOB_LIST_WIDTH
+    end
+    width = math.floor(width) - (CONTENT_WIDTH - TEXT_WIDTH)
+    if width < MOB_LIST_WIDTH then
+        return MOB_LIST_WIDTH
+    end
+    return width
+end
+
+-- The General section: every stored option.
 -- The caller has already put the cursor where the section starts and filed
 -- the widget group its regions go into.
 local function BuildGeneralSection(page)
@@ -1015,47 +1076,41 @@ local function BuildGeneralSection(page)
     page.Checkbox("hideUnlearnedProfessionQuests", UQ.L("SETTINGS_HIDE_PROFESSION_QUESTS"), nil,
         { width = TEXT_WIDTH, advance = CHECKBOX_ADVANCE })
     page.Checkbox("nameplateQuestIcon", UQ.L("SETTINGS_NAMEPLATE_QUEST_ICON"), nil,
-        { width = TEXT_WIDTH, advance = CHECKBOX_ADVANCE })
+        { width = pairWidth, advance = 0 })
+    page.Checkbox("minimapFollowArrow", UQ.L("SETTINGS_MINIMAP_FOLLOW_ARROW"), nil,
+        { left = PAIR_COLUMN_RIGHT, width = rightWidth, advance = CHECKBOX_ADVANCE })
     page.Checkbox("targetQuestIcon", UQ.L("SETTINGS_TARGET_QUEST_ICON"), nil,
         { width = pairWidth, advance = 0 })
     page.Checkbox("questRewardGearAdvisor", UQ.L("SETTINGS_REWARD_GEAR_ADVISOR"), nil,
         { left = PAIR_COLUMN_RIGHT, width = rightWidth,
           advance = CHECKBOX_ADVANCE + 4 })
+end
 
-    -- The import button's label describes its action. The ordinary row gap
-    -- above is enough separation; the old extra 8px is now used by the clearer
-    -- two-line rare-alert description at the top of the page.
-    page.Heading(UQ.L("SETTINGS_HEADING_QUEST_HISTORY"))
-
-    -- This client has no completed-quest API, so a fresh install cannot know
-    -- which quests the character already finished -- see Quest/QuestHistory.lua.
-    -- pfQuest kept that record, and where it is loaded it can be copied in.
-    -- The status line is rewritten on every page open and after every press,
-    -- so the number the player reads is the number the button would act on.
-    -- ONE line reserved, because this one is rewritten at runtime and the
-    -- cursor cannot re-measure it. DescribeShort() is written to fit that, and
-    -- the page is close enough to the bottom of the content box that a
-    -- three-line paragraph here pushed the button off it. The breakdown lives
-    -- in `/uq pfquest`.
-    local importStatus = page.Body(UQ.L("SETTINGS_PFQUEST_CHECKING"), 0, 1)
+-- The Import section: the server's completed-quest list, copied into the
+-- quest history so map markers stop offering quests already turned in. The
+-- status line is rewritten on every open, after every press and when the
+-- server's answer lands (CompletedQuestImport.onChanged); ONE line is
+-- reserved because the cursor cannot re-measure a rewritten line.
+local function BuildImportSection(page)
+    page.Gap(TAB_TOP_GAP)
+    page.Heading(UQ.L("SETTINGS_HEADING_COMPLETED_QUESTS"))
+    page.Body(UQ.L("SETTINGS_COMPLETED_DESCRIPTION"))
+    local importStatus = page.Body(UQ.L("COMPLETED_SHORT_IDLE"), 0, 1)
 
     local importButton
 
     local function RefreshImportStatus()
-        local importer = UQ:GetModule("PfQuestImport")
+        local importer = UQ:GetModule("CompletedQuestImport")
         if not importer then
             return
         end
         Client.SetSettingsBodyText(importStatus, importer:DescribeShort())
         Client.SetButtonLabel(importButton, importer:GetButtonLabel())
+        Client.SetSettingsButtonEnabled(importButton, importer:IsButtonEnabled())
     end
 
-    -- One button, three jobs, because from the player's side they are one
-    -- thing: "get my finished quests in". Which of the three it does depends on
-    -- what pfQuest is doing right now, and its label says which -- see
-    -- PfQuestImport:GetButtonLabel and :Press.
-    importButton = page.Button("pfQuestImport", UQ.L("PFQUEST_BUTTON_IMPORT"), function()
-        local importer = UQ:GetModule("PfQuestImport")
+    importButton = page.Button("completedQuestImport", UQ.L("COMPLETED_BUTTON_IMPORT"), function()
+        local importer = UQ:GetModule("CompletedQuestImport")
         if not importer then
             return
         end
@@ -1063,6 +1118,12 @@ local function BuildGeneralSection(page)
         RefreshImportStatus()
     end)
 
+    page.Checkbox("completedQuestAutoImport", UQ.L("SETTINGS_COMPLETED_AUTO_IMPORT"))
+
+    local importer = UQ:GetModule("CompletedQuestImport")
+    if importer then
+        importer.onChanged = RefreshImportStatus
+    end
     page.Sync(RefreshImportStatus)
 end
 
@@ -1099,28 +1160,77 @@ local function BuildMobSection(page, MobsShown)
     local RefreshMobResults
 
     -- Mob tracking ----------------------------------------------------------
-    -- This page intentionally submits through a separate button. The native
-    -- EditBox has no handlers at all, exactly matching the focused two-cycle
-    -- probe that established focus/type/GetText/ClearFocus as safe here.
+    -- The settings header's search field, filtering as the player types: the
+    -- results follow every typed or cleared letter, so there is no button.
     page.Heading(UQ.L("SETTINGS_MOB_HEADING"))
     page.Body(UQ.L("SETTINGS_MOB_DESCRIPTION"), 0, 2)
 
+    local listWidth = MobListWidth(parent)
+    local zoneFieldLeft = listWidth - MOB_ZONE_FIELD_WIDTH
+    Settings.mobListWidth = listWidth
+
+    -- Creature name on the left, zone on the right of the same row (user
+    -- request, 2026-11-27); both filter together.
     local searchRowTop = page.y
-    local mobSearchInput = page.Input("mobSearchInput", 0, 296, 0)
-    page.y = searchRowTop
-    local SubmitMobSearch = function()
-        Settings.mobSearchQuery = Client.GetSettingsEditText(mobSearchInput)
-        Client.ClearSettingsEditFocus(mobSearchInput)
+    local mobSearchInput = page.Search("mobSearchInput", zoneFieldLeft - MOB_FIELD_GAP,
+        UQ.L("SETTINGS_MOB_NAME_SEARCH"), function(text)
+            Settings.mobSearchQuery = type(text) == "string" and text or ""
+            Settings.mobSearchPage = 1
+            if type(RefreshMobResults) == "function" then
+                RefreshMobResults()
+            end
+        end, 0)
+    Settings.mobSearchField = mobSearchInput
+
+    -- The zone field completes from the zones the finder's creatures spawn
+    -- in: a drop-down of matches under it while its text is a partial name,
+    -- picked by click, or by Enter/Tab on the field's first suggestion.
+    local zoneInput, zoneSuggestions
+    local function ApplyZone(text, suggest)
+        Settings.mobZoneQuery = type(text) == "string" and text or ""
         Settings.mobSearchPage = 1
-        RefreshMobResults()
+        local database = UQ:GetModule("Database")
+        local entries = nil
+        if suggest and database and Settings.mobZoneQuery ~= "" then
+            entries = database:SuggestMobZones(Settings.mobZoneQuery, MOB_ZONE_SUGGESTIONS)
+            -- A name already typed in full needs no completing.
+            if table.getn(entries) == 1
+                and string.lower(entries[1]) == string.lower(Settings.mobZoneQuery) then
+                entries = nil
+            end
+        end
+        Client.SetSettingsSuggestions(zoneSuggestions, entries)
+        if type(RefreshMobResults) == "function" then
+            RefreshMobResults()
+        end
     end
-    page.Button("mobSearchSubmit", UQ.L("SETTINGS_MOB_SEARCH"),
-        SubmitMobSearch, 112, { left = 306, height = 25, advance = 31 })
-    -- Enter submits the same search as the button, once the client is known to
-    -- survive an EditBox that owns a handler at all. Inert until then: the
-    -- wrapper attaches nothing and answers false.
-    Settings.mobSearchEnterSubmit =
-        Client.SetSettingsEditSubmitHandler(mobSearchInput, SubmitMobSearch)
+    local function PickZone(text)
+        Client.EndSearchFieldTyping()
+        Client.SetSearchFieldText(zoneInput, text)
+        ApplyZone(text, false)
+    end
+    zoneInput = page.Search("mobZoneInput", MOB_ZONE_FIELD_WIDTH,
+        UQ.L("SETTINGS_MOB_ZONE_SEARCH"), function(text)
+            ApplyZone(text, true)
+        end, MOB_SEARCH_ADVANCE, zoneFieldLeft, function(typing)
+            if not typing then
+                Client.SetSettingsSuggestions(zoneSuggestions, nil)
+            end
+        end)
+    Client.SetSearchFieldAccept(zoneInput, function()
+        local first = Client.GetSettingsSuggestions(zoneSuggestions)[1]
+        if type(first) == "string" then
+            Client.SetSearchFieldText(zoneInput, first)
+            ApplyZone(first, false)
+        end
+    end)
+    Settings.mobZoneField = zoneInput
+    -- Hangs under the zone field; placed without moving the page cursor.
+    zoneSuggestions = page.Add(Client.CreateSettingsSuggestionList(parent,
+        WidgetName("mobZoneSuggestions"), zoneFieldLeft,
+        searchRowTop - MOB_SEARCH_FIELD_HEIGHT - 1, MOB_ZONE_FIELD_WIDTH,
+        MOB_ZONE_SUGGESTIONS, PickZone))
+    Settings.mobZoneSuggestions = zoneSuggestions
 
     -- The tracked creature, in its own band between the search field and the
     -- results rather than as a row inside them.
@@ -1138,7 +1248,7 @@ local function BuildMobSection(page, MobsShown)
     local trackedRowTop = page.y
     local accent = UQ.colors.accent
     local trackedPanel = page.Add(Client.CreateSettingsPanel(parent,
-        0, page.y - MOB_TRACKED_GAP, MOB_LIST_WIDTH, MOB_TRACKED_HEIGHT,
+        0, page.y - MOB_TRACKED_GAP, listWidth, MOB_TRACKED_HEIGHT,
         accent[1], accent[2], accent[3],
         MOB_TRACKED_FILL_ALPHA, MOB_TRACKED_BORDER_ALPHA))
     local trackedContentTop = page.y - MOB_TRACKED_GAP - MOB_TRACKED_INSET
@@ -1154,7 +1264,7 @@ local function BuildMobSection(page, MobsShown)
                 RefreshMobResults()
             end
         end, MOB_CLEAR_SIZE,
-        { left = MOB_LIST_WIDTH - MOB_TRACKED_INSET - MOB_CLEAR_SIZE,
+        { left = listWidth - MOB_TRACKED_INSET - MOB_CLEAR_SIZE,
           height = MOB_CLEAR_SIZE,
           -- Past the cross, past the panel's lower inset, then the gap: the
           -- cursor has to clear the panel itself, not just the control on it.
@@ -1178,6 +1288,7 @@ local function BuildMobSection(page, MobsShown)
     if mobRowsPerPage < MOB_MIN_ROWS_PER_PAGE then
         mobRowsPerPage = MOB_MIN_ROWS_PER_PAGE
     end
+    mobRowsPerPage = mobRowsPerPage + MOB_EXTRA_ROWS
     Settings.mobRowsPerPage = mobRowsPerPage
     Settings.pageAvailableHeight = availableHeight
 
@@ -1189,18 +1300,21 @@ local function BuildMobSection(page, MobsShown)
         local capturedIndex = rowIndex
         local line = Client.CreateSettingsListRow(parent,
             WidgetName("mobResult" .. tostring(rowIndex)), 0, page.y,
-            MOB_LIST_WIDTH, MOB_ROW_HEIGHT,
+            listWidth, MOB_ROW_HEIGHT,
             rowIndex - math.floor(rowIndex / 2) * 2 == 0,
             function()
                 local row = mobRows[capturedIndex]
                 local record = row and row.record
                 local pins = UQ:GetModule("NpcPins")
+                Client.SetSettingsSuggestions(Settings.mobZoneSuggestions, nil)
                 if record and pins then
                     pins:SetMobTracked(record.unitId,
                         not pins:IsMobTracked(record.unitId))
                     RefreshMobResults()
                 end
             end)
+        -- The zone column starts under the zone field's text.
+        Client.SetSettingsListRowColumn(line, zoneFieldLeft + 6, MOB_ZONE_FIELD_WIDTH)
         page.Add(line)
         page.y = page.y - MOB_ROW_ADVANCE
         mobRows[rowIndex] = { button = line, record = nil }
@@ -1216,7 +1330,7 @@ local function BuildMobSection(page, MobsShown)
     -- Pagination centred under the table: previous arrow, "page / pages",
     -- next arrow (Client.CreateSettingsPager).
     local pager = page.Add(Client.CreateSettingsPager(parent,
-        WidgetName("mobPager"), 0, page.y, MOB_LIST_WIDTH, MOB_PAGER_HEIGHT,
+        WidgetName("mobPager"), 0, page.y, listWidth, MOB_PAGER_HEIGHT,
         function()
             if Settings.mobSearchPage > 1 then
                 Settings.mobSearchPage = Settings.mobSearchPage - 1
@@ -1250,15 +1364,30 @@ local function BuildMobSection(page, MobsShown)
     -- line can say. Otherwise the zone holding the most of its spawns wins.
     -- Only one zone is named: the band is a summary, and the maps are where
     -- every recorded spawn is already drawn.
-    local function MobZoneName(database, unitId)
+    --
+    -- `filterAreas` (the zone field's selection, an areaId set) wins over
+    -- both: under a zone filter, a row names the zone it was found by.
+    local function MobZoneName(database, unitId, filterAreas, playerAreaId)
         local zones = database:GetUnitZones(unitId)
         local total = table.getn(zones)
         if total == 0 then
             return nil
         end
-        local mapContext = UQ:GetModule("MapContext")
-        local playerAreaId = mapContext and mapContext:GetCurrentZoneView()
-        local index = 1
+        local index
+        if filterAreas then
+            index = 1
+            while index <= total do
+                if filterAreas[zones[index].areaId] then
+                    return zones[index].name
+                end
+                index = index + 1
+            end
+        end
+        if playerAreaId == nil then
+            local mapContext = UQ:GetModule("MapContext")
+            playerAreaId = mapContext and mapContext:GetCurrentZoneView()
+        end
+        index = 1
         while index <= total do
             if zones[index].areaId == playerAreaId then
                 return zones[index].name
@@ -1272,7 +1401,7 @@ local function BuildMobSection(page, MobsShown)
         local database = UQ:GetModule("Database")
         local pins = UQ:GetModule("NpcPins")
         local matches = database and database:SearchMobsByName(
-            Settings.mobSearchQuery) or {}
+            Settings.mobSearchQuery, Settings.mobZoneQuery) or {}
         local total = table.getn(matches)
         local pages = math.ceil(total / mobRowsPerPage)
         if pages < 1 then pages = 1 end
@@ -1315,6 +1444,10 @@ local function BuildMobSection(page, MobsShown)
             tostring(total), tostring(Settings.mobSearchPage), tostring(pages),
             tostring(trackedCount)))
 
+        -- Read once for the page, not once per row.
+        local filterAreas = database and database:MatchMobZones(Settings.mobZoneQuery)
+        local mapContext = UQ:GetModule("MapContext")
+        local playerAreaId = mapContext and mapContext:GetCurrentZoneView() or false
         local first = (Settings.mobSearchPage - 1) * mobRowsPerPage + 1
         local index = 1
         while index <= mobRowsPerPage do
@@ -1326,7 +1459,8 @@ local function BuildMobSection(page, MobsShown)
                 local action = UQ.L(tracked and "QUESTLOG_BUTTON_UNTRACK"
                     or "QUESTLOG_BUTTON_TRACK")
                 Client.SetSettingsListRow(row.button, MobDisplayName(record),
-                    action, tracked)
+                    action, tracked,
+                    MobZoneName(database, record.unitId, filterAreas, playerAreaId))
                 if MobsShown() then
                     SetRegionShown(row.button, true)
                 end
@@ -1340,18 +1474,19 @@ local function BuildMobSection(page, MobsShown)
         Client.SetSettingsPager(pager, Settings.mobSearchPage, pages)
     end
 
-    return RefreshMobResults, mobSearchInput
+    return RefreshMobResults, mobSearchInput, zoneInput
 end
 
 -- `section` nil builds the whole page, every section under the internal tab
 -- strip: the standalone window, and an unrealUI without settings groups.
--- "general", "dialogue" or "mobs" builds that section alone with no strip, for a page of
+-- "general", "dialogue", "mobs" or "import" builds that section alone with no strip, for a page of
 -- unrealUI's submenu, where the sidebar rows are the tabs.
 function Settings:BuildPage(parent, section)
     if not parent then
         return {}, nil
     end
-    if section ~= "general" and section ~= "dialogue" and section ~= "mobs" then
+    if section ~= "general" and section ~= "dialogue" and section ~= "mobs"
+        and section ~= "import" then
         section = nil
     end
 
@@ -1365,8 +1500,9 @@ function Settings:BuildPage(parent, section)
     local generalWidgets = {}
     local dialogueWidgets = {}
     local mobWidgets = {}
-    local generalTab, dialogueTab, mobTab
-    local RefreshMobResults, mobSearchInput
+    local importWidgets = {}
+    local generalTab, dialogueTab, mobTab, importTab
+    local RefreshMobResults, mobSearchInput, mobZoneInput
 
     -- The page draws no wordmark heading of its own: both hosts already title
     -- it with PageTitle -- the standalone window in its header (BuildWindow),
@@ -1394,16 +1530,18 @@ function Settings:BuildPage(parent, section)
     end
 
     local function ApplyInternalTab(tab)
-        if tab ~= "mobs" and tab ~= "dialogue" then
+        if tab ~= "mobs" and tab ~= "dialogue" and tab ~= "import" then
             tab = "general"
         end
         Settings.activePageTab = tab
         ShowGroup(generalWidgets, tab == "general")
         ShowGroup(dialogueWidgets, tab == "dialogue")
         ShowGroup(mobWidgets, tab == "mobs")
+        ShowGroup(importWidgets, tab == "import")
         Client.SetSettingsTabSelected(generalTab, tab == "general")
         Client.SetSettingsTabSelected(dialogueTab, tab == "dialogue")
         Client.SetSettingsTabSelected(mobTab, tab == "mobs")
+        Client.SetSettingsTabSelected(importTab, tab == "import")
         if tab == "mobs" and type(RefreshMobResults) == "function" then
             RefreshMobResults()
         end
@@ -1422,6 +1560,10 @@ function Settings:BuildPage(parent, section)
             WidgetName("mobTrackingTab"), UQ.L("SETTINGS_TAB_MOB_TRACKING"),
             (INTERNAL_TAB_WIDTH + 6) * 2, page.y, INTERNAL_TAB_WIDTH,
             INTERNAL_TAB_HEIGHT, function() ApplyInternalTab("mobs") end))
+        importTab = page.Add(Client.CreateSettingsTab(parent,
+            WidgetName("importTab"), UQ.L("SETTINGS_TAB_IMPORT"),
+            (INTERNAL_TAB_WIDTH + 6) * 3, page.y, INTERNAL_TAB_WIDTH,
+            INTERNAL_TAB_HEIGHT, function() ApplyInternalTab("import") end))
         page.y = page.y - INTERNAL_TAB_ADVANCE
     end
     local contentTop = page.y
@@ -1445,26 +1587,36 @@ function Settings:BuildPage(parent, section)
     if not section or section == "mobs" then
         page.Group(mobWidgets)
         page.y = contentTop
-        RefreshMobResults, mobSearchInput = BuildMobSection(page, MobsShown)
+        RefreshMobResults, mobSearchInput, mobZoneInput = BuildMobSection(page, MobsShown)
         mobHeight = -page.y
+    end
+
+    local importHeight = 0
+    if not section or section == "import" then
+        page.Group(importWidgets)
+        page.y = contentTop
+        BuildImportSection(page)
+        importHeight = -page.y
     end
     page.Group(nil)
 
     -- Each open also records which section the player is on, so /uq config
     -- returns to it under either host.
-    if section == "general" or section == "dialogue" then
+    if section == "general" or section == "dialogue" or section == "import" then
         page.Sync(function()
             Settings.activePageTab = section
         end)
     elseif section == "mobs" then
         page.Sync(function()
             Settings.activePageTab = "mobs"
-            Client.SetSettingsEditText(mobSearchInput, Settings.mobSearchQuery)
+            Client.SetSearchFieldText(mobSearchInput, Settings.mobSearchQuery)
+            Client.SetSearchFieldText(mobZoneInput, Settings.mobZoneQuery)
             RefreshMobResults()
         end)
     else
         page.Sync(function()
-            Client.SetSettingsEditText(mobSearchInput, Settings.mobSearchQuery)
+            Client.SetSearchFieldText(mobSearchInput, Settings.mobSearchQuery)
+            Client.SetSearchFieldText(mobZoneInput, Settings.mobZoneQuery)
             ApplyInternalTab(Settings.activePageTab)
         end)
     end
@@ -1479,6 +1631,9 @@ function Settings:BuildPage(parent, section)
     end
     if mobHeight > self.pageHeight then
         self.pageHeight = mobHeight
+    end
+    if importHeight > self.pageHeight then
+        self.pageHeight = importHeight
     end
     if self.pageHeight > availableHeight then
         UQ:Warn(UQ.L("SETTINGS_WARN_PAGE_TOO_TALL",
@@ -1517,7 +1672,7 @@ end
 
 -- Once. Where unrealUI has settings groups, UnrealQuest is an "UnrealQuest"
 -- submenu in its sidebar with one page per section (General, Quest dialogue,
--- Mob tracking) --
+-- Mob tracking, Import) --
 -- the sidebar rows replace the internal tab strip. An unrealUI without
 -- RegisterSettingsGroup gets the whole tabbed page as a single row instead.
 -- The guard means a re-entered resolution cannot file a duplicate id and get
@@ -1559,8 +1714,13 @@ function Settings:RegisterWithUnrealUI(host)
             function(content)
                 return Settings:BuildPage(content, "mobs")
             end, { parent = TAB_ID, after = DIALOGUE_PAGE_ID })
+        local okImport, importPage = pcall(host.RegisterSettingsTab, IMPORT_PAGE_ID,
+            UQ.L("SETTINGS_TAB_IMPORT"),
+            function(content)
+                return Settings:BuildPage(content, "import")
+            end, { parent = TAB_ID, after = MOBS_PAGE_ID })
         if not okGeneral or not general or not okDialogue or not dialogue
-            or not okMobs or not mobs then
+            or not okMobs or not mobs or not okImport or not importPage then
             return false
         end
         self.registered = true
@@ -1982,6 +2142,8 @@ function Settings:Open()
                     pageId = MOBS_PAGE_ID
                 elseif self.activePageTab == "dialogue" then
                     pageId = DIALOGUE_PAGE_ID
+                elseif self.activePageTab == "import" then
+                    pageId = IMPORT_PAGE_ID
                 end
             end
             local ok, opened = pcall(unrealUI.OpenSettingsPage, pageId)
@@ -2061,6 +2223,50 @@ function Settings:SetMinimapButtonEnabled(enabled)
     return enabled and true or false
 end
 
+-- Search field typing --------------------------------------------------------
+--
+-- Only the compatibility layer's own search field calls this (unrealUI's field
+-- runs its own typing mode). While a field is typed in: the caret blinks on the
+-- shared driver, which also ends typing in combat, and the bindings taken off
+-- the client are persisted so a disconnect mid-typing is repaired at the next
+-- login (RestoreSearchKeys).
+function Settings:OnSearchTyping(typing)
+    local config = Config()
+    if config then
+        config:ClearSection(SEARCH_HELD_SECTION)
+        if typing then
+            local key, command
+            for key, command in pairs(Client.GetSearchFieldHeldKeys()) do
+                config:SetSectionEntry(SEARCH_HELD_SECTION, key, command)
+            end
+        end
+    end
+    local driver = UQ:GetModule("Driver")
+    if not driver then
+        return
+    end
+    if typing then
+        driver:Schedule(SEARCH_CARET_JOB, SEARCH_CARET_BLINK, function()
+            Client.TickSearchFieldCaret()
+        end)
+    else
+        driver:Unschedule(SEARCH_CARET_JOB)
+    end
+end
+
+-- Puts back keys a previous session left off (disconnect or crash mid-typing).
+function Settings:RestoreSearchKeys()
+    local config = Config()
+    if not config or Client.IsSearchFieldTyping() then
+        return
+    end
+    local held = config:GetSection(SEARCH_HELD_SECTION)
+    if type(held) == "table" and next(held) ~= nil then
+        Client.ReleaseSearchFieldKeys(held)
+        config:ClearSection(SEARCH_HELD_SECTION)
+    end
+end
+
 -- Lifecycle -----------------------------------------------------------------
 
 function Settings:OnInit()
@@ -2068,20 +2274,28 @@ function Settings:OnInit()
         "whether unrealUI is installed and will host UnrealQuest's options page. Resolved after the "
         .. "player is in the world, by polling for the UnrealUI global and type-checking its "
         .. "RegisterSettingsTab; this line is what it says before that poll has answered")
-    UQ:DeclareCapability("mobSearchEnterSubmit", "unverified",
-        "whether the Enter key can submit the mob search. It needs a script on the EditBox, and "
-        .. "the only measured EditBox here carried none (widgets.editbox_minimal_search.v1), while "
-        .. "a bundle including OnEnterPressed is part of a confirmed uncatchable client crash "
-        .. "(widgets.editbox_focus_crash). Client.SetSettingsEditSubmitHandler attaches nothing "
-        .. "and returns false until a probe isolates OnEnterPressed on its own; only the button submits")
-    UQ:DeclareCapability("mobSearchTextInput", "verified",
-        "an addon-owned native EditBox with no scripts, no template, no SetNumeric, no "
-        .. "HighlightText and no programmatic SetFocus survived two manual focus/type/GetText/"
-        .. "ClearFocus cycles (widgets.editbox_minimal_search.v1, focused runtime probe, "
-        .. "2026-09-09)")
+    UQ:DeclareCapability("settingsSearchTyping", "documented",
+        "the mob search field is addon-drawn: a click shows a keyboard-enabled Frame that reads "
+        .. "key names from OnKeyDown's arg1 (scripts.keyboard_frame_only_keydown_arg1, "
+        .. "scripts.keyboard_frame_captures_all_input, both USER_CONFIRMED_INGAME through "
+        .. "unrealUI), and the keys that type are unbound with SetBinding while typing and "
+        .. "restored after (KeyBinding API, DOCUMENTED_NOT_RUNTIME_VERIFIED; no UnrealQuest probe). "
+        .. "With unrealUI hosting the page, unrealUI's own field is used instead")
 end
 
 function Settings:OnEnable()
+    self:RestoreSearchKeys()
+    -- Accelerators only: the caret job's poll also ends typing in combat, and
+    -- keys left off by leaving the world are put back at the next login.
+    local events = UQ:GetModule("Events")
+    if events then
+        events:Register("PLAYER_REGEN_DISABLED", function()
+            Client.EndSearchFieldTyping()
+        end)
+        events:Register("PLAYER_LEAVING_WORLD", function()
+            Client.EndSearchFieldTyping()
+        end)
+    end
     local driver = UQ:GetModule("Driver")
     if not driver then
         -- No driver means no poll is possible at all, so decide now rather than

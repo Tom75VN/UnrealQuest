@@ -67,6 +67,7 @@ local HELP_KEYS = {
     "CMD_HELP_TRACKER_OBJECTIVES",
     "CMD_HELP_TRACKER_ZONES",
     "CMD_HELP_TRACKER_RECENT",
+    "CMD_HELP_TRACKER_ITEMS",
     "CMD_HELP_TRACKER_WIDTH",
     "CMD_HELP_TRACKER_HEIGHT",
     "CMD_HELP_TRACKER_UNFOLD",
@@ -564,6 +565,7 @@ local function ShowMinimap(target)
         tostring(status.givers), tostring(status.turnIns)))
     Line("  " .. UQ.L("CMD_MINIMAP_CLAMPED", tostring(status.clamped), tostring(status.targets)))
     Line("  " .. UQ.L("CMD_MINIMAP_WIDTH", tostring(status.width), tostring(status.zoom)))
+    Line("  " .. UQ.L("CMD_MINIMAP_SHAPE", tostring(status.shape), tostring(status.shapeSource)))
     Line("  " .. UQ.L("CMD_MINIMAP_SCALE", tostring(status.span),
         tostring(status.spanEvidence)))
     if status.spanEvidence ~= "measured" then
@@ -583,7 +585,9 @@ local function ShowMinimap(target)
     else
         Line("  " .. UQ.L("CMD_MINIMAP_ARROW_BELOW", tostring(arrowState.pinLevel)))
     end
-    if config:Get("minimapPinsHideIndoors") ~= false then
+    if Client.IsPlayerIndoors() ~= nil then
+        Line("  " .. UQ.L("CMD_MINIMAP_INDOORS_STATUS_SCALED"))
+    elseif config:Get("minimapPinsHideIndoors") ~= false then
         Line("  " .. UQ.L("CMD_MINIMAP_INDOORS_STATUS_WITHHELD"))
     else
         Line("  " .. UQ.L("CMD_MINIMAP_INDOORS_STATUS_DRAWN"))
@@ -1416,6 +1420,14 @@ local function ShowTracker(argument)
         Line(UQ.L("CMD_TRACKER_RECENT_SET",
             lift and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF")))
         return
+    elseif command == "items" then
+        local shown = not (config:Get("trackerItemButtons") and true or false)
+        config:Set("trackerItemButtons", shown)
+        tracker.dirty = true
+        tracker:Refresh()
+        Line(UQ.L("CMD_TRACKER_ITEMS_SET",
+            shown and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF")))
+        return
     elseif command == "native" then
         local hide = not (config:Get("trackerHideNativeWatch") and true or false)
         config:Set("trackerHideNativeWatch", hide)
@@ -1492,6 +1504,7 @@ local function ShowTracker(argument)
         .. " zones=" .. (report.groupByZone and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF"))
         .. " curzone=" .. (report.currentZoneOnly and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF"))
         .. " recent=" .. (report.recentFirst and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF"))
+        .. " items=" .. (report.itemButtons and UQ.L("COMMON_ON") or UQ.L("COMMON_OFF"))
         -- Diagnostic tokens, deliberately untranslated: the zone the filter
         -- settled on, which of MapContext:GetStandingZone's routes produced it
         -- (standing / standingSpan / instance / parent / remembered /

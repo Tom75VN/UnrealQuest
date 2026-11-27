@@ -15,7 +15,12 @@ What it draws, and what it deliberately does not:
   * giver and turn-in points beyond the minimap remain CLAMPED to the boundary
     and drawn at reduced alpha by default, so "that way, further than this"
     stays visible -- `minimapPinsClampEdge = false` hides them instead, like
-    an out-of-view objective dot, for a less crowded minimap.
+    an out-of-view objective dot, for a less crowded minimap;
+  * a gold ARROW on the rim pointing at the followed quest's nearest point
+    while that point is outside the view (ProjectFollowArrow). One arrow for
+    one quest, so unlike objective dots it cannot pile up; it replaces the
+    followed quest's own clamped "?" rather than sitting on top of it.
+    `minimapFollowArrow = false` turns it off.
 
 Hovering a pin fades every other pin that shares no quest with it to a quarter
 of its own alpha -- the world map's own hover focus, on the surface where the
@@ -62,10 +67,10 @@ Two limits are structural rather than unfinished, and both are visible in
     because zoom 0's value being exactly right is evidence that the table is
     the right table. `spanEvidence` in the diagnostics says which step the
     current draw is using and whether it is measured.
-  * INDOORS CANNOT BE DETECTED. IsIndoors and IsOutdoors are both absent from
-    this client, and the indoor span is roughly 64% of the outdoor one, so pins
-    inside a building or cave sit further from the player than they should.
-    There is no route to fix this, only to state it.
+  * Indoors is read from IsIndoors (measured present 2026-11-27, probe
+    indoorcount.v1) and selects the indoor row, roughly 64% of the outdoor
+    span. That row is the Vanilla constant, not measured here. Without
+    IsIndoors the layer withholds its pins inside (MapContext:IsInterior).
 
 Rotation is refused outright rather than approximated: with rotateMinimap set
 this client would need a player facing to place anything, and it exposes none
@@ -137,6 +142,12 @@ local LOW_LEVEL_GIVER_ICON_WIDTH = GIVER_ICON_HEIGHT * 27 / 64
 -- reasoning as the world map's TURNIN_ICON_WIDTH.
 local TURNIN_ICON_HEIGHT = 14
 local TURNIN_ICON_WIDTH = TURNIN_ICON_HEIGHT * 19 / 32
+
+-- The followed-quest arrow on the rim (ProjectFollowArrow). The atlas cell is
+-- square and the arrow fits its inscribed circle, so one size serves every
+-- bearing. 30 draws the guard arrow's 45-texel art about 21 px wide, the
+-- scale unrealUI gives the same art next to the player arrow.
+local FOLLOW_ARROW_SIZE = 30
 -- How far inside the minimap edge a clamped pin sits, so a clamped icon is
 -- fully on the map instead of half-way over pfUI's border.
 local CLAMP_MARGIN = 2
@@ -157,9 +168,7 @@ local OBJECTIVE_RED, OBJECTIVE_GREEN, OBJECTIVE_BLUE = UQ.GetQuestColor(nil)
 -- Yards across the full width of the minimap, indexed by Minimap:GetZoom().
 -- Zoom 0 is MEASURED on this client (probe 1.38.0, observation `glued`); the
 -- rest are the Vanilla constants and are flagged as assumptions wherever the
--- addon reports its state. The indoor row is deliberately absent: IsIndoors
--- does not exist here, so a row that can never be selected would only look
--- like support for a case that has none.
+-- addon reports its state.
 local SPAN_OUTDOOR = {
     [0] = 466.6,
     [1] = 400,
@@ -348,6 +357,7 @@ function MinimapPins:HideAll()
     self.objectiveBorderVisible = HidePoolFrom(self.objectiveBorderPool, 1)
     self.giverVisible = HidePoolFrom(self.giverPool, 1)
     self.turnInVisible = HidePoolFrom(self.turnInPool, 1)
+    self:HideFollowArrow()
 end
 
 local function AppendTooltipBlock(lines, block)
@@ -1080,6 +1090,9 @@ function MinimapPins:BuildTargets(areaId, widthYards, heightYards, config)
         giverIndex = giverIndex + 1
     end
 
+    self.followTargets = self:BuildFollowTargets(targets, turnIns, areaId,
+        widthYards, heightYards, dotsOn, config)
+
     local areas = UQ:GetModule("MinimapAreas")
     if areas then
         areas:Rebuild(quests, areaId, widthYards, heightYards, config)
@@ -1087,6 +1100,191 @@ function MinimapPins:BuildTargets(areaId, widthYards, heightYards, config)
 
     self.rebuildCount = self.rebuildCount + 1
     return targets
+end
+
+-- Followed-quest arrow -------------------------------------------------------
+
+-- Where the followed quest can be done in this zone: its objective points
+-- while it is in progress, its turn-in points once it is complete -- the same
+-- split the dots and "?" make. Drawn targets are reused as they are, so the
+-- arrow and the projection loop can recognise the same target by identity.
+-- With objective dots switched off the quest's points are collected for the
+-- arrow alone; nothing else draws them. The selection is read at build time,
+-- and Refresh rebuilds when it changes (followBuiltFor).
+function MinimapPins:BuildFollowTargets(targets, turnIns, areaId,
+    widthYards, heightYards, dotsOn, config)
+    local follow = {}
+    local mainQuest = UQ:IsFeatureEnabled("mainQuestWaypoint") and MainQuest() or nil
+    self.followBuiltFor = mainQuest and mainQuest:Get() or nil
+    local quest = mainQuest and mainQuest:GetQuest()
+    if not quest then
+        return follow
+    end
+
+    if quest.isComplete == 1 then
+        local drawn = {}
+        local index = 1
+        local total = table.getn(targets)
+        while index <= total do
+            if targets[index].kind == "turnin" and targets[index].point then
+                drawn[targets[index].point] = targets[index]
+            end
+            index = index + 1
+        end
+        index = 1
+        total = type(turnIns) == "table" and table.getn(turnIns) or 0
+        while index <= total do
+            local point = turnIns[index]
+            local carried = false
+            local quests = point and point.quests
+            local questIndex = 1
+            local questTotal = type(quests) == "table" and table.getn(quests) or 0
+            while questIndex <= questTotal and not carried do
+                carried = quests[questIndex] and mainQuest:IsMain(quests[questIndex].titleKey)
+                questIndex = questIndex + 1
+            end
+            if carried and type(point.x) == "number" and type(point.y) == "number" then
+                table.insert(follow, drawn[point] or {
+                    kind = "turnin",
+                    yardX = point.x * widthYards / 100,
+                    yardY = point.y * heightYards / 100,
+                    point = point,
+                })
+            end
+            index = index + 1
+        end
+        return follow
+    end
+
+    if dotsOn then
+        local index = 1
+        local total = table.getn(targets)
+        while index <= total do
+            local target = targets[index]
+            if target.kind == "objective" and self:IsTargetFollowed(target, mainQuest) then
+                table.insert(follow, target)
+            end
+            index = index + 1
+        end
+        return follow
+    end
+
+    local worldMap = WorldMapPins()
+    local locations = worldMap and worldMap:CollectQuestLocations(quest, areaId, false, config) or {}
+    local index = 1
+    local total = table.getn(locations)
+    while index <= total do
+        local location = locations[index]
+        if type(location.x) == "number" and type(location.y) == "number" then
+            table.insert(follow, {
+                kind = "objective",
+                yardX = location.x * widthYards / 100,
+                yardY = location.y * heightYards / 100,
+                quest = quest,
+                quests = { quest },
+            })
+        end
+        index = index + 1
+    end
+    return follow
+end
+
+function MinimapPins:GetFollowArrow()
+    if self.followArrow then
+        return self.followArrow
+    end
+    local arrow = Client.CreateMinimapPin("FollowArrow", FOLLOW_ARROW_SIZE, 1, 1, 1)
+    if arrow then
+        Client.SetMinimapPinSize(arrow, FOLLOW_ARROW_SIZE, FOLLOW_ARROW_SIZE)
+        self.followArrow = arrow
+    end
+    return arrow
+end
+
+function MinimapPins:HideFollowArrow()
+    if self.followArrow and self.followArrowVisible then
+        Client.HideObject(self.followArrow)
+    end
+    self.followArrowVisible = false
+end
+
+-- The arrow on the rim: the followed quest's nearest point in this zone, when
+-- that point lies outside the minimap view. Inside the view the point is
+-- already drawn (the gold-rimmed dot, or the "?"), and an arrow beside it
+-- would only repeat it. Nearest is measured in zone yards, the navigator's
+-- rule, re-evaluated on every pass so the arrow passes from one point to the
+-- next as the player moves.
+--
+-- The bearing needs no facing: this layer refuses a rotating minimap, so
+-- north is up and the angle is atan2(-east, north) of the pixel offset --
+-- 0 north, increasing towards west, the atlas's own convention.
+--
+-- Returns the target the arrow stands for, so the projection loop can leave
+-- that target's clamped "?" out instead of drawing it under the arrow.
+function MinimapPins:ProjectFollowArrow(playerYardX, playerYardY, pixelsPerYard,
+    width, height, shape, mainQuest, objectiveDotSize)
+    local config = UQ:GetModule("Config")
+    local follow = self.followTargets
+    if not mainQuest or type(follow) ~= "table"
+        or (config and config:Get("minimapFollowArrow") == false) then
+        self:HideFollowArrow()
+        return nil
+    end
+
+    local best, bestDistance
+    local index = 1
+    local total = table.getn(follow)
+    while index <= total do
+        local target = follow[index]
+        local east = target.yardX - playerYardX
+        local south = target.yardY - playerYardY
+        local distance = east * east + south * south
+        if not bestDistance or distance < bestDistance then
+            best = target
+            bestDistance = distance
+        end
+        index = index + 1
+    end
+    if not best then
+        self:HideFollowArrow()
+        return nil
+    end
+
+    local offsetX = (best.yardX - playerYardX) * pixelsPerYard
+    local offsetY = -(best.yardY - playerYardY) * pixelsPerYard
+    local visibleInset = objectiveDotSize / 2 + CLAMP_MARGIN
+    if best.kind == "turnin" then
+        visibleInset = TURNIN_ICON_HEIGHT / 2 + CLAMP_MARGIN
+    end
+    if Client.MinimapEdgeRatio(offsetX, offsetY, width, height, visibleInset, shape) <= 1 then
+        self:HideFollowArrow()
+        return nil
+    end
+
+    local heading = UQ:GetModule("PlayerHeading")
+    local arrow = self:GetFollowArrow()
+    if not arrow or not heading or type(heading.Atan2) ~= "function" then
+        self:HideFollowArrow()
+        return nil
+    end
+    local ratio = Client.MinimapEdgeRatio(offsetX, offsetY, width, height,
+        FOLLOW_ARROW_SIZE / 2 + CLAMP_MARGIN, shape)
+    if ratio > 0 then
+        offsetX = offsetX / ratio
+        offsetY = offsetY / ratio
+    end
+    local bearing = heading.Atan2(-offsetX, offsetY)
+    if not Client.SetMinimapFollowArrowAngle(arrow, bearing)
+        or not Client.PositionMinimapPin(arrow, offsetX, offsetY) then
+        Client.HideObject(arrow)
+        self.followArrowVisible = false
+        self.followArrowFailures = (self.followArrowFailures or 0) + 1
+        return nil
+    end
+    Client.SetMinimapPinAlpha(arrow, INSIDE_ALPHA)
+    self.followArrowVisible = true
+    self.followArrowBearing = bearing
+    return best
 end
 
 -- Projection ----------------------------------------------------------------
@@ -1105,6 +1303,12 @@ function MinimapPins:Project(playerX, playerY, widthYards, heightYards, span, wi
     if height < shortest then
         shortest = height
     end
+    -- Round or square, read once for the pass: every visibility test and
+    -- every clamp below measures against the same edge, so a square map
+    -- shows its corners and clamps along its sides rather than to the
+    -- inscribed circle.
+    local shape = Client.GetMinimapShape()
+    self.minimapShape = shape
     local objectiveIndex = 1
     local objectiveBorderIndex = 1
     local giverIndex = 1
@@ -1118,6 +1322,8 @@ function MinimapPins:Project(playerX, playerY, widthYards, heightYards, span, wi
     if UQ:IsFeatureEnabled("mainQuestWaypoint") then
         mainQuest = MainQuest()
     end
+    local arrowTarget = self:ProjectFollowArrow(playerYardX, playerYardY, pixelsPerYard,
+        width, height, shape, mainQuest, objectiveDotSize)
 
     local index = 1
     local total = table.getn(self.targets)
@@ -1125,7 +1331,6 @@ function MinimapPins:Project(playerX, playerY, widthYards, heightYards, span, wi
         local target = self.targets[index]
         local offsetX = (target.yardX - playerYardX) * pixelsPerYard
         local offsetY = -(target.yardY - playerYardY) * pixelsPerYard
-        local distance = math.sqrt(offsetX * offsetX + offsetY * offsetY)
 
         local pin, half
         -- Non-nil only for a dot that is both drawn and followed; it carries
@@ -1142,15 +1347,12 @@ function MinimapPins:Project(playerX, playerY, widthYards, heightYards, span, wi
             -- Visibility is decided from the configured resting size. A dot
             -- already visible at the edge must not disappear merely because
             -- the player hovered its tracker row and made it larger.
-            local objectiveLimit = shortest / 2 - objectiveDotSize / 2 - CLAMP_MARGIN
-            if objectiveLimit < 0 then
-                objectiveLimit = 0
-            end
             -- A creature point describes an exact database position. If that
             -- position is not inside the current minimap view, hiding it is
             -- accurate; clamping would turn many different distant spawns
             -- into one false pile on the edge.
-            if distance <= objectiveLimit then
+            if Client.MinimapEdgeRatio(offsetX, offsetY, width, height,
+                    objectiveDotSize / 2 + CLAMP_MARGIN, shape) <= 1 then
                 pin = self:GetObjectivePin(objectiveIndex)
                 if pin then
                     Client.SetMinimapPinSize(pin, targetDotSize, targetDotSize)
@@ -1209,21 +1411,22 @@ function MinimapPins:Project(playerX, playerY, widthYards, heightYards, span, wi
             -- left where the arithmetic puts it would be drawn over whatever
             -- neighbours the minimap. Clamping is not presentation here, it is
             -- containment.
-            local limit = shortest / 2 - half - CLAMP_MARGIN
-            if limit < 0 then
-                limit = 0
-            end
+            local ratio = Client.MinimapEdgeRatio(offsetX, offsetY, width, height,
+                half + CLAMP_MARGIN, shape)
             local onEdge = false
-            local beyondEdge = target.kind ~= "objective" and distance > limit and distance > 0
-            if beyondEdge and not clampEdge then
+            local beyondEdge = target.kind ~= "objective" and ratio > 1
+            if beyondEdge and target == arrowTarget then
+                -- The arrow on the rim already says "that way" for this
+                -- point; a clamped "?" under it would only blur it.
+                pin = nil
+            elseif beyondEdge and not clampEdge then
                 -- Same treatment as an out-of-view objective: hidden rather
                 -- than clamped, so the minimap stays uncrowded when the
                 -- player has turned edge-clamping off.
                 pin = nil
             elseif beyondEdge then
-                local scale = limit / distance
-                offsetX = offsetX * scale
-                offsetY = offsetY * scale
+                offsetX = offsetX / ratio
+                offsetY = offsetY / ratio
                 onEdge = true
                 clamped = clamped + 1
             end
@@ -1278,8 +1481,15 @@ function MinimapPins:Project(playerX, playerY, widthYards, heightYards, span, wi
     local areas = UQ:GetModule("MinimapAreas")
     if areas then
         local config = UQ:GetModule("Config")
-        areas:Project(playerYardX, playerYardY, pixelsPerYard, shortest / 2, self,
-            mainQuest, config and config:Get("mapShowAllAreas") and true or false)
+        -- A round map clips to the inscribed circle, so it hands over half the
+        -- shorter side; a square one clips to each half side.
+        local halfWidth, halfHeight = shortest / 2, shortest / 2
+        if shape == "square" then
+            halfWidth, halfHeight = width / 2, height / 2
+        end
+        areas:Project(playerYardX, playerYardY, pixelsPerYard, halfWidth, self,
+            mainQuest, config and config:Get("mapShowAllAreas") and true or false,
+            shape, halfHeight)
     end
 end
 
@@ -1389,15 +1599,13 @@ function MinimapPins:Refresh()
         self:Record("unknownZoom", identity)
         return
     end
-    -- Indoors the minimap covers fewer yards at the same zoom step, and this
-    -- client exposes no way to learn how many: the zoom CVars are measured
-    -- absent, so the layer cannot rescale and would place every pin at the
+    -- Indoors the minimap covers fewer yards at the same zoom step. Where
+    -- IsIndoors answers, SpanForZoom picks the indoor row and pins are drawn.
+    -- Without it the layer cannot rescale and would place every pin at the
     -- wrong distance -- drifting along with the player rather than staying on
-    -- the ground. Withholding the pins is the honest answer, and it is the
-    -- same rule this layer already applies to a rotating minimap and to a view
-    -- that cannot project the player.
-    if (not config or config:Get("minimapPinsHideIndoors") ~= false)
-        and mapContext:IsInterior(report) then
+    -- the ground -- so it withholds them, the same rule it applies to a
+    -- rotating minimap and to a view that cannot project the player.
+    if mapContext:WithholdsMinimapIndoors(report, config) then
         self:HideAll()
         identity.interior = true
         self:Record("interior", identity)
@@ -1467,7 +1675,10 @@ function MinimapPins:Refresh()
     local professionSignature = eligibility and eligibility:ProfessionSignature() or ""
     local objectiveStyle = tostring(config and config:Get("mapObjectiveDots"))
         .. "|" .. tostring(config and config:Get("mapObjectiveAreas"))
+    local followQuest = UQ:IsFeatureEnabled("mainQuestWaypoint") and MainQuest() or nil
+    local followKey = followQuest and followQuest:Get() or nil
     if self.dirty or self.lastAreaId ~= areaId or self.lastShowLowLevel ~= showLowLevel
+        or self.followBuiltFor ~= followKey
         or self.lastProfessionSignature ~= professionSignature
         or self.lastObjectiveStyle ~= objectiveStyle then
         self.targets = self:BuildTargets(areaId, yards[1], yards[2], config)
@@ -1513,6 +1724,7 @@ end
 
 function MinimapPins:GetStatus()
     local width, height, zoom = Client.GetMinimapGeometry()
+    local shape, shapeSource = Client.GetMinimapShape()
     local mapContext = MapContext()
     local areaId = mapContext and mapContext:GetCurrentZoneView()
     local span, spanEvidence = SpanForZoom(zoom, areaId)
@@ -1526,10 +1738,13 @@ function MinimapPins:GetStatus()
         span = span,
         spanEvidence = spanEvidence,
         rotating = Client.IsMinimapRotating(),
+        shape = shape,
+        shapeSource = shapeSource,
         objectives = self.objectiveVisible,
         givers = self.giverVisible,
         turnIns = self.turnInVisible,
         clamped = self.clampedCount,
+        followArrow = self.followArrowVisible and true or false,
         pinFailures = self.pinFailures,
         pinClicks = self.clickCount or 0,
         rebuilds = self.rebuildCount,

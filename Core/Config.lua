@@ -90,6 +90,11 @@ local CHARACTER_SECTIONS = {
     -- looking at the map never sees, and its own quests pushed into whatever
     -- the palette had left.
     questColorSlots = true,
+    -- Key chord -> command, the bindings the settings search field took off
+    -- the client while it was being typed in (Compatibility/ClientAPI.lua,
+    -- search field). Normally empty; a disconnect mid-typing leaves it filled
+    -- and the next login puts the keys back. Bindings can be per-character.
+    searchHeldKeys = true,
 }
 
 local defaults = {
@@ -142,6 +147,10 @@ local defaults = {
     -- Accepts offered quests, hands in completable ones and takes the reward,
     -- except a reward the player must choose from.
     dialogueAutoQuest = false,
+
+    -- Not an option: set by the support popup's "Don't show again" box
+    -- (Core/SupportPopup.lua). Account-wide, like unrealMap's.
+    supportPopupDismissed = false,
 
     -- Shows the fixed respawn duration recorded by the bundled world data on
     -- creature and game-object tooltips. A zero or absent duration is unknown
@@ -228,6 +237,11 @@ local defaults = {
     -- dots are never clamped either way -- this only affects the two icon
     -- pools. See Map/MinimapPins.lua.
     minimapPinsClampEdge = true,
+    -- A gold arrow on the minimap rim pointing at the followed quest's
+    -- nearest point while that point is outside the minimap view. Independent
+    -- of minimapPinsClampEdge: it is one arrow for the quest the player chose,
+    -- not the incidental markers that switch quietens. See Map/MinimapPins.lua.
+    minimapFollowArrow = true,
     -- Keeps the game's own player arrow readable at the centre of the
     -- minimap. Every pin is created in the measured level-120 band, which is
     -- far above the arrow, so a dot standing on the player used to bury it.
@@ -313,6 +327,10 @@ local defaults = {
     -- The quest number beside a wanted creature's nameplate
     -- (World/NameplateQuestIcon.lua).
     nameplateQuestIcon = true,
+
+    -- Ask the server for the completed-quest list shortly after login and
+    -- import it quietly (Quest/CompletedQuestImport.lua).
+    completedQuestAutoImport = true,
 
     -- Rare / elite proximity alert -------------------------------------------
     --
@@ -431,6 +449,11 @@ local defaults = {
     -- Draws a filled bar under an objective row whose text carries a
     -- have/need counter, alongside the numeric text. On by default.
     trackerProgressBar = true,
+
+    -- Puts a clickable icon of a carried, usable quest item at the right end
+    -- of its quest's row (Quest/QuestItems.lua). Toggled by /uq tracker
+    -- items. On by default.
+    trackerItemButtons = true,
 
     -- Lifts a quest to the top of the window the moment one of its objectives
     -- moves, most recently advanced first, so the kill or the loot that just

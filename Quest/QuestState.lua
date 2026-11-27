@@ -207,8 +207,38 @@ local function ResolveIdentity(quest)
     quest.matchMapCandidates = mapCandidates
 end
 
+-- Called when the server's completed-quest list arrives: the next scan
+-- re-matches every "ambiguous" row once, without a quest index, so the retry
+-- never moves the quest log selection. Only a better answer is adopted.
+function QuestState:RecheckAmbiguous()
+    self.recheckAmbiguous = true
+    local driver = UQ:GetModule("Driver")
+    if driver then
+        driver:Wake("quest.scan")
+    end
+end
+
+local function RecheckIdentity(quest)
+    local matcher = UQ:GetModule("QuestMatch")
+    if not matcher then
+        return false
+    end
+    local questId, confidence, candidates, mapCandidates = matcher:Resolve(
+        quest.title, quest.level, nil, quest.rawTitle)
+    if type(questId) ~= "number" or confidence == "ambiguous" then
+        return false
+    end
+    quest.questId = questId
+    quest.matchConfidence = confidence
+    quest.matchCandidates = candidates
+    quest.matchMapCandidates = mapCandidates
+    return true
+end
+
 function QuestState:Scan()
     local total = Client.GetQuestLogCount()
+    local recheck = self.recheckAmbiguous
+    self.recheckAmbiguous = nil
     local seen = {}
     local order = {}
     local collapsed = 0
@@ -324,6 +354,11 @@ function QuestState:Scan()
             -- appeared; retry now that it may be.
             ResolveIdentity(quest)
             if quest.matchConfidence ~= "indexing" then
+                resolvedIdentities = resolvedIdentities + 1
+            end
+        elseif recheck and quest.matchConfidence == "ambiguous"
+            and not identityMayHaveChanged then
+            if RecheckIdentity(quest) then
                 resolvedIdentities = resolvedIdentities + 1
             end
         elseif identityMayHaveChanged then

@@ -250,6 +250,8 @@ NpcPins.minimapNavMarkVisible = false
 -- Tracked pins currently resting on the minimap rim rather than at their own
 -- position. Reported, never branched on.
 NpcPins.minimapClamped = 0
+-- Reused by every minimap pass: the rim a clamped tracked pin rests on.
+NpcPins.minimapRim = {}
 NpcPins.targets = {}
 -- The minimap's own set: it can only ever draw the player's zone, so it parts
 -- company with self.targets whenever the world map is showing another one.
@@ -314,15 +316,17 @@ end
 
 -- Pulls a point back onto the minimap rim, keeping its bearing. The bearing is
 -- the whole of what a clamped pin still says truthfully, so the offsets are
--- scaled rather than replaced. A point already inside, or exactly on the
--- player, is returned untouched: dividing by that distance is what would put a
--- pin at nan.
-local function ClampToRim(offsetX, offsetY, distance, rim)
-    if distance <= rim or distance <= 0 then
+-- scaled rather than replaced. `rim` is { width, height, inset, shape }: the
+-- rim follows the minimap's shape, a circle or the square's sides
+-- (Client.MinimapEdgeRatio). A point already inside, or exactly on the player,
+-- is returned untouched.
+local function ClampToRim(offsetX, offsetY, rim)
+    local ratio = Client.MinimapEdgeRatio(offsetX, offsetY, rim.width,
+        rim.height, rim.inset, rim.shape)
+    if ratio <= 1 then
         return offsetX, offsetY, false
     end
-    local scale = rim / distance
-    return offsetX * scale, offsetY * scale, true
+    return offsetX / ratio, offsetY / ratio, true
 end
 
 local function HidePoolFrom(pool, first)
@@ -1492,22 +1496,23 @@ function NpcPins:DrawMinimap(report, areaId)
     end
 
     local yardsPerPixel = span / width
-    local shortest = width
-    if height < shortest then shortest = height end
+    -- Round or square: the visibility edge and the rim follow the minimap's
+    -- own shape, so a square map shows its corners.
+    local shape = Client.GetMinimapShape()
     -- A half-size node may sit a little closer to the rim before its own
     -- edge would cross it, so each size keeps its own cutoff instead of the
     -- larger one hiding small pins early.
-    local limit = shortest / 2 - MINIMAP_PIN_SIZE / 2 - MINIMAP_MARGIN
-    if limit < 0 then limit = 0 end
-    local nodeLimit = shortest / 2 - NODE_MINIMAP_PIN_SIZE / 2 - MINIMAP_MARGIN
-    if nodeLimit < 0 then nodeLimit = 0 end
+    local inset = MINIMAP_PIN_SIZE / 2 + MINIMAP_MARGIN
+    local nodeInset = NODE_MINIMAP_PIN_SIZE / 2 + MINIMAP_MARGIN
     -- The rim a clamped tracked pin rests on. Sized for the RING rather than
     -- the pin, because the ring is the larger of the two and is drawn
     -- concentric with it: containing the ring contains both, and nothing
     -- clips a child of the minimap on this client.
-    local trackedRim = shortest / 2
-        - (MINIMAP_PIN_SIZE + NAV_MARK_PADDING) / 2 - MINIMAP_MARGIN
-    if trackedRim < 0 then trackedRim = 0 end
+    local trackedRim = self.minimapRim
+    trackedRim.width = width
+    trackedRim.height = height
+    trackedRim.shape = shape
+    trackedRim.inset = (MINIMAP_PIN_SIZE + NAV_MARK_PADDING) / 2 + MINIMAP_MARGIN
     local visible = 0
     local clamped = 0
     local index = 1
@@ -1516,18 +1521,17 @@ function NpcPins:DrawMinimap(report, areaId)
         local target = self.minimapTargets[index]
         local offsetX = ((target.x / 100) - report.playerX) * yards[1] / yardsPerPixel
         local offsetY = -(((target.y / 100) - report.playerY) * yards[2]) / yardsPerPixel
-        local distance = math.sqrt(offsetX * offsetX + offsetY * offsetY)
-        local reach = limit
-        if target.small then reach = nodeLimit end
+        local reach = inset
+        if target.small then reach = nodeInset end
         -- Off-view is the end of it for everything but the tracked creature,
         -- which is pulled to the rim whatever minimapPinsClampEdge says: that
         -- switch is about the incidental markers around the player, and this
         -- is the one pin they asked for by name.
         local onEdge = false
-        local draw = distance <= reach
+        local draw = Client.MinimapEdgeRatio(offsetX, offsetY, width, height,
+            reach, shape) <= 1
         if not draw and target.categorySeen and target.categorySeen.tracked then
-            offsetX, offsetY, onEdge = ClampToRim(offsetX, offsetY, distance,
-                trackedRim)
+            offsetX, offsetY, onEdge = ClampToRim(offsetX, offsetY, trackedRim)
             draw = onEdge
         end
         if draw then
@@ -1587,10 +1591,9 @@ function NpcPins:DrawMinimapNavMark(report, areaId, yards, yardsPerPixel, rim)
     end
     local offsetX = ((x / 100) - report.playerX) * yards[1] / yardsPerPixel
     local offsetY = -(((y / 100) - report.playerY) * yards[2]) / yardsPerPixel
-    local distance = math.sqrt(offsetX * offsetX + offsetY * offsetY)
     local size = MINIMAP_PIN_SIZE + NAV_MARK_PADDING
     local onEdge
-    offsetX, offsetY, onEdge = ClampToRim(offsetX, offsetY, distance, rim)
+    offsetX, offsetY, onEdge = ClampToRim(offsetX, offsetY, rim)
     local alpha = self.minimapFocusDimmed and FOCUS_DIM_ALPHA or FOCUS_FULL_ALPHA
     if onEdge then
         alpha = alpha * MINIMAP_EDGE_ALPHA
@@ -1669,15 +1672,13 @@ function NpcPins:Refresh()
         self:DrawWorldMap()
         self.lastWorldDrawAt = now
     end
-    -- Same rule as the quest layer's own pins: the minimap scale indoors
-    -- cannot be established on this client, so service pins are withheld
-    -- there rather than drawn at the wrong distance. See
-    -- MapContext:IsInterior and docs/MINIMAP-PINS.md.
+    -- Same rule as the quest layer's own pins: indoors without IsIndoors the
+    -- minimap scale cannot be chosen, so service pins are withheld there
+    -- rather than drawn at the wrong distance. See docs/MINIMAP-PINS.md.
     local pinConfig = Config()
     if not playerAreaId or not report then
         self:HideMinimapPins()
-    elseif (not pinConfig or pinConfig:Get("minimapPinsHideIndoors") ~= false)
-        and mapContext:IsInterior(report) then
+    elseif mapContext:WithholdsMinimapIndoors(report, pinConfig) then
         self:HideMinimapPins()
     else
         self:DrawMinimap(report, playerAreaId)

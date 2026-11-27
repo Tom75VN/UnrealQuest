@@ -84,6 +84,18 @@ local LIVE_INTERVAL = 0.05
 -- ordinary play, while a first sighting of an already-dead target is ignored.
 local KILL_POLL_INTERVAL = 0.10
 
+-- The combat log (probe combatlog.v1) adds the kills the target poll cannot
+-- see: no target, or the corpse untargeted before the poll ran. A creature
+-- counts as engaged for ENGAGE_SECONDS after the last combat-log line between
+-- it and the player; its UNIT_DIED then counts, and PARTY_KILL always does
+-- (the client sends it only for the player's group). One death reaches here
+-- up to three times -- PARTY_KILL, UNIT_DIED, the poll -- so a count claims
+-- that creature for DEDUP_SECONDS, far below any rare's respawn.
+local ENGAGE_SECONDS = 60
+local DEDUP_SECONDS = 20
+-- The engaged table is pruned past this many GUIDs.
+local MAX_ENGAGED = 64
+
 -- Yards. The settings slider exposes the full 20-500 range; 120 warns early
 -- without reaching as far into neighbouring city blocks.
 local DEFAULT_RANGE = 120
@@ -196,10 +208,22 @@ RareAlert.inRange = {}
 RareAlert.alertedAt = {}
 
 -- The one target whose alive -> dead transition is being observed for the
--- per-character kill history. There is no creature GUID or ID API on this
--- client, so identity is resolved conservatively through the unique
--- (localized name, classification) entry in Database's ranked index.
+-- per-character kill history. Identity is the creature entry inside the
+-- target's GUID (probe unitguid.v1); only when no entry is readable does it
+-- fall back to the unique (localized name, classification) match in
+-- Database's ranked index.
 RareAlert.killTarget = nil
+
+-- Combat-log kill state, keyed by creature GUID except where noted.
+RareAlert.engaged = {}
+RareAlert.engagedCount = 0
+RareAlert.loggedKills = {}
+-- unitId -> GetTime: last combat-log count, and a poll count the log has not
+-- reported yet. Each source skips a kill the other already counted.
+RareAlert.logKillAt = {}
+RareAlert.pollKillAt = {}
+-- unitId -> true/false, memo of Database:IsAlertWorthy for the combat log.
+RareAlert.worthy = {}
 
 RareAlert.state = "idle"
 RareAlert.stats = {
@@ -211,6 +235,7 @@ RareAlert.stats = {
     lastDistance = nil,
     soundPlayed = 0,
     killsRecorded = 0,
+    logKills = 0,
 }
 
 -- Settings -------------------------------------------------------------------
@@ -358,10 +383,9 @@ function RareAlert:RecordKill(unitId)
 end
 
 -- Counts one defeat only after this character and the living target were both
--- observed in combat. That is the strongest attribution this client exposes:
--- UnitIsDead provides the transition, but no combat-log event or creature GUID
--- has been verified here to identify a killing blow. An ambiguous database
--- name, an ordinary elite, or a corpse first targeted after death is ignored.
+-- observed in combat. UnitIsDead provides the transition. An ordinary elite,
+-- an ambiguous name with no readable GUID, or a corpse first targeted after
+-- death is ignored. A death the combat log already counted is skipped here.
 function RareAlert:KillPoll()
     local database = UQ:GetModule("Database")
     if not database or not database.available then
@@ -378,8 +402,16 @@ function RareAlert:KillPoll()
         return
     end
     local name = Client.GetUnitName("target")
-    local classification = Client.GetUnitClassification("target")
-    local entry = database:FindAlertWorthyUnitByName(name, classification)
+    local entry = nil
+    local unitId = Client.GetUnitCreatureId("target")
+    if unitId then
+        if self:WorthyUnitFromId(unitId) then
+            entry = { unitId = unitId }
+        end
+    else
+        entry = database:FindAlertWorthyUnitByName(name,
+            Client.GetUnitClassification("target"))
+    end
     local dead = Client.IsUnitDead("target")
     if not entry or dead == nil then
         self.killTarget = nil
@@ -412,10 +444,121 @@ function RareAlert:KillPoll()
             target.engaged = true
         end
     elseif target.sawAlive and target.engaged and not target.counted then
-        self:RecordKill(target.unitId)
+        local now = Client.Now() or 0
+        local logged = self.logKillAt[target.unitId]
+        if not (logged and now - logged < DEDUP_SECONDS) then
+            self:RecordKill(target.unitId)
+            self.pollKillAt[target.unitId] = now
+        end
         target.counted = true
     end
     target.dead = dead
+end
+
+-- Combat-log kills -------------------------------------------------------------
+
+-- The alert-worthy database creature behind a GUID, or nil.
+function RareAlert:WorthyUnitFromGuid(guid)
+    return self:WorthyUnitFromId(Client.CreatureIdFromGuid(guid))
+end
+
+function RareAlert:WorthyUnitFromId(unitId)
+    if not unitId then
+        return nil
+    end
+    local worthy = self.worthy[unitId]
+    if worthy == nil then
+        local database = UQ:GetModule("Database")
+        if not database or not database.available then
+            return nil
+        end
+        worthy = database:IsAlertWorthy(unitId) and true or false
+        self.worthy[unitId] = worthy
+    end
+    if worthy then
+        return unitId
+    end
+    return nil
+end
+
+function RareAlert:MarkEngaged(guid, now)
+    if not self.engaged[guid] then
+        if self.engagedCount >= MAX_ENGAGED then
+            local key, at
+            for key, at in pairs(self.engaged) do
+                if now - at >= ENGAGE_SECONDS then
+                    self.engaged[key] = nil
+                    self.engagedCount = self.engagedCount - 1
+                end
+            end
+            if self.engagedCount >= MAX_ENGAGED then
+                return
+            end
+        end
+        self.engagedCount = self.engagedCount + 1
+    end
+    self.engaged[guid] = now
+end
+
+function RareAlert:CountLoggedKill(guid, unitId, now)
+    local counted = self.loggedKills[guid]
+    if counted and now - counted < DEDUP_SECONDS then
+        return
+    end
+    self.loggedKills[guid] = now
+    if self.engaged[guid] then
+        self.engaged[guid] = nil
+        self.engagedCount = self.engagedCount - 1
+    end
+    -- The poll got there first for this death: the log only claims it.
+    local polled = self.pollKillAt[unitId]
+    if polled and now - polled < DEDUP_SECONDS then
+        self.pollKillAt[unitId] = nil
+        self.logKillAt[unitId] = now
+        return
+    end
+    if self:RecordKill(unitId) then
+        self.logKillAt[unitId] = now
+        self.stats.logKills = self.stats.logKills + 1
+    end
+end
+
+function RareAlert:OnCombatLog(subevent, sourceGuid, destGuid)
+    if subevent ~= "UNIT_DIED" and subevent ~= "PARTY_KILL"
+        and (not sourceGuid or not destGuid) then
+        return
+    end
+    local now = Client.Now() or 0
+    if subevent == "PARTY_KILL" or subevent == "UNIT_DIED" then
+        local unitId = self:WorthyUnitFromGuid(destGuid)
+        if not unitId then
+            return
+        end
+        local engagedAt = self.engaged[destGuid]
+        if subevent == "PARTY_KILL"
+            or (engagedAt and now - engagedAt < ENGAGE_SECONDS) then
+            self:CountLoggedKill(destGuid, unitId, now)
+        end
+        return
+    end
+
+    local player = self.playerGuid
+    if not player then
+        player = Client.GetPlayerGuid()
+        self.playerGuid = player
+        if not player then
+            return
+        end
+    end
+    local creature = nil
+    if sourceGuid == player then
+        creature = destGuid
+    elseif destGuid == player then
+        creature = sourceGuid
+    end
+    if creature and self:WorthyUnitFromGuid(creature) then
+        self:MarkEngaged(creature, now)
+    end
 end
 
 -- The card -------------------------------------------------------------------
@@ -906,6 +1049,7 @@ function RareAlert:GetStatus()
         scans = self.stats.scanned,
         soundPlayed = self.stats.soundPlayed,
         killsRecorded = self.stats.killsRecorded,
+        logKills = self.stats.logKills,
         lastName = self.stats.lastName,
         lastRank = self.stats.lastRank and self:RankText(self.stats.lastRank) or nil,
         lastDistance = self.stats.lastDistance,
@@ -936,4 +1080,21 @@ function RareAlert:OnEnable()
     driver:Schedule("world.rarealert.kills", KILL_POLL_INTERVAL, function()
         RareAlert:KillPoll()
     end)
+
+    -- An addition to the poll, never a replacement: without the log the poll
+    -- alone still counts targeted kills exactly as before.
+    local events = UQ:GetModule("Events")
+    local accepted = events and events.RegisterCombatLog
+        and events:RegisterCombatLog(function(subevent, sourceGuid, destGuid)
+            RareAlert:OnCombatLog(subevent, sourceGuid, destGuid)
+        end)
+    if accepted then
+        UQ:DeclareCapability("combatLogKills", "verified",
+            "probe combatlog.v1: UNIT_DIED and PARTY_KILL carry the creature GUID, whose F130 entry "
+            .. "field matched the bundled creature in the measured sample; rare kills count without "
+            .. "a target")
+    else
+        UQ:DeclareCapability("combatLogKills", "missing",
+            "COMBAT_LOG_EVENT_UNFILTERED was not accepted; rare kills count only through the target poll")
+    end
 end

@@ -1139,22 +1139,162 @@ function Database:GetMobSearchRecord(unitId)
     return self.mobSearchById[unitId]
 end
 
-function Database:SearchMobsByName(query)
+function Database.SearchNeedle(query)
     query = type(query) == "string" and query or ""
     query = string.gsub(query, "^%s+", "")
     query = string.gsub(query, "%s+$", "")
-    local needle = string.lower(query)
-    local source = self:GetMobSearchIndex()
+    return string.lower(query)
+end
+
+-- The zones of the creature finder, built once on first use: every named area
+-- at least one searchable creature has a recorded spawn in, sorted by name,
+-- and for each creature the set of those areas. Each zone is
+-- { areaId, name, searchName, count } (count: creatures spawning there).
+-- Built lazily rather than with the name index, because it walks every
+-- coordinate of every creature and most sessions never filter by zone.
+function Database:GetMobZoneIndex()
+    if self.mobZoneIndex then
+        return self.mobZoneIndex
+    end
+    local index = { zones = {}, areasByUnit = {} }
+    self.mobZoneIndex = index
+    local rows = self:GetMobSearchIndex()
+    local byArea = {}
+    local rowIndex = 1
+    local rowTotal = table.getn(rows)
+    while rowIndex <= rowTotal do
+        local unitId = rows[rowIndex].unitId
+        local record = self:GetUnit(unitId)
+        local coords = type(record) == "table" and record.coords
+        if type(coords) == "table" then
+            local areas = {}
+            local coordIndex = 1
+            local coordTotal = table.getn(coords)
+            while coordIndex <= coordTotal do
+                local coordinate = coords[coordIndex]
+                local areaId = type(coordinate) == "table" and coordinate[3]
+                if type(areaId) == "number" and not areas[areaId] then
+                    local zone = byArea[areaId]
+                    if zone == nil then
+                        local name = self:GetZoneName(areaId)
+                        if type(name) == "string" and name ~= "" then
+                            zone = { areaId = areaId, name = name,
+                                searchName = string.lower(name), count = 0 }
+                            table.insert(index.zones, zone)
+                        else
+                            zone = false
+                        end
+                        byArea[areaId] = zone
+                    end
+                    if zone then
+                        areas[areaId] = true
+                        zone.count = zone.count + 1
+                    end
+                end
+                coordIndex = coordIndex + 1
+            end
+            index.areasByUnit[unitId] = areas
+        end
+        rowIndex = rowIndex + 1
+    end
+    table.sort(index.zones, function(left, right)
+        if left.searchName ~= right.searchName then
+            return left.searchName < right.searchName
+        end
+        return left.areaId < right.areaId
+    end)
+    return index
+end
+
+-- The areas a typed zone filter selects, as an areaId set, or nil for no
+-- filter. A query naming a zone exactly selects that zone alone, so picking
+-- "Stormwind City" from the suggestions is not widened by every other zone
+-- containing those letters; otherwise every zone whose name contains it.
+function Database:MatchMobZones(query)
+    local needle = Database.SearchNeedle(query)
     if needle == "" then
+        return nil
+    end
+    local zones = self:GetMobZoneIndex().zones
+    local exact, partial = {}, {}
+    local found = false
+    local index = 1
+    while index <= table.getn(zones) do
+        local zone = zones[index]
+        if zone.searchName == needle then
+            exact[zone.areaId] = true
+            found = true
+        elseif string.find(zone.searchName, needle, 1, true) then
+            partial[zone.areaId] = true
+        end
+        index = index + 1
+    end
+    if found then
+        return exact
+    end
+    return partial
+end
+
+-- Zone names completing `query`, for the finder's zone field: names starting
+-- with it first, then names containing it, each group alphabetical, at most
+-- `limit`. Empty for an empty query.
+function Database:SuggestMobZones(query, limit)
+    local needle = Database.SearchNeedle(query)
+    local suggestions = {}
+    if needle == "" then
+        return suggestions
+    end
+    limit = type(limit) == "number" and limit or 6
+    local zones = self:GetMobZoneIndex().zones
+    local pass = 1
+    while pass <= 2 and table.getn(suggestions) < limit do
+        local index = 1
+        while index <= table.getn(zones) and table.getn(suggestions) < limit do
+            local zone = zones[index]
+            local at = string.find(zone.searchName, needle, 1, true)
+            if (pass == 1 and at == 1) or (pass == 2 and at and at > 1) then
+                table.insert(suggestions, zone.name)
+            end
+            index = index + 1
+        end
+        pass = pass + 1
+    end
+    return suggestions
+end
+
+-- `zoneQuery` (optional) keeps only creatures with a recorded spawn in a zone
+-- it selects (Database:MatchMobZones).
+function Database:SearchMobsByName(query, zoneQuery)
+    local needle = Database.SearchNeedle(query)
+    local source = self:GetMobSearchIndex()
+    local areas = self:MatchMobZones(zoneQuery)
+    if needle == "" and not areas then
         return source
     end
+    local areasByUnit = areas and self:GetMobZoneIndex().areasByUnit
 
     local matches = {}
     local index = 1
     local total = table.getn(source)
     while index <= total do
         local row = source[index]
-        if string.find(row.searchName, needle, 1, true) then
+        local keep = needle == "" or string.find(row.searchName, needle, 1, true)
+        if keep and areas then
+            keep = false
+            -- A creature spans a handful of areas, so walk its set, not the
+            -- possibly long list of areas a short query selects.
+            local unitAreas = areasByUnit[row.unitId]
+            if unitAreas then
+                local areaId
+                for areaId in pairs(unitAreas) do
+                    if areas[areaId] then
+                        keep = true
+                        break
+                    end
+                end
+            end
+        end
+        if keep then
             table.insert(matches, row)
         end
         index = index + 1

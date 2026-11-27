@@ -746,6 +746,7 @@ end
 local function IsResolvedQuest(quest)
     return quest and type(quest.questId) == "number"
         and (quest.matchConfidence == "unique" or quest.matchConfidence == "levelDisambiguated"
+            or quest.matchConfidence == "historyDisambiguated"
             or quest.matchConfidence == "eligibilityDisambiguated"
             or quest.matchConfidence == "textDisambiguated"
             or quest.matchConfidence == "objectiveDisambiguated"
@@ -1754,6 +1755,13 @@ function WorldMapPins:GetArea(index)
             function() WorldMapPins:OnAreaEnter(area) end,
             function() WorldMapPins:OnAreaLeave(area) end,
             function() WorldMapPins:OnAreaClick(area) end)
+        -- The map keeps its zoom drag and right-click zoom-out over areas.
+        Client.SetObjectScript(area, "OnMouseDown", function(first)
+            Client.ForwardWorldMapMouse(area, "OnMouseDown", first)
+        end)
+        Client.SetObjectScript(area, "OnMouseUp", function(first)
+            Client.ForwardWorldMapMouse(area, "OnMouseUp", first)
+        end)
     end
     return area
 end
@@ -1842,7 +1850,17 @@ end
 -- back through the map's draw path, at the cadence described at SETTLE_SECONDS above. A canvas that
 -- changed size forces a pass on its own: the placement is a fraction of the
 -- canvas, so a resize invalidates every point at once.
-function WorldMapPins:ReapplyVisiblePools()
+-- Map open/closed below is Client.IsWorldMapOpen, not IsGameUIHidden: with
+-- unrealUI's minimized map the HUD stays shown while the map is open, and
+-- the hidden-HUD test parked every redraw as offscreen (user report
+-- 2026-11-27: quest areas and pins left outside the zoomed map).
+-- Nothing is re-shown while markers are hidden for a moving map
+-- (Client.SyncWorldMapMarkersHidden); `restore` is the full pass that brings
+-- them back once it stops.
+function WorldMapPins:ReapplyVisiblePools(restore)
+    if Client.worldMapMarkersHidden then
+        return
+    end
     local now = Client.Now()
     local width, height = Client.GetWorldMapCanvasSize()
     local force = false
@@ -1864,14 +1882,25 @@ function WorldMapPins:ReapplyVisiblePools()
     -- Opening the map is the moment the sweep matters most, so the transition
     -- into it re-opens the full-rate window rather than waiting for whatever
     -- the interval below happens to allow.
-    local hidden = Client.IsGameUIHidden()
+    local hidden = Client.IsWorldMapOpen()
     if hidden and self.lastGameUIHidden == false then
         self:MarkSettling()
         force = true
     end
     self.lastGameUIHidden = hidden
-    if force and not resized and hidden == false and now and self.lastReapply
-        and now - self.lastReapply < OFFSCREEN_REAPPLY_INTERVAL then
+    -- unrealUI's map zoom settled (a zoom step, the end of a drag, a reset):
+    -- every marker is re-placed so icons keep their size. Drag frames in
+    -- between only change what is in view, which FollowZoomMove handles on
+    -- every frame without re-placing anything.
+    local zoomMove = Client.GetWorldMapZoom().version
+    local zoomMoved = zoomMove ~= self.lastZoomMove
+    self.lastZoomMove = zoomMove
+    if zoomMoved or restore then
+        force = true
+        zoomMoved = true
+    end
+    if force and not resized and not zoomMoved and hidden == false and now
+        and self.lastReapply and now - self.lastReapply < OFFSCREEN_REAPPLY_INTERVAL then
         force = false
     end
     if not force then
@@ -1881,7 +1910,7 @@ function WorldMapPins:ReapplyVisiblePools()
     Client.ReapplyWorldMapPins(self.pool, self.visibleCount)
     Client.ReapplyWorldMapPins(self.areaPool, self.areaVisibleCount)
     local contours = AreaContours()
-    if contours then contours:Reapply(resized) end
+    if contours then contours:Reapply(resized or zoomMoved) end
     Client.ReapplyWorldMapPins(self.dotBorderPool, self.dotBorderVisibleCount)
     Client.ReapplyWorldMapPins(self.giverPool, self.giverVisibleCount)
     Client.ReapplyWorldMapPins(self.patrolPool, self.patrolVisibleCount)
@@ -1900,10 +1929,89 @@ function WorldMapPins:ReapplyVisiblePools()
     -- that walks the pool.
     if self.strokeVisibleCount > 0 or self.hoverStrokeVisibleCount > 0 then
         Client.ReapplyWorldMapStrokeLayer()
-        if resized then
+        if resized or zoomMoved then
             self:ReapplyPatrolStrokes()
             self:ReapplyHoverPatrolStrokes()
         end
+    end
+end
+
+-- Every frame: when unrealUI's zoomed map moved (each drag frame bumps its
+-- move counter), markers, area tiles and patrol stamps are shown or hidden
+-- against the new window and area contours are re-cropped, so nothing lingers
+-- outside the map for a refresh interval (user report 2026-11-27). Only the
+-- points the window edges swept past are visited
+-- (Client.FollowWorldMapPinsInView), and only the contour groups the window
+-- edge crosses (or that crossed it) are re-cropped (AreaContours:FollowMove).
+-- A still map costs one cached read.
+function WorldMapPins:FollowZoomMove()
+    -- unrealMap's "Hide map markers while moving the map": hidden in one pass
+    -- when the map starts moving, nothing followed meanwhile, everything
+    -- re-placed in full when it stops.
+    local markersHidden, markersChanged = Client.SyncWorldMapMarkersHidden()
+    if markersHidden then
+        return
+    end
+    if markersChanged then
+        self:RestoreMarkersAfterMove()
+    end
+    local move = Client.GetWorldMapZoom().moveVersion
+    if move == self.lastFollowMove then
+        return
+    end
+    self.lastFollowMove = move
+    if Client.IsWorldMapOpen() == false then
+        return
+    end
+    local sources = self.zoomFollowSources
+    if not sources then
+        sources = { pools = {
+            self.pool, self.areaPool, self.dotBorderPool, self.giverPool,
+            self.patrolPool, self.turnInPool, self.followedTurnInPool,
+            self.hoverTurnInRingPool, self.strokePool, self.hoverStrokePool,
+        }, counts = {}, xs = {}, ys = {} }
+        local index = 1
+        while index <= 8 do
+            sources.xs[index], sources.ys[index] = false, false
+            index = index + 1
+        end
+        sources.xs[9], sources.ys[9] = self.strokeX, self.strokeY
+        sources.xs[10], sources.ys[10] = self.hoverStrokeX, self.hoverStrokeY
+        self.zoomFollowSources = sources
+    end
+    local counts = sources.counts
+    counts[1], counts[2] = self.visibleCount, self.areaVisibleCount
+    counts[3], counts[4] = self.dotBorderVisibleCount, self.giverVisibleCount
+    counts[5], counts[6] = self.patrolVisibleCount, self.turnInVisibleCount
+    counts[7] = self.followedTurnInVisibleCount
+    counts[8] = self.hoverTurnInRingVisibleCount
+    counts[9], counts[10] = self.strokeVisibleCount, self.hoverStrokeVisibleCount
+    Client.FollowWorldMapPinsInView(sources, 10)
+    local contours = AreaContours()
+    if contours then contours:FollowMove() end
+    if self.navigatorDebugVisible and self.navigatorDebugPin then
+        pcall(Client.UpdateWorldMapPinInView, self.navigatorDebugPin,
+            Client.GetWorldMapZoom())
+    end
+end
+
+-- The pools, contours and route stamps go back through the full re-apply; the
+-- service and vendor layers redraw what they last drew. The follow below then
+-- walks every point against the current window.
+function WorldMapPins:RestoreMarkersAfterMove()
+    self.lastFollowMove = nil
+    self:ReapplyVisiblePools(true)
+    -- The stamp layer is always shown, even with no stamp on it yet.
+    Client.ReapplyWorldMapStrokeLayer()
+    local names = { "NpcPins", "QuestVendorPins" }
+    local index = 1
+    while index <= 2 do
+        local layer = UQ:GetModule(names[index])
+        if layer and layer.DrawWorldMap and ((layer.worldVisible or 0) > 0
+            or layer.worldNavMarkVisible) then
+            pcall(layer.DrawWorldMap, layer)
+        end
+        index = index + 1
     end
 end
 
@@ -2315,6 +2423,10 @@ function WorldMapPins:FollowQuest(quest, origin)
 end
 
 function WorldMapPins:OnAreaClick(area)
+    -- The release that ended a map drag is not a click.
+    if Client.IsWorldMapDragging() then
+        return false
+    end
     return self:FollowQuest(area and area.unrealQuestQuest, "worldMapObjective")
 end
 
@@ -4816,7 +4928,7 @@ end
 -- ReapplyVisiblePools. A nil answer keeps the old eager behaviour, so an
 -- unavailable signal can delay nothing.
 function WorldMapPins:InvalidateScene()
-    local hidden = Client.IsGameUIHidden()
+    local hidden = Client.IsWorldMapOpen()
     if hidden == false then
         self.pendingSceneDirty = true
         return
@@ -4950,7 +5062,7 @@ function WorldMapPins:Refresh()
     local signature = ViewSignature(areaId, report)
     local bagSignature = RelevantBagSignature(self.relevantBagItemIds)
     if self.pendingSceneDirty then
-        local hidden = Client.IsGameUIHidden()
+        local hidden = Client.IsWorldMapOpen()
         -- A real view/config change still has to be applied: it may be the map
         -- opening or the player deliberately changing its presentation. Only
         -- a model invalidation against the same hidden scene is deferred.
@@ -4967,7 +5079,7 @@ function WorldMapPins:Refresh()
     -- an unrelated bag item is absent from this signature altogether.
     if not self.dirty and signature == self.lastSignature
         and bagSignature ~= self.lastBagSignature
-        and Client.IsGameUIHidden() == false then
+        and Client.IsWorldMapOpen() == false then
         self.pendingSceneDirty = true
         self:MarkPass("skip:offscreenBagChange")
         return
@@ -5762,6 +5874,9 @@ function WorldMapPins:OnEnable()
     if driver then
         driver:Schedule("map.worldpins", REFRESH_INTERVAL, function()
             WorldMapPins:Refresh()
+        end)
+        driver:Schedule("map.zoomfollow", 0, function()
+            WorldMapPins:FollowZoomMove()
         end)
     end
     -- The initial scene is topology work too. If the map is closed, do not

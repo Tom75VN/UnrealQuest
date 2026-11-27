@@ -486,6 +486,23 @@ function EntityTooltip:Refresh(fromShow)
         return
     end
 
+    -- A creature behind the open world map is not being hovered: the map is.
+    -- The client still makes it the mouseover unit and shows its tooltip, so
+    -- the combined tooltip stands down and the native one for that unit is
+    -- closed. Only a tooltip naming the mouseover unit is closed -- map pins'
+    -- own tooltips (ours, pfQuest's, the map's) are left alone.
+    if Client.IsCursorOverOpenWorldMap() then
+        if Client.UnitExists("mouseover") then
+            local label = Client.GetGameTooltipUnitLabel()
+            local name = Client.GetUnitName("mouseover")
+            if label and name and string.find(label, name, 1, true) then
+                Client.HideGameTooltip()
+            end
+        end
+        if self.panel or self.lastUnitKey then ResetHover(self) end
+        return
+    end
+
     -- Identity comes from the tooltip's own rendered first line, not
     -- UnitName("mouseover") -- see Client.GetGameTooltipUnitLabel for why.
     local unitLabel, nativeShown = Client.GetGameTooltipUnitLabel()

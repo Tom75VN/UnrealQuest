@@ -18,6 +18,11 @@ quest-related. UnrealQuest therefore treats events as unproven:
   * A native frame's own OnEvent handler is never invoked to force a refresh;
     that is confirmed to crash this client rather than raise a Lua error.
 
+The combat log is the one exception to the arg-global capture: it needs eight
+positional arguments, and only the direct ones were measured (probe
+combatlog.v1). It gets its own frame (RegisterCombatLog), so the vararg table
+is built for combat-log events only, never for every quest or bag event.
+
 Every event this addon registers is also counted, and the counts are persisted.
 That turns normal play into the evidence the compatibility database is missing:
 after a session, the observed set can be read back with /uq events and promoted
@@ -135,6 +140,60 @@ function Events:Register(event, callback)
     end
     table.insert(self.handlers[event], callback)
     return accepted
+end
+
+-- Combat log ------------------------------------------------------------------
+
+local COMBAT_LOG_EVENT = "COMBAT_LOG_EVENT_UNFILTERED"
+Events.combatLogHandlers = {}
+
+-- Measured: OnEvent(self, event, ...) delivers the 3.3.5a combat-log list as
+-- the varargs. The one vararg in the addon, because nothing else carries it.
+local function DispatchCombatLog(first, second, ...)
+    local event = Client.ResolveEventName(first, second)
+    if event ~= COMBAT_LOG_EVENT then
+        return
+    end
+    Events.observed[event] = (Events.observed[event] or 0) + 1
+    Events.pending[event] = (Events.pending[event] or 0) + 1
+
+    local subevent, sourceGuid, destGuid, destName = Client.ReadCombatLogEvent({ ... })
+    if not subevent then
+        return
+    end
+    local list = Events.combatLogHandlers
+    local index = 1
+    local total = table.getn(list)
+    while index <= total do
+        local ok, err = pcall(list[index], subevent, sourceGuid, destGuid, destName)
+        if not ok then
+            UQ:Debug("combat log handler failed: " .. tostring(err))
+        end
+        index = index + 1
+    end
+end
+
+-- callback(subevent, sourceGuid, destGuid, destName). Same contract as
+-- Register: a false return only means the log will not arrive.
+function Events:RegisterCombatLog(callback)
+    if type(callback) ~= "function" then
+        return false
+    end
+    if not self.combatLogFrame then
+        local ok, frame = pcall(CreateFrame, "Frame", "UnrealQuestCombatLog", UIParent)
+        if not ok or not frame then
+            return false
+        end
+        frame:SetScript("OnEvent", DispatchCombatLog)
+        self.combatLogFrame = frame
+        local accepted = Client.RegisterEvent(frame, COMBAT_LOG_EVENT)
+        Note(COMBAT_LOG_EVENT, accepted)
+        if not accepted then
+            UQ:Debug("client rejected event registration: " .. COMBAT_LOG_EVENT)
+        end
+    end
+    table.insert(self.combatLogHandlers, callback)
+    return self.registration[COMBAT_LOG_EVENT] == true
 end
 
 function Events:WasAccepted(event)

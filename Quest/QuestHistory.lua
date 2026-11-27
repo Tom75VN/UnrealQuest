@@ -27,8 +27,9 @@ from so it can be taken back on its own:
     gesture. That split is what lets /uq resetmarked undo only what the player
     clicked, without also un-completing quests this addon correctly inferred
     from watching the log on its own.
-  * questHistoryImported -- every quest ID that came in from another addon's
-    saved history (Quest/PfQuestImport.lua). An import is a bulk claim about a
+  * questHistoryImported -- every quest ID that came in through an import:
+    the server's completed-quest list (Quest/CompletedQuestImport.lua) or
+    another addon's saved history (Quest/PfQuestImport.lua). An import is a bulk claim about a
     career this addon never watched, sourced from data it cannot verify, so it
     has to be reversible as one act rather than one quest at a time.
 

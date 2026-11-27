@@ -16,6 +16,44 @@ STRINGS.update({
 "COMMON_NOTHING": ("nothing", "rien", "ничего", "无"),
 "COMMON_NOT_FOUND": ("not found", "introuvable", "не найдено", "未找到"),
 
+# --- support popup (Core/SupportPopup.lua) -----------------------------------
+"SUPPORT_POPUP_TITLE": (
+    "|cffffffffUnreal |cfff5ae0aQuest|r",
+    "|cffffffffUnreal |cfff5ae0aQuest|r",
+    "|cffffffffUnreal |cfff5ae0aQuest|r",
+    "|cffffffffUnreal |cfff5ae0aQuest|r",
+),
+"SUPPORT_POPUP_QUESTION": (
+    "Do you like it?",
+    "Vous l'aimez ?",
+    "Вам нравится?",
+    "喜欢吗？",
+),
+"SUPPORT_POPUP_MESSAGE": (
+    "Give a like to this addon from the launcher",
+    "Mettez un like a cet addon depuis le launcher",
+    "Поставьте лайк этому аддону в лаунчере",
+    "请在启动器中为此插件点赞",
+),
+"SUPPORT_POPUP_THANKS": (
+    "THANKS FOR YOUR SUPPORT!",
+    "MERCI POUR VOTRE SOUTIEN !",
+    "СПАСИБО ЗА ПОДДЕРЖКУ!",
+    "感谢您的支持！",
+),
+"SUPPORT_POPUP_ALREADY_LIKED": (
+    "I already liked it",
+    "J'ai deja mis un like",
+    "Я уже поставил лайк",
+    "我已经点赞了",
+),
+"SUPPORT_POPUP_WILL_LIKE": (
+    "OK, I will add a like",
+    "OK, je mets un like",
+    "ОК, поставлю лайк",
+    "好的，我会去点赞",
+),
+
 # --- quest status shared by tracker, map and minimap -------------------------
 "QUEST_STATUS_READY_TO_TURN_IN": (
     "Ready to turn in",
@@ -90,6 +128,24 @@ STRINGS.update({
     "ПКМ: свернуть цели",
     "右键：折叠目标",
 ),
+"TRACKER_ITEM_HINT": (
+    "Click: use this item",
+    "Clic : utiliser cet objet",
+    "ЛКМ: использовать предмет",
+    "点击：使用此物品",
+),
+"TRACKER_ITEM_COOLDOWN_SECONDS": (
+    "Cooldown: %d s",
+    "Recharge : %d s",
+    "Восстановление: %d с",
+    "冷却：%d 秒",
+),
+"TRACKER_ITEM_COOLDOWN_MINUTES": (
+    "Cooldown: %d min",
+    "Recharge : %d min",
+    "Восстановление: %d мин",
+    "冷却：%d 分钟",
+),
 "TRACKER_ZONE_EMPTY": (
     "No quests in this zone",
     "Aucune quête dans cette zone",
@@ -137,6 +193,12 @@ STRINGS.update({
     "la nouvelle position du navigateur n'a pas pu etre enregistree",
     "не удалось сохранить новое положение навигатора",
     "无法保存导航器的新位置",
+),
+"MOVER_LABEL_NAVIGATOR": (
+    "Navigation Arrow",
+    "Fleche de navigation",
+    "Стрелка навигации",
+    "导航箭头",
 ),
 "MOBNAV_WARN_DRAG_FAILED": (
     "the mob navigator refused to move (StartMoving failed)",
@@ -795,7 +857,8 @@ STRINGS.update({
     "\u041e\u0442\u0441\u043b\u0435\u0436\u0438\u0432\u0430\u0435\u0442\u0441\u044f \u043e\u0434\u043d\u043e \u0441\u0443\u0449\u0435\u0441\u0442\u0432\u043e: \u043e\u043d\u043e \u0437\u0430\u043a\u0440\u0435\u043f\u043b\u0435\u043d\u043e \u0432\u0432\u0435\u0440\u0445\u0443 \u0441\u043f\u0438\u0441\u043a\u0430, \u043f\u043e\u043a\u0430\u0437\u0430\u043d\u043e \u043d\u0430 \u043e\u0431\u0435\u0438\u0445 \u043a\u0430\u0440\u0442\u0430\u0445, \u0438 \u043a \u043d\u0435\u043c\u0443 \u0443\u043a\u0430\u0437\u044b\u0432\u0430\u0435\u0442 \u0441\u0442\u0440\u0435\u043b\u043a\u0430.",
     "\u6309\u540d\u79f0\u641c\u7d22\u5185\u7f6e\u751f\u7269\u6570\u636e\u5e93\u3002\u540c\u65f6\u53ea\u8ffd\u8e2a\u4e00\u4e2a\u751f\u7269\uff1a\u5b83\u56fa\u5b9a\u5728\u5217\u8868\u9876\u90e8\uff0c\u663e\u793a\u5728\u4e24\u5f20\u5730\u56fe\u4e0a\uff0c\u5e76\u6709\u7bad\u5934\u6307\u5f15\u65b9\u5411\u3002",
 ),
-"SETTINGS_MOB_SEARCH": ("Search", "Rechercher", "Найти", "搜索"),
+"SETTINGS_MOB_NAME_SEARCH": ("Creature name", "Nom de la creature", "Имя существа", "生物名称"),
+"SETTINGS_MOB_ZONE_SEARCH": ("Zone", "Zone", "Зона", "区域"),
 "SETTINGS_MOB_READY": (
     "Enter a name, or search with an empty field to browse all mobs.",
     "Saisissez un nom, ou laissez le champ vide pour voir toutes les creatures.",
@@ -1055,13 +1118,84 @@ STRINGS.update({
     "目标进度现在只会发给使用 UnrealQuest "
     "的小队成员",
 ),
-"SETTINGS_HEADING_QUEST_HISTORY": (
-    "Quest history", "Historique des quêtes", "История заданий", "任务历史"),
-"SETTINGS_PFQUEST_CHECKING": (
-    "Checking for pfQuest data...",
-    "Recherche des données pfQuest...",
-    "Проверка данных pfQuest...",
-    "正在检查 pfQuest 数据……",
+"SETTINGS_TAB_IMPORT": (
+    "Import", "Importer", "Импорт", "导入"),
+"SETTINGS_HEADING_COMPLETED_QUESTS": (
+    "Completed quests", "Quêtes terminées", "Выполненные задания", "已完成的任务"),
+"SETTINGS_COMPLETED_DESCRIPTION": (
+    "Asks the server which quests this character already turned in, so the maps stop offering them.",
+    "Demande au serveur quelles quêtes ce personnage a déjà rendues, pour que les cartes cessent de les proposer.",
+    "Запрашивает у сервера уже сданные этим персонажем задания, чтобы карты перестали их предлагать.",
+    "向服务器查询该角色已交付的任务，地图将不再显示这些任务。",
+),
+"SETTINGS_COMPLETED_AUTO_IMPORT": (
+    "Import completed quests at login", "Importer les quêtes terminées à la connexion",
+    "Импортировать выполненные задания при входе", "登录时导入已完成的任务"),
+"COMPLETED_BUTTON_IMPORT": (
+    "Import completed quests", "Importer les quêtes terminées",
+    "Импорт выполненных заданий", "导入已完成的任务"),
+"COMPLETED_BUTTON_WAITING": (
+    "Waiting for the server", "En attente du serveur",
+    "Ожидание сервера", "正在等待服务器"),
+"COMPLETED_SHORT_IDLE": (
+    "Not imported yet this session.", "Pas encore importé pendant cette session.",
+    "В этой сессии импорт ещё не выполнялся.", "本次会话尚未导入。"),
+"COMPLETED_SHORT_WAITING": (
+    "Asking the server...", "Interrogation du serveur...",
+    "Запрос к серверу...", "正在查询服务器……"),
+"COMPLETED_SHORT_UNSUPPORTED": (
+    "This game client cannot ask the server for completed quests.",
+    "Ce client de jeu ne peut pas demander les quêtes terminées au serveur.",
+    "Этот игровой клиент не может запросить у сервера выполненные задания.",
+    "此游戏客户端无法向服务器查询已完成的任务。",
+),
+"COMPLETED_SHORT_RESULT": (
+    "Last import: %s new, %s already known.",
+    "Dernier import : %s nouvelles, %s déjà connues.",
+    "Последний импорт: новых %s, уже известных %s.",
+    "上次导入：新增 %s，已知 %s。",
+),
+"COMPLETED_NOTHING_NEW": (
+    "the server's completed quests are all already known.",
+    "toutes les quêtes terminées du serveur sont déjà connues.",
+    "все выполненные задания с сервера уже известны.",
+    "服务器上的已完成任务均已记录。",
+),
+"COMPLETED_SERVER_EMPTY": (
+    "The server reports no completed quests for this character.",
+    "Le serveur n'indique aucune quête terminée pour ce personnage.",
+    "Сервер не сообщает о выполненных заданиях этого персонажа.",
+    "服务器显示该角色没有已完成的任务。",
+),
+"COMPLETED_NO_ANSWER": (
+    "The server did not answer -- try again in a few seconds.",
+    "Le serveur n'a pas répondu -- réessayez dans quelques secondes.",
+    "Сервер не ответил -- попробуйте снова через несколько секунд.",
+    "服务器未响应 -- 请几秒后重试。",
+),
+"COMPLETED_UNSUPPORTED": (
+    "this game client cannot ask the server for completed quests.",
+    "ce client de jeu ne peut pas demander les quêtes terminées au serveur.",
+    "этот игровой клиент не может запросить у сервера выполненные задания.",
+    "此游戏客户端无法向服务器查询已完成的任务。",
+),
+"COMPLETED_STILL_WAITING": (
+    "still waiting for the server's answer.",
+    "toujours en attente de la réponse du serveur.",
+    "всё ещё ожидается ответ сервера.",
+    "仍在等待服务器响应。",
+),
+"COMPLETED_REQUEST_FAILED": (
+    "the completed-quest request could not be sent.",
+    "la demande des quêtes terminées n'a pas pu être envoyée.",
+    "не удалось отправить запрос выполненных заданий.",
+    "无法发送已完成任务的查询。",
+),
+"COMPLETED_ASKING": (
+    "asking the server for this character's completed quests...",
+    "demande au serveur des quêtes terminées de ce personnage...",
+    "запрос у сервера выполненных заданий этого персонажа...",
+    "正在向服务器查询该角色的已完成任务……",
 ),
 "SETTINGS_MINIMAP_TOOLTIP": (
     "Click to open the options.",
@@ -1448,6 +1582,12 @@ STRINGS.update({
     u"Numero de quete sur les barres de nom",
     u"Номер задания на полосах имени",
     u"姓名板上的任务编号",
+),
+"SETTINGS_MINIMAP_FOLLOW_ARROW": (
+    u"Minimap arrow to followed quest",
+    u"Fleche mini-carte vers la quete suivie",
+    u"Стрелка к заданию на миникарте",
+    u"小地图上指向追踪任务的箭头",
 ),
 "SETTINGS_TOOLTIP_RESPAWN": (
     u"Respawn timers in tooltips",

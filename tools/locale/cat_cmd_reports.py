@@ -325,6 +325,11 @@ STRINGS = {
     "constantes Vanilla",
     "на этом клиенте измерен только зум 0; остальные шаги используют константы Vanilla",
     "此客户端仅测量了缩放级别 0；其他级别使用 Vanilla 常量"),
+"CMD_MINIMAP_SHAPE": (
+    "shape:          %s (from %s)",
+    "forme :         %s (selon %s)",
+    "форма:          %s (источник: %s)",
+    "形状：          %s（来源：%s）"),
 "CMD_MINIMAP_ROTATING": (
     "rotateMinimap is on: pins are hidden, this client exposes no player facing",
     "rotateMinimap est actif : les repères sont masqués, ce client n'expose aucune "
@@ -341,6 +346,11 @@ STRINGS = {
     "intérieur :     repères masqués (l'échelle intérieure ne peut pas être établie ici)",
     "в помещении:    метки скрыты (масштаб внутри здесь установить нельзя)",
     "室内：          隐藏标记（此处无法确定室内比例）"),
+"CMD_MINIMAP_INDOORS_STATUS_SCALED": (
+    "indoors:        markers drawn at the indoor scale (the client reports indoors)",
+    "intérieur :     repères dessinés à l'échelle intérieure (le client signale l'intérieur)",
+    "в помещении:    метки рисуются в масштабе помещения (клиент сообщает, что вы внутри)",
+    "室内：          按室内比例绘制标记（客户端报告室内状态）"),
 "CMD_MINIMAP_INDOORS_STATUS_DRAWN": (
     "indoors:        markers drawn at the outdoor scale",
     "intérieur :     repères dessinés à l'échelle extérieure",
@@ -450,10 +460,10 @@ STRINGS = {
     "задержка скрытия подсказки: %s с",
     "提示停留时间已设为 %s 秒"),
 "CMD_TOOLTIP_DELAY_USAGE": (
-    "usage: /uq tooltip delay <0.25-1.00>",
-    "utilisation : /uq tooltip delay <0.25-1.00>",
-    "использование: /uq tooltip delay <0.25-1.00>",
-    "用法：/uq tooltip delay <0.25-1.00>"),
+    "usage: /uq tooltip delay <0.05-1.00>",
+    "utilisation : /uq tooltip delay <0.05-1.00>",
+    "использование: /uq tooltip delay <0.05-1.00>",
+    "用法：/uq tooltip delay <0.05-1.00>"),
 
 # --- marks -------------------------------------------------------------------
 "CMD_MARKS_OFF": (
@@ -761,6 +771,11 @@ STRINGS = {
     "remontée de la quête qui vient d'avancer : %s",
     "подъём задания с новым прогрессом: %s",
     "将刚有进展的任务置顶：%s"),
+"CMD_TRACKER_ITEMS_SET": (
+    "tracker quest item buttons %s",
+    "boutons d'objet de quête du suivi : %s",
+    "кнопки предметов задания в трекере: %s",
+    "追踪器任务物品按钮：%s"),
 "CMD_TRACKER_NATIVE_HIDDEN": (
     "native quest watch panel hidden", "panneau de suivi natif masqué",
     "родная панель слежения скрыта", "原生任务监视面板已隐藏"),

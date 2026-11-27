@@ -1111,6 +1111,9 @@ function TrackerFrame:BuildLines()
     -- and the window never repaints.
     local progressBars = Setting("trackerProgressBar") and true or false
     local recentFirst = Setting("trackerRecentFirst") and true or false
+    -- Part of the line list, so looting or using up the item changes the
+    -- signature Refresh compares and the button appears or goes.
+    local questItems = Setting("trackerItemButtons") and UQ:GetModule("QuestItems") or nil
     local currentZoneKey, currentAreaId, currentZoneHow, currentInstanceMap = CurrentZone()
     local where = {
         zoneKey = currentZoneKey,
@@ -1254,6 +1257,7 @@ function TrackerFrame:BuildLines()
                 tracked = tracked,
                 following = mainQuest and mainQuest:IsMain(quest.titleKey) or false,
                 questNumber = questNumbers[quest.titleKey],
+                useItem = questItems and questItems:GetUseItem(quest) or nil,
             }
             -- These remain the fallback for a malformed/out-of-range number.
             -- The normal path draws the shared POI number and, for a complete
@@ -1357,6 +1361,98 @@ local function MeasuredTrackerRowHeight(kind, row, text)
     return height
 end
 
+-- Quest-item button -----------------------------------------------------------
+-- The icon at the right end of a quest row (Quest/QuestItems.lua picks the
+-- item). Its handlers are fields read by the script Client.SetTrackerRowItem
+-- installs once, so they are assigned here and never re-scripted.
+
+local function ItemCooldownText(remaining)
+    if remaining >= 60 then
+        return UQ.L("TRACKER_ITEM_COOLDOWN_MINUTES", math.ceil(remaining / 60))
+    end
+    return UQ.L("TRACKER_ITEM_COOLDOWN_SECONDS", math.ceil(remaining))
+end
+
+local function OnItemEnter(button)
+    local itemId = button and button.unrealQuestItemId
+    if not itemId then
+        return
+    end
+    local name, _, quality = Client.GetItemDisplayInfo(itemId)
+    local red, green, blue = Client.GetItemQualityRGB(quality)
+    local lines = { { text = name or ("item " .. tostring(itemId)), r = red, g = green, b = blue } }
+    local spell = Client.GetItemUseSpell(itemId)
+    if spell then
+        table.insert(lines, { text = spell, r = 0.12, g = 1, b = 0 })
+    end
+    local questItems = UQ:GetModule("QuestItems")
+    local remaining = questItems and questItems:CooldownRemaining(itemId)
+    if type(remaining) == "number" and remaining > 0 then
+        table.insert(lines, { text = ItemCooldownText(remaining), r = 1, g = 0.3, b = 0.3 })
+    end
+    table.insert(lines, { text = UQ.L("TRACKER_ITEM_HINT"), r = 0.6, g = 0.6, b = 0.6 })
+    Client.ShowGameTooltip(button, lines, "ANCHOR_RIGHT")
+end
+
+local function OnItemLeave(button)
+    Client.HideGameTooltip(button)
+end
+
+local function OnItemClick(button)
+    local questItems = UQ:GetModule("QuestItems")
+    local itemId = button and button.unrealQuestItemId
+    if questItems and itemId then
+        questItems:Use(itemId)
+    end
+end
+
+-- Shows or hides the row's item button for this line. Call after
+-- Client.SetTrackerRowFollowing and before Client.PlaceTrackerRow: it sets the
+-- label's right inset that PlaceTrackerRow turns into the label width.
+local function ApplyRowItem(row, line)
+    local itemId = line and line.useItem
+    if not itemId then
+        Client.SetTrackerRowItem(row, nil)
+        return
+    end
+    local _, icon = Client.GetItemDisplayInfo(itemId)
+    local button = Client.SetTrackerRowItem(row, itemId, icon)
+    if button and not button.unrealQuestItemBound then
+        button.unrealQuestItemBound = true
+        button.unrealQuestOnClick = OnItemClick
+        button.unrealQuestOnEnter = OnItemEnter
+        button.unrealQuestOnLeave = OnItemLeave
+    end
+end
+
+-- Cooldown shading for every item button on screen. Cheap: a handful of
+-- buttons at most, and nothing at all when none is shown.
+function TrackerFrame:UpdateItemCooldowns()
+    local questItems = UQ:GetModule("QuestItems")
+    if not questItems then
+        return
+    end
+    local windows = { self.window, self.mapWindow }
+    local w = 1
+    while w <= 2 do
+        local pools = windows[w] and windows[w].unrealQuestRows
+        local pool = pools and pools.quest
+        if pool then
+            local index = 1
+            while pool[index] do
+                local row = pool[index]
+                local button = row.unrealQuestItemButton
+                if row.unrealQuestItemId and button and Client.IsObjectVisible(button) then
+                    Client.SetTrackerRowItemCooldown(button,
+                        questItems:CooldownRemaining(row.unrealQuestItemId))
+                end
+                index = index + 1
+            end
+        end
+        w = w + 1
+    end
+end
+
 -- Returns the exact content height needed to draw through one line, using the
 -- same row and inter-group spacing as Redraw. RevealQuest uses this to grow a
 -- manually shortened window just far enough to show a quest's complete block.
@@ -1390,6 +1486,7 @@ local function HeightThroughLine(lines, stopIndex, window, width)
                         Client.SetTrackerRowQuestMark(row,
                             line.questRed, line.questGreen, line.questBlue, line.questTexture)
                     end
+                    ApplyRowItem(row, line)
                 end
                 Client.PlaceTrackerRow(row, window, indent, top, width, height)
                 Client.SetTrackerRowText(row, line.text, line.red, line.green, line.blue)
@@ -1906,6 +2003,7 @@ function TrackerFrame:RedrawWindow(window, lines, questCount, completed, mapOwne
                     Client.SetTrackerRowQuestMark(row,
                         line.questRed, line.questGreen, line.questBlue, line.questTexture)
                 end
+                ApplyRowItem(row, line)
             end
             Client.PlaceTrackerRow(row, window, indent, top, width, height)
 
@@ -2154,6 +2252,7 @@ function TrackerFrame:Refresh()
         return
     end
 
+    self:SyncHostAnchor()
     self:CheckPositionOnScreen()
     self:SyncAreaToggle()
 
@@ -2171,7 +2270,8 @@ function TrackerFrame:Refresh()
         local line = lines[index]
         table.insert(parts, line.kind .. ":" .. tostring(line.text)
             .. ":" .. tostring(line.tracked) .. ":" .. tostring(line.progress)
-            .. ":" .. tostring(line.following) .. ":" .. tostring(line.questNumber))
+            .. ":" .. tostring(line.following) .. ":" .. tostring(line.questNumber)
+            .. ":" .. tostring(line.useItem))
         index = index + 1
     end
     local signature = table.concat(parts, "|")
@@ -2202,6 +2302,10 @@ function TrackerFrame:Refresh()
     self.signature = signature
     self.lines = lines
     self:Redraw(lines, questCount, completed, drawMap)
+    -- The new size reaches unrealUI's anchor now, not on the next tick.
+    if self.hostAnchor then
+        self:SyncHostAnchor()
+    end
     Client.ShowObject(window)
     if drawMap then
         Client.ShowObject(self.mapWindow)
@@ -2231,6 +2335,9 @@ end
 
 -- Position ----------------------------------------------------------------------
 
+-- unrealUI's Move UI id of its "Quest Tracker" anchor (see SyncHostAnchor).
+local HOST_ANCHOR_ID = "questwatch.frame"
+
 -- `atLoad` skips the screen guard. At OnInit the window has not been laid out
 -- yet, so its edges say nothing about where it will be, and a guard "correction"
 -- taken from them was saved over a good position: the tracker came back in
@@ -2240,6 +2347,9 @@ function TrackerFrame:ApplyStoredPosition(atLoad)
     local window = self.window
     if not window then
         return false
+    end
+    if self.hostAnchor then
+        return self:SyncHostAnchor(true)
     end
     local point = Setting("trackerPoint")
     local relativePoint = Setting("trackerRelativePoint")
@@ -2264,14 +2374,30 @@ function TrackerFrame:ApplyStoredPosition(atLoad)
     return applied
 end
 
--- The deferred half of ApplyStoredPosition's screen guard: once per session,
--- a few seconds after enable, when the window has been drawn at its real size.
+-- The deferred half of ApplyStoredPosition's screen guard: once a few seconds
+-- after enable, when the window has been drawn at its real size, and again
+-- whenever UIParent's anchor span changes. The stored offsets are in the
+-- window's own units, so a UI-scale change moves the same offsets elsewhere
+-- and can leave the window off screen; the one-shot guard never saw that.
 local POSITION_CHECK_DELAY = 3
+-- After a span change: one layout pass is all the window needs to settle.
+local RESCALE_CHECK_DELAY = 0.5
 
 function TrackerFrame:CheckPositionOnScreen()
+    local layoutWidth, layoutHeight = Client.GetUILayoutKey()
+    if layoutWidth then
+        if self.layoutWidth and (layoutWidth ~= self.layoutWidth
+            or layoutHeight ~= self.layoutHeight) then
+            local now = Client.Now()
+            self.positionChecked = nil
+            self.positionCheckAt = now and now + RESCALE_CHECK_DELAY or nil
+        end
+        self.layoutWidth, self.layoutHeight = layoutWidth, layoutHeight
+    end
     -- Never under a drag or a resize: re-applying the stored anchor then would
-    -- yank the window out from under the cursor.
-    if self.positionChecked or self.dragging or self.resizeStartX then
+    -- yank the window out from under the cursor. Never on unrealUI's anchor
+    -- either: unrealUI clamps its own anchors.
+    if self.positionChecked or self.dragging or self.resizeStartX or self.hostAnchor then
         return
     end
     local now = Client.Now()
@@ -2299,6 +2425,13 @@ function TrackerFrame:CapturePosition()
         UQ:Warn(UQ.L("TRACKER_WARN_NO_POSITION"))
         return false
     end
+    -- On unrealUI's Quest Tracker anchor the drop moves that anchor: the
+    -- window shares its scale, so the offsets are already in its units.
+    if self.hostAnchor then
+        Client.SaveUnrealUIMoverPosition(HOST_ANCHOR_ID, self.hostAnchor, point,
+            type(relativePoint) == "string" and relativePoint or point, x, y)
+        return self:SyncHostAnchor(true)
+    end
     -- relativeName is read but not stored. Anything the drag left the window
     -- anchored to is normalized to UIParent on the way back in, which is what
     -- makes the stored pair of numbers meaningful across sessions.
@@ -2321,8 +2454,72 @@ function TrackerFrame:ResetPosition()
     Store("mapTrackerX", MAP_TRACKER_DEFAULT_X)
     Store("mapTrackerY", MAP_TRACKER_DEFAULT_Y)
     self.dirty = true
+    if self.hostAnchor then
+        self:SeedHostAnchor(self.hostAnchor)
+    end
     self:ApplyStoredPosition()
     self:ApplyMapPosition()
+end
+
+-- unrealUI's Quest Tracker anchor -------------------------------------------------
+--
+-- unrealUI's Move UI already has a "Quest Tracker" anchor: QuestWatchFrame, the
+-- native panel (modules/questlog.lua, id "questwatch.frame"). While this window
+-- replaces that panel -- the native watch hidden -- the window rides on it
+-- instead of keeping a second position: it takes the anchor's scale, writes
+-- its own size onto it (so the edit-mode handle covers this window) and is
+-- pinned to it by the anchor's own point (Client.FollowAnchorFrame). Moving
+-- the anchor in edit mode, or dragging this window's header, moves both.
+-- With the native watch shown again the window goes back to its own position.
+-- (HOST_ANCHOR_ID is declared with the position helpers above.)
+
+-- The first time the window rides an anchor the player never placed in
+-- unrealUI, the anchor is moved to where this window was, so switching hosts
+-- does not move the tracker. `anchor` units: the window's offsets are in
+-- UIParent units (scale 1), the anchor's in its own.
+function TrackerFrame:SeedHostAnchor(anchor)
+    local point = Setting("trackerPoint")
+    local relativePoint = Setting("trackerRelativePoint")
+    local x = Setting("trackerX")
+    local y = Setting("trackerY")
+    if type(point) ~= "string" or type(x) ~= "number" or type(y) ~= "number" then
+        return false
+    end
+    local ratio = Client.GetLayoutRatio(anchor)
+    if type(ratio) ~= "number" or ratio <= 0 then
+        ratio = 1
+    end
+    return Client.SaveUnrealUIMoverPosition(HOST_ANCHOR_ID, anchor, point,
+        type(relativePoint) == "string" and relativePoint or point, x / ratio, y / ratio)
+end
+
+-- Starts, keeps or ends riding unrealUI's anchor. Run on every refresh (after
+-- the redraw too, so a new height reaches the anchor at once); `force` re-pins
+-- after something else placed the window. Returns true while riding it.
+function TrackerFrame:SyncHostAnchor(force)
+    local window = self.window
+    if not window or self.dragging then
+        return self.hostAnchor ~= nil
+    end
+    -- NativeWatchShouldHide's test, inlined: that local is declared below.
+    local replacing = Setting("trackerHideNativeWatch") and Setting("trackerEnabled")
+    local anchor = replacing and Client.GetUnrealUIMoverFrame(HOST_ANCHOR_ID) or nil
+    if not anchor then
+        if self.hostAnchor then
+            self.hostAnchor = nil
+            Client.StopFollowingAnchor(window)
+            self:ApplyStoredPosition()
+        end
+        return false
+    end
+    if self.hostAnchor ~= anchor then
+        if not Client.HasUnrealUIMoverPosition(HOST_ANCHOR_ID) then
+            self:SeedHostAnchor(anchor)
+        end
+        self.hostAnchor = anchor
+        force = true
+    end
+    return Client.FollowAnchorFrame(window, anchor, force)
 end
 
 -- The map copy ------------------------------------------------------------------
@@ -2682,6 +2879,7 @@ function TrackerFrame:GetReport()
         groupByZone = Setting("trackerGroupByZone") and true or false,
         currentZoneOnly = Setting("trackerCurrentZoneOnly") and true or false,
         recentFirst = Setting("trackerRecentFirst") and true or false,
+        itemButtons = Setting("trackerItemButtons") and true or false,
         currentZoneArea = self.currentZoneArea,
         currentZoneName = self.currentZoneName,
         currentZoneHow = self.currentZoneHow,
@@ -2702,6 +2900,7 @@ function TrackerFrame:GetReport()
         point = Setting("trackerPoint"),
         x = Setting("trackerX"),
         y = Setting("trackerY"),
+        unrealUIAnchor = self.hostAnchor and true or false,
         mapDrags = self.mapDrags,
         mapX = Setting("mapTrackerX"),
         mapY = Setting("mapTrackerY"),
@@ -2874,6 +3073,10 @@ function TrackerFrame:OnEnable()
         -- touches the frame in that case -- the client owns it then, and
         -- re-Showing it on a timer would force an empty native panel on a
         -- player who has nothing tracked.
+        -- Cooldown shading on the quest-item buttons; a no-op while none shows.
+        driver:Schedule("tracker.itemcooldown", 0.5, function()
+            TrackerFrame:UpdateItemCooldowns()
+        end)
         driver:Schedule("tracker.griphover", 0.1, function()
             TrackerFrame:UpdateGripHover()
         end)

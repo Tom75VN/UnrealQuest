@@ -15,7 +15,7 @@ THE SAME SHAPES. The geometry is Map/AreaContours.lua's, read from its cache
 yards once per rebuild; each refresh only turns yards into pixels around the
 player, the same arithmetic MinimapPins:Project uses for the dots.
 
-CLIPPED TO THE CIRCLE. Nothing clips a child of Minimap on this client
+CLIPPED TO THE CIRCLE (ROUND MINIMAP). Nothing clips a child of Minimap on this client
 (minimap.addon_children_render_unclipped), so a patch left as computed would
 be drawn over the rest of the UI. There is no mask to lean on, so every patch
 is clipped to the minimap circle here, before it is placed:
@@ -28,6 +28,12 @@ is clipped to the minimap circle here, before it is placed:
     trimmed strip keeps its exact texels by interpolating u across the cut.
 The edge is therefore exact to within one strip (about a pixel), and nothing
 is ever drawn outside the circle.
+
+SQUARE MINIMAPS. When an addon has squared the minimap
+(Client.GetMinimapShape), the clip is the minimap's own rectangle instead:
+each patch is intersected with it exactly -- one texture, u interpolated
+across a horizontal cut, nothing to do for a vertical one since texels are
+flat in y -- so the corners show the area the circle used to cut away.
 
 Geometry that is not yet in the cache is built on the shared driver in bounded
 grid-row slices, like the world map's, so a rebuild never computes every area
@@ -215,13 +221,33 @@ function MinimapAreas:Place(index, path, left, top, right, bottom, u1, u2,
 end
 
 -- Draws one yard rectangle around the player, clipped to the circle of
--- `radius`. Pixel y runs up, so top > bottom. Returns the next free texture.
+-- `radius` -- or, when `halfHeight` is given, to the rectangle `radius` wide
+-- and `halfHeight` tall on each side of the centre (a square minimap). Pixel
+-- y runs up, so top > bottom. Returns the next free texture.
 function MinimapAreas:DrawRecord(used, record, playerX, playerY, pixelsPerYard,
-    radius, path, red, green, blue)
+    radius, path, red, green, blue, halfHeight)
     local left = (record[1] - playerX) * pixelsPerYard
     local right = (record[3] - playerX) * pixelsPerYard
     local top = -(record[2] - playerY) * pixelsPerYard
     local bottom = -(record[4] - playerY) * pixelsPerYard
+    if halfHeight then
+        local clipLeft = math.max(left, -radius)
+        local clipRight = math.min(right, radius)
+        local clipTop = math.min(top, halfHeight)
+        local clipBottom = math.max(bottom, -halfHeight)
+        if clipRight <= clipLeft or clipTop <= clipBottom then
+            return used
+        end
+        local u1, u2 = record[5], record[6]
+        local width = right - left
+        local clipU1 = u1 + (u2 - u1) * (clipLeft - left) / width
+        local clipU2 = u1 + (u2 - u1) * (clipRight - left) / width
+        if self:Place(used, path, clipLeft, clipTop, clipRight, clipBottom,
+                clipU1, clipU2, red, green, blue) then
+            return used + 1
+        end
+        return used
+    end
     local r2 = radius * radius
     -- Nearest point of the rectangle to the centre: outside the circle means
     -- nothing of it is visible.
@@ -268,18 +294,29 @@ end
 -- Called at the end of every MinimapPins:Project. `owner` answers which quest
 -- is hovered (MinimapPins:IsQuestAreaHovered). Skipped entirely while nothing
 -- it depends on has changed, which is most refreshes of a player standing
--- still.
+-- still. `halfSize` is the circle's radius on a round minimap; with `shape`
+-- "square" it is half the width, and `halfHeight` (defaulting to it) half
+-- the height.
 function MinimapAreas:Project(playerX, playerY, pixelsPerYard, halfSize,
-    owner, mainQuest, showAll)
+    owner, mainQuest, showAll, shape, halfHeight)
     local radius = halfSize - EDGE_MARGIN
+    local clipHeight = nil
+    if shape == "square" then
+        clipHeight = (halfHeight or halfSize) - EDGE_MARGIN
+        if clipHeight <= 0 then
+            radius = 0
+        end
+    end
     if radius <= 0 or table.getn(self.entries) == 0 then
         self:HideAll()
         return
     end
     -- Which quests are drawn, and how, is part of the key: a hover or a
-    -- follow change redraws even when the player has not moved.
+    -- follow change redraws even when the player has not moved, and so does
+    -- the minimap changing shape under a player standing still.
     local drawn = {}
-    local keyParts = { self.serial, playerX, playerY, pixelsPerYard, radius }
+    local keyParts = { self.serial, playerX, playerY, pixelsPerYard, radius,
+        tostring(clipHeight) }
     local index = 1
     local total = table.getn(self.entries)
     while index <= total do
@@ -301,14 +338,18 @@ function MinimapAreas:Project(playerX, playerY, pixelsPerYard, halfSize,
     self.lastProjectKey = key
 
     local reach = radius / pixelsPerYard
+    local reachY = reach
+    if clipHeight then
+        reachY = clipHeight / pixelsPerYard
+    end
     local used = 1
     index = 1
     total = table.getn(drawn)
     while index <= total do
         local entry = drawn[index].entry
-        -- The whole quest outside the square around the circle: skip it.
+        -- The whole quest outside the box around the visible shape: skip it.
         if entry.minX and entry.maxX >= playerX - reach and entry.minX <= playerX + reach
-            and entry.maxY >= playerY - reach and entry.minY <= playerY + reach then
+            and entry.maxY >= playerY - reachY and entry.minY <= playerY + reachY then
             local path, red, green, blue = Client.WORLD_MAP_AREA_CONTOUR_TEXTURE, 1, 1, 1
             if drawn[index].tinted then
                 path = Client.WORLD_MAP_AREA_CONTOUR_NEUTRAL_TEXTURE
@@ -319,7 +360,7 @@ function MinimapAreas:Project(playerX, playerY, pixelsPerYard, halfSize,
             local recordTotal = table.getn(records)
             while recordIndex <= recordTotal do
                 used = self:DrawRecord(used, records[recordIndex], playerX, playerY,
-                    pixelsPerYard, radius, path, red, green, blue)
+                    pixelsPerYard, radius, path, red, green, blue, clipHeight)
                 recordIndex = recordIndex + 1
             end
         end

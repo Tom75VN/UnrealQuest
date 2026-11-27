@@ -632,10 +632,10 @@ function QuestVendorPins:DrawMinimap(report, areaId)
     end
 
     local yardsPerPixel = span / width
-    local shortest = width
-    if height < shortest then shortest = height end
-    local limit = shortest / 2 - MINIMAP_PIN_SIZE / 2 - MINIMAP_MARGIN
-    if limit < 0 then limit = 0 end
+    -- The view edge follows the minimap's shape: a square map shows its
+    -- corners (Client.GetMinimapShape).
+    local shape = Client.GetMinimapShape()
+    local inset = MINIMAP_PIN_SIZE / 2 + MINIMAP_MARGIN
 
     local visible = 0
     local index = 1
@@ -644,8 +644,7 @@ function QuestVendorPins:DrawMinimap(report, areaId)
         local target = self.minimapTargets[index]
         local offsetX = ((target.x / 100) - report.playerX) * yards[1] / yardsPerPixel
         local offsetY = -(((target.y / 100) - report.playerY) * yards[2]) / yardsPerPixel
-        local distance = math.sqrt(offsetX * offsetX + offsetY * offsetY)
-        if distance <= limit then
+        if Client.MinimapEdgeRatio(offsetX, offsetY, width, height, inset, shape) <= 1 then
             local pin = self:GetMinimapPin(visible + 1)
             if pin then
                 pin.unrealQuestVendorTarget = target
@@ -750,14 +749,13 @@ function QuestVendorPins:Refresh()
         self.lastWorldDrawAt = now
     end
 
-    -- Same rule as every other minimap layer here: the minimap scale indoors
-    -- cannot be established on this client, so pins are withheld there rather
+    -- Same rule as every other minimap layer here: indoors without IsIndoors
+    -- the minimap scale cannot be chosen, so pins are withheld there rather
     -- than drawn at the wrong distance. See docs/MINIMAP-PINS.md.
     local pinConfig = Config()
     if not playerAreaId or not report then
         self.minimapVisible = HidePoolFrom(self.minimapPool, 1)
-    elseif (not pinConfig or pinConfig:Get("minimapPinsHideIndoors") ~= false)
-        and mapContext:IsInterior(report) then
+    elseif mapContext:WithholdsMinimapIndoors(report, pinConfig) then
         self.minimapVisible = HidePoolFrom(self.minimapPool, 1)
     else
         self:DrawMinimap(report, playerAreaId)
